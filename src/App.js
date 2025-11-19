@@ -746,7 +746,7 @@ export default function App() {
               <Brain className="text-white w-8 h-8" />
             </div>
             <h1 className="text-2xl font-bold text-slate-800">
-              Burak İngilizce
+              Burak-Elif İngilizce
             </h1>
             <p className="text-slate-500">Kelimelerini kaybetme.</p>
           </div>
