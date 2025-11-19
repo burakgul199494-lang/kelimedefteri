@@ -17,6 +17,9 @@ import {
   updateDoc,
   arrayUnion,
   arrayRemove,
+  collection, // Admin için eklendi
+  addDoc,     // Admin için eklendi
+  getDocs,    // Admin için eklendi
 } from "firebase/firestore";
 import {
   BookOpen,
@@ -40,7 +43,7 @@ import {
   Mail,
   Lock,
   Flag,
-  Shield, // <-- Admin ikonu eklendi
+  Shield, // Admin ikonu
 } from "lucide-react";
 
 // --- FIREBASE CONFIG ---
@@ -61,11 +64,11 @@ const appId = "burak-ingilizce-pro";
 // --- ADMIN AYARLARI ---
 // 👇 BURAYA KENDİ E-POSTA ADRESİNİ YAZMALISIN 👇
 const ADMIN_EMAILS = [
-  "burakgul1994@outlook.com.tr", 
-  "burakgul1994@outlook.com.tr"
+  "senin_epostan@gmail.com", 
+  "burak@ornek.com"
 ];
 
-// --- SYSTEM WORDS ---
+// --- SYSTEM WORDS (SABİT KELİMELER) ---
 const BASE_WORD_LIST = [
   {
     id: 1,
@@ -205,12 +208,15 @@ export default function App() {
   }, []);
 
   const [user, setUser] = useState(null);
-  const [isAdmin, setIsAdmin] = useState(false); // Admin durumu
+  const [isAdmin, setIsAdmin] = useState(false); // Admin yetkisi
   const [authLoading, setAuthLoading] = useState(true);
 
   const [knownWordIds, setKnownWordIds] = useState([]);
   const [customWords, setCustomWords] = useState([]);
   const [deletedWordIds, setDeletedWordIds] = useState([]);
+  
+  // 🔥 Adminin eklediği dinamik sistem kelimeleri
+  const [dynamicSystemWords, setDynamicSystemWords] = useState([]);
 
   const [sessionWords, setSessionWords] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -232,8 +238,8 @@ export default function App() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
-
-      // 🔥 ADMIN KONTROLÜ
+      
+      // Admin Kontrolü
       if (currentUser && ADMIN_EMAILS.includes(currentUser.email)) {
         setIsAdmin(true);
       } else {
@@ -245,14 +251,16 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // --- USER DATA FETCH ---
+  // --- USER & SYSTEM DATA FETCH ---
   useEffect(() => {
     if (user) {
       fetchUserData();
+      fetchDynamicSystemWords(); // Admin kelimelerini çek
     } else {
       setKnownWordIds([]);
       setCustomWords([]);
       setDeletedWordIds([]);
+      setDynamicSystemWords([]);
       setCurrentView("home");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -289,11 +297,51 @@ export default function App() {
     }
   };
 
-  // 🔥 DUPLICATE KONTROL
+  // 🔥 Admin Kelimelerini Çekme Fonksiyonu
+  const fetchDynamicSystemWords = async () => {
+    try {
+      const querySnapshot = await getDocs(collection(db, "artifacts", appId, "system_words"));
+      const words = [];
+      querySnapshot.forEach((doc) => {
+        words.push({ id: doc.id, ...doc.data(), source: "system" });
+      });
+      setDynamicSystemWords(words);
+    } catch (e) {
+      console.error("Sistem kelimeleri çekilemedi:", e);
+    }
+  };
+
+  // 🔥 Admin: Kelime Kaydetme
+  const handleSaveSystemWord = async (wordData) => {
+    try {
+      const newWord = {
+        id: Date.now().toString(),
+        word: wordData.word.trim(),
+        plural: wordData.plural || "",
+        v2: wordData.v2 || "",
+        v3: wordData.v3 || "",
+        definitions: wordData.definitions,
+        sentence: wordData.sentence.trim(),
+        source: "system",
+        createdAt: new Date()
+      };
+
+      await addDoc(collection(db, "artifacts", appId, "system_words"), newWord);
+      setDynamicSystemWords(prev => [...prev, newWord]);
+      return { success: true };
+    } catch (e) {
+      console.error("Admin kayıt hatası:", e);
+      return { success: false, message: e.message };
+    }
+  };
+
+  // 🔥 DUPLICATE KONTROL (Kullanıcı vs Sistem)
   useEffect(() => {
     if (!user || customWords.length === 0) return;
 
-    const baseWordsLower = BASE_WORD_LIST.map((b) => b.word.toLowerCase());
+    // Hem sabit hem dinamik sistem kelimelerini kontrol et
+    const allBaseWords = [...BASE_WORD_LIST, ...dynamicSystemWords];
+    const baseWordsLower = allBaseWords.map((b) => b.word.toLowerCase());
 
     const duplicates = customWords.filter(
       (cw) =>
@@ -328,7 +376,7 @@ export default function App() {
     };
 
     moveDuplicates();
-  }, [user, customWords, deletedWordIds]);
+  }, [user, customWords, deletedWordIds, dynamicSystemWords]);
 
   const handleLogout = async () => {
     await signOut(auth);
@@ -344,8 +392,11 @@ export default function App() {
   };
 
   const normalizeWord = (w) => {
-    const baseMatch = BASE_WORD_LIST.find((b) => b.id === w.id);
-    const source = w.source || (baseMatch ? "system" : "user");
+    // Kelime sabit listede veya dinamik sistem listesinde var mı?
+    const isBase = BASE_WORD_LIST.some((b) => b.id === w.id);
+    const isDynamic = dynamicSystemWords.some((d) => d.id === w.id);
+    const source = w.source || ((isBase || isDynamic) ? "system" : "user");
+
     const plural = w.plural || "";
     const v2 = w.v2 || "";
     const v3 = w.v3 || "";
@@ -370,17 +421,22 @@ export default function App() {
   };
 
   const getAllWords = () => {
-    const filteredBase = BASE_WORD_LIST.filter(
+    // Tüm kaynakları birleştir: Sabit + Dinamik + Kullanıcı
+    const allSystem = [...BASE_WORD_LIST, ...dynamicSystemWords];
+    
+    const filteredSystem = allSystem.filter(
       (w) => !deletedWordIds.includes(w.id)
     );
     const filteredCustom = customWords.filter(
       (w) => !deletedWordIds.includes(w.id)
     );
-    return [...filteredBase, ...filteredCustom].map(normalizeWord);
+    return [...filteredSystem, ...filteredCustom].map(normalizeWord);
   };
 
   const getDeletedWords = () => {
-    const baseDeleted = BASE_WORD_LIST.filter((w) =>
+    const allSystem = [...BASE_WORD_LIST, ...dynamicSystemWords];
+    
+    const systemDeleted = allSystem.filter((w) =>
       deletedWordIds.includes(w.id)
     ).map(normalizeWord);
 
@@ -388,7 +444,7 @@ export default function App() {
       .filter((w) => deletedWordIds.includes(w.id))
       .map(normalizeWord);
 
-    const merged = [...baseDeleted, ...customDeleted];
+    const merged = [...systemDeleted, ...customDeleted];
     return merged.sort((a, b) => a.word.localeCompare(b.word));
   };
 
@@ -588,7 +644,7 @@ export default function App() {
         userRef,
         {
           deleted_ids: arrayUnion(wordId),
-          known_ids: arrayRemove(wordId), // öğrenilenlerden de çıkar
+          known_ids: arrayRemove(wordId), 
         },
         { merge: true }
       );
@@ -697,7 +753,6 @@ export default function App() {
     setEditingWord(null);
   };
 
-  // 🔥 PROFİL SIFIRLAMA
   const resetProfileToDefaults = async () => {
     const confirm1 = window.confirm(
       "Profilini sıfırlamak istediğine emin misin? Bu işlem tüm kelime ilerlemelerini ve kendi eklediğin kelimeleri temizler."
@@ -913,6 +968,8 @@ export default function App() {
 
   // --- ADMIN DASHBOARD ---
   if (currentView === "admin_dashboard" && isAdmin) {
+    const totalSystemWords = BASE_WORD_LIST.length + dynamicSystemWords.length;
+
     return (
       <div className="min-h-screen bg-slate-50 p-4">
         <div className="max-w-md mx-auto">
@@ -933,41 +990,208 @@ export default function App() {
             <h3 className="font-bold text-slate-700 mb-4">Sistem Durumu</h3>
             <div className="space-y-3">
               <div className="flex justify-between p-3 bg-slate-50 rounded-lg">
-                <span className="text-slate-500">Toplam Sistem Kelimesi</span>
+                <span className="text-slate-500">Sabit Kelimeler</span>
                 <span className="font-bold text-slate-800">
                   {BASE_WORD_LIST.length}
                 </span>
               </div>
               <div className="flex justify-between p-3 bg-slate-50 rounded-lg">
-                <span className="text-slate-500">Aktif Kullanıcı</span>
-                <span className="font-bold text-slate-800">{user.email}</span>
+                <span className="text-slate-500">Dinamik Eklenenler</span>
+                <span className="font-bold text-indigo-600">{dynamicSystemWords.length}</span>
+              </div>
+              <div className="flex justify-between p-3 bg-blue-50 rounded-lg border border-blue-100">
+                <span className="text-blue-800 font-medium">Toplam Sistem</span>
+                <span className="font-bold text-blue-800">{totalSystemWords}</span>
               </div>
             </div>
           </div>
 
-          <div className="bg-yellow-50 border border-yellow-100 p-4 rounded-xl text-sm text-yellow-800 mb-4">
-            <p className="font-bold flex items-center gap-2 mb-1">
-              <AlertCircle className="w-4 h-4" />
-              Bilgi
-            </p>
-            Şu an sistem kelimeleri (BASE_WORD_LIST) kod içine gömülü. Bunları
-            panelden düzenleyebilmek için bu listeyi Firestore'a taşıman
-            gerekir.
-          </div>
-
           <div className="grid grid-cols-1 gap-3">
             <button
-              onClick={() =>
-                alert("Bu özellik için veritabanı güncellemesi gerekir.")
-              }
-              className="bg-white border border-slate-200 text-slate-600 font-bold py-4 rounded-xl hover:bg-slate-50 transition-colors"
+              onClick={() => setCurrentView("add_system_word")}
+              className="bg-slate-800 text-white font-bold py-4 rounded-xl hover:bg-slate-900 transition-colors shadow-lg flex items-center justify-center gap-2"
             >
-              Sistem Kelimesi Ekle (Yakında)
+              <Plus className="w-5 h-5" />
+              Sistem Kelimesi Ekle (Herkese Açık)
             </button>
           </div>
         </div>
       </div>
     );
+  }
+
+  // --- ADMIN: ADD SYSTEM WORD ---
+  if (currentView === "add_system_word" && isAdmin) {
+    const FormComponent = () => {
+      const [formData, setFormData] = useState({
+        word: "",
+        plural: "",
+        v2: "",
+        v3: "",
+        definitions: [{ type: "noun", meaning: "" }],
+        sentence: "",
+      });
+      const [error, setError] = useState("");
+      const [saving, setSaving] = useState(false);
+
+      const addDefinition = () => {
+        setFormData((prev) => ({
+          ...prev,
+          definitions: [...prev.definitions, { type: "noun", meaning: "" }],
+        }));
+      };
+
+      const removeDefinition = (index) => {
+        if (formData.definitions.length === 1) return;
+        setFormData((prev) => ({
+          ...prev,
+          definitions: prev.definitions.filter((_, i) => i !== index),
+        }));
+      };
+
+      const updateDefinition = (index, field, value) => {
+        const newDefs = [...formData.definitions];
+        newDefs[index] = { ...newDefs[index], [field]: value };
+        setFormData((prev) => ({ ...prev, definitions: newDefs }));
+      };
+
+      const handleSubmit = async (e) => {
+        e.preventDefault();
+        if (!formData.word || !formData.sentence) {
+          setError("Lütfen kelime ve örnek cümleyi doldurun.");
+          return;
+        }
+        const hasEmptyDef = formData.definitions.some((d) => !d.meaning.trim());
+        if (hasEmptyDef) {
+          setError("Lütfen tüm anlamları doldurun.");
+          return;
+        }
+
+        setSaving(true);
+        const result = await handleSaveSystemWord(formData);
+        setSaving(false);
+        
+        if (result.success) {
+          alert("Sistem kelimesi başarıyla eklendi! Artık tüm kullanıcılar görebilir.");
+          setFormData({
+            word: "",
+            plural: "",
+            v2: "",
+            v3: "",
+            definitions: [{ type: "noun", meaning: "" }],
+            sentence: "",
+          });
+          setError("");
+        } else {
+          setError(result.message);
+        }
+      };
+
+      return (
+        <div className="min-h-screen bg-slate-800 p-4 flex items-center justify-center">
+          <div className="w-full max-w-md bg-white rounded-2xl shadow-lg p-6 my-8 overflow-y-auto max-h-screen">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                <Shield className="w-5 h-5 text-indigo-600"/> Sistem Kelimesi Ekle
+              </h2>
+              <button
+                onClick={() => setCurrentView("admin_dashboard")}
+                className="p-2 bg-slate-100 rounded-full hover:bg-slate-200"
+              >
+                <X className="w-5 h-5 text-slate-600" />
+              </button>
+            </div>
+
+            <div className="bg-yellow-50 text-yellow-800 p-3 rounded-lg mb-4 text-xs border border-yellow-200">
+               Dikkat: Eklediğiniz kelime <b>tüm kullanıcıların</b> listesine "Sistem Kelimesi" olarak eklenecektir.
+            </div>
+
+            {error && (
+              <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-4 flex items-center gap-2 text-sm">
+                <AlertCircle className="w-4 h-4" />
+                {error}
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Kelime
+                </label>
+                <input
+                  type="text"
+                  value={formData.word}
+                  onChange={(e) => setFormData({ ...formData, word: e.target.value })}
+                  className="w-full p-3 border border-slate-200 rounded-xl outline-none"
+                  placeholder="Örn: Apple"
+                />
+              </div>
+              
+              {/* PLURAL / V2 / V3 */}
+              <div className="grid grid-cols-1 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Çoğul</label>
+                  <input
+                    type="text"
+                    value={formData.plural}
+                    onChange={(e) => setFormData({ ...formData, plural: e.target.value })}
+                    className="w-full p-3 border border-slate-200 rounded-xl outline-none"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">V2</label>
+                    <input
+                      type="text"
+                      value={formData.v2}
+                      onChange={(e) => setFormData({ ...formData, v2: e.target.value })}
+                      className="w-full p-3 border border-slate-200 rounded-xl outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">V3</label>
+                    <input
+                      type="text"
+                      value={formData.v3}
+                      onChange={(e) => setFormData({ ...formData, v3: e.target.value })}
+                      className="w-full p-3 border border-slate-200 rounded-xl outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <label className="block text-sm font-medium text-slate-700">Anlamlar</label>
+                  <button type="button" onClick={addDefinition} className="text-sm text-indigo-600 flex items-center gap-1 font-medium"><Plus className="w-4 h-4"/> Ekle</button>
+                </div>
+                {formData.definitions.map((def, index) => (
+                  <div key={index} className="flex gap-2 items-start bg-slate-50 p-3 rounded-xl border border-slate-100">
+                    <div className="flex-1 space-y-2">
+                      <select value={def.type} onChange={(e) => updateDefinition(index, "type", e.target.value)} className="w-full p-2 text-sm border border-slate-200 rounded-lg outline-none bg-white">
+                        {WORD_TYPES.map((t) => (<option key={t.value} value={t.value}>{t.label}</option>))}
+                      </select>
+                      <input type="text" value={def.meaning} onChange={(e) => updateDefinition(index, "meaning", e.target.value)} className="w-full p-2 text-sm border border-slate-200 rounded-lg outline-none" placeholder="Türkçe..." />
+                    </div>
+                    {formData.definitions.length > 1 && <button type="button" onClick={() => removeDefinition(index)} className="p-2 text-slate-400 hover:text-red-500 mt-1"><Trash2 className="w-4 h-4" /></button>}
+                  </div>
+                ))}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Örnek Cümle</label>
+                <textarea value={formData.sentence} onChange={(e) => setFormData({ ...formData, sentence: e.target.value })} className="w-full p-3 border border-slate-200 rounded-xl outline-none h-24 resize-none" placeholder="Örn: I eat an apple." />
+              </div>
+
+              <button type="submit" disabled={saving} className="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 px-6 rounded-xl shadow-md flex items-center justify-center gap-2">
+                {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />} Sisteme Kaydet
+              </button>
+            </form>
+          </div>
+        </div>
+      );
+    };
+    return <FormComponent />;
   }
 
   // --- HOME ---
@@ -1039,7 +1263,7 @@ export default function App() {
           </div>
 
           <div className="space-y-3">
-            {/* 🔥 ADMIN BUTTON */}
+            {/* 🔥 ADMIN BUTONU - SADECE ADMİNE GÖRÜNÜR */}
             {isAdmin && (
               <button
                 onClick={() => setCurrentView("admin_dashboard")}
@@ -1152,7 +1376,7 @@ export default function App() {
     );
   }
 
-  // --- ADD / EDIT FORM ---
+  // --- ADD / EDIT FORM (NORMAL KULLANICI) ---
   if (currentView === "add_word" || currentView === "edit_word") {
     const isEditMode = currentView === "edit_word";
     const normalizedEditWord =
