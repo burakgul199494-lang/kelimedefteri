@@ -896,30 +896,32 @@ export default function App() {
       <div className="min-h-screen bg-slate-50 flex flex-col items-center p-6">
         <div className="w-full max-w-md space-y-8 mt-4">
           
-          {/* HEADER ALANI */}
+          {/* HEADER ALANI GÜNCELLENDİ */}
           <div className="text-center relative">
             
-            {/* BUTONLAR: z-50 ile en önde */}
+            {/* SIFIRLAMA BUTONU: left-0 yerine left-4 yapıldı (hafif sağa) */}
             <button 
                 onClick={resetProfileToDefaults} 
-                className="absolute left-0 top-0 p-2 bg-white rounded-full shadow-sm border border-slate-200 text-slate-400 hover:text-red-500 z-50" 
+                className="absolute left-4 top-0 p-2 bg-white rounded-full shadow-sm border border-slate-200 text-slate-400 hover:text-red-500 z-50 transition-transform active:scale-90" 
                 title="Varsayılan Ayarlara Dön">
                 <RotateCcw size={18} />
             </button>
             
+            {/* ÇIKIŞ BUTONU: right-0 yerine right-4 yapıldı (hafif sola) */}
             <button 
                 onClick={handleLogout} 
-                className="absolute right-0 top-0 p-2 bg-white rounded-full shadow-sm border border-slate-200 text-slate-400 hover:text-red-500 z-50"
+                className="absolute right-4 top-0 p-2 bg-white rounded-full shadow-sm border border-slate-200 text-slate-400 hover:text-red-500 z-50 transition-transform active:scale-90"
                 title="Çıkış Yap">
                 <LogOut size={18} />
             </button>
 
-            <div className="flex justify-center mb-4 relative mt-8">
+            {/* ORTA IKON GRUBU: mt-8 yerine mt-12 yapıldı (aşağı itildi) */}
+            <div className="flex justify-center mb-4 relative mt-12">
                <div className="bg-indigo-600 p-4 rounded-2xl shadow-lg transform rotate-3 relative z-10">
                    <Brain className="w-12 h-12 text-white" />
                </div>
                
-               {/* STREAK BADGE */}
+               {/* STREAK BADGE (Konumu aynı kaldı ama üstteki margin sayesinde çakışmayacak) */}
                <div className="absolute -right-6 -top-2 flex flex-col items-center z-20">
                  <div className="flex items-center gap-1 bg-orange-500 text-white px-3 py-1.5 rounded-full shadow-lg border-2 border-white">
                     <Flame className="w-4 h-4 fill-white" />
