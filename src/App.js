@@ -246,6 +246,7 @@ export default function App() {
         v2: wordData.v2 || "",
         v3: wordData.v3 || "",
         vIng: wordData.vIng || "", 
+        engExplanation: wordData.engExplanation || "", // YENİ: İngilizce Açıklama
         definitions: wordData.definitions,
         sentence: wordData.sentence.trim(),
         source: "system",
@@ -268,6 +269,7 @@ export default function App() {
         v2: wordData.v2 || "",
         v3: wordData.v3 || "",
         vIng: wordData.vIng || "", 
+        engExplanation: wordData.engExplanation || "", // YENİ
         definitions: wordData.definitions,
         sentence: wordData.sentence.trim(),
         updatedAt: new Date()
@@ -340,6 +342,7 @@ export default function App() {
       v2: w.v2 || "",
       v3: w.v3 || "",
       vIng: w.vIng || "",
+      engExplanation: w.engExplanation || "", // YENİ
       definitions: Array.isArray(w.definitions) ? w.definitions : [{ type: "other", meaning: "" }]
     };
   };
@@ -470,11 +473,9 @@ export default function App() {
     }, 300);
   };
 
-  // --- QUIZ LOGIC (DÜZELTİLDİ) ---
+  // --- QUIZ LOGIC ---
   const handleStartQuiz = () => {
     const allWords = getAllWords();
-    
-    // Sadece anlamı (definition) dolu olan kelimeleri al
     const validWords = allWords.filter(w => w.definitions && w.definitions.length > 0 && w.definitions[0].meaning.trim() !== "");
     const unknownWords = validWords.filter((w) => !knownWordIds.includes(w.id));
 
@@ -510,7 +511,7 @@ export default function App() {
     setQuizScore(0);
     setQuizSelectedOption(null);
     setQuizIsAnswered(false);
-    setSessionComplete(false); // Olası session çakışmasını önle
+    setSessionComplete(false);
     setCurrentView("quiz");
   };
 
@@ -552,6 +553,7 @@ export default function App() {
       v2: wordData.v2 || "",
       v3: wordData.v3 || "",
       vIng: wordData.vIng || "", 
+      engExplanation: wordData.engExplanation || "", // YENİ
       definitions: wordData.definitions,
       sentence: wordData.sentence.trim(),
       source: "user",
@@ -585,7 +587,7 @@ export default function App() {
       const isKnown = knownWordIds.includes(originalId);
 
       if (isCustom) {
-        const updatedWord = { ...isCustom, ...newData, plural: newData.plural || "", v2: newData.v2 || "", v3: newData.v3 || "", vIng: newData.vIng || "", source: isCustom.source || "user" };
+        const updatedWord = { ...isCustom, ...newData, plural: newData.plural || "", v2: newData.v2 || "", v3: newData.v3 || "", vIng: newData.vIng || "", engExplanation: newData.engExplanation || "", source: isCustom.source || "user" };
         await updateDoc(userRef, { custom_words: arrayRemove(isCustom) });
         await updateDoc(userRef, { custom_words: arrayUnion(updatedWord) });
         setCustomWords((prev) => prev.map((w) => (w.id === originalId ? updatedWord : w)));
@@ -598,6 +600,7 @@ export default function App() {
           v2: newData.v2 || "",
           v3: newData.v3 || "",
           vIng: newData.vIng || "",
+          engExplanation: newData.engExplanation || "",
           definitions: newData.definitions,
           sentence: newData.sentence,
           source: "user",
@@ -671,7 +674,7 @@ export default function App() {
     );
   };
 
-  // --- CARD COMPONENT ---
+  // --- CARD COMPONENT (GÜNCELLENDİ: vIng ve engExplanation) ---
   const WordCard = ({ wordObj }) => {
       const mainDef = wordObj.definitions[0] || { type: "", meaning: "" };
       const otherDefs = wordObj.definitions.length > 1 ? wordObj.definitions.slice(1) : [];
@@ -681,7 +684,17 @@ export default function App() {
             <div className="flex items-center justify-center gap-2 mb-2"><span className="text-xs uppercase tracking-widest text-slate-400 font-semibold">Kelime</span>{renderSourceBadge(wordObj.source)}</div>
             <div className="flex items-center justify-center gap-3 mb-6"><h2 className="text-5xl font-extrabold text-slate-800 break-words">{wordObj.word}</h2><button onClick={() => speak(wordObj.word)} className="p-3 bg-indigo-100 text-indigo-600 rounded-full hover:bg-indigo-200 transition-colors"><Volume2 className="w-6 h-6" /></button></div>
             <div className="space-y-4">
-                <div className="bg-indigo-50 p-4 rounded-xl relative overflow-hidden"><div className="text-[10px] uppercase font-bold text-indigo-300 absolute top-2 right-2 tracking-wider">{mainDef.type}</div><div className="text-xs uppercase tracking-wide text-indigo-400 font-bold mb-1">Anlamı</div><p className="text-2xl font-medium text-indigo-900">{mainDef.meaning}</p></div>
+                <div className="bg-indigo-50 p-4 rounded-xl relative overflow-hidden">
+                    <div className="text-[10px] uppercase font-bold text-indigo-300 absolute top-2 right-2 tracking-wider">{mainDef.type}</div>
+                    <div className="text-xs uppercase tracking-wide text-indigo-400 font-bold mb-1">Anlamı</div>
+                    <p className="text-2xl font-medium text-indigo-900">{mainDef.meaning}</p>
+                    {/* YENİ: İNGİLİZCE AÇIKLAMA ALANI */}
+                    {wordObj.engExplanation && (
+                        <div className="mt-2 pt-2 border-t border-indigo-100">
+                            <p className="text-sm text-indigo-400 italic font-medium">"{wordObj.engExplanation}"</p>
+                        </div>
+                    )}
+                </div>
                 {otherDefs.length > 0 && (<div className="bg-white p-3 rounded-xl border border-slate-100 text-left"><div className="text-[10px] uppercase tracking-wide text-slate-400 font-bold mb-2 text-center">Diğer Anlamlar</div><div className="space-y-2">{otherDefs.map((def, idx) => (<div key={idx} className="flex items-center gap-3 text-sm"><span className="text-xs font-mono bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded">{getShortTypeLabel(def.type)}</span><span className="text-slate-700">{def.meaning}</span></div>))}</div></div>)}
                 
                 {(wordObj.plural || wordObj.v2 || wordObj.v3 || wordObj.vIng) && (
@@ -829,10 +842,10 @@ export default function App() {
     );
   }
 
-  // --- ADMIN: ADD / EDIT SYSTEM WORD ---
+  // --- ADMIN: ADD / EDIT SYSTEM WORD (GÜNCELLENDİ: vIng & engExplanation) ---
   if (currentView === "add_system_word" && isAdmin) {
     const isEditMode = !!editingWord;
-    const initialData = isEditMode ? { word: editingWord.word, plural: editingWord.plural || "", v2: editingWord.v2 || "", v3: editingWord.v3 || "", vIng: editingWord.vIng || "", definitions: editingWord.definitions, sentence: editingWord.sentence } : { word: "", plural: "", v2: "", v3: "", vIng: "", definitions: [{ type: "noun", meaning: "" }], sentence: "" };
+    const initialData = isEditMode ? { word: editingWord.word, plural: editingWord.plural || "", v2: editingWord.v2 || "", v3: editingWord.v3 || "", vIng: editingWord.vIng || "", engExplanation: editingWord.engExplanation || "", definitions: editingWord.definitions, sentence: editingWord.sentence } : { word: "", plural: "", v2: "", v3: "", vIng: "", engExplanation: "", definitions: [{ type: "noun", meaning: "" }], sentence: "" };
 
     const FormComponent = () => {
       const [formData, setFormData] = useState(initialData);
@@ -874,12 +887,16 @@ export default function App() {
               <div><label className="block text-sm font-medium text-slate-700 mb-1">Kelime</label><input type="text" value={formData.word} onChange={(e) => setFormData({ ...formData, word: e.target.value })} className="w-full p-3 border border-slate-200 rounded-xl outline-none" placeholder="Örn: Apple"/></div>
               <div className="grid grid-cols-1 gap-3">
                 <div><label className="block text-sm font-medium text-slate-700 mb-1">Çoğul</label><input type="text" value={formData.plural} onChange={(e) => setFormData({ ...formData, plural: e.target.value })} className="w-full p-3 border border-slate-200 rounded-xl outline-none"/></div>
+                
                 <div className="grid grid-cols-3 gap-3">
-                  <div><label className="block text-sm font-medium text-slate-700 mb-1">V2</label><input type="text" value={formData.v2} onChange={(e) => setFormData({ ...formData, v2: e.target.value })} className="w-full p-2 border border-slate-200 rounded-xl outline-none text-sm" placeholder="went"/></div>
-                  <div><label className="block text-sm font-medium text-slate-700 mb-1">V3</label><input type="text" value={formData.v3} onChange={(e) => setFormData({ ...formData, v3: e.target.value })} className="w-full p-2 border border-slate-200 rounded-xl outline-none text-sm" placeholder="gone"/></div>
-                  <div><label className="block text-sm font-medium text-slate-700 mb-1">V-ing</label><input type="text" value={formData.vIng} onChange={(e) => setFormData({ ...formData, vIng: e.target.value })} className="w-full p-2 border border-slate-200 rounded-xl outline-none text-sm" placeholder="going"/></div>
+                  <div><label className="block text-sm font-medium text-slate-700 mb-1">V2</label><input type="text" value={formData.v2} onChange={(e) => setFormData({ ...formData, v2: e.target.value })} className="w-full p-2 border border-slate-200 rounded-xl outline-none text-sm"/></div>
+                  <div><label className="block text-sm font-medium text-slate-700 mb-1">V3</label><input type="text" value={formData.v3} onChange={(e) => setFormData({ ...formData, v3: e.target.value })} className="w-full p-2 border border-slate-200 rounded-xl outline-none text-sm"/></div>
+                  <div><label className="block text-sm font-medium text-slate-700 mb-1">V-ing</label><input type="text" value={formData.vIng} onChange={(e) => setFormData({ ...formData, vIng: e.target.value })} className="w-full p-2 border border-slate-200 rounded-xl outline-none text-sm" placeholder="hunting"/></div>
                 </div>
               </div>
+              
+              <div><label className="block text-sm font-medium text-slate-700 mb-1">İngilizce Açıklama (Opsiyonel)</label><textarea value={formData.engExplanation} onChange={(e) => setFormData({ ...formData, engExplanation: e.target.value })} className="w-full p-3 border border-slate-200 rounded-xl outline-none h-20 resize-none text-sm" placeholder="Örn: A round fruit with red or green skin." /></div>
+
               <div className="space-y-3">
                 <div className="flex justify-between items-center"><label className="block text-sm font-medium text-slate-700">Anlamlar</label><button type="button" onClick={addDefinition} className="text-sm text-indigo-600 flex items-center gap-1 font-medium"><Plus className="w-4 h-4"/> Ekle</button></div>
                 {formData.definitions.map((def, index) => (
@@ -1006,11 +1023,11 @@ export default function App() {
     );
   }
 
-  // --- ADD / EDIT FORM (USER) ---
+  // --- ADD / EDIT FORM (USER) (GÜNCELLENDİ: vIng & engExplanation) ---
   if (currentView === "add_word" || currentView === "edit_word") {
     const isEditMode = currentView === "edit_word";
     const normalizedEditWord = isEditMode && editingWord ? normalizeWord(editingWord) : null;
-    const initialData = normalizedEditWord ? { word: normalizedEditWord.word, plural: normalizedEditWord.plural || "", v2: normalizedEditWord.v2 || "", v3: normalizedEditWord.v3 || "", vIng: normalizedEditWord.vIng || "", definitions: normalizedEditWord.definitions, sentence: normalizedEditWord.sentence } : { word: "", plural: "", v2: "", v3: "", vIng: "", definitions: [{ type: "noun", meaning: "" }], sentence: "" };
+    const initialData = normalizedEditWord ? { word: normalizedEditWord.word, plural: normalizedEditWord.plural || "", v2: normalizedEditWord.v2 || "", v3: normalizedEditWord.v3 || "", vIng: normalizedEditWord.vIng || "", engExplanation: normalizedEditWord.engExplanation || "", definitions: normalizedEditWord.definitions, sentence: normalizedEditWord.sentence } : { word: "", plural: "", v2: "", v3: "", vIng: "", engExplanation: "", definitions: [{ type: "noun", meaning: "" }], sentence: "" };
 
     const FormComponent = () => {
       const [formData, setFormData] = useState(initialData);
@@ -1052,6 +1069,9 @@ export default function App() {
                   <div><label className="block text-sm font-medium text-slate-700 mb-1">V-ing</label><input type="text" value={formData.vIng} onChange={(e) => setFormData({ ...formData, vIng: e.target.value })} className="w-full p-2 border border-slate-200 rounded-xl outline-none text-sm" placeholder="going"/></div>
                 </div>
               </div>
+
+              <div><label className="block text-sm font-medium text-slate-700 mb-1">İngilizce Açıklama (Opsiyonel)</label><textarea value={formData.engExplanation} onChange={(e) => setFormData({ ...formData, engExplanation: e.target.value })} className="w-full p-3 border border-slate-200 rounded-xl outline-none h-20 resize-none text-sm" placeholder="Örn: A place where you can keep your money." /></div>
+
               <div className="space-y-3">
                 <div className="flex justify-between items-center"><label className="block text-sm font-medium text-slate-700">Anlamlar</label><button type="button" onClick={addDefinition} className="text-sm text-indigo-600 hover:text-indigo-800 flex items-center gap-1 font-medium"><Plus className="w-4 h-4" /> Anlam Ekle</button></div>
                 {formData.definitions.map((def, index) => (
@@ -1165,144 +1185,6 @@ export default function App() {
     );
   }
 
-  // --- DICTIONARY VIEW ---
-  if (currentView === "dictionary") {
-      return (
-          <div className="min-h-screen bg-slate-50 flex flex-col items-center p-6">
-              <div className="w-full max-w-md space-y-6 mt-4">
-                  <div className="flex items-center gap-3">
-                    <button onClick={handleGoHome} className="p-2 hover:bg-slate-200 rounded-full transition-colors"><ArrowLeft className="w-6 h-6 text-slate-600" /></button>
-                    <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2"><Book className="w-6 h-6 text-sky-500" /> Sözlük</h2>
-                  </div>
-
-                  <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-                      <form onSubmit={handleDictionarySearch} className="relative">
-                          <input 
-                            type="text" 
-                            placeholder="Kelime ara (örn: sat, sitting...)" 
-                            value={dictSearchTerm} 
-                            onChange={(e) => setDictSearchTerm(e.target.value)} 
-                            className="w-full p-4 pr-12 border-2 border-slate-200 rounded-xl outline-none focus:border-sky-500 transition-colors font-medium text-lg"
-                            autoFocus
-                          />
-                          <button type="submit" className="absolute right-3 top-3 p-2 bg-sky-500 text-white rounded-lg hover:bg-sky-600 transition-colors">
-                              <Search className="w-5 h-5" />
-                          </button>
-                      </form>
-                      <p className="text-xs text-slate-400 mt-2 ml-1">💡 İpucu: Fiillerin 2., 3. veya -ing hallerini de arayabilirsin.</p>
-                  </div>
-
-                  {dictError && (
-                      <div className="bg-red-50 text-red-600 p-4 rounded-xl flex items-center gap-3">
-                          <AlertCircle className="w-6 h-6 flex-shrink-0" />
-                          <span>{dictError}</span>
-                      </div>
-                  )}
-
-                  {dictResult && (
-                      <div className="flex justify-center">
-                           <WordCard wordObj={dictResult} />
-                      </div>
-                  )}
-              </div>
-          </div>
-      );
-  }
-
-  // --- QUIZ VIEW ---
-  if (currentView === "quiz") {
-    const currentQuestion = quizQuestions[quizIndex];
-    // Güvenlik: Eğer soru yoksa veya yüklenmediyse hata vermesin
-    if (!currentQuestion) return <div className="min-h-screen flex items-center justify-center">Yükleniyor...</div>;
-
-    const progress = ((quizIndex + 1) / quizQuestions.length) * 100;
-
-    return (
-        <div className="min-h-screen bg-slate-50 flex flex-col items-center p-6">
-             <div className="w-full max-w-md space-y-6 mt-4">
-                {/* Header */}
-                <div className="flex items-center justify-between">
-                    <button onClick={handleGoHome} className="p-2 hover:bg-slate-200 rounded-full"><X className="w-6 h-6 text-slate-400" /></button>
-                    <div className="text-sm font-bold text-slate-600">Soru {quizIndex + 1} / {quizQuestions.length}</div>
-                    <div className="px-3 py-1 bg-amber-100 text-amber-600 rounded-full font-bold text-sm">{quizScore} Puan</div>
-                </div>
-
-                {/* Progress Bar */}
-                <div className="w-full bg-slate-200 rounded-full h-2">
-                    <div className="bg-amber-500 h-2 rounded-full transition-all duration-300" style={{ width: `${progress}%` }}></div>
-                </div>
-
-                {/* Question Card */}
-                <div className="bg-white p-8 rounded-3xl shadow-lg text-center py-12 border border-slate-100">
-                    <span className="text-xs uppercase tracking-widest text-slate-400 font-semibold mb-2 block">Bu kelimenin anlamı ne?</span>
-                    <h2 className="text-4xl font-extrabold text-slate-800 mb-4">{currentQuestion.wordObj.word}</h2>
-                     <button onClick={() => speak(currentQuestion.wordObj.word)} className="p-2 bg-indigo-50 text-indigo-500 rounded-full hover:bg-indigo-100 inline-flex items-center justify-center"><Volume2 className="w-5 h-5" /></button>
-                </div>
-
-                {/* Options */}
-                <div className="space-y-3">
-                    {currentQuestion.options.map((option, idx) => {
-                        let buttonStyle = "bg-white border-2 border-slate-200 text-slate-700 hover:border-indigo-300";
-                        
-                        if (quizIsAnswered) {
-                            if (option === currentQuestion.correctAnswer) {
-                                buttonStyle = "bg-green-500 border-green-600 text-white"; 
-                            } else if (option === quizSelectedOption) {
-                                buttonStyle = "bg-red-500 border-red-600 text-white"; 
-                            } else {
-                                buttonStyle = "bg-slate-100 border-slate-200 text-slate-400 opacity-50"; 
-                            }
-                        }
-
-                        return (
-                            <button
-                                key={idx}
-                                disabled={quizIsAnswered}
-                                onClick={() => handleQuizAnswer(option)}
-                                className={`w-full p-4 rounded-xl font-bold text-lg transition-all active:scale-95 ${buttonStyle}`}
-                            >
-                                {option}
-                            </button>
-                        );
-                    })}
-                </div>
-             </div>
-        </div>
-    );
-  }
-
-  // --- QUIZ RESULT VIEW ---
-  if (currentView === "quiz_result") {
-    return (
-        <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50 p-6 text-center">
-            <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full">
-                <Award className="w-20 h-20 text-amber-500 mx-auto mb-4" />
-                <h2 className="text-2xl font-bold text-slate-800 mb-2">Quiz Tamamlandı!</h2>
-                <div className="text-5xl font-extrabold text-indigo-600 mb-2">{quizScore}</div>
-                <p className="text-slate-500 mb-8">Toplam Puan</p>
-
-                <div className="grid grid-cols-2 gap-4 mb-6 text-sm">
-                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                        <div className="font-bold text-slate-700">Soru Sayısı</div>
-                        <div className="text-slate-500">{quizQuestions.length}</div>
-                    </div>
-                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                        <div className="font-bold text-slate-700">Doğru Sayısı</div>
-                        <div className="text-slate-500">{quizScore / 5}</div>
-                    </div>
-                </div>
-
-                <button onClick={handleStartQuiz} className="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-3 px-6 rounded-xl transition-colors flex items-center justify-center gap-2 mb-3">
-                    <RotateCcw className="w-5 h-5" /> Yeniden Başla
-                </button>
-                <button onClick={handleGoHome} className="w-full bg-white border border-slate-200 text-slate-600 font-bold py-3 px-6 rounded-xl hover:bg-slate-50 transition-colors flex items-center justify-center gap-2">
-                    <Home className="w-5 h-5" /> Ana Sayfaya Dön
-                </button>
-            </div>
-        </div>
-    );
-  }
-
   // --- SESSION COMPLETE ---
   if (sessionComplete) {
     const allWords = getAllWords();
@@ -1356,7 +1238,7 @@ export default function App() {
     );
   }
 
-  // --- FALLBACK VIEW (Hata durumunda) ---
+  // --- FALLBACK VIEW ---
   return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
           <div className="text-center">
