@@ -45,7 +45,7 @@ import {
   Lock,
   Flag,
   Shield,
-  Search, // <-- Arama ikonu eklendi
+  Search,
 } from "lucide-react";
 
 // --- FIREBASE CONFIG ---
@@ -68,7 +68,7 @@ const ADMIN_EMAILS = [
   "burakgul1994@outlook.com.tr"
 ];
 
-// --- SYSTEM WORDS (TÜMÜ VERİTABANINDAN GELİYOR) ---
+// --- SYSTEM WORDS (BOŞ - DB'DEN GELECEK) ---
 const BASE_WORD_LIST = [];
 
 const WORD_TYPES = [
@@ -86,7 +86,6 @@ const WORD_TYPES = [
 const WORDS_PER_SESSION = 20;
 
 export default function App() {
-  // Tailwind
   useEffect(() => {
     const script = document.createElement("script");
     script.src = "https://cdn.tailwindcss.com";
@@ -115,25 +114,22 @@ export default function App() {
   const [editingWord, setEditingWord] = useState(null);
   const [returnView, setReturnView] = useState("unknown_list");
 
-  // Arama State'leri
   const [searchKnown, setSearchKnown] = useState("");
   const [searchUnknown, setSearchUnknown] = useState("");
   const [searchTrash, setSearchTrash] = useState("");
   
-  // 🔥 Admin Paneli Arama State'i
+  // Admin Arama
   const [adminSearch, setAdminSearch] = useState("");
 
   // --- AUTH ---
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
-      
       if (currentUser && ADMIN_EMAILS.includes(currentUser.email)) {
         setIsAdmin(true);
       } else {
         setIsAdmin(false);
       }
-
       setAuthLoading(false);
     });
     return () => unsubscribe();
@@ -194,20 +190,9 @@ export default function App() {
     }
   };
 
-  // 🔥 Admin: Yeni Kelime Ekleme (DUPLICATE KONTROLÜ EKLENDİ)
+  // 🔥 Admin: Yeni Kelime Ekleme
   const handleSaveSystemWord = async (wordData) => {
     try {
-      const normalizedInput = wordData.word.toLowerCase().trim();
-      
-      // 🔥 KONTROL: Bu kelime zaten sistemde var mı?
-      const exists = dynamicSystemWords.some(
-        (w) => w.word.toLowerCase() === normalizedInput
-      );
-
-      if (exists) {
-        return { success: false, message: "Bu kelime sistemde zaten kayıtlı!" };
-      }
-
       const newWord = {
         word: wordData.word.trim(),
         plural: wordData.plural || "",
@@ -220,9 +205,7 @@ export default function App() {
       };
 
       const docRef = await addDoc(collection(db, "artifacts", appId, "system_words"), newWord);
-      
       setDynamicSystemWords(prev => [...prev, { ...newWord, id: docRef.id }]);
-      
       return { success: true };
     } catch (e) {
       console.error("Admin kayıt hatası:", e);
@@ -230,7 +213,32 @@ export default function App() {
     }
   };
 
-  // 🔥 Admin: Sistem Kelimesini Silme
+  // 🔥 Admin: Kelime Güncelleme (YENİ)
+  const handleUpdateSystemWord = async (id, wordData) => {
+    try {
+      const updatedData = {
+        word: wordData.word.trim(),
+        plural: wordData.plural || "",
+        v2: wordData.v2 || "",
+        v3: wordData.v3 || "",
+        definitions: wordData.definitions,
+        sentence: wordData.sentence.trim(),
+        updatedAt: new Date()
+      };
+
+      const docRef = doc(db, "artifacts", appId, "system_words", id);
+      await updateDoc(docRef, updatedData);
+
+      setDynamicSystemWords(prev => prev.map(w => w.id === id ? { ...w, ...updatedData } : w));
+      return { success: true };
+
+    } catch (e) {
+      console.error("Güncelleme hatası:", e);
+      return { success: false, message: e.message };
+    }
+  };
+
+  // 🔥 Admin: Silme
   const handleDeleteSystemWord = async (wordId) => {
     const confirm = window.confirm("Bu sistem kelimesini silmek istediğine emin misin? Herkesten silinecek.");
     if (!confirm) return;
@@ -244,7 +252,7 @@ export default function App() {
     }
   };
 
-  // 🔥 DUPLICATE KONTROL (Kullanıcı tarafı için)
+  // 🔥 DUPLICATE KONTROL (Kullanıcı kelimeleri için)
   useEffect(() => {
     if (!user || customWords.length === 0) return;
 
@@ -288,7 +296,6 @@ export default function App() {
     await signOut(auth);
   };
 
-  // --- HELPERS ---
   const speak = (text, e) => {
     if (e) e.stopPropagation();
     const utterance = new SpeechSynthesisUtterance(text);
@@ -817,11 +824,10 @@ export default function App() {
     );
   }
 
-  // --- ADMIN DASHBOARD (ARAMA EKLENMİŞ) ---
+  // --- ADMIN DASHBOARD ---
   if (currentView === "admin_dashboard" && isAdmin) {
     const totalSystemWords = dynamicSystemWords.length;
 
-    // Arama filtreleme
     const filteredSystemWords = dynamicSystemWords.filter(w => 
       w.word.toLowerCase().includes(adminSearch.toLowerCase())
     ).sort((a, b) => a.word.localeCompare(b.word));
@@ -857,20 +863,22 @@ export default function App() {
 
           {/* EKLEME BUTONU */}
           <button
-            onClick={() => setCurrentView("add_system_word")}
+            onClick={() => {
+               setEditingWord(null); // Yeni ekleme modu için sıfırla
+               setCurrentView("add_system_word");
+            }}
             className="w-full bg-slate-800 text-white font-bold py-4 rounded-xl hover:bg-slate-900 transition-colors shadow-lg flex items-center justify-center gap-2 mb-6"
           >
             <Plus className="w-5 h-5" />
             Yeni Sistem Kelimesi Ekle
           </button>
 
-          {/* 🔥 ARAMA VE LİSTELEME */}
+          {/* ARAMA VE LİSTELEME */}
           <div>
             <h3 className="font-bold text-slate-700 mb-3 flex items-center gap-2">
               Sistem Kelimeleri Listesi ({filteredSystemWords.length})
             </h3>
 
-            {/* Arama Kutusu */}
             <div className="relative mb-4">
                <Search className="absolute left-3 top-3.5 text-slate-400 w-5 h-5" />
                <input 
@@ -900,13 +908,27 @@ export default function App() {
                       <div className="text-xs text-slate-500">{item.definitions[0]?.meaning}</div>
                     </div>
                     
-                    <button 
-                      onClick={() => handleDeleteSystemWord(item.id)}
-                      className="p-2 bg-red-50 text-red-500 rounded-lg hover:bg-red-100 transition-colors"
-                      title="Bu kelimeyi sil"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <div className="flex gap-2">
+                        {/* 🔥 DÜZENLE BUTONU */}
+                        <button 
+                           onClick={() => {
+                              setEditingWord(item); // Düzenlenecek kelimeyi seç
+                              setCurrentView("add_system_word"); // Ekleme formunu aç (artık düzenleme modu da çalışıyor)
+                           }}
+                           className="p-2 bg-blue-50 text-blue-500 rounded-lg hover:bg-blue-100 transition-colors"
+                           title="Düzenle"
+                        >
+                           <Edit2 className="w-4 h-4" />
+                        </button>
+
+                        <button 
+                           onClick={() => handleDeleteSystemWord(item.id)}
+                           className="p-2 bg-red-50 text-red-500 rounded-lg hover:bg-red-100 transition-colors"
+                           title="Sil"
+                        >
+                           <Trash2 className="w-4 h-4" />
+                        </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -917,17 +939,28 @@ export default function App() {
     );
   }
 
-  // --- ADMIN: ADD SYSTEM WORD ---
+  // --- ADMIN: ADD / EDIT SYSTEM WORD (BİRLEŞTİRİLDİ) ---
   if (currentView === "add_system_word" && isAdmin) {
+    const isEditMode = !!editingWord; // Eğer editingWord varsa düzenleme modundayız
+
+    const initialData = isEditMode ? {
+      word: editingWord.word,
+      plural: editingWord.plural || "",
+      v2: editingWord.v2 || "",
+      v3: editingWord.v3 || "",
+      definitions: editingWord.definitions,
+      sentence: editingWord.sentence,
+    } : {
+      word: "",
+      plural: "",
+      v2: "",
+      v3: "",
+      definitions: [{ type: "noun", meaning: "" }],
+      sentence: "",
+    };
+
     const FormComponent = () => {
-      const [formData, setFormData] = useState({
-        word: "",
-        plural: "",
-        v2: "",
-        v3: "",
-        definitions: [{ type: "noun", meaning: "" }],
-        sentence: "",
-      });
+      const [formData, setFormData] = useState(initialData);
       const [error, setError] = useState("");
       const [saving, setSaving] = useState(false);
 
@@ -964,21 +997,36 @@ export default function App() {
           return;
         }
 
+        // 🔥 DUPLICATE KONTROLÜ (Sadece yeni kelimede veya kelime değiştiyse)
+        if (!isEditMode || (isEditMode && formData.word.toLowerCase() !== editingWord.word.toLowerCase())) {
+             const normalizedInput = formData.word.toLowerCase().trim();
+             const exists = dynamicSystemWords.some(
+               (w) => w.word.toLowerCase() === normalizedInput && (!isEditMode || w.id !== editingWord.id)
+             );
+             if (exists) {
+               setError("Bu kelime sistemde zaten kayıtlı!");
+               return;
+             }
+        }
+
         setSaving(true);
-        const result = await handleSaveSystemWord(formData);
+        
+        let result;
+        if (isEditMode) {
+            // GÜNCELLEME
+            result = await handleUpdateSystemWord(editingWord.id, formData);
+        } else {
+            // YENİ EKLEME
+            result = await handleSaveSystemWord(formData);
+        }
+        
         setSaving(false);
         
         if (result.success) {
-          alert("Sistem kelimesi başarıyla eklendi! Artık tüm kullanıcılar görebilir.");
-          setFormData({
-            word: "",
-            plural: "",
-            v2: "",
-            v3: "",
-            definitions: [{ type: "noun", meaning: "" }],
-            sentence: "",
-          });
-          setError("");
+          alert(isEditMode ? "Kelime güncellendi!" : "Kelime başarıyla eklendi!");
+          // Başarılı olursa admin dashboard'a dön
+          setEditingWord(null);
+          setCurrentView("admin_dashboard");
         } else {
           setError(result.message);
         }
@@ -989,10 +1037,13 @@ export default function App() {
           <div className="w-full max-w-md bg-white rounded-2xl shadow-lg p-6 my-8 overflow-y-auto max-h-screen">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                <Shield className="w-5 h-5 text-indigo-600"/> Sistem Kelimesi Ekle
+                <Shield className="w-5 h-5 text-indigo-600"/> {isEditMode ? "Kelime Düzenle" : "Sistem Kelimesi Ekle"}
               </h2>
               <button
-                onClick={() => setCurrentView("admin_dashboard")}
+                onClick={() => {
+                   setEditingWord(null);
+                   setCurrentView("admin_dashboard");
+                }}
                 className="p-2 bg-slate-100 rounded-full hover:bg-slate-200"
               >
                 <X className="w-5 h-5 text-slate-600" />
@@ -1000,7 +1051,7 @@ export default function App() {
             </div>
 
             <div className="bg-yellow-50 text-yellow-800 p-3 rounded-lg mb-4 text-xs border border-yellow-200">
-               Dikkat: Eklediğiniz kelime <b>tüm kullanıcıların</b> listesine "Sistem Kelimesi" olarak eklenecektir.
+               Dikkat: Yapacağınız değişiklikler <b>tüm kullanıcılarda</b> anında görünecektir.
             </div>
 
             {error && (
@@ -1081,7 +1132,7 @@ export default function App() {
               </div>
 
               <button type="submit" disabled={saving} className="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 px-6 rounded-xl shadow-md flex items-center justify-center gap-2">
-                {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />} Sisteme Kaydet
+                {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />} {isEditMode ? "Güncelle" : "Sisteme Kaydet"}
               </button>
             </form>
           </div>
@@ -1090,9 +1141,6 @@ export default function App() {
     };
     return <FormComponent />;
   }
-
-  // ... (Diğer görünümler: Home, Add_Word, Lists, Game aynen kalır)
-  // Kodun devamı aynıdır...
 
   // --- HOME ---
   if (currentView === "home") {
