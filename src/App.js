@@ -67,7 +67,7 @@ const ADMIN_EMAILS = [
   "burakgul1994@outlook.com.tr"
 ];
 
-// --- SYSTEM WORDS (ARTIK TAMAMEN BOŞ - HEPSİ DB'DEN GELECEK) ---
+// --- SYSTEM WORDS (BOŞ - DB'DEN GELECEK) ---
 const BASE_WORD_LIST = [];
 
 const WORD_TYPES = [
@@ -100,7 +100,7 @@ export default function App() {
   const [customWords, setCustomWords] = useState([]);
   const [deletedWordIds, setDeletedWordIds] = useState([]);
   
-  // 🔥 Dinamik Sistem Kelimeleri (Ana Kaynak)
+  // Dinamik Sistem Kelimeleri
   const [dynamicSystemWords, setDynamicSystemWords] = useState([]);
 
   const [sessionWords, setSessionWords] = useState([]);
@@ -176,13 +176,16 @@ export default function App() {
     }
   };
 
-  // 🔥 Admin Kelimelerini Çekme (Ana Sistem Kelimeleri)
+  // 🔥 DÜZELTİLDİ: Firestore ID'sini önceliklendirme
   const fetchDynamicSystemWords = async () => {
     try {
       const querySnapshot = await getDocs(collection(db, "artifacts", appId, "system_words"));
       const words = [];
       querySnapshot.forEach((doc) => {
-        words.push({ id: doc.id, ...doc.data(), source: "system" });
+        // ÖNEMLİ DÜZELTME BURADA:
+        // ...doc.data() önce gelir, id: doc.id sonra gelir.
+        // Böylece Firestore'un gerçek ID'si, kelimenin içindeki ID'yi ezer.
+        words.push({ ...doc.data(), id: doc.id, source: "system" });
       });
       setDynamicSystemWords(words);
     } catch (e) {
@@ -193,8 +196,8 @@ export default function App() {
   // 🔥 Admin: Yeni Kelime Ekleme
   const handleSaveSystemWord = async (wordData) => {
     try {
+      // id alanını kaldırıyoruz, Firestore kendi ID'sini versin.
       const newWord = {
-        id: Date.now().toString(),
         word: wordData.word.trim(),
         plural: wordData.plural || "",
         v2: wordData.v2 || "",
@@ -205,8 +208,12 @@ export default function App() {
         createdAt: new Date()
       };
 
-      await addDoc(collection(db, "artifacts", appId, "system_words"), newWord);
-      setDynamicSystemWords(prev => [...prev, newWord]);
+      // addDoc kullanıldığında docRef döner, içinde oluşan ID vardır.
+      const docRef = await addDoc(collection(db, "artifacts", appId, "system_words"), newWord);
+      
+      // State'e eklerken Firestore'dan gelen gerçek ID'yi kullanıyoruz
+      setDynamicSystemWords(prev => [...prev, { ...newWord, id: docRef.id }]);
+      
       return { success: true };
     } catch (e) {
       console.error("Admin kayıt hatası:", e);
@@ -232,7 +239,7 @@ export default function App() {
   useEffect(() => {
     if (!user || customWords.length === 0) return;
 
-    const allBaseWords = [...dynamicSystemWords]; // Sadece dinamik olanlar artık base
+    const allBaseWords = [...dynamicSystemWords]; 
     const baseWordsLower = allBaseWords.map((b) => b.word.toLowerCase());
 
     const duplicates = customWords.filter(
