@@ -66,7 +66,7 @@ const BASE_WORD_LIST = [
     plural: "",
     v2: "",
     v3: "",
-    definitions: [{ type: "article", meaning: "belirtili tanÄ±mlÄ±k" }],
+    definitions: [{ type: "article", meaning: "belirtili tanımlık" }],
     sentence: "The book is on the table.",
   },
   {
@@ -96,7 +96,7 @@ const BASE_WORD_LIST = [
     plural: "",
     v2: "",
     v3: "",
-    definitions: [{ type: "prep", meaning: "-e, -a doÄŸru" }],
+    definitions: [{ type: "prep", meaning: "-e, -a doğru" }],
     sentence: "I am going to school.",
   },
   {
@@ -106,7 +106,7 @@ const BASE_WORD_LIST = [
     plural: "",
     v2: "",
     v3: "",
-    definitions: [{ type: "prep", meaning: "-in, -Ä±n" }],
+    definitions: [{ type: "prep", meaning: "-in, -ın" }],
     sentence: "A cup of tea is ready.",
   },
   {
@@ -126,7 +126,7 @@ const BASE_WORD_LIST = [
     plural: "",
     v2: "",
     v3: "",
-    definitions: [{ type: "prep", meaning: "iÃ§inde" }],
+    definitions: [{ type: "prep", meaning: "içinde" }],
     sentence: "She is in the kitchen.",
   },
   {
@@ -137,7 +137,7 @@ const BASE_WORD_LIST = [
     v2: "",
     v3: "",
     definitions: [
-      { type: "pronoun", meaning: "ÅŸu, o" },
+      { type: "pronoun", meaning: "şu, o" },
       { type: "conj", meaning: "ki" },
     ],
     sentence: "Look at that car.",
@@ -169,21 +169,21 @@ const BASE_WORD_LIST = [
     plural: "",
     v2: "swam",
     v3: "swum",
-    definitions: [{ type: "verb", meaning: "yÃ¼zmek" }],
+    definitions: [{ type: "verb", meaning: "yüzmek" }],
     sentence: "I swim.",
   },
 ];
 
 const WORD_TYPES = [
-  { value: "noun", label: "Ä°sim (Noun)" },
+  { value: "noun", label: "İsim (Noun)" },
   { value: "verb", label: "Fiil (Verb)" },
-  { value: "adjective", label: "SÄ±fat (Adjective)" },
+  { value: "adjective", label: "Sıfat (Adjective)" },
   { value: "adverb", label: "Zarf (Adverb)" },
   { value: "prep", label: "Edat (Prep)" },
   { value: "pronoun", label: "Zamir (Pronoun)" },
-  { value: "conj", label: "BaÄŸlaÃ§ (Conj)" },
-  { value: "article", label: "TanÄ±mlÄ±k (Article)" },
-  { value: "other", label: "DiÄŸer (Other)" },
+  { value: "conj", label: "Bağlaç (Conj)" },
+  { value: "article", label: "Tanımlık (Article)" },
+  { value: "other", label: "Diğer (Other)" },
 ];
 
 const WORDS_PER_SESSION = 20;
@@ -196,11 +196,7 @@ export default function App() {
     document.head.appendChild(script);
   }, []);
 
-  
-// --- ADMIN STATES ---
-const [isAdmin, setIsAdmin] = useState(false);
-const [showAdminPanel, setShowAdminPanel] = useState(false);
-const [user, setUser] = useState(null);
+  const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
 
   const [knownWordIds, setKnownWordIds] = useState([]);
@@ -270,14 +266,14 @@ const [user, setUser] = useState(null);
         setDeletedWordIds([]);
       }
     } catch (error) {
-      console.error("Veri Ã§ekme hatasÄ±:", error);
+      console.error("Veri çekme hatası:", error);
     } finally {
       setLoading(false);
     }
   };
 
-  // ğŸ”¥ DUPLICATE KONTROL: Sistem + KullanÄ±cÄ± aynÄ± kelimeyi iÃ§eriyorsa
-  // KullanÄ±cÄ± kelimesi otomatik Ã§Ã¶p kutusuna taÅŸÄ±nÄ±r.
+  // 🔥 DUPLICATE KONTROL: Sistem + Kullanıcı aynı kelimeyi içeriyorsa
+  // Kullanıcı kelimesi otomatik çöp kutusuna taşınır.
   useEffect(() => {
     if (!user || customWords.length === 0) return;
 
@@ -380,7 +376,7 @@ const [user, setUser] = useState(null);
     return merged.sort((a, b) => a.word.localeCompare(b.word));
   };
 
-  // AynÄ± yazÄ±lÄ±ÅŸa sahip aktif kelime var mÄ±?
+  // Aynı yazılışa sahip aktif kelime var mı?
   const canRestoreWord = (word) => {
     const allWords = getAllWords();
     const existsActive = allWords.some(
@@ -391,7 +387,7 @@ const [user, setUser] = useState(null);
 
   const restoreWord = async (word) => {
     if (!canRestoreWord(word)) {
-      alert("Bu kelimenin aktif bir versiyonu zaten var, tekrar yÃ¼klenemez.");
+      alert("Bu kelimenin aktif bir versiyonu zaten var, tekrar yüklenemez.");
       return;
     }
 
@@ -416,7 +412,7 @@ const [user, setUser] = useState(null);
     }
   };
 
-  // ğŸ”¥ KullanÄ±cÄ± kelimesini kalÄ±cÄ± silme (Sistem kelimesi iÃ§in yok)
+  // 🔥 Kullanıcı kelimesini kalıcı silme (Sistem kelimesi için yok)
   const permanentlyDeleteWord = async (word) => {
     if (word.source !== "user") return;
 
@@ -558,7 +554,7 @@ const [user, setUser] = useState(null);
       return { success: true };
     } catch (e) {
       console.error(e);
-      return { success: false, message: "Kaydetme hatasÄ± oluÅŸtu." };
+      return { success: false, message: "Kaydetme hatası oluştu." };
     }
   };
 
@@ -578,7 +574,7 @@ const [user, setUser] = useState(null);
         userRef,
         {
           deleted_ids: arrayUnion(wordId),
-          known_ids: arrayRemove(wordId), // Ã¶ÄŸrenilenlerden de Ã§Ä±kar
+          known_ids: arrayRemove(wordId), // öğrenilenlerden de çıkar
         },
         { merge: true }
       );
@@ -589,7 +585,7 @@ const [user, setUser] = useState(null);
 
       setKnownWordIds((prev) => prev.filter((id) => id !== wordId));
     } catch (e) {
-      console.error("Silme hatasÄ±:", e);
+      console.error("Silme hatası:", e);
     }
   };
 
@@ -622,7 +618,7 @@ const [user, setUser] = useState(null);
           prev.map((w) => (w.id === originalId ? updatedWord : w))
         );
       } else {
-        // Base kelimeyi custom'a Ã§evirme
+        // Base kelimeyi custom'a çevirme
         await setDoc(
           userRef,
           { deleted_ids: arrayUnion(originalId) },
@@ -687,22 +683,22 @@ const [user, setUser] = useState(null);
     setEditingWord(null);
   };
 
-  // ğŸ”¥ PROFÄ°L SIFIRLAMA (VarsayÄ±lan Ayarlara DÃ¶n)
+  // 🔥 PROFİL SIFIRLAMA (Varsayılan Ayarlara Dön)
   const resetProfileToDefaults = async () => {
     const confirm1 = window.confirm(
-      "Profilini sÄ±fÄ±rlamak istediÄŸine emin misin? Bu iÅŸlem tÃ¼m kelime ilerlemelerini ve kendi eklediÄŸin kelimeleri temizler."
+      "Profilini sıfırlamak istediğine emin misin? Bu işlem tüm kelime ilerlemelerini ve kendi eklediğin kelimeleri temizler."
     );
     if (!confirm1) {
-      alert("Ä°ÅŸlem iptal edildi.");
+      alert("İşlem iptal edildi.");
       handleGoHome();
       return;
     }
 
     const confirm2 = window.confirm(
-      "Bu iÅŸlem GERÄ° ALINAMAZ. TÃ¼m kiÅŸisel kelimelerin ve tÃ¼m ilerlemen SÄ°LÄ°NECEK. Kesin olarak sÄ±fÄ±rlamak istiyor musun?"
+      "Bu işlem GERİ ALINAMAZ. Tüm kişisel kelimelerin ve tüm ilerlemen SİLİNECEK. Kesin olarak sıfırlamak istiyor musun?"
     );
     if (!confirm2) {
-      alert("Ä°ÅŸlem iptal edildi.");
+      alert("İşlem iptal edildi.");
       handleGoHome();
       return;
     }
@@ -728,11 +724,11 @@ const [user, setUser] = useState(null);
       setCustomWords([]);
       setDeletedWordIds([]);
 
-      alert("Profil baÅŸarÄ±yla sÄ±fÄ±rlandÄ±!");
+      alert("Profil başarıyla sıfırlandı!");
       handleGoHome();
     } catch (e) {
       console.error("Reset error:", e);
-      alert("SÄ±fÄ±rlama yapÄ±lÄ±rken bir hata oluÅŸtu.");
+      alert("Sıfırlama yapılırken bir hata oluştu.");
     }
   };
 
@@ -761,7 +757,7 @@ const [user, setUser] = useState(null);
             : "bg-orange-100 text-orange-600"
         }`}
       >
-        {isSystem ? "Sistem" : "KullanÄ±cÄ±"}
+        {isSystem ? "Sistem" : "Kullanıcı"}
       </span>
     );
   };
@@ -784,7 +780,7 @@ const [user, setUser] = useState(null);
       } catch (err) {
         setError(
           err.message.includes("auth")
-            ? "GiriÅŸ hatasÄ±. Bilgileri kontrol et."
+            ? "Giriş hatası. Bilgileri kontrol et."
             : err.message
         );
       } finally {
@@ -811,7 +807,7 @@ const [user, setUser] = useState(null);
               <Brain className="text-white w-8 h-8" />
             </div>
             <h1 className="text-2xl font-bold text-slate-800">
-              Burak Ä°ngilizce
+              Burak İngilizce
             </h1>
             <p className="text-slate-500">Kelimelerini kaybetme.</p>
           </div>
@@ -849,7 +845,7 @@ const [user, setUser] = useState(null);
               <Lock className="absolute left-3 top-3.5 text-slate-400 w-5 h-5" />
               <input
                 type="password"
-                placeholder="Åifre"
+                placeholder="Şifre"
                 className="w-full pl-10 p-3 border border-slate-200 rounded-xl outline-none"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -863,9 +859,9 @@ const [user, setUser] = useState(null);
               {loadingAuth ? (
                 <Loader2 className="animate-spin mx-auto" />
               ) : isLogin ? (
-                "GiriÅŸ Yap"
+                "Giriş Yap"
               ) : (
-                "KayÄ±t Ol"
+                "Kayıt Ol"
               )}
             </button>
           </form>
@@ -873,7 +869,7 @@ const [user, setUser] = useState(null);
             className="text-center mt-6 text-sm text-slate-500 cursor-pointer hover:text-indigo-600"
             onClick={() => setIsLogin(!isLogin)}
           >
-            {isLogin ? "Hesap oluÅŸtur" : "GiriÅŸ yap"}
+            {isLogin ? "Hesap oluştur" : "Giriş yap"}
           </p>
         </div>
       </div>
@@ -885,7 +881,7 @@ const [user, setUser] = useState(null);
     return (
       <div className="flex items-center justify-center h-screen bg-slate-100 text-slate-600">
         <Loader2 className="w-10 h-10 animate-spin mr-2" />
-        <span className="text-lg font-medium">BaÅŸlatÄ±lÄ±yor...</span>
+        <span className="text-lg font-medium">Başlatılıyor...</span>
       </div>
     );
   }
@@ -896,7 +892,7 @@ const [user, setUser] = useState(null);
     return (
       <div className="flex items-center justify-center h-screen bg-slate-100 text-slate-600">
         <Loader2 className="w-10 h-10 animate-spin mr-2" />
-        <span className="text-lg font-medium">Veriler YÃ¼kleniyor...</span>
+        <span className="text-lg font-medium">Veriler Yükleniyor...</span>
       </div>
     );
   }
@@ -916,7 +912,7 @@ const [user, setUser] = useState(null);
               onClick={resetProfileToDefaults}
               className="absolute left-0 top-0 p-2 bg-white rounded-full shadow-sm border
              border-slate-200 text-slate-400 hover:text-red-500"
-              title="VarsayÄ±lan Ayarlara DÃ¶n"
+              title="Varsayılan Ayarlara Dön"
             >
               <RotateCcw size={18} />
             </button>
@@ -933,7 +929,7 @@ const [user, setUser] = useState(null);
               </div>
             </div>
             <h1 className="text-3xl font-extrabold text-slate-800 tracking-tight">
-              Burak ve Elif Ä°ngilizce Ã–ÄŸreniyor
+              Burak ve Elif İngilizce Öğreniyor
             </h1>
             <p className="text-slate-500 mt-2">
               Merhaba, {user.displayName || user.email}
@@ -943,7 +939,7 @@ const [user, setUser] = useState(null);
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
             <div className="flex justify-between items-end mb-2">
               <span className="text-sm font-medium text-slate-500">
-                Genel Ä°lerleme
+                Genel İlerleme
               </span>
               <span className="text-2xl font-bold text-indigo-600">
                 %{progressPercentage.toFixed(1)}
@@ -960,7 +956,7 @@ const [user, setUser] = useState(null);
                 <div className="font-bold text-slate-800">
                   {knownWordIds.length}
                 </div>
-                <div className="text-slate-400">Ã–ÄŸrenilen</div>
+                <div className="text-slate-400">Öğrenilen</div>
               </div>
               <div className="text-center p-2 flex-1">
                 <div className="font-bold text-slate-800">{remainingCount}</div>
@@ -979,7 +975,7 @@ const [user, setUser] = useState(null);
                   <Play className="w-6 h-6" fill="currentColor" />
                 </div>
                 <div className="text-left">
-                  <div className="text-lg">Yeni Oyun BaÅŸlat</div>
+                  <div className="text-lg">Yeni Oyun Başlat</div>
                   <div className="text-xs text-indigo-200 font-normal">
                     Rastgele 20 kelime
                   </div>
@@ -1003,7 +999,7 @@ const [user, setUser] = useState(null);
                 <div className="text-left">
                   <div className="text-base">Yeni Kelime Ekle</div>
                   <div className="text-xs text-slate-400 font-normal">
-                    Kendi kelimelerini oluÅŸtur
+                    Kendi kelimelerini oluştur
                   </div>
                 </div>
               </div>
@@ -1019,7 +1015,7 @@ const [user, setUser] = useState(null);
                   <BookOpen className="w-5 h-5" />
                 </div>
                 <span className="text-sm">
-                  Ã–ÄŸreneceÄŸim
+                  Öğreneceğim
                   <br />
                   Kelimeler
                 </span>
@@ -1033,7 +1029,7 @@ const [user, setUser] = useState(null);
                   <Check className="w-5 h-5" />
                 </div>
                 <span className="text-sm">
-                  Ã–ÄŸrendiÄŸim
+                  Öğrendiğim
                   <br />
                   Kelimeler
                 </span>
@@ -1051,7 +1047,7 @@ const [user, setUser] = useState(null);
                 <div className="text-left">
                   <div className="text-sm">Silinen Kelimeler</div>
                   <div className="text-xs text-slate-400 font-normal">
-                    Ã‡Ã¶p kutusundan geri yÃ¼kle
+                    Çöp kutusundan geri yükle
                   </div>
                 </div>
               </div>
@@ -1116,13 +1112,13 @@ const [user, setUser] = useState(null);
       const handleSubmit = async (e) => {
         e.preventDefault();
         if (!formData.word || !formData.sentence) {
-          setError("LÃ¼tfen kelime ve Ã¶rnek cÃ¼mleyi doldurun.");
+          setError("Lütfen kelime ve örnek cümleyi doldurun.");
           return;
         }
         const hasEmptyDef = formData.definitions.some((d) => !d.meaning.trim());
         if (hasEmptyDef) {
           setError(
-            "LÃ¼tfen tÃ¼m anlam alanlarÄ±nÄ± doldurun veya boÅŸ olanlarÄ± silin."
+            "Lütfen tüm anlam alanlarını doldurun veya boş olanları silin."
           );
           return;
         }
@@ -1137,7 +1133,7 @@ const [user, setUser] = useState(null);
           const result = await handleSaveNewWord(formData);
           setSaving(false);
           if (result.success) {
-            alert("Kelime baÅŸarÄ±yla eklendi!");
+            alert("Kelime başarıyla eklendi!");
             setFormData({
               word: "",
               plural: "",
@@ -1158,7 +1154,7 @@ const [user, setUser] = useState(null);
           <div className="w-full max-w-md bg-white rounded-2xl shadow-lg p-6 my-8 overflow-y-auto max-h-screen">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold text-slate-800">
-                {isEditMode ? "Kelimeyi DÃ¼zenle" : "Yeni Kelime Ekle"}
+                {isEditMode ? "Kelimeyi Düzenle" : "Yeni Kelime Ekle"}
               </h2>
               <button
                 onClick={() =>
@@ -1180,7 +1176,7 @@ const [user, setUser] = useState(null);
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Ä°ngilizce Kelime
+                  İngilizce Kelime
                 </label>
                 <input
                   type="text"
@@ -1189,7 +1185,7 @@ const [user, setUser] = useState(null);
                     setFormData({ ...formData, word: e.target.value })
                   }
                   className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
-                  placeholder="Ã–rn: Bank"
+                  placeholder="Örn: Bank"
                   autoFocus
                 />
               </div>
@@ -1198,7 +1194,7 @@ const [user, setUser] = useState(null);
               <div className="grid grid-cols-1 gap-3">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">
-                    Ã‡oÄŸul Hali (Plural)
+                    Çoğul Hali (Plural)
                   </label>
                   <input
                     type="text"
@@ -1207,7 +1203,7 @@ const [user, setUser] = useState(null);
                       setFormData({ ...formData, plural: e.target.value })
                     }
                     className="w-full p-3 border border-slate-200 rounded-xl outline-none"
-                    placeholder="Sadece isimler iÃ§in â†’ cars, books..."
+                    placeholder="Sadece isimler için → cars, books..."
                   />
                 </div>
 
@@ -1223,7 +1219,7 @@ const [user, setUser] = useState(null);
                         setFormData({ ...formData, v2: e.target.value })
                       }
                       className="w-full p-3 border border-slate-200 rounded-xl outline-none"
-                      placeholder="Sadece fiiller â†’ went, saw..."
+                      placeholder="Sadece fiiller → went, saw..."
                     />
                   </div>
                   <div>
@@ -1237,7 +1233,7 @@ const [user, setUser] = useState(null);
                         setFormData({ ...formData, v3: e.target.value })
                       }
                       className="w-full p-3 border border-slate-200 rounded-xl outline-none"
-                      placeholder="Sadece fiiller â†’ gone, seen..."
+                      placeholder="Sadece fiiller → gone, seen..."
                     />
                   </div>
                 </div>
@@ -1284,7 +1280,7 @@ const [user, setUser] = useState(null);
                           updateDefinition(index, "meaning", e.target.value)
                         }
                         className="w-full p-2 text-sm border border-slate-200 rounded-lg outline-none"
-                        placeholder="TÃ¼rkÃ§e anlamÄ±..."
+                        placeholder="Türkçe anlamı..."
                       />
                     </div>
                     {formData.definitions.length > 1 && (
@@ -1302,7 +1298,7 @@ const [user, setUser] = useState(null);
 
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Ã–rnek CÃ¼mle
+                  Örnek Cümle
                 </label>
                 <textarea
                   value={formData.sentence}
@@ -1310,7 +1306,7 @@ const [user, setUser] = useState(null);
                     setFormData({ ...formData, sentence: e.target.value })
                   }
                   className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none h-24 resize-none"
-                  placeholder="Ã–rn: I went to the bank."
+                  placeholder="Örn: I went to the bank."
                 />
               </div>
 
@@ -1324,7 +1320,7 @@ const [user, setUser] = useState(null);
                 ) : (
                   <Save className="w-5 h-5" />
                 )}
-                {isEditMode ? "DeÄŸiÅŸiklikleri Kaydet" : "Kelimeyi Kaydet"}
+                {isEditMode ? "Değişiklikleri Kaydet" : "Kelimeyi Kaydet"}
               </button>
             </form>
           </div>
@@ -1334,7 +1330,7 @@ const [user, setUser] = useState(null);
     return <FormComponent />;
   }
 
-  // --- Ã–ÄRENDÄ°ÄÄ°M KELÄ°MELER (ARAMA EKLÄ°) ---
+  // --- ÖĞRENDİĞİM KELİMELER (ARAMA EKLİ) ---
   if (currentView === "known_list") {
     const allWords = getAllWords();
     const knownWords = allWords
@@ -1353,7 +1349,7 @@ const [user, setUser] = useState(null);
               <ArrowLeft className="w-6 h-6 text-slate-600" />
             </button>
             <h2 className="text-xl font-bold text-slate-800">
-              Ã–ÄŸrendiÄŸim Kelimeler ({knownWords.length})
+              Öğrendiğim Kelimeler ({knownWords.length})
             </h2>
           </div>
 
@@ -1369,7 +1365,7 @@ const [user, setUser] = useState(null);
           {knownWords.length === 0 ? (
             <div className="text-center text-slate-400 mt-20">
               <Check className="w-16 h-16 mx-auto mb-4 opacity-20" />
-              <p>HenÃ¼z hiÃ§ kelime Ã¶ÄŸrenmedin.</p>
+              <p>Henüz hiç kelime öğrenmedin.</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -1393,7 +1389,7 @@ const [user, setUser] = useState(null);
                         </button>
                       </div>
 
-                      {/* Ä°lk anlam */}
+                      {/* İlk anlam */}
                       <div className="flex items-baseline gap-2 mb-1">
                         <span className="text-xs font-bold text-slate-400 w-8 text-right shrink-0">
                           {getShortTypeLabel(item.definitions[0].type)}
@@ -1403,7 +1399,7 @@ const [user, setUser] = useState(null);
                         </span>
                       </div>
 
-                      {/* DiÄŸer anlamlar */}
+                      {/* Diğer anlamlar */}
                       {item.definitions.length > 1 &&
                         item.definitions.slice(1).map((def, idx) => (
                           <div key={idx} className="flex items-baseline gap-2">
@@ -1429,7 +1425,7 @@ const [user, setUser] = useState(null);
                             <div>
                               <span className="font-semibold">Verb:</span>{" "}
                               {item.v2 && <>V2: {item.v2} </>}
-                              {item.v3 && <>Â· V3: {item.v3}</>}
+                              {item.v3 && <>· V3: {item.v3}</>}
                             </div>
                           )}
                         </div>
@@ -1441,7 +1437,7 @@ const [user, setUser] = useState(null);
                     </div>
 
                     <div className="flex flex-col gap-1 ml-2">
-                      {/* DÃ¼zenle â€“ sadece KullanÄ±cÄ± kelimelerinde gÃ¶rÃ¼nsÃ¼n */}
+                      {/* Düzenle – sadece Kullanıcı kelimelerinde görünsün */}
                       {item.source === "user" && (
                         <button
                           onClick={() => {
@@ -1455,7 +1451,7 @@ const [user, setUser] = useState(null);
                         </button>
                       )}
 
-                      {/* Ã–ÄŸrenilenlerden Ã§Ä±kar */}
+                      {/* Öğrenilenlerden çıkar */}
                       <button
                         onClick={() => handleRemoveFromKnown(item.id)}
                         className="p-2 text-slate-300 hover:text-amber-500 hover:bg-amber-50 rounded-lg"
@@ -1463,7 +1459,7 @@ const [user, setUser] = useState(null);
                         <RotateCcw className="w-5 h-5" />
                       </button>
 
-                      {/* Sil â†’ Ã‡Ã¶p kutusuna */}
+                      {/* Sil → Çöp kutusuna */}
                       {item.source === "user" && (
                         <button
                           onClick={() => handleDeleteWord(item.id)}
@@ -1483,7 +1479,7 @@ const [user, setUser] = useState(null);
     );
   }
 
-  // --- Ã–ÄRENECEÄÄ°M KELÄ°MELER (ARAMALI) ---
+  // --- ÖĞRENECEĞİM KELİMELER (ARAMALI) ---
   if (currentView === "unknown_list") {
     const allWords = getAllWords();
     const unknownWords = allWords
@@ -1502,7 +1498,7 @@ const [user, setUser] = useState(null);
               <ArrowLeft className="w-6 h-6 text-slate-600" />
             </button>
             <h2 className="text-xl font-bold text-slate-800">
-              Ã–ÄŸreneceÄŸim Kelimeler ({unknownWords.length})
+              Öğreneceğim Kelimeler ({unknownWords.length})
             </h2>
           </div>
 
@@ -1518,7 +1514,7 @@ const [user, setUser] = useState(null);
           {unknownWords.length === 0 ? (
             <div className="text-center text-slate-400 mt-20">
               <Trophy className="w-16 h-16 mx-auto mb-4 text-yellow-500" />
-              <p>Harika! TÃ¼m kelimeleri Ã¶ÄŸrendin.</p>
+              <p>Harika! Tüm kelimeleri öğrendin.</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -1576,7 +1572,7 @@ const [user, setUser] = useState(null);
                             <div>
                               <span className="font-semibold">Verb:</span>{" "}
                               {item.v2 && <>V2: {item.v2} </>}
-                              {item.v3 && <>Â· V3: {item.v3}</>}
+                              {item.v3 && <>· V3: {item.v3}</>}
                             </div>
                           )}
                         </div>
@@ -1588,7 +1584,7 @@ const [user, setUser] = useState(null);
                     </div>
 
                     <div className="flex flex-col gap-1 ml-2">
-                      {/* DÃ¼zenle â€“ sadece KullanÄ±cÄ± kelimelerinde gÃ¶rÃ¼nsÃ¼n */}
+                      {/* Düzenle – sadece Kullanıcı kelimelerinde görünsün */}
                       {item.source === "user" && (
                         <button
                           onClick={() => {
@@ -1602,7 +1598,7 @@ const [user, setUser] = useState(null);
                         </button>
                       )}
 
-                      {/* SÄ°L â†’ Ã‡Ã–P KUTUSU */}
+                      {/* SİL → ÇÖP KUTUSU */}
                       {item.source === "user" && (
                         <button
                           onClick={() => handleDeleteWord(item.id)}
@@ -1622,7 +1618,7 @@ const [user, setUser] = useState(null);
     );
   }
 
-  // --- SÄ°LÄ°NEN KELÄ°MELER (TRASH + ARAMA) ---
+  // --- SİLİNEN KELİMELER (TRASH + ARAMA) ---
   if (currentView === "trash") {
     const deletedWords = getDeletedWords().filter((w) =>
       w.word.toLowerCase().includes(searchTrash.toLowerCase())
@@ -1655,7 +1651,7 @@ const [user, setUser] = useState(null);
           {deletedWords.length === 0 ? (
             <div className="text-center text-slate-400 mt-20">
               <Trash2 className="w-16 h-16 mx-auto mb-4 opacity-20" />
-              <p>Ã‡Ã¶p kutusu boÅŸ.</p>
+              <p>Çöp kutusu boş.</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -1691,7 +1687,7 @@ const [user, setUser] = useState(null);
                             <div>
                               <span className="font-semibold">Verb:</span>{" "}
                               {item.v2 && <>V2: {item.v2} </>}
-                              {item.v3 && <>Â· V3: {item.v3}</>}
+                              {item.v3 && <>· V3: {item.v3}</>}
                             </div>
                           )}
                         </div>
@@ -1705,17 +1701,17 @@ const [user, setUser] = useState(null);
                     </div>
 
                     <div className="flex flex-col items-end gap-2">
-                      {/* GERÄ° YÃœKLE */}
+                      {/* GERİ YÜKLE */}
                       {canRestore && (
                         <button
                           onClick={() => restoreWord(item)}
                           className="px-3 py-1 bg-green-100 text-green-600 rounded-lg hover:bg-green-200 text-xs font-semibold"
                         >
-                          Geri YÃ¼kle
+                          Geri Yükle
                         </button>
                       )}
 
-                      {/* TAMAMEN SÄ°L â€” sadece user kelimelerinde */}
+                      {/* TAMAMEN SİL — sadece user kelimelerinde */}
                       {isUser && (
                         <button
                           onClick={() => permanentlyDeleteWord(item)}
@@ -1750,11 +1746,11 @@ const [user, setUser] = useState(null);
           <h2 className="text-2xl font-bold text-slate-800 mb-2">
             {allWords.length - knownWordIds.length === 0
               ? "Tebrikler!"
-              : "Oturum TamamlandÄ±"}
+              : "Oturum Tamamlandı"}
           </h2>
 
           {allWords.length - knownWordIds.length === 0 ? (
-            <p className="text-slate-600 mb-6">TÃ¼m kelimeleri Ã¶ÄŸrendin!</p>
+            <p className="text-slate-600 mb-6">Tüm kelimeleri öğrendin!</p>
           ) : (
             <>
               <div className="flex justify-center gap-8 my-6">
@@ -1762,13 +1758,13 @@ const [user, setUser] = useState(null);
                   <div className="text-3xl font-bold text-green-600">
                     {sessionStats.known}
                   </div>
-                  <div className="text-sm text-slate-500">Ã–ÄŸrendim</div>
+                  <div className="text-sm text-slate-500">Öğrendim</div>
                 </div>
                 <div className="text-center">
                   <div className="text-3xl font-bold text-orange-500">
                     {sessionStats.learning}
                   </div>
-                  <div className="text-sm text-slate-500">Ã‡alÄ±ÅŸmalÄ±yÄ±m</div>
+                  <div className="text-sm text-slate-500">Çalışmalıyım</div>
                 </div>
               </div>
               <p className="text-slate-600 mb-6">
@@ -1782,7 +1778,7 @@ const [user, setUser] = useState(null);
             className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-xl transition-colors flex items-center justify-center gap-2 mb-3"
           >
             <RotateCcw className="w-5 h-5" />
-            Yeni Oturum BaÅŸlat
+            Yeni Oturum Başlat
           </button>
 
           <button
@@ -1790,7 +1786,7 @@ const [user, setUser] = useState(null);
             className="w-full bg-white border border-slate-200 text-slate-600 font-bold py-3 px-6 rounded-xl hover:bg-slate-50 transition-colors flex items-center justify-center gap-2"
           >
             <Home className="w-5 h-5" />
-            Ana Sayfaya DÃ¶n
+            Ana Sayfaya Dön
           </button>
         </div>
       </div>
@@ -1834,7 +1830,7 @@ const [user, setUser] = useState(null);
         </div>
       </div>
 
-      {/* Kart AlanÄ± */}
+      {/* Kart Alanı */}
       <div className="flex-1 flex items-center justify-center p-4 relative">
         {currentCard && (
           <div
@@ -1879,18 +1875,18 @@ const [user, setUser] = useState(null);
                   {mainDef.type}
                 </div>
                 <div className="text-xs uppercase tracking-wide text-indigo-400 font-bold mb-1">
-                  AnlamÄ±
+                  Anlamı
                 </div>
                 <p className="text-2xl font-medium text-indigo-900">
                   {mainDef.meaning}
                 </p>
               </div>
 
-              {/* DÄ°ÄER ANLAMLAR */}
+              {/* DİĞER ANLAMLAR */}
               {otherDefs.length > 0 && (
                 <div className="bg-white p-3 rounded-xl border border-slate-100 text-left">
                   <div className="text-[10px] uppercase tracking-wide text-slate-400 font-bold mb-2 text-center">
-                    DiÄŸer Anlamlar
+                    Diğer Anlamlar
                   </div>
                   <div className="space-y-2">
                     {otherDefs.map((def, idx) => (
@@ -1936,10 +1932,10 @@ const [user, setUser] = useState(null);
                 </div>
               )}
 
-              {/* Ã–RNEK CÃœMLE */}
+              {/* ÖRNEK CÜMLE */}
               <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
                 <div className="text-xs uppercase tracking-wide text-slate-400 font-bold mb-1">
-                  Ã–rnek CÃ¼mle
+                  Örnek Cümle
                 </div>
                 <div className="text-lg text-slate-600 italic space-y-2">
                   {currentCard.sentence.split("\n").map((line, idx) => (
@@ -1952,7 +1948,7 @@ const [user, setUser] = useState(null);
         )}
       </div>
 
-      {/* SAÄ - SOL BUTONLAR */}
+      {/* SAĞ - SOL BUTONLAR */}
       <div className="pb-10 px-6 max-w-md mx-auto w-full">
         <div className="flex gap-4 justify-center">
           <button
@@ -1963,7 +1959,7 @@ const [user, setUser] = useState(null);
             <div className="p-3 bg-orange-100 rounded-full mb-1">
               <X className="w-6 h-6" />
             </div>
-            <span>Ã–ÄŸreniyorum</span>
+            <span>Öğreniyorum</span>
             <span className="text-xs opacity-60 font-normal">(Sol)</span>
           </button>
 
@@ -1976,7 +1972,7 @@ const [user, setUser] = useState(null);
               <Check className="w-6 h-6" />
             </div>
             <span>Biliyorum</span>
-            <span className="text-xs opacity-60 font-normal">(SaÄŸ)</span>
+            <span className="text-xs opacity-60 font-normal">(Sağ)</span>
           </button>
         </div>
 
@@ -1987,29 +1983,6 @@ const [user, setUser] = useState(null);
           <Flag className="w-4 h-4" />
           Pes Et ve Bitir
         </button>
-      </div>
-    </div>
-  );
-}
-
-
-// --- ADMIN PANEL COMPONENT ---
-function AdminPanel({ onClose }) {
-  const [word, setWord] = React.useState("");
-  const [meaning, setMeaning] = React.useState("");
-
-  const saveWord = () => {
-    alert("Admin Panel Placeholder");
-  };
-
-  return (
-    <div style={{position:'fixed',top:0,left:0,right:0,bottom:0,background:'rgba(0,0,0,0.4)',display:'flex',justifyContent:'center',alignItems:'center',zIndex:9999}}>
-      <div style={{background:'#fff',padding:20,borderRadius:12,width:300}}>
-        <h2>Admin Panel</h2>
-        <input placeholder="Kelime" value={word} onChange={e=>setWord(e.target.value)} />
-        <input placeholder="Anlam" value={meaning} onChange={e=>setMeaning(e.target.value)} />
-        <button onClick={saveWord}>Kaydet</button>
-        <button onClick={onClose}>Kapat</button>
       </div>
     </div>
   );
