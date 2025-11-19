@@ -48,8 +48,8 @@ import {
   Search,
   HelpCircle,
   Award,
-  Flame, // Seri (Streak) için eklendi
-  Book,  // Sözlük ikonu için eklendi
+  Flame, // Seri (Streak) ikonu
+  Book,  // Sözlük ikonu
 } from "lucide-react";
 
 // --- FIREBASE CONFIG ---
@@ -121,7 +121,7 @@ export default function App() {
   const [quizSelectedOption, setQuizSelectedOption] = useState(null);
   const [quizIsAnswered, setQuizIsAnswered] = useState(false);
 
-  // Dictionary State (YENİ)
+  // Dictionary State (Sözlük)
   const [dictSearchTerm, setDictSearchTerm] = useState("");
   const [dictResult, setDictResult] = useState(null);
   const [dictError, setDictError] = useState("");
@@ -396,7 +396,7 @@ export default function App() {
     }
   };
 
-  // --- DICTIONARY LOGIC (YENİ) ---
+  // --- DICTIONARY LOGIC (Sözlük Mantığı) ---
   const handleDictionarySearch = (e) => {
       e.preventDefault();
       if(!dictSearchTerm.trim()) return;
@@ -669,7 +669,7 @@ export default function App() {
     );
   };
 
-  // --- CARD COMPONENT (Reusable for Game & Dictionary) ---
+  // --- CARD COMPONENT (Oyun ve Sözlük için Ortak) ---
   const WordCard = ({ wordObj }) => {
       const mainDef = wordObj.definitions[0] || { type: "", meaning: "" };
       const otherDefs = wordObj.definitions.length > 1 ? wordObj.definitions.slice(1) : [];
@@ -895,14 +895,32 @@ export default function App() {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col items-center p-6">
         <div className="w-full max-w-md space-y-8 mt-4">
+          
+          {/* HEADER ALANI */}
           <div className="text-center relative">
-            <button onClick={resetProfileToDefaults} className="absolute left-0 top-0 p-2 bg-white rounded-full shadow-sm border border-slate-200 text-slate-400 hover:text-red-500" title="Varsayılan Ayarlara Dön"><RotateCcw size={18} /></button>
-            <button onClick={handleLogout} className="absolute right-0 top-0 p-2 bg-white rounded-full shadow-sm border border-slate-200 text-slate-400 hover:text-red-500"><LogOut size={18} /></button>
-            <div className="flex justify-center mb-4 relative">
-               <div className="bg-indigo-600 p-4 rounded-2xl shadow-lg transform rotate-3"><Brain className="w-12 h-12 text-white" /></div>
+            
+            {/* BUTONLAR: z-50 ile en önde */}
+            <button 
+                onClick={resetProfileToDefaults} 
+                className="absolute left-0 top-0 p-2 bg-white rounded-full shadow-sm border border-slate-200 text-slate-400 hover:text-red-500 z-50" 
+                title="Varsayılan Ayarlara Dön">
+                <RotateCcw size={18} />
+            </button>
+            
+            <button 
+                onClick={handleLogout} 
+                className="absolute right-0 top-0 p-2 bg-white rounded-full shadow-sm border border-slate-200 text-slate-400 hover:text-red-500 z-50"
+                title="Çıkış Yap">
+                <LogOut size={18} />
+            </button>
+
+            <div className="flex justify-center mb-4 relative mt-8">
+               <div className="bg-indigo-600 p-4 rounded-2xl shadow-lg transform rotate-3 relative z-10">
+                   <Brain className="w-12 h-12 text-white" />
+               </div>
                
                {/* STREAK BADGE */}
-               <div className="absolute -right-4 top-0 flex flex-col items-center">
+               <div className="absolute -right-6 -top-2 flex flex-col items-center z-20">
                  <div className="flex items-center gap-1 bg-orange-500 text-white px-3 py-1.5 rounded-full shadow-lg border-2 border-white">
                     <Flame className="w-4 h-4 fill-white" />
                     <span className="font-bold text-sm">{streak}</span>
@@ -910,9 +928,11 @@ export default function App() {
                  <span className="text-[10px] font-bold text-orange-600 mt-1 bg-orange-100 px-2 rounded-full">Günlük Seri</span>
                </div>
             </div>
+            
             <h1 className="text-3xl font-extrabold text-slate-800 tracking-tight">Kelime Atölyesi</h1>
             <p className="text-slate-500 mt-2">Merhaba, {user.displayName || user.email}</p>
           </div>
+          {/* HEADER SONU */}
 
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
             <div className="flex justify-between items-end mb-2">
@@ -974,7 +994,7 @@ export default function App() {
     );
   }
 
-  // --- DICTIONARY VIEW (YENİ) ---
+  // --- DICTIONARY VIEW (Sözlük Sayfası) ---
   if (currentView === "dictionary") {
       return (
           <div className="min-h-screen bg-slate-50 flex flex-col items-center p-6">
