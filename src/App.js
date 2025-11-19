@@ -40,6 +40,7 @@ import {
   Mail,
   Lock,
   Flag,
+  Shield, // <-- Admin ikonu eklendi
 } from "lucide-react";
 
 // --- FIREBASE CONFIG ---
@@ -56,6 +57,13 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const appId = "burak-ingilizce-pro";
+
+// --- ADMIN AYARLARI ---
+// 👇 BURAYA KENDİ E-POSTA ADRESİNİ YAZMALISIN 👇
+const ADMIN_EMAILS = [
+  "senin_epostan@gmail.com", 
+  "burak@ornek.com"
+];
 
 // --- SYSTEM WORDS ---
 const BASE_WORD_LIST = [
@@ -197,6 +205,7 @@ export default function App() {
   }, []);
 
   const [user, setUser] = useState(null);
+  const [isAdmin, setIsAdmin] = useState(false); // Admin durumu
   const [authLoading, setAuthLoading] = useState(true);
 
   const [knownWordIds, setKnownWordIds] = useState([]);
@@ -223,6 +232,14 @@ export default function App() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
+
+      // 🔥 ADMIN KONTROLÜ
+      if (currentUser && ADMIN_EMAILS.includes(currentUser.email)) {
+        setIsAdmin(true);
+      } else {
+        setIsAdmin(false);
+      }
+
       setAuthLoading(false);
     });
     return () => unsubscribe();
@@ -272,8 +289,7 @@ export default function App() {
     }
   };
 
-  // 🔥 DUPLICATE KONTROL: Sistem + Kullanıcı aynı kelimeyi içeriyorsa
-  // Kullanıcı kelimesi otomatik çöp kutusuna taşınır.
+  // 🔥 DUPLICATE KONTROL
   useEffect(() => {
     if (!user || customWords.length === 0) return;
 
@@ -376,7 +392,6 @@ export default function App() {
     return merged.sort((a, b) => a.word.localeCompare(b.word));
   };
 
-  // Aynı yazılışa sahip aktif kelime var mı?
   const canRestoreWord = (word) => {
     const allWords = getAllWords();
     const existsActive = allWords.some(
@@ -412,7 +427,6 @@ export default function App() {
     }
   };
 
-  // 🔥 Kullanıcı kelimesini kalıcı silme (Sistem kelimesi için yok)
   const permanentlyDeleteWord = async (word) => {
     if (word.source !== "user") return;
 
@@ -683,7 +697,7 @@ export default function App() {
     setEditingWord(null);
   };
 
-  // 🔥 PROFİL SIFIRLAMA (Varsayılan Ayarlara Dön)
+  // 🔥 PROFİL SIFIRLAMA
   const resetProfileToDefaults = async () => {
     const confirm1 = window.confirm(
       "Profilini sıfırlamak istediğine emin misin? Bu işlem tüm kelime ilerlemelerini ve kendi eklediğin kelimeleri temizler."
@@ -768,7 +782,7 @@ export default function App() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
-       const [loadingAuth, setLoadingAuth] = useState(false);
+    const [loadingAuth, setLoadingAuth] = useState(false);
 
     const handleAuth = async (e) => {
       e.preventDefault();
@@ -897,6 +911,65 @@ export default function App() {
     );
   }
 
+  // --- ADMIN DASHBOARD ---
+  if (currentView === "admin_dashboard" && isAdmin) {
+    return (
+      <div className="min-h-screen bg-slate-50 p-4">
+        <div className="max-w-md mx-auto">
+          <div className="flex items-center gap-3 mb-6">
+            <button
+              onClick={handleGoHome}
+              className="p-2 hover:bg-slate-200 rounded-full transition-colors"
+            >
+              <ArrowLeft className="w-6 h-6 text-slate-600" />
+            </button>
+            <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+              <Shield className="w-6 h-6 text-slate-800" />
+              Yönetici Paneli
+            </h2>
+          </div>
+
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 mb-6">
+            <h3 className="font-bold text-slate-700 mb-4">Sistem Durumu</h3>
+            <div className="space-y-3">
+              <div className="flex justify-between p-3 bg-slate-50 rounded-lg">
+                <span className="text-slate-500">Toplam Sistem Kelimesi</span>
+                <span className="font-bold text-slate-800">
+                  {BASE_WORD_LIST.length}
+                </span>
+              </div>
+              <div className="flex justify-between p-3 bg-slate-50 rounded-lg">
+                <span className="text-slate-500">Aktif Kullanıcı</span>
+                <span className="font-bold text-slate-800">{user.email}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-yellow-50 border border-yellow-100 p-4 rounded-xl text-sm text-yellow-800 mb-4">
+            <p className="font-bold flex items-center gap-2 mb-1">
+              <AlertCircle className="w-4 h-4" />
+              Bilgi
+            </p>
+            Şu an sistem kelimeleri (BASE_WORD_LIST) kod içine gömülü. Bunları
+            panelden düzenleyebilmek için bu listeyi Firestore'a taşıman
+            gerekir.
+          </div>
+
+          <div className="grid grid-cols-1 gap-3">
+            <button
+              onClick={() =>
+                alert("Bu özellik için veritabanı güncellemesi gerekir.")
+              }
+              className="bg-white border border-slate-200 text-slate-600 font-bold py-4 rounded-xl hover:bg-slate-50 transition-colors"
+            >
+              Sistem Kelimesi Ekle (Yakında)
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // --- HOME ---
   if (currentView === "home") {
     const allWords = getAllWords();
@@ -966,6 +1039,26 @@ export default function App() {
           </div>
 
           <div className="space-y-3">
+            {/* 🔥 ADMIN BUTTON */}
+            {isAdmin && (
+              <button
+                onClick={() => setCurrentView("admin_dashboard")}
+                className="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 px-6 rounded-xl shadow-md transition-all active:scale-95 flex items-center justify-between mb-3"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="bg-white/20 p-2 rounded-lg">
+                    <Shield className="w-5 h-5 text-yellow-400" />
+                  </div>
+                  <div className="text-left">
+                    <div className="text-base">Admin Paneli</div>
+                    <div className="text-xs text-slate-400 font-normal">
+                      Sistem yönetimi
+                    </div>
+                  </div>
+                </div>
+              </button>
+            )}
+
             <button
               onClick={handleStartGame}
               className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 px-6 rounded-xl shadow-md shadow-indigo-200 transition-all active:scale-95 flex items-center justify-between group"
@@ -1796,7 +1889,9 @@ export default function App() {
   // --- GAME (FLASHCARD EKRANI) ---
   const currentCard = sessionWords[currentIndex];
   const gameProgress =
-    sessionWords.length === 0 ? 0 : (currentIndex / sessionWords.length) * 100;
+    sessionWords.length === 0
+      ? 0
+      : (currentIndex / sessionWords.length) * 100;
 
   const mainDef = currentCard
     ? currentCard.definitions[0]
