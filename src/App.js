@@ -510,29 +510,36 @@ export default function App() {
   };
 
   const handleDeleteWord = async (wordId) => {
-    try {
-      const userRef = doc(
-        db,
-        "artifacts",
-        appId,
-        "users",
-        user.uid,
-        "vocab_game",
-        "progress"
-      );
+  try {
+    const userRef = doc(
+      db,
+      "artifacts",
+      appId,
+      "users",
+      user.uid,
+      "vocab_game",
+      "progress"
+    );
 
-      await setDoc(
-        userRef,
-        { deleted_ids: arrayUnion(wordId) },
-        { merge: true }
-      );
-      setDeletedWordIds((prev) =>
-        prev.includes(wordId) ? prev : [...prev, wordId]
-      );
-    } catch (e) {
-      console.error("Silme hatası:", e);
-    }
-  };
+    await setDoc(
+      userRef,
+      {
+        deleted_ids: arrayUnion(wordId),
+        known_ids: arrayRemove(wordId), // 🔥 Öğrenilenlerden çıkar
+      },
+      { merge: true }
+    );
+
+    setDeletedWordIds((prev) =>
+      prev.includes(wordId) ? prev : [...prev, wordId]
+    );
+
+    // 🔥 Lokal state'i güncelle
+    setKnownWordIds((prev) => prev.filter((id) => id !== wordId));
+  } catch (e) {
+    console.error("Silme hatası:", e);
+  }
+};
 
   const handleUpdateWord = async (originalId, newData) => {
     try {
