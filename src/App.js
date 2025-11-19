@@ -63,6 +63,9 @@ const BASE_WORD_LIST = [
     id: 1,
     source: "system",
     word: "the",
+    plural: "",
+    v2: "",
+    v3: "",
     definitions: [{ type: "article", meaning: "belirtili tanımlık" }],
     sentence: "The book is on the table.",
   },
@@ -70,6 +73,9 @@ const BASE_WORD_LIST = [
     id: 2,
     source: "system",
     word: "be",
+    plural: "",
+    v2: "was / were",
+    v3: "been",
     definitions: [{ type: "verb", meaning: "olmak" }],
     sentence: "I want to be a nurse.\nI want to be a doctor.",
   },
@@ -77,6 +83,9 @@ const BASE_WORD_LIST = [
     id: 3,
     source: "system",
     word: "and",
+    plural: "",
+    v2: "",
+    v3: "",
     definitions: [{ type: "conj", meaning: "ve" }],
     sentence: "You and I are friends.",
   },
@@ -84,6 +93,9 @@ const BASE_WORD_LIST = [
     id: 4,
     source: "system",
     word: "to",
+    plural: "",
+    v2: "",
+    v3: "",
     definitions: [{ type: "prep", meaning: "-e, -a doğru" }],
     sentence: "I am going to school.",
   },
@@ -91,6 +103,9 @@ const BASE_WORD_LIST = [
     id: 5,
     source: "system",
     word: "of",
+    plural: "",
+    v2: "",
+    v3: "",
     definitions: [{ type: "prep", meaning: "-in, -ın" }],
     sentence: "A cup of tea is ready.",
   },
@@ -98,6 +113,9 @@ const BASE_WORD_LIST = [
     id: 6,
     source: "system",
     word: "a",
+    plural: "",
+    v2: "",
+    v3: "",
     definitions: [{ type: "article", meaning: "bir" }],
     sentence: "I have a car.",
   },
@@ -105,6 +123,9 @@ const BASE_WORD_LIST = [
     id: 7,
     source: "system",
     word: "in",
+    plural: "",
+    v2: "",
+    v3: "",
     definitions: [{ type: "prep", meaning: "içinde" }],
     sentence: "She is in the kitchen.",
   },
@@ -112,6 +133,9 @@ const BASE_WORD_LIST = [
     id: 8,
     source: "system",
     word: "that",
+    plural: "",
+    v2: "",
+    v3: "",
     definitions: [
       { type: "pronoun", meaning: "şu, o" },
       { type: "conj", meaning: "ki" },
@@ -122,6 +146,9 @@ const BASE_WORD_LIST = [
     id: 9,
     source: "system",
     word: "have",
+    plural: "",
+    v2: "had",
+    v3: "had",
     definitions: [{ type: "verb", meaning: "sahip olmak" }],
     sentence: "I have a dog.",
   },
@@ -129,6 +156,9 @@ const BASE_WORD_LIST = [
     id: 10,
     source: "system",
     word: "I",
+    plural: "",
+    v2: "",
+    v3: "",
     definitions: [{ type: "pronoun", meaning: "ben" }],
     sentence: "I love music.",
   },
@@ -136,7 +166,10 @@ const BASE_WORD_LIST = [
     id: 11,
     source: "system",
     word: "swim",
-    definitions: [{ type: "noun", meaning: "yüzmek" }],
+    plural: "",
+    v2: "swam",
+    v3: "swum",
+    definitions: [{ type: "verb", meaning: "yüzmek" }],
     sentence: "I swim.",
   },
 ];
@@ -297,13 +330,26 @@ export default function App() {
   const normalizeWord = (w) => {
     const baseMatch = BASE_WORD_LIST.find((b) => b.id === w.id);
     const source = w.source || (baseMatch ? "system" : "user");
+    const plural = w.plural || "";
+    const v2 = w.v2 || "";
+    const v3 = w.v3 || "";
+
     if (Array.isArray(w.definitions)) {
-      return { ...w, source };
+      return { ...w, source, plural, v2, v3 };
     }
+
     return {
       ...w,
       source,
-      definitions: [{ type: w.type || "other", meaning: w.meaning || "" }],
+      plural,
+      v2,
+      v3,
+      definitions: [
+        {
+          type: w.type || "other",
+          meaning: w.meaning || "",
+        },
+      ],
     };
   };
 
@@ -478,6 +524,9 @@ export default function App() {
     const newWord = {
       id: Date.now(),
       word: wordData.word.trim(),
+      plural: wordData.plural || "",
+      v2: wordData.v2 || "",
+      v3: wordData.v3 || "",
       definitions: wordData.definitions,
       sentence: wordData.sentence.trim(),
       source: "user",
@@ -510,36 +559,35 @@ export default function App() {
   };
 
   const handleDeleteWord = async (wordId) => {
-  try {
-    const userRef = doc(
-      db,
-      "artifacts",
-      appId,
-      "users",
-      user.uid,
-      "vocab_game",
-      "progress"
-    );
+    try {
+      const userRef = doc(
+        db,
+        "artifacts",
+        appId,
+        "users",
+        user.uid,
+        "vocab_game",
+        "progress"
+      );
 
-    await setDoc(
-      userRef,
-      {
-        deleted_ids: arrayUnion(wordId),
-        known_ids: arrayRemove(wordId), // 🔥 Öğrenilenlerden çıkar
-      },
-      { merge: true }
-    );
+      await setDoc(
+        userRef,
+        {
+          deleted_ids: arrayUnion(wordId),
+          known_ids: arrayRemove(wordId), // öğrenilenlerden de çıkar
+        },
+        { merge: true }
+      );
 
-    setDeletedWordIds((prev) =>
-      prev.includes(wordId) ? prev : [...prev, wordId]
-    );
+      setDeletedWordIds((prev) =>
+        prev.includes(wordId) ? prev : [...prev, wordId]
+      );
 
-    // 🔥 Lokal state'i güncelle
-    setKnownWordIds((prev) => prev.filter((id) => id !== wordId));
-  } catch (e) {
-    console.error("Silme hatası:", e);
-  }
-};
+      setKnownWordIds((prev) => prev.filter((id) => id !== wordId));
+    } catch (e) {
+      console.error("Silme hatası:", e);
+    }
+  };
 
   const handleUpdateWord = async (originalId, newData) => {
     try {
@@ -559,6 +607,9 @@ export default function App() {
         const updatedWord = {
           ...isCustom,
           ...newData,
+          plural: newData.plural || "",
+          v2: newData.v2 || "",
+          v3: newData.v3 || "",
           source: isCustom.source || "user",
         };
         await updateDoc(userRef, { custom_words: arrayRemove(isCustom) });
@@ -576,6 +627,9 @@ export default function App() {
         const newCustomWord = {
           id: Date.now(),
           word: newData.word,
+          plural: newData.plural || "",
+          v2: newData.v2 || "",
+          v3: newData.v3 || "",
           definitions: newData.definitions,
           sentence: newData.sentence,
           source: "user",
@@ -714,7 +768,7 @@ export default function App() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
-    const [loadingAuth, setLoadingAuth] = useState(false);
+       const [loadingAuth, setLoadingAuth] = useState(false);
 
     const handleAuth = async (e) => {
       e.preventDefault();
@@ -1014,11 +1068,17 @@ export default function App() {
     const initialData = normalizedEditWord
       ? {
           word: normalizedEditWord.word,
+          plural: normalizedEditWord.plural || "",
+          v2: normalizedEditWord.v2 || "",
+          v3: normalizedEditWord.v3 || "",
           definitions: normalizedEditWord.definitions,
           sentence: normalizedEditWord.sentence,
         }
       : {
           word: "",
+          plural: "",
+          v2: "",
+          v3: "",
           definitions: [{ type: "noun", meaning: "" }],
           sentence: "",
         };
@@ -1076,6 +1136,9 @@ export default function App() {
             alert("Kelime başarıyla eklendi!");
             setFormData({
               word: "",
+              plural: "",
+              v2: "",
+              v3: "",
               definitions: [{ type: "noun", meaning: "" }],
               sentence: "",
             });
@@ -1125,6 +1188,55 @@ export default function App() {
                   placeholder="Örn: Bank"
                   autoFocus
                 />
+              </div>
+
+              {/* PLURAL / V2 / V3 */}
+              <div className="grid grid-cols-1 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Çoğul Hali (Plural)
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.plural}
+                    onChange={(e) =>
+                      setFormData({ ...formData, plural: e.target.value })
+                    }
+                    className="w-full p-3 border border-slate-200 rounded-xl outline-none"
+                    placeholder="Sadece isimler için → cars, books..."
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">
+                      V2 (Past)
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.v2}
+                      onChange={(e) =>
+                        setFormData({ ...formData, v2: e.target.value })
+                      }
+                      className="w-full p-3 border border-slate-200 rounded-xl outline-none"
+                      placeholder="Sadece fiiller → went, saw..."
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">
+                      V3 (Past Participle)
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.v3}
+                      onChange={(e) =>
+                        setFormData({ ...formData, v3: e.target.value })
+                      }
+                      className="w-full p-3 border border-slate-200 rounded-xl outline-none"
+                      placeholder="Sadece fiiller → gone, seen..."
+                    />
+                  </div>
+                </div>
               </div>
 
               <div className="space-y-3">
@@ -1300,6 +1412,25 @@ export default function App() {
                           </div>
                         ))}
 
+                      {/* PLURAL / V2 / V3 */}
+                      {(item.plural || item.v2 || item.v3) && (
+                        <div className="mt-2 text-xs text-slate-600 space-y-1">
+                          {item.plural && (
+                            <div>
+                              <span className="font-semibold">Plural:</span>{" "}
+                              {item.plural}
+                            </div>
+                          )}
+                          {(item.v2 || item.v3) && (
+                            <div>
+                              <span className="font-semibold">Verb:</span>{" "}
+                              {item.v2 && <>V2: {item.v2} </>}
+                              {item.v3 && <>· V3: {item.v3}</>}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
                       <div className="text-xs text-slate-400 italic mt-2 border-t border-slate-50 pt-1">
                         "{item.sentence}"
                       </div>
@@ -1428,6 +1559,25 @@ export default function App() {
                           </div>
                         ))}
 
+                      {/* PLURAL / V2 / V3 */}
+                      {(item.plural || item.v2 || item.v3) && (
+                        <div className="mt-2 text-xs text-slate-600 space-y-1">
+                          {item.plural && (
+                            <div>
+                              <span className="font-semibold">Plural:</span>{" "}
+                              {item.plural}
+                            </div>
+                          )}
+                          {(item.v2 || item.v3) && (
+                            <div>
+                              <span className="font-semibold">Verb:</span>{" "}
+                              {item.v2 && <>V2: {item.v2} </>}
+                              {item.v3 && <>· V3: {item.v3}</>}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
                       <div className="text-xs text-slate-400 italic mt-2 border-t border-slate-50 pt-1">
                         "{item.sentence}"
                       </div>
@@ -1524,6 +1674,25 @@ export default function App() {
                       <div className="text-sm text-slate-500">
                         {item.definitions?.[0]?.meaning}
                       </div>
+
+                      {(item.plural || item.v2 || item.v3) && (
+                        <div className="mt-1 text-[11px] text-slate-500 space-y-0.5">
+                          {item.plural && (
+                            <div>
+                              <span className="font-semibold">Plural:</span>{" "}
+                              {item.plural}
+                            </div>
+                          )}
+                          {(item.v2 || item.v3) && (
+                            <div>
+                              <span className="font-semibold">Verb:</span>{" "}
+                              {item.v2 && <>V2: {item.v2} </>}
+                              {item.v3 && <>· V3: {item.v3}</>}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
                       {!canRestore && (
                         <div className="text-[10px] text-slate-400 italic mt-1">
                           Bu kelimenin aktif bir versiyonu zaten var
@@ -1732,6 +1901,34 @@ export default function App() {
                       </div>
                     ))}
                   </div>
+                </div>
+              )}
+
+              {/* PLURAL / V2 / V3 */}
+              {(currentCard.plural || currentCard.v2 || currentCard.v3) && (
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 text-left space-y-1">
+                  {currentCard.plural && (
+                    <div className="text-sm text-slate-700">
+                      <span className="font-semibold">Plural:</span>{" "}
+                      {currentCard.plural}
+                    </div>
+                  )}
+                  {(currentCard.v2 || currentCard.v3) && (
+                    <div className="text-sm text-slate-700 space-y-0.5">
+                      {currentCard.v2 && (
+                        <div>
+                          <span className="font-semibold">V2:</span>{" "}
+                          {currentCard.v2}
+                        </div>
+                      )}
+                      {currentCard.v3 && (
+                        <div>
+                          <span className="font-semibold">V3:</span>{" "}
+                          {currentCard.v3}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
 
