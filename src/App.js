@@ -45,6 +45,7 @@ import {
   Lock,
   Flag,
   Shield,
+  Search, // <-- Arama ikonu eklendi
 } from "lucide-react";
 
 // --- FIREBASE CONFIG ---
@@ -67,7 +68,7 @@ const ADMIN_EMAILS = [
   "burakgul1994@outlook.com.tr"
 ];
 
-// --- SYSTEM WORDS (BOŞ - DB'DEN GELECEK) ---
+// --- SYSTEM WORDS (TÜMÜ VERİTABANINDAN GELİYOR) ---
 const BASE_WORD_LIST = [];
 
 const WORD_TYPES = [
@@ -114,9 +115,13 @@ export default function App() {
   const [editingWord, setEditingWord] = useState(null);
   const [returnView, setReturnView] = useState("unknown_list");
 
+  // Arama State'leri
   const [searchKnown, setSearchKnown] = useState("");
   const [searchUnknown, setSearchUnknown] = useState("");
   const [searchTrash, setSearchTrash] = useState("");
+  
+  // 🔥 Admin Paneli Arama State'i
+  const [adminSearch, setAdminSearch] = useState("");
 
   // --- AUTH ---
   useEffect(() => {
@@ -176,15 +181,11 @@ export default function App() {
     }
   };
 
-  // 🔥 DÜZELTİLDİ: Firestore ID'sini önceliklendirme
   const fetchDynamicSystemWords = async () => {
     try {
       const querySnapshot = await getDocs(collection(db, "artifacts", appId, "system_words"));
       const words = [];
       querySnapshot.forEach((doc) => {
-        // ÖNEMLİ DÜZELTME BURADA:
-        // ...doc.data() önce gelir, id: doc.id sonra gelir.
-        // Böylece Firestore'un gerçek ID'si, kelimenin içindeki ID'yi ezer.
         words.push({ ...doc.data(), id: doc.id, source: "system" });
       });
       setDynamicSystemWords(words);
@@ -193,10 +194,20 @@ export default function App() {
     }
   };
 
-  // 🔥 Admin: Yeni Kelime Ekleme
+  // 🔥 Admin: Yeni Kelime Ekleme (DUPLICATE KONTROLÜ EKLENDİ)
   const handleSaveSystemWord = async (wordData) => {
     try {
-      // id alanını kaldırıyoruz, Firestore kendi ID'sini versin.
+      const normalizedInput = wordData.word.toLowerCase().trim();
+      
+      // 🔥 KONTROL: Bu kelime zaten sistemde var mı?
+      const exists = dynamicSystemWords.some(
+        (w) => w.word.toLowerCase() === normalizedInput
+      );
+
+      if (exists) {
+        return { success: false, message: "Bu kelime sistemde zaten kayıtlı!" };
+      }
+
       const newWord = {
         word: wordData.word.trim(),
         plural: wordData.plural || "",
@@ -208,10 +219,8 @@ export default function App() {
         createdAt: new Date()
       };
 
-      // addDoc kullanıldığında docRef döner, içinde oluşan ID vardır.
       const docRef = await addDoc(collection(db, "artifacts", appId, "system_words"), newWord);
       
-      // State'e eklerken Firestore'dan gelen gerçek ID'yi kullanıyoruz
       setDynamicSystemWords(prev => [...prev, { ...newWord, id: docRef.id }]);
       
       return { success: true };
@@ -235,7 +244,7 @@ export default function App() {
     }
   };
 
-  // 🔥 DUPLICATE KONTROL
+  // 🔥 DUPLICATE KONTROL (Kullanıcı tarafı için)
   useEffect(() => {
     if (!user || customWords.length === 0) return;
 
@@ -808,9 +817,14 @@ export default function App() {
     );
   }
 
-  // --- ADMIN DASHBOARD ---
+  // --- ADMIN DASHBOARD (ARAMA EKLENMİŞ) ---
   if (currentView === "admin_dashboard" && isAdmin) {
     const totalSystemWords = dynamicSystemWords.length;
+
+    // Arama filtreleme
+    const filteredSystemWords = dynamicSystemWords.filter(w => 
+      w.word.toLowerCase().includes(adminSearch.toLowerCase())
+    ).sort((a, b) => a.word.localeCompare(b.word));
 
     return (
       <div className="min-h-screen bg-slate-50 p-4">
@@ -844,26 +858,42 @@ export default function App() {
           {/* EKLEME BUTONU */}
           <button
             onClick={() => setCurrentView("add_system_word")}
-            className="w-full bg-slate-800 text-white font-bold py-4 rounded-xl hover:bg-slate-900 transition-colors shadow-lg flex items-center justify-center gap-2 mb-8"
+            className="w-full bg-slate-800 text-white font-bold py-4 rounded-xl hover:bg-slate-900 transition-colors shadow-lg flex items-center justify-center gap-2 mb-6"
           >
             <Plus className="w-5 h-5" />
             Yeni Sistem Kelimesi Ekle
           </button>
 
-          {/* 🔥 EKLENEN KELİMELERİ LİSTELE VE SİL */}
+          {/* 🔥 ARAMA VE LİSTELEME */}
           <div>
             <h3 className="font-bold text-slate-700 mb-3 flex items-center gap-2">
-              Sistem Kelimeleri Listesi ({dynamicSystemWords.length})
+              Sistem Kelimeleri Listesi ({filteredSystemWords.length})
             </h3>
+
+            {/* Arama Kutusu */}
+            <div className="relative mb-4">
+               <Search className="absolute left-3 top-3.5 text-slate-400 w-5 h-5" />
+               <input 
+                  type="text" 
+                  placeholder="Sistem kelimelerinde ara..." 
+                  value={adminSearch} 
+                  onChange={(e) => setAdminSearch(e.target.value)}
+                  className="w-full pl-10 p-3 bg-white border border-slate-200 rounded-xl outline-none focus:border-slate-400 transition-colors"
+               />
+            </div>
             
             {dynamicSystemWords.length === 0 ? (
               <div className="text-center p-8 text-slate-400 text-sm bg-slate-100 rounded-xl border border-dashed border-slate-300">
                 <p>Henüz hiç sistem kelimesi yok.</p>
                 <p className="text-xs mt-1">Yukarıdaki butondan eklemeye başla.</p>
               </div>
+            ) : filteredSystemWords.length === 0 ? (
+              <div className="text-center p-4 text-slate-400 text-sm bg-slate-50 rounded-xl">
+                Aranan kelime bulunamadı.
+              </div>
             ) : (
               <div className="space-y-2">
-                {dynamicSystemWords.map((item) => (
+                {filteredSystemWords.map((item) => (
                   <div key={item.id} className="bg-white p-3 rounded-xl border border-slate-200 flex justify-between items-center shadow-sm">
                     <div>
                       <div className="font-bold text-slate-800">{item.word}</div>
@@ -1060,6 +1090,9 @@ export default function App() {
     };
     return <FormComponent />;
   }
+
+  // ... (Diğer görünümler: Home, Add_Word, Lists, Game aynen kalır)
+  // Kodun devamı aynıdır...
 
   // --- HOME ---
   if (currentView === "home") {
