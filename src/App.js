@@ -470,24 +470,27 @@ export default function App() {
     }, 300);
   };
 
-  // --- QUIZ LOGIC ---
+  // --- QUIZ LOGIC (DÜZELTİLDİ) ---
   const handleStartQuiz = () => {
     const allWords = getAllWords();
-    const unknownWords = allWords.filter((w) => !knownWordIds.includes(w.id));
+    
+    // Sadece anlamı (definition) dolu olan kelimeleri al
+    const validWords = allWords.filter(w => w.definitions && w.definitions.length > 0 && w.definitions[0].meaning.trim() !== "");
+    const unknownWords = validWords.filter((w) => !knownWordIds.includes(w.id));
 
-    if (allWords.length < 4) {
-        alert("Quiz başlatmak için sistemde en az 4 kelime olmalıdır!");
+    if (validWords.length < 4) {
+        alert("Quiz başlatmak için sistemde anlamı girilmiş en az 4 kelime olmalıdır!");
         return;
     }
 
-    const pool = unknownWords.length >= 4 ? unknownWords : allWords;
+    const pool = unknownWords.length >= 4 ? unknownWords : validWords;
     const questionCount = Math.min(20, pool.length);
     const shuffledPool = [...pool].sort(() => 0.5 - Math.random()).slice(0, questionCount);
 
     const generatedQuestions = shuffledPool.map(targetWord => {
         const correctAnswer = targetWord.definitions[0].meaning;
         
-        const distractors = allWords
+        const distractors = validWords
             .filter(w => w.id !== targetWord.id)
             .sort(() => 0.5 - Math.random())
             .slice(0, 3)
@@ -507,6 +510,7 @@ export default function App() {
     setQuizScore(0);
     setQuizSelectedOption(null);
     setQuizIsAnswered(false);
+    setSessionComplete(false); // Olası session çakışmasını önle
     setCurrentView("quiz");
   };
 
@@ -908,7 +912,9 @@ export default function App() {
       <div className="min-h-screen bg-slate-50 flex flex-col items-center p-6">
         <div className="w-full max-w-md space-y-8 mt-4">
           
+          {/* HEADER ALANI */}
           <div className="text-center relative">
+            
             <button 
                 onClick={resetProfileToDefaults} 
                 className="absolute left-10 top-0 p-2 bg-white rounded-full shadow-sm border border-slate-200 text-slate-400 hover:text-red-500 z-50 transition-transform active:scale-90" 
@@ -1159,7 +1165,7 @@ export default function App() {
     );
   }
 
-  // --- DICTIONARY VIEW (Sözlük Sayfası) ---
+  // --- DICTIONARY VIEW ---
   if (currentView === "dictionary") {
       return (
           <div className="min-h-screen bg-slate-50 flex flex-col items-center p-6">
@@ -1203,6 +1209,100 @@ export default function App() {
       );
   }
 
+  // --- QUIZ VIEW ---
+  if (currentView === "quiz") {
+    const currentQuestion = quizQuestions[quizIndex];
+    // Güvenlik: Eğer soru yoksa veya yüklenmediyse hata vermesin
+    if (!currentQuestion) return <div className="min-h-screen flex items-center justify-center">Yükleniyor...</div>;
+
+    const progress = ((quizIndex + 1) / quizQuestions.length) * 100;
+
+    return (
+        <div className="min-h-screen bg-slate-50 flex flex-col items-center p-6">
+             <div className="w-full max-w-md space-y-6 mt-4">
+                {/* Header */}
+                <div className="flex items-center justify-between">
+                    <button onClick={handleGoHome} className="p-2 hover:bg-slate-200 rounded-full"><X className="w-6 h-6 text-slate-400" /></button>
+                    <div className="text-sm font-bold text-slate-600">Soru {quizIndex + 1} / {quizQuestions.length}</div>
+                    <div className="px-3 py-1 bg-amber-100 text-amber-600 rounded-full font-bold text-sm">{quizScore} Puan</div>
+                </div>
+
+                {/* Progress Bar */}
+                <div className="w-full bg-slate-200 rounded-full h-2">
+                    <div className="bg-amber-500 h-2 rounded-full transition-all duration-300" style={{ width: `${progress}%` }}></div>
+                </div>
+
+                {/* Question Card */}
+                <div className="bg-white p-8 rounded-3xl shadow-lg text-center py-12 border border-slate-100">
+                    <span className="text-xs uppercase tracking-widest text-slate-400 font-semibold mb-2 block">Bu kelimenin anlamı ne?</span>
+                    <h2 className="text-4xl font-extrabold text-slate-800 mb-4">{currentQuestion.wordObj.word}</h2>
+                     <button onClick={() => speak(currentQuestion.wordObj.word)} className="p-2 bg-indigo-50 text-indigo-500 rounded-full hover:bg-indigo-100 inline-flex items-center justify-center"><Volume2 className="w-5 h-5" /></button>
+                </div>
+
+                {/* Options */}
+                <div className="space-y-3">
+                    {currentQuestion.options.map((option, idx) => {
+                        let buttonStyle = "bg-white border-2 border-slate-200 text-slate-700 hover:border-indigo-300";
+                        
+                        if (quizIsAnswered) {
+                            if (option === currentQuestion.correctAnswer) {
+                                buttonStyle = "bg-green-500 border-green-600 text-white"; 
+                            } else if (option === quizSelectedOption) {
+                                buttonStyle = "bg-red-500 border-red-600 text-white"; 
+                            } else {
+                                buttonStyle = "bg-slate-100 border-slate-200 text-slate-400 opacity-50"; 
+                            }
+                        }
+
+                        return (
+                            <button
+                                key={idx}
+                                disabled={quizIsAnswered}
+                                onClick={() => handleQuizAnswer(option)}
+                                className={`w-full p-4 rounded-xl font-bold text-lg transition-all active:scale-95 ${buttonStyle}`}
+                            >
+                                {option}
+                            </button>
+                        );
+                    })}
+                </div>
+             </div>
+        </div>
+    );
+  }
+
+  // --- QUIZ RESULT VIEW ---
+  if (currentView === "quiz_result") {
+    return (
+        <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50 p-6 text-center">
+            <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full">
+                <Award className="w-20 h-20 text-amber-500 mx-auto mb-4" />
+                <h2 className="text-2xl font-bold text-slate-800 mb-2">Quiz Tamamlandı!</h2>
+                <div className="text-5xl font-extrabold text-indigo-600 mb-2">{quizScore}</div>
+                <p className="text-slate-500 mb-8">Toplam Puan</p>
+
+                <div className="grid grid-cols-2 gap-4 mb-6 text-sm">
+                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                        <div className="font-bold text-slate-700">Soru Sayısı</div>
+                        <div className="text-slate-500">{quizQuestions.length}</div>
+                    </div>
+                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                        <div className="font-bold text-slate-700">Doğru Sayısı</div>
+                        <div className="text-slate-500">{quizScore / 5}</div>
+                    </div>
+                </div>
+
+                <button onClick={handleStartQuiz} className="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-3 px-6 rounded-xl transition-colors flex items-center justify-center gap-2 mb-3">
+                    <RotateCcw className="w-5 h-5" /> Yeniden Başla
+                </button>
+                <button onClick={handleGoHome} className="w-full bg-white border border-slate-200 text-slate-600 font-bold py-3 px-6 rounded-xl hover:bg-slate-50 transition-colors flex items-center justify-center gap-2">
+                    <Home className="w-5 h-5" /> Ana Sayfaya Dön
+                </button>
+            </div>
+        </div>
+    );
+  }
+
   // --- SESSION COMPLETE ---
   if (sessionComplete) {
     const allWords = getAllWords();
@@ -1223,7 +1323,6 @@ export default function App() {
   }
 
   // --- GAME VIEW ---
-  // ARTIK BURASI DA IF BLOĞU İÇİNDE. "FALL-THROUGH" HATASI OLUŞMAZ.
   if (currentView === "game") {
     const currentCard = sessionWords[currentIndex];
     const gameProgress = sessionWords.length === 0 ? 0 : (currentIndex / sessionWords.length) * 100;
@@ -1257,11 +1356,11 @@ export default function App() {
     );
   }
 
-  // --- FALLBACK VIEW (Hata durumunda boş sayfa yerine bu görünür) ---
+  // --- FALLBACK VIEW (Hata durumunda) ---
   return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
           <div className="text-center">
-              <h1 className="text-2xl font-bold text-slate-800 mb-2">Bir Hata Oluştu</h1>
+              <h1 className="text-2xl font-bold text-slate-800 mb-2">Bir Şeyler Ters Gitti</h1>
               <p className="text-slate-500 mb-4">Sayfa yüklenemedi veya geçersiz bir durum oluştu.</p>
               <button onClick={handleGoHome} className="bg-indigo-600 text-white px-6 py-3 rounded-xl font-bold">Ana Sayfaya Dön</button>
           </div>
