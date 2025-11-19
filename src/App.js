@@ -20,8 +20,7 @@ import {
   collection,
   addDoc,
   getDocs,
-  deleteDoc, // <-- Silme işlemi için gerekli
-  writeBatch 
+  deleteDoc,
 } from "firebase/firestore";
 import {
   BookOpen,
@@ -64,127 +63,12 @@ const db = getFirestore(app);
 const appId = "burak-ingilizce-pro";
 
 // --- ADMIN AYARLARI ---
-// 👇 SENİN MAİL ADRESİN GÖMÜLDÜ 👇
 const ADMIN_EMAILS = [
   "burakgul1994@outlook.com.tr"
 ];
 
-// --- SYSTEM WORDS (SABİT KELİMELER) ---
-const BASE_WORD_LIST = [
-  {
-    id: 1,
-    source: "system",
-    word: "the",
-    plural: "",
-    v2: "",
-    v3: "",
-    definitions: [{ type: "article", meaning: "belirtili tanımlık" }],
-    sentence: "The book is on the table.",
-  },
-  {
-    id: 2,
-    source: "system",
-    word: "be",
-    plural: "",
-    v2: "was / were",
-    v3: "been",
-    definitions: [{ type: "verb", meaning: "olmak" }],
-    sentence: "I want to be a nurse.\nI want to be a doctor.",
-  },
-  {
-    id: 3,
-    source: "system",
-    word: "and",
-    plural: "",
-    v2: "",
-    v3: "",
-    definitions: [{ type: "conj", meaning: "ve" }],
-    sentence: "You and I are friends.",
-  },
-  {
-    id: 4,
-    source: "system",
-    word: "to",
-    plural: "",
-    v2: "",
-    v3: "",
-    definitions: [{ type: "prep", meaning: "-e, -a doğru" }],
-    sentence: "I am going to school.",
-  },
-  {
-    id: 5,
-    source: "system",
-    word: "of",
-    plural: "",
-    v2: "",
-    v3: "",
-    definitions: [{ type: "prep", meaning: "-in, -ın" }],
-    sentence: "A cup of tea is ready.",
-  },
-  {
-    id: 6,
-    source: "system",
-    word: "a",
-    plural: "",
-    v2: "",
-    v3: "",
-    definitions: [{ type: "article", meaning: "bir" }],
-    sentence: "I have a car.",
-  },
-  {
-    id: 7,
-    source: "system",
-    word: "in",
-    plural: "",
-    v2: "",
-    v3: "",
-    definitions: [{ type: "prep", meaning: "içinde" }],
-    sentence: "She is in the kitchen.",
-  },
-  {
-    id: 8,
-    source: "system",
-    word: "that",
-    plural: "",
-    v2: "",
-    v3: "",
-    definitions: [
-      { type: "pronoun", meaning: "şu, o" },
-      { type: "conj", meaning: "ki" },
-    ],
-    sentence: "Look at that car.",
-  },
-  {
-    id: 9,
-    source: "system",
-    word: "have",
-    plural: "",
-    v2: "had",
-    v3: "had",
-    definitions: [{ type: "verb", meaning: "sahip olmak" }],
-    sentence: "I have a dog.",
-  },
-  {
-    id: 10,
-    source: "system",
-    word: "I",
-    plural: "",
-    v2: "",
-    v3: "",
-    definitions: [{ type: "pronoun", meaning: "ben" }],
-    sentence: "I love music.",
-  },
-  {
-    id: 11,
-    source: "system",
-    word: "swim",
-    plural: "",
-    v2: "swam",
-    v3: "swum",
-    definitions: [{ type: "verb", meaning: "yüzmek" }],
-    sentence: "I swim.",
-  },
-];
+// --- SYSTEM WORDS (ARTIK TAMAMEN BOŞ - HEPSİ DB'DEN GELECEK) ---
+const BASE_WORD_LIST = [];
 
 const WORD_TYPES = [
   { value: "noun", label: "İsim (Noun)" },
@@ -216,7 +100,7 @@ export default function App() {
   const [customWords, setCustomWords] = useState([]);
   const [deletedWordIds, setDeletedWordIds] = useState([]);
   
-  // 🔥 Dinamik Sistem Kelimeleri
+  // 🔥 Dinamik Sistem Kelimeleri (Ana Kaynak)
   const [dynamicSystemWords, setDynamicSystemWords] = useState([]);
 
   const [sessionWords, setSessionWords] = useState([]);
@@ -292,7 +176,7 @@ export default function App() {
     }
   };
 
-  // 🔥 Admin Kelimelerini Çekme
+  // 🔥 Admin Kelimelerini Çekme (Ana Sistem Kelimeleri)
   const fetchDynamicSystemWords = async () => {
     try {
       const querySnapshot = await getDocs(collection(db, "artifacts", appId, "system_words"));
@@ -330,57 +214,17 @@ export default function App() {
     }
   };
 
-  // 🔥 Admin: Sistem Kelimesini Silme (YENİ EKLENDİ)
+  // 🔥 Admin: Sistem Kelimesini Silme
   const handleDeleteSystemWord = async (wordId) => {
     const confirm = window.confirm("Bu sistem kelimesini silmek istediğine emin misin? Herkesten silinecek.");
     if (!confirm) return;
 
     try {
-      // Firestore'dan sil
       await deleteDoc(doc(db, "artifacts", appId, "system_words", wordId));
-      
-      // Ekranda anlık güncelle (Listeden çıkar)
       setDynamicSystemWords((prev) => prev.filter((w) => w.id !== wordId));
-      
     } catch (e) {
       console.error("Silme hatası:", e);
       alert("Silinirken hata oluştu.");
-    }
-  };
-
-  // 🔥 TEK SEFERLİK AKTARIM FONKSİYONU (Opsiyonel)
-  const handleMigrateBaseWords = async () => {
-    const confirm = window.confirm(
-      "Kod içindeki sabit kelimeler veritabanına kopyalanacak. Hazır mısın?"
-    );
-    if (!confirm) return;
-
-    setLoading(true);
-    try {
-      const batch = writeBatch(db);
-      const collectionRef = collection(db, "artifacts", appId, "system_words");
-
-      BASE_WORD_LIST.forEach((word) => {
-        const newDocRef = doc(collectionRef); 
-        const wordData = {
-          ...word,
-          id: newDocRef.id,
-          originalId: word.id,
-          source: "system",
-          createdAt: new Date()
-        };
-        batch.set(newDocRef, wordData);
-      });
-
-      await batch.commit();
-      alert("Aktarım Başarılı!");
-      window.location.reload();
-      
-    } catch (e) {
-      console.error("Aktarım hatası:", e);
-      alert("Hata: " + e.message);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -388,7 +232,7 @@ export default function App() {
   useEffect(() => {
     if (!user || customWords.length === 0) return;
 
-    const allBaseWords = [...BASE_WORD_LIST, ...dynamicSystemWords];
+    const allBaseWords = [...dynamicSystemWords]; // Sadece dinamik olanlar artık base
     const baseWordsLower = allBaseWords.map((b) => b.word.toLowerCase());
 
     const duplicates = customWords.filter(
@@ -438,9 +282,8 @@ export default function App() {
   };
 
   const normalizeWord = (w) => {
-    const isBase = BASE_WORD_LIST.some((b) => b.id === w.id);
     const isDynamic = dynamicSystemWords.some((d) => d.id === w.id);
-    const source = w.source || ((isBase || isDynamic) ? "system" : "user");
+    const source = w.source || (isDynamic ? "system" : "user");
 
     return {
       ...w,
@@ -453,7 +296,7 @@ export default function App() {
   };
 
   const getAllWords = () => {
-    const allSystem = [...BASE_WORD_LIST, ...dynamicSystemWords];
+    const allSystem = [...dynamicSystemWords];
     const filteredSystem = allSystem.filter(
       (w) => !deletedWordIds.includes(w.id)
     );
@@ -464,7 +307,7 @@ export default function App() {
   };
 
   const getDeletedWords = () => {
-    const allSystem = [...BASE_WORD_LIST, ...dynamicSystemWords];
+    const allSystem = [...dynamicSystemWords];
     const systemDeleted = allSystem.filter((w) =>
       deletedWordIds.includes(w.id)
     ).map(normalizeWord);
@@ -958,9 +801,9 @@ export default function App() {
     );
   }
 
-  // --- ADMIN DASHBOARD (YENİLENMİŞ) ---
+  // --- ADMIN DASHBOARD ---
   if (currentView === "admin_dashboard" && isAdmin) {
-    const totalSystemWords = BASE_WORD_LIST.length + dynamicSystemWords.length;
+    const totalSystemWords = dynamicSystemWords.length;
 
     return (
       <div className="min-h-screen bg-slate-50 p-4">
@@ -981,19 +824,12 @@ export default function App() {
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 mb-6">
             <h3 className="font-bold text-slate-700 mb-4">Sistem Durumu</h3>
             <div className="space-y-3">
-              <div className="flex justify-between p-3 bg-slate-50 rounded-lg">
-                <span className="text-slate-500">Sabit Kelimeler</span>
-                <span className="font-bold text-slate-800">
-                  {BASE_WORD_LIST.length}
-                </span>
-              </div>
-              <div className="flex justify-between p-3 bg-slate-50 rounded-lg">
-                <span className="text-slate-500">Dinamik Eklenenler</span>
-                <span className="font-bold text-indigo-600">{dynamicSystemWords.length}</span>
-              </div>
               <div className="flex justify-between p-3 bg-blue-50 rounded-lg border border-blue-100">
-                <span className="text-blue-800 font-medium">Toplam Sistem</span>
+                <span className="text-blue-800 font-medium">Toplam Sistem Kelimesi</span>
                 <span className="font-bold text-blue-800">{totalSystemWords}</span>
+              </div>
+              <div className="text-xs text-slate-400 text-center pt-2">
+                * Bu kelimeler tüm kullanıcılar tarafından görülür.
               </div>
             </div>
           </div>
@@ -1010,12 +846,13 @@ export default function App() {
           {/* 🔥 EKLENEN KELİMELERİ LİSTELE VE SİL */}
           <div>
             <h3 className="font-bold text-slate-700 mb-3 flex items-center gap-2">
-              Son Eklenenler ({dynamicSystemWords.length})
+              Sistem Kelimeleri Listesi ({dynamicSystemWords.length})
             </h3>
             
             {dynamicSystemWords.length === 0 ? (
-              <div className="text-center p-4 text-slate-400 text-sm bg-slate-100 rounded-xl">
-                Henüz dinamik kelime eklenmedi.
+              <div className="text-center p-8 text-slate-400 text-sm bg-slate-100 rounded-xl border border-dashed border-slate-300">
+                <p>Henüz hiç sistem kelimesi yok.</p>
+                <p className="text-xs mt-1">Yukarıdaki butondan eklemeye başla.</p>
               </div>
             ) : (
               <div className="space-y-2">
@@ -1038,19 +875,6 @@ export default function App() {
               </div>
             )}
           </div>
-
-          {/* MIGRATION BUTONU (OPSİYONEL) */}
-          {BASE_WORD_LIST.length > 0 && (
-            <div className="mt-8 pt-6 border-t border-slate-200">
-               <button
-                onClick={handleMigrateBaseWords}
-                className="w-full py-2 text-orange-600 text-xs font-bold hover:bg-orange-50 rounded transition-colors"
-              >
-                (Opsiyonel) Gömülü Kelimeleri Veritabanına Aktar
-              </button>
-            </div>
-          )}
-
         </div>
       </div>
     );
