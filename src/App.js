@@ -734,7 +734,7 @@ export default function App() {
               <Brain className="text-white w-8 h-8" />
             </div>
             <h1 className="text-2xl font-bold text-slate-800">
-              Burak İngilizce
+              Elif'i Seviyorum
             </h1>
             <p className="text-slate-500">Kelimelerini kaybetme.</p>
           </div>
@@ -1174,7 +1174,7 @@ export default function App() {
               </div>
             </div>
             <h1 className="text-3xl font-extrabold text-slate-800 tracking-tight">
-              Burak ve Elif İngilizce Öğreniyor
+              Elfida İle İngilizceye Doğru
             </h1>
             <p className="text-slate-500 mt-2">
               Merhaba, {user.displayName || user.email}
