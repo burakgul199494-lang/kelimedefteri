@@ -245,7 +245,7 @@ export default function App() {
         plural: wordData.plural || "",
         v2: wordData.v2 || "",
         v3: wordData.v3 || "",
-        vIng: wordData.vIng || "", // YENİ: vIng eklendi
+        vIng: wordData.vIng || "", 
         definitions: wordData.definitions,
         sentence: wordData.sentence.trim(),
         source: "system",
@@ -267,7 +267,7 @@ export default function App() {
         plural: wordData.plural || "",
         v2: wordData.v2 || "",
         v3: wordData.v3 || "",
-        vIng: wordData.vIng || "", // YENİ
+        vIng: wordData.vIng || "", 
         definitions: wordData.definitions,
         sentence: wordData.sentence.trim(),
         updatedAt: new Date()
@@ -330,7 +330,6 @@ export default function App() {
     window.speechSynthesis.speak(utterance);
   };
 
-  // YENİ: Normalizasyona vIng eklendi
   const normalizeWord = (w) => {
     const isDynamic = dynamicSystemWords.some((d) => d.id === w.id);
     const source = w.source || (isDynamic ? "system" : "user");
@@ -340,7 +339,7 @@ export default function App() {
       plural: w.plural || "",
       v2: w.v2 || "",
       v3: w.v3 || "",
-      vIng: w.vIng || "", // vIng normalizasyonu
+      vIng: w.vIng || "",
       definitions: Array.isArray(w.definitions) ? w.definitions : [{ type: "other", meaning: "" }]
     };
   };
@@ -394,7 +393,7 @@ export default function App() {
     }
   };
 
-  // --- DICTIONARY LOGIC (GÜNCELLENDİ) ---
+  // --- DICTIONARY LOGIC ---
   const handleDictionarySearch = (e) => {
       e.preventDefault();
       if(!dictSearchTerm.trim()) return;
@@ -405,12 +404,11 @@ export default function App() {
       const term = dictSearchTerm.toLowerCase().trim();
       const allWords = getAllWords();
 
-      // Arama Mantığı: Kelimenin kendisi, V2, V3 VE ARTIK V-ING ile de arama
       const foundWord = allWords.find(w => 
         w.word.toLowerCase() === term ||
         (w.v2 && w.v2.toLowerCase() === term) ||
         (w.v3 && w.v3.toLowerCase() === term) ||
-        (w.vIng && w.vIng.toLowerCase() === term) || // YENİ KONTROL
+        (w.vIng && w.vIng.toLowerCase() === term) || 
         (w.plural && w.plural.toLowerCase() === term)
       );
 
@@ -549,7 +547,7 @@ export default function App() {
       plural: wordData.plural || "",
       v2: wordData.v2 || "",
       v3: wordData.v3 || "",
-      vIng: wordData.vIng || "", // YENİ
+      vIng: wordData.vIng || "", 
       definitions: wordData.definitions,
       sentence: wordData.sentence.trim(),
       source: "user",
@@ -669,7 +667,7 @@ export default function App() {
     );
   };
 
-  // --- CARD COMPONENT (GÜNCELLENDİ: vIng Eklendi) ---
+  // --- CARD COMPONENT ---
   const WordCard = ({ wordObj }) => {
       const mainDef = wordObj.definitions[0] || { type: "", meaning: "" };
       const otherDefs = wordObj.definitions.length > 1 ? wordObj.definitions.slice(1) : [];
@@ -682,7 +680,6 @@ export default function App() {
                 <div className="bg-indigo-50 p-4 rounded-xl relative overflow-hidden"><div className="text-[10px] uppercase font-bold text-indigo-300 absolute top-2 right-2 tracking-wider">{mainDef.type}</div><div className="text-xs uppercase tracking-wide text-indigo-400 font-bold mb-1">Anlamı</div><p className="text-2xl font-medium text-indigo-900">{mainDef.meaning}</p></div>
                 {otherDefs.length > 0 && (<div className="bg-white p-3 rounded-xl border border-slate-100 text-left"><div className="text-[10px] uppercase tracking-wide text-slate-400 font-bold mb-2 text-center">Diğer Anlamlar</div><div className="space-y-2">{otherDefs.map((def, idx) => (<div key={idx} className="flex items-center gap-3 text-sm"><span className="text-xs font-mono bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded">{getShortTypeLabel(def.type)}</span><span className="text-slate-700">{def.meaning}</span></div>))}</div></div>)}
                 
-                {/* FORM HALLERİ GÖSTERİMİ GÜNCELLENDİ */}
                 {(wordObj.plural || wordObj.v2 || wordObj.v3 || wordObj.vIng) && (
                     <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 text-left space-y-1">
                         {wordObj.plural && <div className="text-sm text-slate-700"><span className="font-semibold">Plural:</span> {wordObj.plural}</div>}
@@ -828,7 +825,7 @@ export default function App() {
     );
   }
 
-  // --- ADMIN: ADD / EDIT SYSTEM WORD (GÜNCELLENDİ: vIng) ---
+  // --- ADMIN: ADD / EDIT SYSTEM WORD ---
   if (currentView === "add_system_word" && isAdmin) {
     const isEditMode = !!editingWord;
     const initialData = isEditMode ? { word: editingWord.word, plural: editingWord.plural || "", v2: editingWord.v2 || "", v3: editingWord.v3 || "", vIng: editingWord.vIng || "", definitions: editingWord.definitions, sentence: editingWord.sentence } : { word: "", plural: "", v2: "", v3: "", vIng: "", definitions: [{ type: "noun", meaning: "" }], sentence: "" };
@@ -873,12 +870,10 @@ export default function App() {
               <div><label className="block text-sm font-medium text-slate-700 mb-1">Kelime</label><input type="text" value={formData.word} onChange={(e) => setFormData({ ...formData, word: e.target.value })} className="w-full p-3 border border-slate-200 rounded-xl outline-none" placeholder="Örn: Apple"/></div>
               <div className="grid grid-cols-1 gap-3">
                 <div><label className="block text-sm font-medium text-slate-700 mb-1">Çoğul</label><input type="text" value={formData.plural} onChange={(e) => setFormData({ ...formData, plural: e.target.value })} className="w-full p-3 border border-slate-200 rounded-xl outline-none"/></div>
-                
-                {/* V2, V3 ve V-ing Grid Yapısı */}
                 <div className="grid grid-cols-3 gap-3">
-                  <div><label className="block text-sm font-medium text-slate-700 mb-1">V2</label><input type="text" value={formData.v2} onChange={(e) => setFormData({ ...formData, v2: e.target.value })} className="w-full p-2 border border-slate-200 rounded-xl outline-none text-sm"/></div>
-                  <div><label className="block text-sm font-medium text-slate-700 mb-1">V3</label><input type="text" value={formData.v3} onChange={(e) => setFormData({ ...formData, v3: e.target.value })} className="w-full p-2 border border-slate-200 rounded-xl outline-none text-sm"/></div>
-                  <div><label className="block text-sm font-medium text-slate-700 mb-1">V-ing</label><input type="text" value={formData.vIng} onChange={(e) => setFormData({ ...formData, vIng: e.target.value })} className="w-full p-2 border border-slate-200 rounded-xl outline-none text-sm" placeholder="hunting"/></div>
+                  <div><label className="block text-sm font-medium text-slate-700 mb-1">V2</label><input type="text" value={formData.v2} onChange={(e) => setFormData({ ...formData, v2: e.target.value })} className="w-full p-2 border border-slate-200 rounded-xl outline-none text-sm" placeholder="went"/></div>
+                  <div><label className="block text-sm font-medium text-slate-700 mb-1">V3</label><input type="text" value={formData.v3} onChange={(e) => setFormData({ ...formData, v3: e.target.value })} className="w-full p-2 border border-slate-200 rounded-xl outline-none text-sm" placeholder="gone"/></div>
+                  <div><label className="block text-sm font-medium text-slate-700 mb-1">V-ing</label><input type="text" value={formData.vIng} onChange={(e) => setFormData({ ...formData, vIng: e.target.value })} className="w-full p-2 border border-slate-200 rounded-xl outline-none text-sm" placeholder="going"/></div>
                 </div>
               </div>
               <div className="space-y-3">
@@ -913,19 +908,17 @@ export default function App() {
       <div className="min-h-screen bg-slate-50 flex flex-col items-center p-6">
         <div className="w-full max-w-md space-y-8 mt-4">
           
-          {/* HEADER ALANI */}
           <div className="text-center relative">
-            
             <button 
                 onClick={resetProfileToDefaults} 
-                className="absolute left-12 top-0 p-2 bg-white rounded-full shadow-sm border border-slate-200 text-slate-400 hover:text-red-500 z-50 transition-transform active:scale-90" 
+                className="absolute left-10 top-0 p-2 bg-white rounded-full shadow-sm border border-slate-200 text-slate-400 hover:text-red-500 z-50 transition-transform active:scale-90" 
                 title="Varsayılan Ayarlara Dön">
                 <RotateCcw size={18} />
             </button>
             
             <button 
                 onClick={handleLogout} 
-                className="absolute right-12 top-0 p-2 bg-white rounded-full shadow-sm border border-slate-200 text-slate-400 hover:text-red-500 z-50 transition-transform active:scale-90"
+                className="absolute right-10 top-0 p-2 bg-white rounded-full shadow-sm border border-slate-200 text-slate-400 hover:text-red-500 z-50 transition-transform active:scale-90"
                 title="Çıkış Yap">
                 <LogOut size={18} />
             </button>
@@ -1007,7 +1000,7 @@ export default function App() {
     );
   }
 
-  // --- ADD / EDIT FORM (USER) (GÜNCELLENDİ: vIng) ---
+  // --- ADD / EDIT FORM (USER) ---
   if (currentView === "add_word" || currentView === "edit_word") {
     const isEditMode = currentView === "edit_word";
     const normalizedEditWord = isEditMode && editingWord ? normalizeWord(editingWord) : null;
@@ -1047,8 +1040,6 @@ export default function App() {
               <div><label className="block text-sm font-medium text-slate-700 mb-1">İngilizce Kelime</label><input type="text" value={formData.word} onChange={(e) => setFormData({ ...formData, word: e.target.value })} className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none" placeholder="Örn: Bank" autoFocus /></div>
               <div className="grid grid-cols-1 gap-3">
                 <div><label className="block text-sm font-medium text-slate-700 mb-1">Çoğul Hali (Plural)</label><input type="text" value={formData.plural} onChange={(e) => setFormData({ ...formData, plural: e.target.value })} className="w-full p-3 border border-slate-200 rounded-xl outline-none" placeholder="Sadece isimler için → cars, books..." /></div>
-                
-                {/* V2, V3, V-ing Grid */}
                 <div className="grid grid-cols-3 gap-3">
                   <div><label className="block text-sm font-medium text-slate-700 mb-1">V2</label><input type="text" value={formData.v2} onChange={(e) => setFormData({ ...formData, v2: e.target.value })} className="w-full p-2 border border-slate-200 rounded-xl outline-none text-sm" placeholder="went"/></div>
                   <div><label className="block text-sm font-medium text-slate-700 mb-1">V3</label><input type="text" value={formData.v3} onChange={(e) => setFormData({ ...formData, v3: e.target.value })} className="w-full p-2 border border-slate-200 rounded-xl outline-none text-sm" placeholder="gone"/></div>
@@ -1127,7 +1118,6 @@ export default function App() {
                         <div className="flex items-baseline gap-2 mb-1"><span className="text-xs font-bold text-slate-400 w-8 text-right shrink-0">{getShortTypeLabel(item.definitions[0].type)}</span><span className="text-sm text-slate-700 font-medium">{item.definitions[0].meaning}</span></div>
                         {item.definitions.slice(1).map((def, idx) => (<div key={idx} className="flex items-baseline gap-2"><span className="text-xs font-bold text-slate-300 w-8 text-right shrink-0">{getShortTypeLabel(def.type)}</span><span className="text-xs text-slate-500">{def.meaning}</span></div>))}
                         
-                        {/* LİSTE GÖRÜNÜMÜNDE FORMLAR (GÜNCELLENDİ) */}
                         {(item.plural || item.v2 || item.v3 || item.vIng) && (
                             <div className="mt-2 text-xs text-slate-600 space-y-1">
                                 {item.plural && <div><span className="font-semibold">Plural:</span> {item.plural}</div>}
@@ -1169,7 +1159,51 @@ export default function App() {
     );
   }
 
-  // --- SESSION COMPLETE, GAME VIEW, VS... (Aynı Kalıyor) ---
+  // --- DICTIONARY VIEW (Sözlük Sayfası) ---
+  if (currentView === "dictionary") {
+      return (
+          <div className="min-h-screen bg-slate-50 flex flex-col items-center p-6">
+              <div className="w-full max-w-md space-y-6 mt-4">
+                  <div className="flex items-center gap-3">
+                    <button onClick={handleGoHome} className="p-2 hover:bg-slate-200 rounded-full transition-colors"><ArrowLeft className="w-6 h-6 text-slate-600" /></button>
+                    <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2"><Book className="w-6 h-6 text-sky-500" /> Sözlük</h2>
+                  </div>
+
+                  <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                      <form onSubmit={handleDictionarySearch} className="relative">
+                          <input 
+                            type="text" 
+                            placeholder="Kelime ara (örn: sat, sitting...)" 
+                            value={dictSearchTerm} 
+                            onChange={(e) => setDictSearchTerm(e.target.value)} 
+                            className="w-full p-4 pr-12 border-2 border-slate-200 rounded-xl outline-none focus:border-sky-500 transition-colors font-medium text-lg"
+                            autoFocus
+                          />
+                          <button type="submit" className="absolute right-3 top-3 p-2 bg-sky-500 text-white rounded-lg hover:bg-sky-600 transition-colors">
+                              <Search className="w-5 h-5" />
+                          </button>
+                      </form>
+                      <p className="text-xs text-slate-400 mt-2 ml-1">💡 İpucu: Fiillerin 2., 3. veya -ing hallerini de arayabilirsin.</p>
+                  </div>
+
+                  {dictError && (
+                      <div className="bg-red-50 text-red-600 p-4 rounded-xl flex items-center gap-3">
+                          <AlertCircle className="w-6 h-6 flex-shrink-0" />
+                          <span>{dictError}</span>
+                      </div>
+                  )}
+
+                  {dictResult && (
+                      <div className="flex justify-center">
+                           <WordCard wordObj={dictResult} />
+                      </div>
+                  )}
+              </div>
+          </div>
+      );
+  }
+
+  // --- SESSION COMPLETE ---
   if (sessionComplete) {
     const allWords = getAllWords();
     return (
@@ -1188,34 +1222,49 @@ export default function App() {
     );
   }
 
-  const currentCard = sessionWords[currentIndex];
-  const gameProgress = sessionWords.length === 0 ? 0 : (currentIndex / sessionWords.length) * 100;
+  // --- GAME VIEW ---
+  // ARTIK BURASI DA IF BLOĞU İÇİNDE. "FALL-THROUGH" HATASI OLUŞMAZ.
+  if (currentView === "game") {
+    const currentCard = sessionWords[currentIndex];
+    const gameProgress = sessionWords.length === 0 ? 0 : (currentIndex / sessionWords.length) * 100;
   
+    return (
+        <div className="flex flex-col min-h-screen bg-slate-100 overflow-hidden">
+        <div className="bg-white shadow-sm p-4 z-10">
+            <div className="max-w-md mx-auto">
+            <div className="flex justify-between items-center mb-2">
+                <button onClick={handleGoHome} className="text-slate-400 hover:text-slate-700"><X className="w-6 h-6" /></button>
+                <span className="text-xs font-semibold bg-indigo-100 text-indigo-700 px-2 py-1 rounded-full">{currentIndex + 1} / {sessionWords.length}</span>
+            </div>
+            <div className="w-full bg-slate-200 rounded-full h-2.5"><div className="bg-indigo-600 h-2.5 rounded-full transition-all duration-500" style={{ width: `${gameProgress}%` }}></div></div>
+            </div>
+        </div>
+        <div className="flex-1 flex items-center justify-center p-4 relative">
+            {currentCard && (
+            <div className={`relative w-full max-w-sm transition-all duration-300 transform ${swipeDirection === "left" ? "-translate-x-24 -rotate-6 opacity-0" : ""} ${swipeDirection === "right" ? "translate-x-24 rotate-6 opacity-0" : ""}`}>
+                <WordCard wordObj={currentCard} />
+            </div>
+            )}
+        </div>
+        <div className="pb-10 px-6 max-w-md mx-auto w-full">
+            <div className="flex gap-4 justify-center">
+            <button onClick={() => handleSwipe("left")} disabled={!!swipeDirection} className="flex-1 bg-white border-2 border-orange-100 hover:bg-orange-50 text-orange-500 font-bold py-4 px-6 rounded-2xl shadow-sm active:scale-95 transition-all flex flex-col items-center gap-1"><div className="p-3 bg-orange-100 rounded-full mb-1"><X className="w-6 h-6" /></div><span>Öğreniyorum</span><span className="text-xs opacity-60 font-normal">(Sol)</span></button>
+            <button onClick={() => handleSwipe("right")} disabled={!!swipeDirection} className="flex-1 bg-white border-2 border-green-100 hover:bg-green-50 text-green-600 font-bold py-4 px-6 rounded-2xl shadow-sm active:scale-95 transition-all flex flex-col items-center gap-1"><div className="p-3 bg-green-100 rounded-full mb-1"><Check className="w-6 h-6" /></div><span>Biliyorum</span><span className="text-xs opacity-60 font-normal">(Sağ)</span></button>
+            </div>
+            <button onClick={handleEndSessionEarly} className="mt-6 flex items-center justify-center gap-2 text-slate-400 hover:text-red-500 transition-colors text-sm font-medium mx-auto"><Flag className="w-4 h-4" /> Pes Et ve Bitir</button>
+        </div>
+        </div>
+    );
+  }
+
+  // --- FALLBACK VIEW (Hata durumunda boş sayfa yerine bu görünür) ---
   return (
-    <div className="flex flex-col min-h-screen bg-slate-100 overflow-hidden">
-      <div className="bg-white shadow-sm p-4 z-10">
-        <div className="max-w-md mx-auto">
-          <div className="flex justify-between items-center mb-2">
-            <button onClick={handleGoHome} className="text-slate-400 hover:text-slate-700"><X className="w-6 h-6" /></button>
-            <span className="text-xs font-semibold bg-indigo-100 text-indigo-700 px-2 py-1 rounded-full">{currentIndex + 1} / {sessionWords.length}</span>
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
+          <div className="text-center">
+              <h1 className="text-2xl font-bold text-slate-800 mb-2">Bir Hata Oluştu</h1>
+              <p className="text-slate-500 mb-4">Sayfa yüklenemedi veya geçersiz bir durum oluştu.</p>
+              <button onClick={handleGoHome} className="bg-indigo-600 text-white px-6 py-3 rounded-xl font-bold">Ana Sayfaya Dön</button>
           </div>
-          <div className="w-full bg-slate-200 rounded-full h-2.5"><div className="bg-indigo-600 h-2.5 rounded-full transition-all duration-500" style={{ width: `${gameProgress}%` }}></div></div>
-        </div>
       </div>
-      <div className="flex-1 flex items-center justify-center p-4 relative">
-        {currentCard && (
-          <div className={`relative w-full max-w-sm transition-all duration-300 transform ${swipeDirection === "left" ? "-translate-x-24 -rotate-6 opacity-0" : ""} ${swipeDirection === "right" ? "translate-x-24 rotate-6 opacity-0" : ""}`}>
-              <WordCard wordObj={currentCard} />
-          </div>
-        )}
-      </div>
-      <div className="pb-10 px-6 max-w-md mx-auto w-full">
-        <div className="flex gap-4 justify-center">
-          <button onClick={() => handleSwipe("left")} disabled={!!swipeDirection} className="flex-1 bg-white border-2 border-orange-100 hover:bg-orange-50 text-orange-500 font-bold py-4 px-6 rounded-2xl shadow-sm active:scale-95 transition-all flex flex-col items-center gap-1"><div className="p-3 bg-orange-100 rounded-full mb-1"><X className="w-6 h-6" /></div><span>Öğreniyorum</span><span className="text-xs opacity-60 font-normal">(Sol)</span></button>
-          <button onClick={() => handleSwipe("right")} disabled={!!swipeDirection} className="flex-1 bg-white border-2 border-green-100 hover:bg-green-50 text-green-600 font-bold py-4 px-6 rounded-2xl shadow-sm active:scale-95 transition-all flex flex-col items-center gap-1"><div className="p-3 bg-green-100 rounded-full mb-1"><Check className="w-6 h-6" /></div><span>Biliyorum</span><span className="text-xs opacity-60 font-normal">(Sağ)</span></button>
-        </div>
-        <button onClick={handleEndSessionEarly} className="mt-6 flex items-center justify-center gap-2 text-slate-400 hover:text-red-500 transition-colors text-sm font-medium mx-auto"><Flag className="w-4 h-4" /> Pes Et ve Bitir</button>
-      </div>
-    </div>
   );
 }
