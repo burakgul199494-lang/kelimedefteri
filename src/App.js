@@ -64,8 +64,8 @@ const appId = "burak-ingilizce-pro";
 // --- ADMIN AYARLARI ---
 // 👇 BURAYA KENDİ E-POSTA ADRESİNİ YAZMALISIN 👇
 const ADMIN_EMAILS = [
-  "senin_epostan@gmail.com", 
-  "burak@ornek.com"
+  "burakgul1994@outlook.com.tr", 
+  "burakgul1994@outlook.com.tr"
 ];
 
 // --- SYSTEM WORDS (SABİT KELİMELER) ---
