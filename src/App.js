@@ -902,7 +902,7 @@ export default function App() {
             {/* SIFIRLAMA BUTONU: left-0 yerine left-4 yapıldı (hafif sağa) */}
             <button 
                 onClick={resetProfileToDefaults} 
-                className="absolute left-4 top-0 p-2 bg-white rounded-full shadow-sm border border-slate-200 text-slate-400 hover:text-red-500 z-50 transition-transform active:scale-90" 
+                className="absolute left-10 top-0 p-2 bg-white rounded-full shadow-sm border border-slate-200 text-slate-400 hover:text-red-500 z-50 transition-transform active:scale-90" 
                 title="Varsayılan Ayarlara Dön">
                 <RotateCcw size={18} />
             </button>
@@ -910,7 +910,7 @@ export default function App() {
             {/* ÇIKIŞ BUTONU: right-0 yerine right-4 yapıldı (hafif sola) */}
             <button 
                 onClick={handleLogout} 
-                className="absolute right-4 top-0 p-2 bg-white rounded-full shadow-sm border border-slate-200 text-slate-400 hover:text-red-500 z-50 transition-transform active:scale-90"
+                className="absolute right-10 top-0 p-2 bg-white rounded-full shadow-sm border border-slate-200 text-slate-400 hover:text-red-500 z-50 transition-transform active:scale-90"
                 title="Çıkış Yap">
                 <LogOut size={18} />
             </button>
