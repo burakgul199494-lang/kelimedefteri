@@ -17,9 +17,11 @@ import {
   updateDoc,
   arrayUnion,
   arrayRemove,
-  collection, // Admin için eklendi
-  addDoc,     // Admin için eklendi
-  getDocs,    // Admin için eklendi
+  collection,
+  addDoc,
+  getDocs,
+  deleteDoc, // <-- Silme işlemi için gerekli
+  writeBatch 
 } from "firebase/firestore";
 import {
   BookOpen,
@@ -43,7 +45,7 @@ import {
   Mail,
   Lock,
   Flag,
-  Shield, // Admin ikonu
+  Shield,
 } from "lucide-react";
 
 // --- FIREBASE CONFIG ---
@@ -62,9 +64,8 @@ const db = getFirestore(app);
 const appId = "burak-ingilizce-pro";
 
 // --- ADMIN AYARLARI ---
-// 👇 BURAYA KENDİ E-POSTA ADRESİNİ YAZMALISIN 👇
+// 👇 SENİN MAİL ADRESİN GÖMÜLDÜ 👇
 const ADMIN_EMAILS = [
-  "burakgul1994@outlook.com.tr", 
   "burakgul1994@outlook.com.tr"
 ];
 
@@ -208,14 +209,14 @@ export default function App() {
   }, []);
 
   const [user, setUser] = useState(null);
-  const [isAdmin, setIsAdmin] = useState(false); // Admin yetkisi
+  const [isAdmin, setIsAdmin] = useState(false);
   const [authLoading, setAuthLoading] = useState(true);
 
   const [knownWordIds, setKnownWordIds] = useState([]);
   const [customWords, setCustomWords] = useState([]);
   const [deletedWordIds, setDeletedWordIds] = useState([]);
   
-  // 🔥 Adminin eklediği dinamik sistem kelimeleri
+  // 🔥 Dinamik Sistem Kelimeleri
   const [dynamicSystemWords, setDynamicSystemWords] = useState([]);
 
   const [sessionWords, setSessionWords] = useState([]);
@@ -229,7 +230,6 @@ export default function App() {
   const [editingWord, setEditingWord] = useState(null);
   const [returnView, setReturnView] = useState("unknown_list");
 
-  // search states
   const [searchKnown, setSearchKnown] = useState("");
   const [searchUnknown, setSearchUnknown] = useState("");
   const [searchTrash, setSearchTrash] = useState("");
@@ -239,7 +239,6 @@ export default function App() {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       
-      // Admin Kontrolü
       if (currentUser && ADMIN_EMAILS.includes(currentUser.email)) {
         setIsAdmin(true);
       } else {
@@ -251,11 +250,11 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // --- USER & SYSTEM DATA FETCH ---
+  // --- DATA FETCH ---
   useEffect(() => {
     if (user) {
       fetchUserData();
-      fetchDynamicSystemWords(); // Admin kelimelerini çek
+      fetchDynamicSystemWords();
     } else {
       setKnownWordIds([]);
       setCustomWords([]);
@@ -285,10 +284,6 @@ export default function App() {
         setKnownWordIds(data.known_ids || []);
         setCustomWords(data.custom_words || []);
         setDeletedWordIds(data.deleted_ids || []);
-      } else {
-        setKnownWordIds([]);
-        setCustomWords([]);
-        setDeletedWordIds([]);
       }
     } catch (error) {
       console.error("Veri çekme hatası:", error);
@@ -297,7 +292,7 @@ export default function App() {
     }
   };
 
-  // 🔥 Admin Kelimelerini Çekme Fonksiyonu
+  // 🔥 Admin Kelimelerini Çekme
   const fetchDynamicSystemWords = async () => {
     try {
       const querySnapshot = await getDocs(collection(db, "artifacts", appId, "system_words"));
@@ -311,7 +306,7 @@ export default function App() {
     }
   };
 
-  // 🔥 Admin: Kelime Kaydetme
+  // 🔥 Admin: Yeni Kelime Ekleme
   const handleSaveSystemWord = async (wordData) => {
     try {
       const newWord = {
@@ -335,11 +330,64 @@ export default function App() {
     }
   };
 
-  // 🔥 DUPLICATE KONTROL (Kullanıcı vs Sistem)
+  // 🔥 Admin: Sistem Kelimesini Silme (YENİ EKLENDİ)
+  const handleDeleteSystemWord = async (wordId) => {
+    const confirm = window.confirm("Bu sistem kelimesini silmek istediğine emin misin? Herkesten silinecek.");
+    if (!confirm) return;
+
+    try {
+      // Firestore'dan sil
+      await deleteDoc(doc(db, "artifacts", appId, "system_words", wordId));
+      
+      // Ekranda anlık güncelle (Listeden çıkar)
+      setDynamicSystemWords((prev) => prev.filter((w) => w.id !== wordId));
+      
+    } catch (e) {
+      console.error("Silme hatası:", e);
+      alert("Silinirken hata oluştu.");
+    }
+  };
+
+  // 🔥 TEK SEFERLİK AKTARIM FONKSİYONU (Opsiyonel)
+  const handleMigrateBaseWords = async () => {
+    const confirm = window.confirm(
+      "Kod içindeki sabit kelimeler veritabanına kopyalanacak. Hazır mısın?"
+    );
+    if (!confirm) return;
+
+    setLoading(true);
+    try {
+      const batch = writeBatch(db);
+      const collectionRef = collection(db, "artifacts", appId, "system_words");
+
+      BASE_WORD_LIST.forEach((word) => {
+        const newDocRef = doc(collectionRef); 
+        const wordData = {
+          ...word,
+          id: newDocRef.id,
+          originalId: word.id,
+          source: "system",
+          createdAt: new Date()
+        };
+        batch.set(newDocRef, wordData);
+      });
+
+      await batch.commit();
+      alert("Aktarım Başarılı!");
+      window.location.reload();
+      
+    } catch (e) {
+      console.error("Aktarım hatası:", e);
+      alert("Hata: " + e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 🔥 DUPLICATE KONTROL
   useEffect(() => {
     if (!user || customWords.length === 0) return;
 
-    // Hem sabit hem dinamik sistem kelimelerini kontrol et
     const allBaseWords = [...BASE_WORD_LIST, ...dynamicSystemWords];
     const baseWordsLower = allBaseWords.map((b) => b.word.toLowerCase());
 
@@ -362,13 +410,11 @@ export default function App() {
           "vocab_game",
           "progress"
         );
-
         const idsToAdd = duplicates.map((w) => w.id);
 
         await updateDoc(userRef, {
           deleted_ids: arrayUnion(...idsToAdd),
         });
-
         setDeletedWordIds((prev) => [...prev, ...idsToAdd]);
       } catch (e) {
         console.error("Duplicate move error:", e);
@@ -392,38 +438,22 @@ export default function App() {
   };
 
   const normalizeWord = (w) => {
-    // Kelime sabit listede veya dinamik sistem listesinde var mı?
     const isBase = BASE_WORD_LIST.some((b) => b.id === w.id);
     const isDynamic = dynamicSystemWords.some((d) => d.id === w.id);
     const source = w.source || ((isBase || isDynamic) ? "system" : "user");
 
-    const plural = w.plural || "";
-    const v2 = w.v2 || "";
-    const v3 = w.v3 || "";
-
-    if (Array.isArray(w.definitions)) {
-      return { ...w, source, plural, v2, v3 };
-    }
-
     return {
       ...w,
       source,
-      plural,
-      v2,
-      v3,
-      definitions: [
-        {
-          type: w.type || "other",
-          meaning: w.meaning || "",
-        },
-      ],
+      plural: w.plural || "",
+      v2: w.v2 || "",
+      v3: w.v3 || "",
+      definitions: Array.isArray(w.definitions) ? w.definitions : [{ type: "other", meaning: "" }]
     };
   };
 
   const getAllWords = () => {
-    // Tüm kaynakları birleştir: Sabit + Dinamik + Kullanıcı
     const allSystem = [...BASE_WORD_LIST, ...dynamicSystemWords];
-    
     const filteredSystem = allSystem.filter(
       (w) => !deletedWordIds.includes(w.id)
     );
@@ -435,7 +465,6 @@ export default function App() {
 
   const getDeletedWords = () => {
     const allSystem = [...BASE_WORD_LIST, ...dynamicSystemWords];
-    
     const systemDeleted = allSystem.filter((w) =>
       deletedWordIds.includes(w.id)
     ).map(normalizeWord);
@@ -444,8 +473,7 @@ export default function App() {
       .filter((w) => deletedWordIds.includes(w.id))
       .map(normalizeWord);
 
-    const merged = [...systemDeleted, ...customDeleted];
-    return merged.sort((a, b) => a.word.localeCompare(b.word));
+    return [...systemDeleted, ...customDeleted].sort((a, b) => a.word.localeCompare(b.word));
   };
 
   const canRestoreWord = (word) => {
@@ -461,7 +489,6 @@ export default function App() {
       alert("Bu kelimenin aktif bir versiyonu zaten var, tekrar yüklenemez.");
       return;
     }
-
     try {
       const userRef = doc(
         db,
@@ -472,11 +499,9 @@ export default function App() {
         "vocab_game",
         "progress"
       );
-
       await updateDoc(userRef, {
         deleted_ids: arrayRemove(word.id),
       });
-
       setDeletedWordIds((prev) => prev.filter((id) => id !== word.id));
     } catch (e) {
       console.error("Restore error:", e);
@@ -485,7 +510,6 @@ export default function App() {
 
   const permanentlyDeleteWord = async (word) => {
     if (word.source !== "user") return;
-
     try {
       const userRef = doc(
         db,
@@ -496,12 +520,10 @@ export default function App() {
         "vocab_game",
         "progress"
       );
-
       await updateDoc(userRef, {
         custom_words: arrayRemove(word),
         deleted_ids: arrayRemove(word.id),
       });
-
       setCustomWords((prev) => prev.filter((w) => w.id !== word.id));
       setDeletedWordIds((prev) => prev.filter((id) => id !== word.id));
     } catch (e) {
@@ -512,15 +534,12 @@ export default function App() {
   const handleStartGame = () => {
     const allWords = getAllWords();
     const unknownWords = allWords.filter((w) => !knownWordIds.includes(w.id));
-
     if (unknownWords.length === 0) {
       setSessionComplete(true);
       return;
     }
-
     const shuffled = [...unknownWords].sort(() => 0.5 - Math.random());
     const selected = shuffled.slice(0, WORDS_PER_SESSION);
-
     setSessionWords(selected);
     setCurrentIndex(0);
     setSessionComplete(false);
@@ -535,10 +554,8 @@ export default function App() {
 
   const handleSwipe = async (direction) => {
     if (currentIndex >= sessionWords.length) return;
-
     const currentWord = sessionWords[currentIndex];
     setSwipeDirection(direction);
-
     setTimeout(async () => {
       if (direction === "right") {
         try {
@@ -553,12 +570,9 @@ export default function App() {
           );
           await setDoc(
             userRef,
-            {
-              known_ids: arrayUnion(currentWord.id),
-            },
+            { known_ids: arrayUnion(currentWord.id) },
             { merge: true }
           );
-
           setKnownWordIds((prev) =>
             prev.includes(currentWord.id) ? prev : [...prev, currentWord.id]
           );
@@ -569,7 +583,6 @@ export default function App() {
       } else {
         setSessionStats((prev) => ({ ...prev, learning: prev.learning + 1 }));
       }
-
       if (currentIndex + 1 < sessionWords.length) {
         setCurrentIndex((prev) => prev + 1);
         setSwipeDirection(null);
@@ -586,11 +599,8 @@ export default function App() {
     const exists = allWords.find(
       (w) => w.word.toLowerCase() === normalizedInput
     );
-
-    if (exists) {
-      return { success: false, message: "Bu kelime zaten listenizde mevcut!" };
-    }
-
+    if (exists) return { success: false, message: "Bu kelime zaten listenizde mevcut!" };
+    
     const newWord = {
       id: Date.now(),
       word: wordData.word.trim(),
@@ -601,7 +611,6 @@ export default function App() {
       sentence: wordData.sentence.trim(),
       source: "user",
     };
-
     try {
       const userRef = doc(
         db,
@@ -614,12 +623,9 @@ export default function App() {
       );
       await setDoc(
         userRef,
-        {
-          custom_words: arrayUnion(newWord),
-        },
+        { custom_words: arrayUnion(newWord) },
         { merge: true }
       );
-
       setCustomWords((prev) => [...prev, newWord]);
       return { success: true };
     } catch (e) {
@@ -639,20 +645,17 @@ export default function App() {
         "vocab_game",
         "progress"
       );
-
       await setDoc(
         userRef,
         {
           deleted_ids: arrayUnion(wordId),
-          known_ids: arrayRemove(wordId), 
+          known_ids: arrayRemove(wordId),
         },
         { merge: true }
       );
-
       setDeletedWordIds((prev) =>
         prev.includes(wordId) ? prev : [...prev, wordId]
       );
-
       setKnownWordIds((prev) => prev.filter((id) => id !== wordId));
     } catch (e) {
       console.error("Silme hatası:", e);
@@ -688,7 +691,6 @@ export default function App() {
           prev.map((w) => (w.id === originalId ? updatedWord : w))
         );
       } else {
-        // Base kelimeyi custom'a çevirme
         await setDoc(
           userRef,
           { deleted_ids: arrayUnion(originalId) },
@@ -709,7 +711,6 @@ export default function App() {
           { custom_words: arrayUnion(newCustomWord) },
           { merge: true }
         );
-
         setDeletedWordIds((prev) => [...prev, originalId]);
         setCustomWords((prev) => [...prev, newCustomWord]);
 
@@ -757,20 +758,11 @@ export default function App() {
     const confirm1 = window.confirm(
       "Profilini sıfırlamak istediğine emin misin? Bu işlem tüm kelime ilerlemelerini ve kendi eklediğin kelimeleri temizler."
     );
-    if (!confirm1) {
-      alert("İşlem iptal edildi.");
-      handleGoHome();
-      return;
-    }
-
+    if (!confirm1) return;
     const confirm2 = window.confirm(
-      "Bu işlem GERİ ALINAMAZ. Tüm kişisel kelimelerin ve tüm ilerlemen SİLİNECEK. Kesin olarak sıfırlamak istiyor musun?"
+      "Bu işlem GERİ ALINAMAZ. Kesin olarak sıfırlamak istiyor musun?"
     );
-    if (!confirm2) {
-      alert("İşlem iptal edildi.");
-      handleGoHome();
-      return;
-    }
+    if (!confirm2) return;
 
     try {
       const userRef = doc(
@@ -966,7 +958,7 @@ export default function App() {
     );
   }
 
-  // --- ADMIN DASHBOARD ---
+  // --- ADMIN DASHBOARD (YENİLENMİŞ) ---
   if (currentView === "admin_dashboard" && isAdmin) {
     const totalSystemWords = BASE_WORD_LIST.length + dynamicSystemWords.length;
 
@@ -1006,15 +998,59 @@ export default function App() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-3">
-            <button
-              onClick={() => setCurrentView("add_system_word")}
-              className="bg-slate-800 text-white font-bold py-4 rounded-xl hover:bg-slate-900 transition-colors shadow-lg flex items-center justify-center gap-2"
-            >
-              <Plus className="w-5 h-5" />
-              Sistem Kelimesi Ekle (Herkese Açık)
-            </button>
+          {/* EKLEME BUTONU */}
+          <button
+            onClick={() => setCurrentView("add_system_word")}
+            className="w-full bg-slate-800 text-white font-bold py-4 rounded-xl hover:bg-slate-900 transition-colors shadow-lg flex items-center justify-center gap-2 mb-8"
+          >
+            <Plus className="w-5 h-5" />
+            Yeni Sistem Kelimesi Ekle
+          </button>
+
+          {/* 🔥 EKLENEN KELİMELERİ LİSTELE VE SİL */}
+          <div>
+            <h3 className="font-bold text-slate-700 mb-3 flex items-center gap-2">
+              Son Eklenenler ({dynamicSystemWords.length})
+            </h3>
+            
+            {dynamicSystemWords.length === 0 ? (
+              <div className="text-center p-4 text-slate-400 text-sm bg-slate-100 rounded-xl">
+                Henüz dinamik kelime eklenmedi.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {dynamicSystemWords.map((item) => (
+                  <div key={item.id} className="bg-white p-3 rounded-xl border border-slate-200 flex justify-between items-center shadow-sm">
+                    <div>
+                      <div className="font-bold text-slate-800">{item.word}</div>
+                      <div className="text-xs text-slate-500">{item.definitions[0]?.meaning}</div>
+                    </div>
+                    
+                    <button 
+                      onClick={() => handleDeleteSystemWord(item.id)}
+                      className="p-2 bg-red-50 text-red-500 rounded-lg hover:bg-red-100 transition-colors"
+                      title="Bu kelimeyi sil"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
+
+          {/* MIGRATION BUTONU (OPSİYONEL) */}
+          {BASE_WORD_LIST.length > 0 && (
+            <div className="mt-8 pt-6 border-t border-slate-200">
+               <button
+                onClick={handleMigrateBaseWords}
+                className="w-full py-2 text-orange-600 text-xs font-bold hover:bg-orange-50 rounded transition-colors"
+              >
+                (Opsiyonel) Gömülü Kelimeleri Veritabanına Aktar
+              </button>
+            </div>
+          )}
+
         </div>
       </div>
     );
