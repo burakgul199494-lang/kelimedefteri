@@ -55,7 +55,7 @@ import {
 // --- YAPAY ZEKA AYARLARI ---
 // BURAYA GOOGLE GEMINI API KEY'İNİ YAPIŞTIRMAN GEREKİYOR
 // Almak için: https://aistudio.google.com/app/apikey
-const GEMINI_API_KEY = "gen-lang-client-0746402714"; 
+const GEMINI_API_KEY = "gen-lang-client-0526802663"; 
 
 // --- FIREBASE CONFIG ---
 const firebaseConfig = {
