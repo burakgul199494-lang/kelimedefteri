@@ -2712,12 +2712,13 @@ export default function App() {
 
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col items-center p-6">
-        <div className="w-full max-w-md space-y-8 mt-4">
-          {/* HEADER ALANI */}
-          <div className="text-center relative">
+        <div className="w-full max-w-md space-y-6 mt-2">
+          
+          {/* 1. YENİ ÜST BAR: Butonlar artık burada ve içerikle çakışmaz */}
+          <div className="flex justify-between items-center w-full px-1">
             <button
               onClick={resetProfileToDefaults}
-              className="absolute left-10 top-0 p-2 bg-white rounded-full shadow-sm border border-slate-200 text-slate-400 hover:text-red-500 z-50 transition-transform active:scale-90"
+              className="p-2.5 bg-white rounded-xl shadow-sm border border-slate-200 text-slate-400 hover:text-red-500 transition-transform active:scale-95 flex items-center gap-2"
               title="Varsayılan Ayarlara Dön"
             >
               <RotateCcw size={18} />
@@ -2725,17 +2726,21 @@ export default function App() {
 
             <button
               onClick={handleLogout}
-              className="absolute right-10 top-0 p-2 bg-white rounded-full shadow-sm border border-slate-200 text-slate-400 hover:text-red-500 z-50 transition-transform active:scale-90"
+              className="p-2.5 bg-white rounded-xl shadow-sm border border-slate-200 text-slate-400 hover:text-red-500 transition-transform active:scale-95 flex items-center gap-2"
               title="Çıkış Yap"
             >
               <LogOut size={18} />
             </button>
+          </div>
 
-            <div className="flex justify-center mb-4 relative mt-12">
+          {/* 2. HEADER ALANI (Logo ve Seri) - Artık yukarıdan bağımsız */}
+          <div className="text-center relative">
+            <div className="flex justify-center mb-4 relative mt-4">
               <div className="bg-indigo-600 p-4 rounded-2xl shadow-lg transform rotate-3 relative z-10">
                 <Brain className="w-12 h-12 text-white" />
               </div>
 
+              {/* Seri Göstergesi */}
               <div className="absolute -right-6 -top-2 flex flex-col items-center z-20">
                 <div className="flex items-center gap-1 bg-orange-500 text-white px-3 py-1.5 rounded-full shadow-lg border-2 border-white">
                   <Flame className="w-4 h-4 fill-white" />
@@ -2748,13 +2753,14 @@ export default function App() {
             </div>
 
             <h1 className="text-3xl font-extrabold text-slate-800 tracking-tight">
-              Kelime Defteri 2
+              Kelime Atölyesi
             </h1>
-            <p className="text-slate-500 mt-2">
-              Merhaba, {user.displayName || user.email}
+            <p className="text-slate-500 mt-2 text-sm">
+              Merhaba, <span className="font-medium text-indigo-600">{user.displayName || user.email}</span>
             </p>
           </div>
 
+          {/* İLERLEME KARTI */}
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
             <div className="flex justify-between items-end mb-2">
               <span className="text-sm font-medium text-slate-500">
@@ -2786,7 +2792,8 @@ export default function App() {
             </div>
           </div>
 
-          <div className="space-y-3">
+          {/* MENÜ BUTONLARI */}
+          <div className="space-y-3 pb-8">
             {isAdmin && (
               <button
                 onClick={() => setCurrentView("admin_dashboard")}
