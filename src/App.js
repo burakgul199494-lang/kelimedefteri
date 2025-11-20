@@ -94,12 +94,12 @@ const WORDS_PER_SESSION = 20;
 // --- YARDIMCI FONKSİYON: AI İLE KELİME ANALİZİ ---
 // Bu fonksiyon hem Admin hem User formunda kullanılacak.
 const fetchWordAnalysisFromAI = async (word) => {
-  if (!GEMINI_API_KEY || GEMINI_API_KEY === "BURAYA_API_KEY_GIRILECEK") {
+  if (!_API_KEY || GEMINI_API_KEY === "AIzaSyA3swN-k1wgtE41Nip16bMS4LHnxBRqYcU") {
     throw new Error("Lütfen kodun başındaki GEMINI_API_KEY alanına geçerli bir API anahtarı girin.");
   }
 
   const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-  const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
   const prompt = `
     You are a dictionary assistant used in a vocabulary learning app. Analyze the English word "${word}".
