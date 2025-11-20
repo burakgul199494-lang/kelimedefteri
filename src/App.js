@@ -66,7 +66,7 @@ const firebaseConfig = {
 
 // --- API KEY AYARI (BURAYI DÜZENLE) ---
 // AI Studio'dan aldığın YENİ şifreyi buraya yapıştır.
-const GEMINI_API_KEY = "AIzaSyCDhZTLoVl4V_S_cJYTi1Ayr68Eue8cY-I"; 
+const GEMINI_API_KEY = "AIzaSyBU0iO21V_uxKL1A80SNPqEc_r7_6Ry4U8"; 
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -2625,7 +2625,7 @@ export default function App() {
             </div>
 
             <h1 className="text-3xl font-extrabold text-slate-800 tracking-tight">
-              Kelime Atölyesi 2
+              Kelime Atölyesi
             </h1>
             <p className="text-slate-500 mt-2">
               Merhaba, {user.displayName || user.email}
