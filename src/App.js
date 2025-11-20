@@ -2434,7 +2434,7 @@ export default function App() {
     )
   }
 
-  // --- QUIZ VIEW ---
+  // --- QUIZ VIEW (MOBİL DÜZELTİLMİŞ VERSİYON) ---
   if (currentView === "quiz") {
       const currentQuestion = quizQuestions[quizIndex];
       const progress = ((quizIndex + 1) / quizQuestions.length) * 100;
@@ -2471,12 +2471,12 @@ export default function App() {
                     </button>
                 </div>
 
-                {/* Options - DÜZELTİLEN KISIM BURASI */}
-                {/* key={quizIndex} sayesinde her soruda burası sıfırlanır */}
-                <div className="space-y-3 mt-6" key={quizIndex}>
-                    {currentQuestion.options.map((option, idx) => {
+                {/* Options - KESİN ÇÖZÜM BURADA */}
+                <div className="space-y-3 mt-6">
+                    {currentQuestion.options.map((option) => { // 'idx' parametresini kaldırdık
                         let btnClass = "w-full p-4 rounded-xl text-left font-medium border-2 transition-all active:scale-95 shadow-sm ";
                         
+                        // Buton renk mantığı
                         if (quizIsAnswered) {
                             if (option === currentQuestion.correctAnswer) {
                                 btnClass += "bg-green-100 border-green-500 text-green-700";
@@ -2491,9 +2491,11 @@ export default function App() {
 
                         return (
                             <button 
-                                key={idx} 
+                                // EN ÖNEMLİ KISIM: key olarak 'option' (kelimenin kendisi) kullanıyoruz.
+                                // Böylece içerik değiştiğinde buton kesinlikle sıfırlanır.
+                                key={option} 
                                 onClick={(e) => {
-                                    e.currentTarget.blur(); // Tıklanınca odaklanmayı kaldırır
+                                    e.currentTarget.blur(); // Mobil odaklanma sorununu çözer
                                     handleQuizAnswer(option);
                                 }}
                                 disabled={quizIsAnswered}
