@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { initializeApp } from "firebase/app";
-// --- YENİ: GOOGLE AI IMPORT ---
+// --- GOOGLE AI IMPORT ---
 import { GoogleGenerativeAI } from "@google/generative-ai"; 
 
 import {
@@ -64,9 +64,9 @@ const firebaseConfig = {
   appId: "1:922162845642:web:75b579cbe5f46983996133",
 };
 
-// --- API KEY AYARI ---
-// BURAYA KENDİ GOOGLE GEMINI API KEY'İNİ YAPIŞTIR
-const GEMINI_API_KEY = "AIzaSyA3swN-k1wgtE41Nip16bMS4LHnxBRqYcU"; 
+// --- API KEY AYARI (BURAYI DÜZENLE) ---
+// AI Studio'dan aldığın YENİ şifreyi buraya yapıştır.
+const GEMINI_API_KEY = "AIzaSyCDhZTLoVl4V_S_cJYTi1Ayr68Eue8cY-I"; 
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -92,13 +92,11 @@ const WORD_TYPES = [
 const WORDS_PER_SESSION = 20;
 
 // --- YARDIMCI FONKSİYON: AI İLE KELİME ANALİZİ ---
-// Bu fonksiyon hem Admin hem User formunda kullanılacak.
 const fetchWordAnalysisFromAI = async (word) => {
-  if (!_API_KEY || GEMINI_API_KEY === "AIzaSyA3swN-k1wgtE41Nip16bMS4LHnxBRqYcU") {
-    throw new Error("Lütfen kodun başındaki GEMINI_API_KEY alanına geçerli bir API anahtarı girin.");
-  }
-
+  // Hata kontrolünü kaldırdık, direkt çalışacak.
   const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+  
+  // Model ismini en hızlı olanla ayarladık
   const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
   const prompt = `
@@ -140,7 +138,7 @@ const fetchWordAnalysisFromAI = async (word) => {
   const response = await result.response;
   let text = response.text();
   
-  // Markdown temizliği (örn: ```json ... ``` gelirse)
+  // Markdown temizliği
   text = text.replace(/```json|```/g, "").trim();
   
   return JSON.parse(text);
