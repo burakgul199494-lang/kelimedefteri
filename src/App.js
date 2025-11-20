@@ -619,22 +619,29 @@ export default function App() {
   // --- QUIZ LOGIC ---
   const handleStartQuiz = () => {
     const allWords = getAllWords();
+    
+    // 1. Sistemde anlamı girilmiş TÜM kelimeler (Yanlış şık üretmek için lazım)
     const validWords = allWords.filter(
       (w) =>
         w.definitions &&
         w.definitions.length > 0 &&
         w.definitions[0].meaning.trim() !== ""
     );
+
+    // 2. Sadece ÖĞRENECEĞİM (Bilinmeyen) kelimeler (Soru sormak için)
     const unknownWords = validWords.filter((w) => !knownWordIds.includes(w.id));
 
-    if (validWords.length < 4) {
+    // 3. Yeterli kelime kontrolü (Sadece bilinmeyenlere göre)
+    if (unknownWords.length < 4) {
       alert(
-        "Quiz başlatmak için sistemde anlamı girilmiş en az 4 kelime olmalıdır!"
+        `Quiz başlatmak için 'Öğreneceğim Kelimeler' listesinde en az 4 kelime olmalıdır! (Şu an: ${unknownWords.length})`
       );
       return;
     }
 
-    const pool = unknownWords.length >= 4 ? unknownWords : validWords;
+    // 4. Havuzu kesinlikle sadece bilinmeyenlerden oluştur
+    const pool = unknownWords;
+
     const questionCount = Math.min(20, pool.length);
     const shuffledPool = [...pool]
       .sort(() => 0.5 - Math.random())
@@ -643,6 +650,8 @@ export default function App() {
     const generatedQuestions = shuffledPool.map((targetWord) => {
       const correctAnswer = targetWord.definitions[0].meaning;
 
+      // Yanlış şıkları (distractors) TÜM geçerli kelimelerden seçiyoruz.
+      // Böylece şıklar zorlayıcı olur ama soru kesinlikle bilmediğin kelimeden gelir.
       const distractors = validWords
         .filter((w) => w.id !== targetWord.id)
         .sort(() => 0.5 - Math.random())
