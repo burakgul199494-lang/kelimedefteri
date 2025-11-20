@@ -55,7 +55,7 @@ import {
 // --- YAPAY ZEKA AYARLARI ---
 // BURAYA GOOGLE GEMINI API KEY'İNİ YAPIŞTIRMAN GEREKİYOR
 // Almak için: https://aistudio.google.com/app/apikey
-const GEMINI_API_KEY = "gen-lang-client-0526802663"; 
+const GEMINI_API_KEY = "AIzaSyA3swN-k1wgtE41Nip16bMS4LHnxBRqYcU"; 
 
 // --- FIREBASE CONFIG ---
 const firebaseConfig = {
@@ -2574,7 +2574,7 @@ export default function App() {
             </div>
 
             <h1 className="text-3xl font-extrabold text-slate-800 tracking-tight">
-              Kelime Atölyesi 2
+              Kelime Atölyesi
             </h1>
             <p className="text-slate-500 mt-2">
               Merhaba, {user.displayName || user.email}
