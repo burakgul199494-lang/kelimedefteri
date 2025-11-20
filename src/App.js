@@ -2490,7 +2490,7 @@ export default function App() {
 
                         return (
                             <button 
-                                key={idx} 
+                                key={`${quizIndex}-${idx}`}
                                 onClick={() => handleQuizAnswer(option)}
                                 disabled={quizIsAnswered}
                                 className={btnClass}
