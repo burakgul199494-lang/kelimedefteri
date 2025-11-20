@@ -118,9 +118,9 @@ export default function App() {
   const [quizSelectedOption, setQuizSelectedOption] = useState(null);
   const [quizIsAnswered, setQuizIsAnswered] = useState(false);
 
-  // Dictionary State
+  // Dictionary State (GÜNCELLENDİ: Çoğul Sonuç)
   const [dictSearchTerm, setDictSearchTerm] = useState("");
-  const [dictResult, setDictResult] = useState(null);
+  const [dictResults, setDictResults] = useState([]); 
   const [dictError, setDictError] = useState("");
 
   const [currentView, setCurrentView] = useState("home");
@@ -251,7 +251,7 @@ export default function App() {
         v2: wordData.v2 || "",
         v3: wordData.v3 || "",
         vIng: wordData.vIng || "",
-        definitions: wordData.definitions, // engExplanation artık burada
+        definitions: wordData.definitions, 
         sentence: wordData.sentence.trim(),
         source: "system",
         createdAt: new Date(),
@@ -279,7 +279,7 @@ export default function App() {
         v2: wordData.v2 || "",
         v3: wordData.v3 || "",
         vIng: wordData.vIng || "",
-        definitions: wordData.definitions, // engExplanation artık burada
+        definitions: wordData.definitions,
         sentence: wordData.sentence.trim(),
         updatedAt: new Date(),
       };
@@ -363,11 +363,10 @@ export default function App() {
       v2: w.v2 || "",
       v3: w.v3 || "",
       vIng: w.vIng || "",
-      // definitions içindeki engExplanation zaten orada olacak
       definitions: Array.isArray(w.definitions)
         ? w.definitions.map(def => ({
             ...def,
-            engExplanation: def.engExplanation || "" // Eski verilerde yoksa boş string ata
+            engExplanation: def.engExplanation || "" 
           }))
         : [{ type: "other", meaning: "", engExplanation: "" }],
     };
@@ -450,18 +449,18 @@ export default function App() {
     }
   };
 
-  // --- DICTIONARY LOGIC ---
+  // --- DICTIONARY LOGIC (GÜNCELLENDİ: Filter ile Çoklu Sonuç) ---
   const handleDictionarySearch = (e) => {
     e.preventDefault();
     if (!dictSearchTerm.trim()) return;
 
     setDictError("");
-    setDictResult(null);
+    setDictResults([]);
 
     const term = dictSearchTerm.toLowerCase().trim();
     const allWords = getAllWords();
 
-    const foundWord = allWords.find(
+    const foundWords = allWords.filter(
       (w) =>
         w.word.toLowerCase() === term ||
         (w.v2 && w.v2.toLowerCase() === term) ||
@@ -470,8 +469,8 @@ export default function App() {
         (w.plural && w.plural.toLowerCase() === term)
     );
 
-    if (foundWord) {
-      setDictResult(foundWord);
+    if (foundWords.length > 0) {
+      setDictResults(foundWords);
     } else {
       setDictError(
         "Kelime bulunamadı. Yazım hatası olabilir veya henüz eklenmemiş."
@@ -780,7 +779,7 @@ export default function App() {
     setSessionComplete(false);
     setEditingWord(null);
     setDictSearchTerm("");
-    setDictResult(null);
+    setDictResults([]);
     setDictError("");
     setQuizQuestions([]);
   };
@@ -854,7 +853,7 @@ export default function App() {
     );
   };
 
-  // --- CARD COMPONENT (GÜNCELLENDİ: Eng Explanation Her Anlam İçin) ---
+  // --- CARD COMPONENT (GÜNCELLENDİ: Cümle Okuma Butonu Eklendi) ---
   const WordCard = ({ wordObj }) => {
     return (
       <div className="relative w-full max-w-sm bg-white rounded-3xl shadow-xl p-6 text-center border border-slate-100">
@@ -871,6 +870,7 @@ export default function App() {
           <button
             onClick={() => speak(wordObj.word)}
             className="p-3 bg-indigo-100 text-indigo-600 rounded-full hover:bg-indigo-200 transition-colors"
+            title="Kelimeyi Oku"
           >
             <Volume2 className="w-6 h-6" />
           </button>
@@ -894,7 +894,6 @@ export default function App() {
                     {def.meaning}
                  </span>
               </div>
-              {/* İNGİLİZCE AÇIKLAMA (ANLAM BAZLI) */}
               {def.engExplanation && (
                   <div className="mt-1 pl-2 border-l-2 border-indigo-200/50">
                       <p className={`text-sm italic font-medium ${idx === 0 ? 'text-indigo-500' : 'text-slate-500'}`}>
@@ -936,9 +935,19 @@ export default function App() {
             </div>
           )}
 
+          {/* Örnek Cümle ve Seslendirme */}
           <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 mt-2">
-            <div className="text-xs uppercase tracking-wide text-slate-400 font-bold mb-1">
-              Örnek Cümle
+            <div className="flex items-center justify-between mb-2">
+                <div className="text-xs uppercase tracking-wide text-slate-400 font-bold">
+                Örnek Cümle
+                </div>
+                <button 
+                    onClick={(e) => speak(wordObj.sentence, e)}
+                    className="p-1.5 bg-white text-indigo-500 rounded-full hover:bg-indigo-100 hover:text-indigo-700 border border-slate-200 transition-colors"
+                    title="Cümleyi Oku"
+                >
+                    <Volume2 className="w-4 h-4" />
+                </button>
             </div>
             <div className="text-base text-slate-600 italic space-y-1">
               {wordObj.sentence.split("\n").map((line, idx) => (
@@ -1195,10 +1204,9 @@ export default function App() {
     );
   }
 
-  // --- ADMIN: ADD / EDIT SYSTEM WORD (GÜNCELLENDİ: Eng Exp moved to definitions) ---
+  // --- ADMIN: ADD / EDIT SYSTEM WORD ---
   if (currentView === "add_system_word" && isAdmin) {
     const isEditMode = !!editingWord;
-    // Normalize data
     const initialData = isEditMode
       ? {
           word: editingWord.word,
@@ -1445,7 +1453,7 @@ export default function App() {
                         </button>
                         )}
                     </div>
-                    {/* İNGİLİZCE AÇIKLAMA - ANLAM İÇİNDE */}
+                    {/* İNGİLİZCE AÇIKLAMA */}
                     <input
                         type="text"
                         value={def.engExplanation}
@@ -1491,7 +1499,7 @@ export default function App() {
     return <FormComponent />;
   }
 
-  // --- ADD / EDIT FORM (USER) (GÜNCELLENDİ: Eng Exp moved to definitions) ---
+  // --- ADD / EDIT FORM (USER) ---
   if (currentView === "add_word" || currentView === "edit_word") {
     const isEditMode = currentView === "edit_word";
     const normalizedEditWord =
@@ -1736,7 +1744,7 @@ export default function App() {
                         </button>
                         )}
                     </div>
-                    {/* İNGİLİZCE AÇIKLAMA BURAYA TAŞINDI */}
+                    {/* İNGİLİZCE AÇIKLAMA */}
                     <input
                         type="text"
                         value={def.engExplanation}
@@ -1932,11 +1940,22 @@ export default function App() {
                           </div>
                         )}
 
+                        {/* LİSTE GÖRÜNÜMÜNDE CÜMLE + SES */}
                         {!isTrash && (
-                          <div className="text-xs text-slate-400 italic mt-2 border-t border-slate-50 pt-1">
-                            "{item.sentence}"
+                          <div className="mt-2 pt-2 border-t border-slate-50 flex gap-2 items-start group">
+                            <button 
+                                onClick={(e) => speak(item.sentence, e)}
+                                className="shrink-0 p-1.5 text-slate-300 hover:text-indigo-500 hover:bg-indigo-50 rounded-full transition-colors"
+                                title="Cümleyi Oku"
+                            >
+                                <Volume2 className="w-3.5 h-3.5" />
+                            </button>
+                            <div className="text-xs text-slate-400 italic leading-relaxed py-0.5">
+                                "{item.sentence}"
+                            </div>
                           </div>
                         )}
+
                         {isTrash && !canRestore && (
                           <div className="text-[10px] text-slate-400 italic mt-1">
                             Bu kelimenin aktif bir versiyonu zaten var
@@ -2009,7 +2028,7 @@ export default function App() {
     );
   }
 
-  // --- DICTIONARY VIEW (EKLENDİ) ---
+  // --- DICTIONARY VIEW (GÜNCELLENDİ: ÇOKLU SONUÇ GÖSTERİMİ) ---
   if (currentView === "dictionary") {
     return (
         <div className="min-h-screen bg-slate-50 p-6 flex flex-col items-center">
@@ -2043,16 +2062,21 @@ export default function App() {
                     </div>
                 )}
 
-                {dictResult && (
-                    <div className="mt-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                         <div className="mb-2 text-center text-sm text-slate-500">Arama Sonucu:</div>
-                         <div className="flex justify-center">
-                             <WordCard wordObj={dictResult} />
+                {/* ÇOKLU SONUÇ LİSTELEME */}
+                {dictResults.length > 0 && (
+                    <div className="mt-6 animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-8">
+                         <div className="text-center text-sm text-slate-500">
+                            {dictResults.length} sonuç bulundu:
                          </div>
+                         {dictResults.map((resultWord) => (
+                             <div key={resultWord.id} className="flex justify-center">
+                                 <WordCard wordObj={resultWord} />
+                             </div>
+                         ))}
                     </div>
                 )}
 
-                {!dictResult && !dictError && (
+                {dictResults.length === 0 && !dictError && (
                     <div className="text-center text-slate-400 mt-10">
                         <Book className="w-20 h-20 mx-auto mb-4 opacity-20" />
                         <p>Aramak istediğin kelimeyi yaz.</p>
@@ -2063,7 +2087,7 @@ export default function App() {
     )
   }
 
-  // --- QUIZ VIEW (EKLENDİ) ---
+  // --- QUIZ VIEW ---
   if (currentView === "quiz") {
       const currentQuestion = quizQuestions[quizIndex];
       const progress = ((quizIndex + 1) / quizQuestions.length) * 100;
@@ -2134,7 +2158,7 @@ export default function App() {
       )
   }
 
-  // --- QUIZ RESULT VIEW (EKLENDİ) ---
+  // --- QUIZ RESULT VIEW ---
   if (currentView === "quiz_result") {
       const maxScore = quizQuestions.length * 5;
       const successRate = (quizScore / maxScore) * 100;
@@ -2311,7 +2335,6 @@ export default function App() {
   }
 
   // --- HOME ---
-  // Ana sayfa render'ı her zaman mevcut, yukarıda if bloklarına girmeyenler buraya düşer
   if (currentView === "home") {
     const allWords = getAllWords();
     const progressPercentage =
