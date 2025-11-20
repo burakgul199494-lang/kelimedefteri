@@ -118,7 +118,7 @@ export default function App() {
   const [quizSelectedOption, setQuizSelectedOption] = useState(null);
   const [quizIsAnswered, setQuizIsAnswered] = useState(false);
 
-  // Dictionary State (GÜNCELLENDİ: Çoğul Sonuç)
+  // Dictionary State
   const [dictSearchTerm, setDictSearchTerm] = useState("");
   const [dictResults, setDictResults] = useState([]); 
   const [dictError, setDictError] = useState("");
@@ -161,7 +161,6 @@ export default function App() {
       setStreak(0);
       setCurrentView("home");
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   const fetchUserData = async () => {
@@ -251,6 +250,10 @@ export default function App() {
         v2: wordData.v2 || "",
         v3: wordData.v3 || "",
         vIng: wordData.vIng || "",
+        thirdPerson: wordData.thirdPerson || "", // YENİ
+        advLy: wordData.advLy || "",             // YENİ
+        compEr: wordData.compEr || "",           // YENİ
+        superEst: wordData.superEst || "",       // YENİ
         definitions: wordData.definitions, 
         sentence: wordData.sentence.trim(),
         source: "system",
@@ -279,6 +282,10 @@ export default function App() {
         v2: wordData.v2 || "",
         v3: wordData.v3 || "",
         vIng: wordData.vIng || "",
+        thirdPerson: wordData.thirdPerson || "", // YENİ
+        advLy: wordData.advLy || "",             // YENİ
+        compEr: wordData.compEr || "",           // YENİ
+        superEst: wordData.superEst || "",       // YENİ
         definitions: wordData.definitions,
         sentence: wordData.sentence.trim(),
         updatedAt: new Date(),
@@ -353,6 +360,7 @@ export default function App() {
     window.speechSynthesis.speak(utterance);
   };
 
+  // GÜNCELLENDİ: Yeni alanları normalize et
   const normalizeWord = (w) => {
     const isDynamic = dynamicSystemWords.some((d) => d.id === w.id);
     const source = w.source || (isDynamic ? "system" : "user");
@@ -363,6 +371,10 @@ export default function App() {
       v2: w.v2 || "",
       v3: w.v3 || "",
       vIng: w.vIng || "",
+      thirdPerson: w.thirdPerson || "", // YENİ
+      advLy: w.advLy || "",             // YENİ
+      compEr: w.compEr || "",           // YENİ
+      superEst: w.superEst || "",       // YENİ
       definitions: Array.isArray(w.definitions)
         ? w.definitions.map(def => ({
             ...def,
@@ -449,7 +461,7 @@ export default function App() {
     }
   };
 
-  // --- DICTIONARY LOGIC (GÜNCELLENDİ: Filter ile Çoklu Sonuç) ---
+  // --- DICTIONARY LOGIC (GÜNCELLENDİ: Yeni Alanları Arama) ---
   const handleDictionarySearch = (e) => {
     e.preventDefault();
     if (!dictSearchTerm.trim()) return;
@@ -466,7 +478,11 @@ export default function App() {
         (w.v2 && w.v2.toLowerCase() === term) ||
         (w.v3 && w.v3.toLowerCase() === term) ||
         (w.vIng && w.vIng.toLowerCase() === term) ||
-        (w.plural && w.plural.toLowerCase() === term)
+        (w.plural && w.plural.toLowerCase() === term) ||
+        (w.thirdPerson && w.thirdPerson.toLowerCase() === term) || // YENİ
+        (w.advLy && w.advLy.toLowerCase() === term) ||             // YENİ
+        (w.compEr && w.compEr.toLowerCase() === term) ||           // YENİ
+        (w.superEst && w.superEst.toLowerCase() === term)          // YENİ
     );
 
     if (foundWords.length > 0) {
@@ -635,6 +651,10 @@ export default function App() {
       v2: wordData.v2 || "",
       v3: wordData.v3 || "",
       vIng: wordData.vIng || "",
+      thirdPerson: wordData.thirdPerson || "", // YENİ
+      advLy: wordData.advLy || "",             // YENİ
+      compEr: wordData.compEr || "",           // YENİ
+      superEst: wordData.superEst || "",       // YENİ
       definitions: wordData.definitions,
       sentence: wordData.sentence.trim(),
       source: "user",
@@ -709,6 +729,10 @@ export default function App() {
           v2: newData.v2 || "",
           v3: newData.v3 || "",
           vIng: newData.vIng || "",
+          thirdPerson: newData.thirdPerson || "", // YENİ
+          advLy: newData.advLy || "",             // YENİ
+          compEr: newData.compEr || "",           // YENİ
+          superEst: newData.superEst || "",       // YENİ
           source: isCustom.source || "user",
         };
         await updateDoc(userRef, { custom_words: arrayRemove(isCustom) });
@@ -729,6 +753,10 @@ export default function App() {
           v2: newData.v2 || "",
           v3: newData.v3 || "",
           vIng: newData.vIng || "",
+          thirdPerson: newData.thirdPerson || "", // YENİ
+          advLy: newData.advLy || "",             // YENİ
+          compEr: newData.compEr || "",           // YENİ
+          superEst: newData.superEst || "",       // YENİ
           definitions: newData.definitions,
           sentence: newData.sentence,
           source: "user",
@@ -853,7 +881,7 @@ export default function App() {
     );
   };
 
-  // --- CARD COMPONENT (GÜNCELLENDİ: Cümle Okuma Butonu Eklendi) ---
+  // --- CARD COMPONENT (GÜNCELLENDİ: Yeni Alanları Göster) ---
   const WordCard = ({ wordObj }) => {
     return (
       <div className="relative w-full max-w-sm bg-white rounded-3xl shadow-xl p-6 text-center border border-slate-100">
@@ -904,38 +932,32 @@ export default function App() {
             </div>
           ))}
 
-          {(wordObj.plural || wordObj.v2 || wordObj.v3 || wordObj.vIng) && (
-            <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 text-left space-y-1 mt-2">
-              {wordObj.plural && (
-                <div className="text-sm text-slate-700">
-                  <span className="font-semibold">Plural:</span>{" "}
-                  {wordObj.plural}
-                </div>
-              )}
-              {(wordObj.v2 || wordObj.v3 || wordObj.vIng) && (
-                <div className="text-sm text-slate-700 space-y-0.5">
-                  {wordObj.v2 && (
-                    <div>
-                      <span className="font-semibold">V2:</span> {wordObj.v2}
-                    </div>
-                  )}
-                  {wordObj.v3 && (
-                    <div>
-                      <span className="font-semibold">V3:</span> {wordObj.v3}
-                    </div>
-                  )}
-                  {wordObj.vIng && (
-                    <div>
-                      <span className="font-semibold">V-ing:</span>{" "}
-                      {wordObj.vIng}
-                    </div>
-                  )}
-                </div>
-              )}
+          {/* DİL BİLGİSİ DETAYLARI - FİİLLER */}
+          {(wordObj.plural || wordObj.v2 || wordObj.v3 || wordObj.vIng || wordObj.thirdPerson) && (
+            <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 text-left space-y-1.5 mt-2">
+              <div className="text-[10px] uppercase tracking-wide text-slate-400 font-bold mb-1">Fiil & İsim Çekimleri</div>
+              <div className="grid grid-cols-2 gap-2 text-sm text-slate-700">
+                  {wordObj.plural && <div><span className="font-semibold text-slate-900">Plural:</span> {wordObj.plural}</div>}
+                  {wordObj.thirdPerson && <div><span className="font-semibold text-slate-900">3rd P:</span> {wordObj.thirdPerson}</div>}
+                  {wordObj.v2 && <div><span className="font-semibold text-slate-900">V2:</span> {wordObj.v2}</div>}
+                  {wordObj.v3 && <div><span className="font-semibold text-slate-900">V3:</span> {wordObj.v3}</div>}
+                  {wordObj.vIng && <div><span className="font-semibold text-slate-900">V-ing:</span> {wordObj.vIng}</div>}
+              </div>
             </div>
           )}
 
-          {/* Örnek Cümle ve Seslendirme */}
+          {/* DİL BİLGİSİ DETAYLARI - SIFAT/ZARF */}
+          {(wordObj.advLy || wordObj.compEr || wordObj.superEst) && (
+              <div className="bg-orange-50 p-3 rounded-xl border border-orange-100 text-left space-y-1.5 mt-2">
+                  <div className="text-[10px] uppercase tracking-wide text-orange-400 font-bold mb-1">Sıfat & Zarf Halleri</div>
+                  <div className="text-sm text-slate-700 space-y-1">
+                      {wordObj.advLy && <div><span className="font-semibold text-slate-900">Zarf (-ly):</span> {wordObj.advLy}</div>}
+                      {wordObj.compEr && <div><span className="font-semibold text-slate-900">Comp (-er):</span> {wordObj.compEr}</div>}
+                      {wordObj.superEst && <div><span className="font-semibold text-slate-900">Super (-est):</span> {wordObj.superEst}</div>}
+                  </div>
+              </div>
+          )}
+
           <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 mt-2">
             <div className="flex items-center justify-between mb-2">
                 <div className="text-xs uppercase tracking-wide text-slate-400 font-bold">
@@ -1214,6 +1236,10 @@ export default function App() {
           v2: editingWord.v2 || "",
           v3: editingWord.v3 || "",
           vIng: editingWord.vIng || "",
+          thirdPerson: editingWord.thirdPerson || "", // YENİ
+          advLy: editingWord.advLy || "",             // YENİ
+          compEr: editingWord.compEr || "",           // YENİ
+          superEst: editingWord.superEst || "",       // YENİ
           definitions: editingWord.definitions.map(d => ({...d, engExplanation: d.engExplanation || ""})),
           sentence: editingWord.sentence,
         }
@@ -1223,6 +1249,10 @@ export default function App() {
           v2: "",
           v3: "",
           vIng: "",
+          thirdPerson: "",
+          advLy: "",
+          compEr: "",
+          superEst: "",
           definitions: [{ type: "noun", meaning: "", engExplanation: "" }],
           sentence: "",
         };
@@ -1341,63 +1371,82 @@ export default function App() {
                   placeholder="Örn: Bank"
                 />
               </div>
-              <div className="grid grid-cols-1 gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
-                    Çoğul
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.plural}
-                    onChange={(e) =>
-                      setFormData({ ...formData, plural: e.target.value })
-                    }
-                    className="w-full p-3 border border-slate-200 rounded-xl outline-none"
-                  />
-                </div>
 
-                <div className="grid grid-cols-3 gap-3">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">
-                      V2
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.v2}
-                      onChange={(e) =>
-                        setFormData({ ...formData, v2: e.target.value })
-                      }
-                      className="w-full p-2 border border-slate-200 rounded-xl outline-none text-sm"
-                    />
+              {/* GRUP 1: İSİM VE FİİL DETAYLARI */}
+              <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                  <div className="text-xs font-bold text-slate-400 mb-2 uppercase tracking-wide">Fiil & İsim Detayları</div>
+                  <div className="space-y-3">
+                      <div>
+                        <label className="block text-xs font-medium text-slate-500 mb-1">
+                          Çoğul (Plural)
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.plural}
+                          onChange={(e) =>
+                            setFormData({ ...formData, plural: e.target.value })
+                          }
+                          className="w-full p-2 border border-slate-200 rounded-lg outline-none text-sm"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                          <div>
+                             <label className="block text-xs font-medium text-slate-500 mb-1">3. Tekil (He/She/It)</label>
+                             <input type="text" value={formData.thirdPerson} onChange={(e) => setFormData({ ...formData, thirdPerson: e.target.value })} className="w-full p-2 border border-slate-200 rounded-lg outline-none text-sm" placeholder="goes"/>
+                          </div>
+                          <div>
+                             <label className="block text-xs font-medium text-slate-500 mb-1">V-ing (Gerund)</label>
+                             <input type="text" value={formData.vIng} onChange={(e) => setFormData({ ...formData, vIng: e.target.value })} className="w-full p-2 border border-slate-200 rounded-lg outline-none text-sm" placeholder="going"/>
+                          </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-medium text-slate-500 mb-1">V2 (Past)</label>
+                          <input
+                            type="text"
+                            value={formData.v2}
+                            onChange={(e) =>
+                              setFormData({ ...formData, v2: e.target.value })
+                            }
+                            className="w-full p-2 border border-slate-200 rounded-lg outline-none text-sm"
+                            placeholder="went"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-slate-500 mb-1">V3 (Participle)</label>
+                          <input
+                            type="text"
+                            value={formData.v3}
+                            onChange={(e) =>
+                              setFormData({ ...formData, v3: e.target.value })
+                            }
+                            className="w-full p-2 border border-slate-200 rounded-lg outline-none text-sm"
+                            placeholder="gone"
+                          />
+                        </div>
+                      </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">
-                      V3
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.v3}
-                      onChange={(e) =>
-                        setFormData({ ...formData, v3: e.target.value })
-                      }
-                      className="w-full p-2 border border-slate-200 rounded-xl outline-none text-sm"
-                    />
+              </div>
+
+              {/* GRUP 2: SIFAT VE ZARF DETAYLARI (YENİ) */}
+              <div className="bg-orange-50 p-3 rounded-xl border border-orange-100">
+                  <div className="text-xs font-bold text-orange-400 mb-2 uppercase tracking-wide">Sıfat & Zarf Detayları</div>
+                  <div className="space-y-3">
+                      <div>
+                          <label className="block text-xs font-medium text-orange-700/70 mb-1">Zarf Hali (-ly)</label>
+                          <input type="text" value={formData.advLy} onChange={(e) => setFormData({ ...formData, advLy: e.target.value })} className="w-full p-2 border border-orange-200 rounded-lg outline-none text-sm" placeholder="quickly"/>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                          <div>
+                             <label className="block text-xs font-medium text-orange-700/70 mb-1">Karşılaştırma (-er)</label>
+                             <input type="text" value={formData.compEr} onChange={(e) => setFormData({ ...formData, compEr: e.target.value })} className="w-full p-2 border border-orange-200 rounded-lg outline-none text-sm" placeholder="faster"/>
+                          </div>
+                          <div>
+                             <label className="block text-xs font-medium text-orange-700/70 mb-1">Üstünlük (-est)</label>
+                             <input type="text" value={formData.superEst} onChange={(e) => setFormData({ ...formData, superEst: e.target.value })} className="w-full p-2 border border-orange-200 rounded-lg outline-none text-sm" placeholder="fastest"/>
+                          </div>
+                      </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">
-                      V-ing
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.vIng}
-                      onChange={(e) =>
-                        setFormData({ ...formData, vIng: e.target.value })
-                      }
-                      className="w-full p-2 border border-slate-200 rounded-xl outline-none text-sm"
-                      placeholder="hunting"
-                    />
-                  </div>
-                </div>
               </div>
 
               <div className="space-y-3">
@@ -1453,7 +1502,7 @@ export default function App() {
                         </button>
                         )}
                     </div>
-                    {/* İNGİLİZCE AÇIKLAMA */}
+                    {/* İNGİLİZCE AÇIKLAMA - ANLAM İÇİNDE */}
                     <input
                         type="text"
                         value={def.engExplanation}
@@ -1511,6 +1560,10 @@ export default function App() {
           v2: normalizedEditWord.v2 || "",
           v3: normalizedEditWord.v3 || "",
           vIng: normalizedEditWord.vIng || "",
+          thirdPerson: normalizedEditWord.thirdPerson || "", // YENİ
+          advLy: normalizedEditWord.advLy || "",             // YENİ
+          compEr: normalizedEditWord.compEr || "",           // YENİ
+          superEst: normalizedEditWord.superEst || "",       // YENİ
           definitions: normalizedEditWord.definitions.map(d => ({...d, engExplanation: d.engExplanation || ""})),
           sentence: normalizedEditWord.sentence,
         }
@@ -1520,6 +1573,10 @@ export default function App() {
           v2: "",
           v3: "",
           vIng: "",
+          thirdPerson: "",
+          advLy: "",
+          compEr: "",
+          superEst: "",
           definitions: [{ type: "noun", meaning: "", engExplanation: "" }],
           sentence: "",
         };
@@ -1581,6 +1638,10 @@ export default function App() {
               v2: "",
               v3: "",
               vIng: "",
+              thirdPerson: "",
+              advLy: "",
+              compEr: "",
+              superEst: "",
               definitions: [{ type: "noun", meaning: "", engExplanation: "" }],
               sentence: "",
             });
@@ -1630,65 +1691,83 @@ export default function App() {
                   autoFocus
                 />
               </div>
-              <div className="grid grid-cols-1 gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
-                    Çoğul Hali (Plural)
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.plural}
-                    onChange={(e) =>
-                      setFormData({ ...formData, plural: e.target.value })
-                    }
-                    className="w-full p-3 border border-slate-200 rounded-xl outline-none"
-                    placeholder="Sadece isimler için → cars, books..."
-                  />
-                </div>
-                <div className="grid grid-cols-3 gap-3">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">
-                      V2
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.v2}
-                      onChange={(e) =>
-                        setFormData({ ...formData, v2: e.target.value })
-                      }
-                      className="w-full p-2 border border-slate-200 rounded-xl outline-none text-sm"
-                      placeholder="went"
-                    />
+
+              {/* GRUP 1: İSİM VE FİİL DETAYLARI */}
+              <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                  <div className="text-xs font-bold text-slate-400 mb-2 uppercase tracking-wide">Fiil & İsim Detayları</div>
+                  <div className="space-y-3">
+                      <div>
+                        <label className="block text-xs font-medium text-slate-500 mb-1">
+                          Çoğul (Plural)
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.plural}
+                          onChange={(e) =>
+                            setFormData({ ...formData, plural: e.target.value })
+                          }
+                          className="w-full p-2 border border-slate-200 rounded-lg outline-none text-sm"
+                          placeholder="cars, cities"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                          <div>
+                             <label className="block text-xs font-medium text-slate-500 mb-1">3. Tekil (He/She/It)</label>
+                             <input type="text" value={formData.thirdPerson} onChange={(e) => setFormData({ ...formData, thirdPerson: e.target.value })} className="w-full p-2 border border-slate-200 rounded-lg outline-none text-sm" placeholder="goes"/>
+                          </div>
+                          <div>
+                             <label className="block text-xs font-medium text-slate-500 mb-1">V-ing (Gerund)</label>
+                             <input type="text" value={formData.vIng} onChange={(e) => setFormData({ ...formData, vIng: e.target.value })} className="w-full p-2 border border-slate-200 rounded-lg outline-none text-sm" placeholder="going"/>
+                          </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-medium text-slate-500 mb-1">V2 (Past)</label>
+                          <input
+                            type="text"
+                            value={formData.v2}
+                            onChange={(e) =>
+                              setFormData({ ...formData, v2: e.target.value })
+                            }
+                            className="w-full p-2 border border-slate-200 rounded-lg outline-none text-sm"
+                            placeholder="went"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-slate-500 mb-1">V3 (Participle)</label>
+                          <input
+                            type="text"
+                            value={formData.v3}
+                            onChange={(e) =>
+                              setFormData({ ...formData, v3: e.target.value })
+                            }
+                            className="w-full p-2 border border-slate-200 rounded-lg outline-none text-sm"
+                            placeholder="gone"
+                          />
+                        </div>
+                      </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">
-                      V3
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.v3}
-                      onChange={(e) =>
-                        setFormData({ ...formData, v3: e.target.value })
-                      }
-                      className="w-full p-2 border border-slate-200 rounded-xl outline-none text-sm"
-                      placeholder="gone"
-                    />
+              </div>
+
+              {/* GRUP 2: SIFAT VE ZARF DETAYLARI (YENİ) */}
+              <div className="bg-orange-50 p-3 rounded-xl border border-orange-100">
+                  <div className="text-xs font-bold text-orange-400 mb-2 uppercase tracking-wide">Sıfat & Zarf Detayları</div>
+                  <div className="space-y-3">
+                      <div>
+                          <label className="block text-xs font-medium text-orange-700/70 mb-1">Zarf Hali (-ly)</label>
+                          <input type="text" value={formData.advLy} onChange={(e) => setFormData({ ...formData, advLy: e.target.value })} className="w-full p-2 border border-orange-200 rounded-lg outline-none text-sm" placeholder="quickly"/>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                          <div>
+                             <label className="block text-xs font-medium text-orange-700/70 mb-1">Karşılaştırma (-er)</label>
+                             <input type="text" value={formData.compEr} onChange={(e) => setFormData({ ...formData, compEr: e.target.value })} className="w-full p-2 border border-orange-200 rounded-lg outline-none text-sm" placeholder="faster"/>
+                          </div>
+                          <div>
+                             <label className="block text-xs font-medium text-orange-700/70 mb-1">Üstünlük (-est)</label>
+                             <input type="text" value={formData.superEst} onChange={(e) => setFormData({ ...formData, superEst: e.target.value })} className="w-full p-2 border border-orange-200 rounded-lg outline-none text-sm" placeholder="fastest"/>
+                          </div>
+                      </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">
-                      V-ing
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.vIng}
-                      onChange={(e) =>
-                        setFormData({ ...formData, vIng: e.target.value })
-                      }
-                      className="w-full p-2 border border-slate-200 rounded-xl outline-none text-sm"
-                      placeholder="going"
-                    />
-                  </div>
-                </div>
               </div>
 
               <div className="space-y-3">
@@ -1744,7 +1823,7 @@ export default function App() {
                         </button>
                         )}
                     </div>
-                    {/* İNGİLİZCE AÇIKLAMA */}
+                    {/* İNGİLİZCE AÇIKLAMA BURAYA TAŞINDI */}
                     <input
                         type="text"
                         value={def.engExplanation}
@@ -1918,25 +1997,26 @@ export default function App() {
                             </div>
                         ))}
 
-                        {(item.plural ||
-                          item.v2 ||
-                          item.v3 ||
-                          item.vIng) && (
-                          <div className="mt-2 text-xs text-slate-600 space-y-1">
-                            {item.plural && (
-                              <div>
-                                <span className="font-semibold">Plural:</span>{" "}
-                                {item.plural}
-                              </div>
-                            )}
-                            {(item.v2 || item.v3 || item.vIng) && (
-                              <div>
-                                <span className="font-semibold">Verb:</span>
-                                {item.v2 && <> V2: {item.v2}</>}
-                                {item.v3 && <> · V3: {item.v3}</>}
-                                {item.vIng && <> · V-ing: {item.vIng}</>}
-                              </div>
-                            )}
+                        {/* LİSTE GÖRÜNÜMÜ DETAYLARI */}
+                        {(item.plural || item.v2 || item.v3 || item.vIng || item.thirdPerson) && (
+                          <div className="mt-2 text-xs text-slate-600 space-y-1 bg-slate-50 p-2 rounded-lg">
+                            <div className="flex flex-wrap gap-x-3 gap-y-1">
+                                {item.plural && <div><span className="font-semibold">Pl:</span> {item.plural}</div>}
+                                {item.thirdPerson && <div><span className="font-semibold">3rd:</span> {item.thirdPerson}</div>}
+                                {item.v2 && <div><span className="font-semibold">V2:</span> {item.v2}</div>}
+                                {item.v3 && <div><span className="font-semibold">V3:</span> {item.v3}</div>}
+                                {item.vIng && <div><span className="font-semibold">Ing:</span> {item.vIng}</div>}
+                            </div>
+                          </div>
+                        )}
+
+                        {(item.advLy || item.compEr || item.superEst) && (
+                          <div className="mt-1 text-xs text-slate-600 space-y-1 bg-orange-50 p-2 rounded-lg">
+                            <div className="flex flex-wrap gap-x-3 gap-y-1">
+                                {item.advLy && <div><span className="font-semibold">Ly:</span> {item.advLy}</div>}
+                                {item.compEr && <div><span className="font-semibold">Comp:</span> {item.compEr}</div>}
+                                {item.superEst && <div><span className="font-semibold">Super:</span> {item.superEst}</div>}
+                            </div>
                           </div>
                         )}
 
@@ -2028,7 +2108,7 @@ export default function App() {
     );
   }
 
-  // --- DICTIONARY VIEW (GÜNCELLENDİ: ÇOKLU SONUÇ GÖSTERİMİ) ---
+  // --- DICTIONARY VIEW ---
   if (currentView === "dictionary") {
     return (
         <div className="min-h-screen bg-slate-50 p-6 flex flex-col items-center">
@@ -2372,7 +2452,7 @@ export default function App() {
                   <Flame className="w-4 h-4 fill-white" />
                   <span className="font-bold text-sm">{streak}</span>
                 </div>
-                <span className="text-[10px] font-bold text-orange-600 mt-1 bg-orange-100 px-2 rounded-full">
+                <span className="text-xs font-bold text-orange-600 mt-1 bg-orange-100 px-2 rounded-full">
                   Günlük Seri
                 </span>
               </div>
