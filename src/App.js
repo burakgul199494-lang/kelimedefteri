@@ -49,7 +49,13 @@ import {
   Flame,
   Book,
   Target,
+  Sparkles, // YENİ: Yapay Zeka İkonu
 } from "lucide-react";
+
+// --- YAPAY ZEKA AYARLARI ---
+// BURAYA GOOGLE GEMINI API KEY'İNİ YAPIŞTIRMAN GEREKİYOR
+// Almak için: https://aistudio.google.com/app/apikey
+const GEMINI_API_KEY = "gen-lang-client-0746402714"; 
 
 // --- FIREBASE CONFIG ---
 const firebaseConfig = {
@@ -241,6 +247,56 @@ export default function App() {
     }
   };
 
+  // --- AI HELPER FUNCTION ---
+  const generateWordData = async (word) => {
+    if (!GEMINI_API_KEY || GEMINI_API_KEY === "BURAYA_API_KEY_YAZILACAK") {
+        alert("Lütfen kodun başına geçerli bir Gemini API Key ekleyin.");
+        return null;
+    }
+
+    const prompt = `
+      Analyze the English word "${word}". Return ONLY a raw JSON object (no markdown, no code blocks) with the following structure.
+      If a field is not applicable (e.g., plural for verbs, v2 for nouns), use an empty string "".
+      Translate definitions to Turkish.
+      
+      Structure:
+      {
+        "plural": "string",
+        "v2": "string",
+        "v3": "string",
+        "vIng": "string",
+        "thirdPerson": "string",
+        "advLy": "string",
+        "compEr": "string",
+        "superEst": "string",
+        "definitions": [
+          { "type": "noun/verb/adjective/adverb/etc", "meaning": "Turkish meaning", "engExplanation": "Simple English explanation" }
+        ],
+        "sentence": "A simple example sentence including the word."
+      }
+    `;
+
+    try {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }]
+        })
+      });
+
+      const data = await response.json();
+      const text = data.candidates[0].content.parts[0].text;
+      // Clean the response if it has markdown code blocks
+      const cleanJson = text.replace(/```json/g, "").replace(/```/g, "").trim();
+      return JSON.parse(cleanJson);
+    } catch (error) {
+      console.error("AI Generation Error:", error);
+      alert("Yapay zeka veriyi çekerken bir hata oluştu. İnternet bağlantınızı veya API limitini kontrol edin.");
+      return null;
+    }
+  };
+
   // --- ADMIN ACTIONS ---
   const handleSaveSystemWord = async (wordData) => {
     try {
@@ -250,10 +306,10 @@ export default function App() {
         v2: wordData.v2 || "",
         v3: wordData.v3 || "",
         vIng: wordData.vIng || "",
-        thirdPerson: wordData.thirdPerson || "", // YENİ
-        advLy: wordData.advLy || "",             // YENİ
-        compEr: wordData.compEr || "",           // YENİ
-        superEst: wordData.superEst || "",       // YENİ
+        thirdPerson: wordData.thirdPerson || "",
+        advLy: wordData.advLy || "",
+        compEr: wordData.compEr || "",
+        superEst: wordData.superEst || "",
         definitions: wordData.definitions, 
         sentence: wordData.sentence.trim(),
         source: "system",
@@ -282,10 +338,10 @@ export default function App() {
         v2: wordData.v2 || "",
         v3: wordData.v3 || "",
         vIng: wordData.vIng || "",
-        thirdPerson: wordData.thirdPerson || "", // YENİ
-        advLy: wordData.advLy || "",             // YENİ
-        compEr: wordData.compEr || "",           // YENİ
-        superEst: wordData.superEst || "",       // YENİ
+        thirdPerson: wordData.thirdPerson || "",
+        advLy: wordData.advLy || "",
+        compEr: wordData.compEr || "",
+        superEst: wordData.superEst || "",
         definitions: wordData.definitions,
         sentence: wordData.sentence.trim(),
         updatedAt: new Date(),
@@ -360,7 +416,6 @@ export default function App() {
     window.speechSynthesis.speak(utterance);
   };
 
-  // GÜNCELLENDİ: Yeni alanları normalize et
   const normalizeWord = (w) => {
     const isDynamic = dynamicSystemWords.some((d) => d.id === w.id);
     const source = w.source || (isDynamic ? "system" : "user");
@@ -371,10 +426,10 @@ export default function App() {
       v2: w.v2 || "",
       v3: w.v3 || "",
       vIng: w.vIng || "",
-      thirdPerson: w.thirdPerson || "", // YENİ
-      advLy: w.advLy || "",             // YENİ
-      compEr: w.compEr || "",           // YENİ
-      superEst: w.superEst || "",       // YENİ
+      thirdPerson: w.thirdPerson || "",
+      advLy: w.advLy || "",
+      compEr: w.compEr || "",
+      superEst: w.superEst || "",
       definitions: Array.isArray(w.definitions)
         ? w.definitions.map(def => ({
             ...def,
@@ -461,7 +516,7 @@ export default function App() {
     }
   };
 
-  // --- DICTIONARY LOGIC (GÜNCELLENDİ: Yeni Alanları Arama) ---
+  // --- DICTIONARY LOGIC ---
   const handleDictionarySearch = (e) => {
     e.preventDefault();
     if (!dictSearchTerm.trim()) return;
@@ -479,10 +534,10 @@ export default function App() {
         (w.v3 && w.v3.toLowerCase() === term) ||
         (w.vIng && w.vIng.toLowerCase() === term) ||
         (w.plural && w.plural.toLowerCase() === term) ||
-        (w.thirdPerson && w.thirdPerson.toLowerCase() === term) || // YENİ
-        (w.advLy && w.advLy.toLowerCase() === term) ||             // YENİ
-        (w.compEr && w.compEr.toLowerCase() === term) ||           // YENİ
-        (w.superEst && w.superEst.toLowerCase() === term)          // YENİ
+        (w.thirdPerson && w.thirdPerson.toLowerCase() === term) ||
+        (w.advLy && w.advLy.toLowerCase() === term) ||
+        (w.compEr && w.compEr.toLowerCase() === term) ||
+        (w.superEst && w.superEst.toLowerCase() === term)
     );
 
     if (foundWords.length > 0) {
@@ -651,10 +706,10 @@ export default function App() {
       v2: wordData.v2 || "",
       v3: wordData.v3 || "",
       vIng: wordData.vIng || "",
-      thirdPerson: wordData.thirdPerson || "", // YENİ
-      advLy: wordData.advLy || "",             // YENİ
-      compEr: wordData.compEr || "",           // YENİ
-      superEst: wordData.superEst || "",       // YENİ
+      thirdPerson: wordData.thirdPerson || "",
+      advLy: wordData.advLy || "",
+      compEr: wordData.compEr || "",
+      superEst: wordData.superEst || "",
       definitions: wordData.definitions,
       sentence: wordData.sentence.trim(),
       source: "user",
@@ -729,10 +784,10 @@ export default function App() {
           v2: newData.v2 || "",
           v3: newData.v3 || "",
           vIng: newData.vIng || "",
-          thirdPerson: newData.thirdPerson || "", // YENİ
-          advLy: newData.advLy || "",             // YENİ
-          compEr: newData.compEr || "",           // YENİ
-          superEst: newData.superEst || "",       // YENİ
+          thirdPerson: newData.thirdPerson || "", 
+          advLy: newData.advLy || "",             
+          compEr: newData.compEr || "",           
+          superEst: newData.superEst || "",       
           source: isCustom.source || "user",
         };
         await updateDoc(userRef, { custom_words: arrayRemove(isCustom) });
@@ -753,10 +808,10 @@ export default function App() {
           v2: newData.v2 || "",
           v3: newData.v3 || "",
           vIng: newData.vIng || "",
-          thirdPerson: newData.thirdPerson || "", // YENİ
-          advLy: newData.advLy || "",             // YENİ
-          compEr: newData.compEr || "",           // YENİ
-          superEst: newData.superEst || "",       // YENİ
+          thirdPerson: newData.thirdPerson || "", 
+          advLy: newData.advLy || "",             
+          compEr: newData.compEr || "",           
+          superEst: newData.superEst || "",       
           definitions: newData.definitions,
           sentence: newData.sentence,
           source: "user",
@@ -881,7 +936,7 @@ export default function App() {
     );
   };
 
-  // --- CARD COMPONENT (GÜNCELLENDİ: Yeni Alanları Göster) ---
+  // --- CARD COMPONENT ---
   const WordCard = ({ wordObj }) => {
     return (
       <div className="relative w-full max-w-sm bg-white rounded-3xl shadow-xl p-6 text-center border border-slate-100">
@@ -958,6 +1013,7 @@ export default function App() {
               </div>
           )}
 
+          {/* Örnek Cümle ve Seslendirme */}
           <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 mt-2">
             <div className="flex items-center justify-between mb-2">
                 <div className="text-xs uppercase tracking-wide text-slate-400 font-bold">
@@ -1226,7 +1282,7 @@ export default function App() {
     );
   }
 
-  // --- ADMIN: ADD / EDIT SYSTEM WORD ---
+  // --- ADMIN: ADD / EDIT SYSTEM WORD (GÜNCELLENDİ: AI BUTTON) ---
   if (currentView === "add_system_word" && isAdmin) {
     const isEditMode = !!editingWord;
     const initialData = isEditMode
@@ -1236,10 +1292,10 @@ export default function App() {
           v2: editingWord.v2 || "",
           v3: editingWord.v3 || "",
           vIng: editingWord.vIng || "",
-          thirdPerson: editingWord.thirdPerson || "", // YENİ
-          advLy: editingWord.advLy || "",             // YENİ
-          compEr: editingWord.compEr || "",           // YENİ
-          superEst: editingWord.superEst || "",       // YENİ
+          thirdPerson: editingWord.thirdPerson || "",
+          advLy: editingWord.advLy || "",
+          compEr: editingWord.compEr || "",
+          superEst: editingWord.superEst || "",
           definitions: editingWord.definitions.map(d => ({...d, engExplanation: d.engExplanation || ""})),
           sentence: editingWord.sentence,
         }
@@ -1261,6 +1317,7 @@ export default function App() {
       const [formData, setFormData] = useState(initialData);
       const [error, setError] = useState("");
       const [saving, setSaving] = useState(false);
+      const [isGenerating, setIsGenerating] = useState(false);
 
       const addDefinition = () =>
         setFormData((prev) => ({
@@ -1281,6 +1338,24 @@ export default function App() {
         const newDefs = [...formData.definitions];
         newDefs[index] = { ...newDefs[index], [field]: value };
         setFormData((prev) => ({ ...prev, definitions: newDefs }));
+      };
+
+      // --- YENİ: OTOMATİK DOLDURMA FONKSİYONU ---
+      const handleAutoFill = async () => {
+        if (!formData.word.trim()) {
+            alert("Lütfen önce bir kelime yazın.");
+            return;
+        }
+        setIsGenerating(true);
+        const data = await generateWordData(formData.word);
+        setIsGenerating(false);
+
+        if (data) {
+            setFormData(prev => ({
+                ...prev,
+                ...data
+            }));
+        }
       };
 
       const handleSubmit = async (e) => {
@@ -1361,15 +1436,26 @@ export default function App() {
                 <label className="block text-sm font-medium text-slate-700 mb-1">
                   Kelime
                 </label>
-                <input
-                  type="text"
-                  value={formData.word}
-                  onChange={(e) =>
-                    setFormData({ ...formData, word: e.target.value })
-                  }
-                  className="w-full p-3 border border-slate-200 rounded-xl outline-none"
-                  placeholder="Örn: Bank"
-                />
+                <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={formData.word}
+                      onChange={(e) =>
+                        setFormData({ ...formData, word: e.target.value })
+                      }
+                      className="w-full p-3 border border-slate-200 rounded-xl outline-none"
+                      placeholder="Örn: Bank"
+                    />
+                    <button 
+                        type="button"
+                        onClick={handleAutoFill}
+                        disabled={isGenerating}
+                        className="bg-indigo-600 text-white p-3 rounded-xl hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Yapay Zeka ile Doldur"
+                    >
+                        {isGenerating ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
+                    </button>
+                </div>
               </div>
 
               {/* GRUP 1: İSİM VE FİİL DETAYLARI */}
@@ -1428,7 +1514,7 @@ export default function App() {
                   </div>
               </div>
 
-              {/* GRUP 2: SIFAT VE ZARF DETAYLARI (YENİ) */}
+              {/* GRUP 2: SIFAT VE ZARF DETAYLARI */}
               <div className="bg-orange-50 p-3 rounded-xl border border-orange-100">
                   <div className="text-xs font-bold text-orange-400 mb-2 uppercase tracking-wide">Sıfat & Zarf Detayları</div>
                   <div className="space-y-3">
@@ -1502,7 +1588,6 @@ export default function App() {
                         </button>
                         )}
                     </div>
-                    {/* İNGİLİZCE AÇIKLAMA - ANLAM İÇİNDE */}
                     <input
                         type="text"
                         value={def.engExplanation}
@@ -1548,7 +1633,7 @@ export default function App() {
     return <FormComponent />;
   }
 
-  // --- ADD / EDIT FORM (USER) ---
+  // --- ADD / EDIT FORM (USER) (GÜNCELLENDİ: AI BUTTON) ---
   if (currentView === "add_word" || currentView === "edit_word") {
     const isEditMode = currentView === "edit_word";
     const normalizedEditWord =
@@ -1560,10 +1645,10 @@ export default function App() {
           v2: normalizedEditWord.v2 || "",
           v3: normalizedEditWord.v3 || "",
           vIng: normalizedEditWord.vIng || "",
-          thirdPerson: normalizedEditWord.thirdPerson || "", // YENİ
-          advLy: normalizedEditWord.advLy || "",             // YENİ
-          compEr: normalizedEditWord.compEr || "",           // YENİ
-          superEst: normalizedEditWord.superEst || "",       // YENİ
+          thirdPerson: normalizedEditWord.thirdPerson || "",
+          advLy: normalizedEditWord.advLy || "",
+          compEr: normalizedEditWord.compEr || "",
+          superEst: normalizedEditWord.superEst || "",
           definitions: normalizedEditWord.definitions.map(d => ({...d, engExplanation: d.engExplanation || ""})),
           sentence: normalizedEditWord.sentence,
         }
@@ -1585,6 +1670,7 @@ export default function App() {
       const [formData, setFormData] = useState(initialData);
       const [error, setError] = useState("");
       const [saving, setSaving] = useState(false);
+      const [isGenerating, setIsGenerating] = useState(false);
 
       const addDefinition = () =>
         setFormData((prev) => ({
@@ -1605,6 +1691,24 @@ export default function App() {
         const newDefs = [...formData.definitions];
         newDefs[index] = { ...newDefs[index], [field]: value };
         setFormData((prev) => ({ ...prev, definitions: newDefs }));
+      };
+
+      // --- YENİ: OTOMATİK DOLDURMA FONKSİYONU ---
+      const handleAutoFill = async () => {
+        if (!formData.word.trim()) {
+            alert("Lütfen önce bir kelime yazın.");
+            return;
+        }
+        setIsGenerating(true);
+        const data = await generateWordData(formData.word);
+        setIsGenerating(false);
+
+        if (data) {
+            setFormData(prev => ({
+                ...prev,
+                ...data
+            }));
+        }
       };
 
       const handleSubmit = async (e) => {
@@ -1680,16 +1784,27 @@ export default function App() {
                 <label className="block text-sm font-medium text-slate-700 mb-1">
                   İngilizce Kelime
                 </label>
-                <input
-                  type="text"
-                  value={formData.word}
-                  onChange={(e) =>
-                    setFormData({ ...formData, word: e.target.value })
-                  }
-                  className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
-                  placeholder="Örn: Bank"
-                  autoFocus
-                />
+                <div className="flex gap-2">
+                    <input
+                    type="text"
+                    value={formData.word}
+                    onChange={(e) =>
+                        setFormData({ ...formData, word: e.target.value })
+                    }
+                    className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
+                    placeholder="Örn: Bank"
+                    autoFocus
+                    />
+                    <button 
+                        type="button"
+                        onClick={handleAutoFill}
+                        disabled={isGenerating}
+                        className="bg-indigo-600 text-white p-3 rounded-xl hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Yapay Zeka ile Doldur"
+                    >
+                        {isGenerating ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
+                    </button>
+                </div>
               </div>
 
               {/* GRUP 1: İSİM VE FİİL DETAYLARI */}
@@ -1749,7 +1864,7 @@ export default function App() {
                   </div>
               </div>
 
-              {/* GRUP 2: SIFAT VE ZARF DETAYLARI (YENİ) */}
+              {/* GRUP 2: SIFAT VE ZARF DETAYLARI */}
               <div className="bg-orange-50 p-3 rounded-xl border border-orange-100">
                   <div className="text-xs font-bold text-orange-400 mb-2 uppercase tracking-wide">Sıfat & Zarf Detayları</div>
                   <div className="space-y-3">
@@ -1823,7 +1938,7 @@ export default function App() {
                         </button>
                         )}
                     </div>
-                    {/* İNGİLİZCE AÇIKLAMA BURAYA TAŞINDI */}
+                    {/* İNGİLİZCE AÇIKLAMA */}
                     <input
                         type="text"
                         value={def.engExplanation}
@@ -2452,7 +2567,7 @@ export default function App() {
                   <Flame className="w-4 h-4 fill-white" />
                   <span className="font-bold text-sm">{streak}</span>
                 </div>
-                <span className="text-xs font-bold text-orange-600 mt-1 bg-orange-100 px-2 rounded-full">
+                <span className="text-[10px] font-bold text-orange-600 mt-1 bg-orange-100 px-2 rounded-full">
                   Günlük Seri
                 </span>
               </div>
