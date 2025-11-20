@@ -97,7 +97,7 @@ const fetchWordAnalysisFromAI = async (word) => {
   const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
   
   // Model ismini en hızlı olanla ayarladık
-  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+   const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
   const prompt = `
     You are a dictionary assistant used in a vocabulary learning app. Analyze the English word "${word}".
@@ -2625,7 +2625,7 @@ export default function App() {
             </div>
 
             <h1 className="text-3xl font-extrabold text-slate-800 tracking-tight">
-              Kelime Atölyesi
+              Kelime Atölyesi 2
             </h1>
             <p className="text-slate-500 mt-2">
               Merhaba, {user.displayName || user.email}
