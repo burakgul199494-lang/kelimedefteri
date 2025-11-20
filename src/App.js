@@ -717,10 +717,13 @@ export default function App() {
     }
 
     setTimeout(() => {
+      // Önce seçimleri temizle
+      setQuizSelectedOption(null);
+      setQuizIsAnswered(false);
+      
+      // Sonra soruyu ilerlet
       if (quizIndex + 1 < quizQuestions.length) {
         setQuizIndex((prev) => prev + 1);
-        setQuizSelectedOption(null);
-        setQuizIsAnswered(false);
       } else {
         setCurrentView("quiz_result");
       }
@@ -2434,7 +2437,7 @@ export default function App() {
     )
   }
 
-  // --- QUIZ VIEW (MOBİL DÜZELTİLMİŞ VERSİYON) ---
+  // --- QUIZ VIEW (KESİN ÇÖZÜM) ---
   if (currentView === "quiz") {
       const currentQuestion = quizQuestions[quizIndex];
       const progress = ((quizIndex + 1) / quizQuestions.length) * 100;
@@ -2460,51 +2463,56 @@ export default function App() {
                     <div className="bg-indigo-500 h-full transition-all duration-500 ease-out" style={{width: `${progress}%`}}></div>
                 </div>
 
-                {/* Question Card */}
-                <div className="bg-white p-8 rounded-3xl shadow-lg border border-slate-100 text-center space-y-6 mt-6">
-                    <div className="inline-block bg-indigo-50 text-indigo-600 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
-                        Bu kelimenin anlamı nedir?
+                {/* NÜKLEER ÇÖZÜM BURADA:
+                    Tüm içeriği kapsayan bir div oluşturduk ve key olarak kelimenin ID'sini verdik.
+                    Kelime değiştiği an bu div ve içindeki her şey (butonlar, renkler) tamamen yok edilip yeniden oluşturulur.
+                    Böylece eski renklerin kalma ihtimali %0 olur.
+                */}
+                <div key={currentQuestion.wordObj.id} className="animate-in fade-in slide-in-from-right-4 duration-300">
+                    
+                    {/* Question Card */}
+                    <div className="bg-white p-8 rounded-3xl shadow-lg border border-slate-100 text-center space-y-6 mt-6">
+                        <div className="inline-block bg-indigo-50 text-indigo-600 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
+                            Bu kelimenin anlamı nedir?
+                        </div>
+                        <h2 className="text-4xl font-extrabold text-slate-800">{currentQuestion.wordObj.word}</h2>
+                        <button onClick={() => speak(currentQuestion.wordObj.word)} className="mx-auto p-2 bg-slate-50 rounded-full text-indigo-500 hover:bg-indigo-50 transition-colors">
+                            <Volume2 className="w-6 h-6" />
+                        </button>
                     </div>
-                    <h2 className="text-4xl font-extrabold text-slate-800">{currentQuestion.wordObj.word}</h2>
-                    <button onClick={() => speak(currentQuestion.wordObj.word)} className="mx-auto p-2 bg-slate-50 rounded-full text-indigo-500 hover:bg-indigo-50 transition-colors">
-                        <Volume2 className="w-6 h-6" />
-                    </button>
-                </div>
 
-                {/* Options - KESİN ÇÖZÜM BURADA */}
-                <div className="space-y-3 mt-6">
-                    {currentQuestion.options.map((option) => { // 'idx' parametresini kaldırdık
-                        let btnClass = "w-full p-4 rounded-xl text-left font-medium border-2 transition-all active:scale-95 shadow-sm ";
-                        
-                        // Buton renk mantığı
-                        if (quizIsAnswered) {
-                            if (option === currentQuestion.correctAnswer) {
-                                btnClass += "bg-green-100 border-green-500 text-green-700";
-                            } else if (option === quizSelectedOption) {
-                                btnClass += "bg-red-100 border-red-500 text-red-700";
+                    {/* Options */}
+                    <div className="space-y-3 mt-6">
+                        {currentQuestion.options.map((option, idx) => {
+                            let btnClass = "w-full p-4 rounded-xl text-left font-medium border-2 transition-all active:scale-95 shadow-sm ";
+                            
+                            if (quizIsAnswered) {
+                                if (option === currentQuestion.correctAnswer) {
+                                    btnClass += "bg-green-100 border-green-500 text-green-700";
+                                } else if (option === quizSelectedOption) {
+                                    btnClass += "bg-red-100 border-red-500 text-red-700";
+                                } else {
+                                    btnClass += "bg-white border-slate-100 text-slate-400 opacity-50";
+                                }
                             } else {
-                                btnClass += "bg-white border-slate-100 text-slate-400 opacity-50";
+                                btnClass += "bg-white border-slate-200 text-slate-700 hover:border-indigo-300 hover:bg-indigo-50";
                             }
-                        } else {
-                            btnClass += "bg-white border-slate-200 text-slate-700 hover:border-indigo-300 hover:bg-indigo-50";
-                        }
 
-                        return (
-                            <button 
-                                // EN ÖNEMLİ KISIM: key olarak 'option' (kelimenin kendisi) kullanıyoruz.
-                                // Böylece içerik değiştiğinde buton kesinlikle sıfırlanır.
-                                key={option} 
-                                onClick={(e) => {
-                                    e.currentTarget.blur(); // Mobil odaklanma sorununu çözer
-                                    handleQuizAnswer(option);
-                                }}
-                                disabled={quizIsAnswered}
-                                className={btnClass}
-                            >
-                                {option}
-                            </button>
-                        )
-                    })}
+                            return (
+                                <button 
+                                    key={`${currentQuestion.wordObj.id}-${idx}`} 
+                                    onClick={(e) => {
+                                        e.currentTarget.blur();
+                                        handleQuizAnswer(option);
+                                    }}
+                                    disabled={quizIsAnswered}
+                                    className={btnClass}
+                                >
+                                    {option}
+                                </button>
+                            )
+                        })}
+                    </div>
                 </div>
             </div>
         </div>
