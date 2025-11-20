@@ -71,15 +71,15 @@ const ADMIN_EMAILS = ["burakgul1994@outlook.com.tr"];
 
 // --- SYSTEM WORDS ---
 const WORD_TYPES = [
-  { value: "noun", label: "Ä°sim (Noun)" },
+  { value: "noun", label: "İsim (Noun)" },
   { value: "verb", label: "Fiil (Verb)" },
-  { value: "adjective", label: "SÄ±fat (Adjective)" },
+  { value: "adjective", label: "Sıfat (Adjective)" },
   { value: "adverb", label: "Zarf (Adverb)" },
   { value: "prep", label: "Edat (Prep)" },
   { value: "pronoun", label: "Zamir (Pronoun)" },
-  { value: "conj", label: "BaÄŸlaÃ§ (Conj)" },
-  { value: "article", label: "TanÄ±mlÄ±k (Article)" },
-  { value: "other", label: "DiÄŸer (Other)" },
+  { value: "conj", label: "Bağlaç (Conj)" },
+  { value: "article", label: "Tanımlık (Article)" },
+  { value: "other", label: "Diğer (Other)" },
 ];
 
 const WORDS_PER_SESSION = 20;
@@ -220,7 +220,7 @@ export default function App() {
         setStreak(1);
       }
     } catch (error) {
-      console.error("Veri Ã§ekme hatasÄ±:", error);
+      console.error("Veri çekme hatası:", error);
     } finally {
       setLoading(false);
     }
@@ -237,7 +237,7 @@ export default function App() {
       });
       setDynamicSystemWords(words);
     } catch (e) {
-      console.error("Sistem kelimeleri Ã§ekilemedi:", e);
+      console.error("Sistem kelimeleri çekilemedi:", e);
     }
   };
 
@@ -250,10 +250,10 @@ export default function App() {
         v2: wordData.v2 || "",
         v3: wordData.v3 || "",
         vIng: wordData.vIng || "",
-        thirdPerson: wordData.thirdPerson || "", // YENÄ°
-        advLy: wordData.advLy || "",             // YENÄ°
-        compEr: wordData.compEr || "",           // YENÄ°
-        superEst: wordData.superEst || "",       // YENÄ°
+        thirdPerson: wordData.thirdPerson || "", // YENİ
+        advLy: wordData.advLy || "",             // YENİ
+        compEr: wordData.compEr || "",           // YENİ
+        superEst: wordData.superEst || "",       // YENİ
         definitions: wordData.definitions, 
         sentence: wordData.sentence.trim(),
         source: "system",
@@ -269,7 +269,7 @@ export default function App() {
       ]);
       return { success: true };
     } catch (e) {
-      console.error("Admin kayÄ±t hatasÄ±:", e);
+      console.error("Admin kayıt hatası:", e);
       return { success: false, message: e.message };
     }
   };
@@ -282,10 +282,10 @@ export default function App() {
         v2: wordData.v2 || "",
         v3: wordData.v3 || "",
         vIng: wordData.vIng || "",
-        thirdPerson: wordData.thirdPerson || "", // YENÄ°
-        advLy: wordData.advLy || "",             // YENÄ°
-        compEr: wordData.compEr || "",           // YENÄ°
-        superEst: wordData.superEst || "",       // YENÄ°
+        thirdPerson: wordData.thirdPerson || "", // YENİ
+        advLy: wordData.advLy || "",             // YENİ
+        compEr: wordData.compEr || "",           // YENİ
+        superEst: wordData.superEst || "",       // YENİ
         definitions: wordData.definitions,
         sentence: wordData.sentence.trim(),
         updatedAt: new Date(),
@@ -297,22 +297,22 @@ export default function App() {
       );
       return { success: true };
     } catch (e) {
-      console.error("GÃ¼ncelleme hatasÄ±:", e);
+      console.error("Güncelleme hatası:", e);
       return { success: false, message: e.message };
     }
   };
 
   const handleDeleteSystemWord = async (wordId) => {
     const confirm = window.confirm(
-      "Bu sistem kelimesini silmek istediÄŸine emin misin? Herkesten silinecek."
+      "Bu sistem kelimesini silmek istediğine emin misin? Herkesten silinecek."
     );
     if (!confirm) return;
     try {
       await deleteDoc(doc(db, "artifacts", appId, "system_words", wordId));
       setDynamicSystemWords((prev) => prev.filter((w) => w.id !== wordId));
     } catch (e) {
-      console.error("Silme hatasÄ±:", e);
-      alert("Silinirken hata oluÅŸtu.");
+      console.error("Silme hatası:", e);
+      alert("Silinirken hata oluştu.");
     }
   };
 
@@ -360,7 +360,7 @@ export default function App() {
     window.speechSynthesis.speak(utterance);
   };
 
-  // GÃœNCELLENDÄ°: Yeni alanlarÄ± normalize et
+  // GÜNCELLENDİ: Yeni alanları normalize et
   const normalizeWord = (w) => {
     const isDynamic = dynamicSystemWords.some((d) => d.id === w.id);
     const source = w.source || (isDynamic ? "system" : "user");
@@ -371,10 +371,10 @@ export default function App() {
       v2: w.v2 || "",
       v3: w.v3 || "",
       vIng: w.vIng || "",
-      thirdPerson: w.thirdPerson || "", // YENÄ°
-      advLy: w.advLy || "",             // YENÄ°
-      compEr: w.compEr || "",           // YENÄ°
-      superEst: w.superEst || "",       // YENÄ°
+      thirdPerson: w.thirdPerson || "", // YENİ
+      advLy: w.advLy || "",             // YENİ
+      compEr: w.compEr || "",           // YENİ
+      superEst: w.superEst || "",       // YENİ
       definitions: Array.isArray(w.definitions)
         ? w.definitions.map(def => ({
             ...def,
@@ -418,7 +418,7 @@ export default function App() {
 
   const restoreWord = async (word) => {
     if (!canRestoreWord(word)) {
-      alert("Bu kelimenin aktif bir versiyonu zaten var, tekrar yÃ¼klenemez.");
+      alert("Bu kelimenin aktif bir versiyonu zaten var, tekrar yüklenemez.");
       return;
     }
     try {
@@ -461,7 +461,7 @@ export default function App() {
     }
   };
 
-  // --- DICTIONARY LOGIC (GÃœNCELLENDÄ°: Yeni AlanlarÄ± Arama) ---
+  // --- DICTIONARY LOGIC (GÜNCELLENDİ: Yeni Alanları Arama) ---
   const handleDictionarySearch = (e) => {
     e.preventDefault();
     if (!dictSearchTerm.trim()) return;
@@ -479,17 +479,17 @@ export default function App() {
         (w.v3 && w.v3.toLowerCase() === term) ||
         (w.vIng && w.vIng.toLowerCase() === term) ||
         (w.plural && w.plural.toLowerCase() === term) ||
-        (w.thirdPerson && w.thirdPerson.toLowerCase() === term) || // YENÄ°
-        (w.advLy && w.advLy.toLowerCase() === term) ||             // YENÄ°
-        (w.compEr && w.compEr.toLowerCase() === term) ||           // YENÄ°
-        (w.superEst && w.superEst.toLowerCase() === term)          // YENÄ°
+        (w.thirdPerson && w.thirdPerson.toLowerCase() === term) || // YENİ
+        (w.advLy && w.advLy.toLowerCase() === term) ||             // YENİ
+        (w.compEr && w.compEr.toLowerCase() === term) ||           // YENİ
+        (w.superEst && w.superEst.toLowerCase() === term)          // YENİ
     );
 
     if (foundWords.length > 0) {
       setDictResults(foundWords);
     } else {
       setDictError(
-        "Kelime bulunamadÄ±. YazÄ±m hatasÄ± olabilir veya henÃ¼z eklenmemiÅŸ."
+        "Kelime bulunamadı. Yazım hatası olabilir veya henüz eklenmemiş."
       );
     }
   };
@@ -570,7 +570,7 @@ export default function App() {
 
     if (validWords.length < 4) {
       alert(
-        "Quiz baÅŸlatmak iÃ§in sistemde anlamÄ± girilmiÅŸ en az 4 kelime olmalÄ±dÄ±r!"
+        "Quiz başlatmak için sistemde anlamı girilmiş en az 4 kelime olmalıdır!"
       );
       return;
     }
@@ -651,10 +651,10 @@ export default function App() {
       v2: wordData.v2 || "",
       v3: wordData.v3 || "",
       vIng: wordData.vIng || "",
-      thirdPerson: wordData.thirdPerson || "", // YENÄ°
-      advLy: wordData.advLy || "",             // YENÄ°
-      compEr: wordData.compEr || "",           // YENÄ°
-      superEst: wordData.superEst || "",       // YENÄ°
+      thirdPerson: wordData.thirdPerson || "", // YENİ
+      advLy: wordData.advLy || "",             // YENİ
+      compEr: wordData.compEr || "",           // YENİ
+      superEst: wordData.superEst || "",       // YENİ
       definitions: wordData.definitions,
       sentence: wordData.sentence.trim(),
       source: "user",
@@ -678,7 +678,7 @@ export default function App() {
       return { success: true };
     } catch (e) {
       console.error(e);
-      return { success: false, message: "Kaydetme hatasÄ± oluÅŸtu." };
+      return { success: false, message: "Kaydetme hatası oluştu." };
     }
   };
 
@@ -703,7 +703,7 @@ export default function App() {
       );
       setKnownWordIds((prev) => prev.filter((id) => id !== wordId));
     } catch (e) {
-      console.error("Silme hatasÄ±:", e);
+      console.error("Silme hatası:", e);
     }
   };
 
@@ -729,10 +729,10 @@ export default function App() {
           v2: newData.v2 || "",
           v3: newData.v3 || "",
           vIng: newData.vIng || "",
-          thirdPerson: newData.thirdPerson || "", // YENÄ°
-          advLy: newData.advLy || "",             // YENÄ°
-          compEr: newData.compEr || "",           // YENÄ°
-          superEst: newData.superEst || "",       // YENÄ°
+          thirdPerson: newData.thirdPerson || "", // YENİ
+          advLy: newData.advLy || "",             // YENİ
+          compEr: newData.compEr || "",           // YENİ
+          superEst: newData.superEst || "",       // YENİ
           source: isCustom.source || "user",
         };
         await updateDoc(userRef, { custom_words: arrayRemove(isCustom) });
@@ -753,10 +753,10 @@ export default function App() {
           v2: newData.v2 || "",
           v3: newData.v3 || "",
           vIng: newData.vIng || "",
-          thirdPerson: newData.thirdPerson || "", // YENÄ°
-          advLy: newData.advLy || "",             // YENÄ°
-          compEr: newData.compEr || "",           // YENÄ°
-          superEst: newData.superEst || "",       // YENÄ°
+          thirdPerson: newData.thirdPerson || "", // YENİ
+          advLy: newData.advLy || "",             // YENİ
+          compEr: newData.compEr || "",           // YENİ
+          superEst: newData.superEst || "",       // YENİ
           definitions: newData.definitions,
           sentence: newData.sentence,
           source: "user",
@@ -814,11 +814,11 @@ export default function App() {
 
   const resetProfileToDefaults = async () => {
     const confirm1 = window.confirm(
-      "Profilini sÄ±fÄ±rlamak istediÄŸine emin misin? Bu iÅŸlem tÃ¼m kelime ilerlemelerini ve kendi eklediÄŸin kelimeleri temizler."
+      "Profilini sıfırlamak istediğine emin misin? Bu işlem tüm kelime ilerlemelerini ve kendi eklediğin kelimeleri temizler."
     );
     if (!confirm1) return;
     const confirm2 = window.confirm(
-      "Bu iÅŸlem GERÄ° ALINAMAZ. Kesin olarak sÄ±fÄ±rlamak istiyor musun?"
+      "Bu işlem GERİ ALINAMAZ. Kesin olarak sıfırlamak istiyor musun?"
     );
     if (!confirm2) return;
     try {
@@ -843,11 +843,11 @@ export default function App() {
       setCustomWords([]);
       setDeletedWordIds([]);
       setStreak(1);
-      alert("Profil baÅŸarÄ±yla sÄ±fÄ±rlandÄ±!");
+      alert("Profil başarıyla sıfırlandı!");
       handleGoHome();
     } catch (e) {
       console.error("Reset error:", e);
-      alert("SÄ±fÄ±rlama yapÄ±lÄ±rken bir hata oluÅŸtu.");
+      alert("Sıfırlama yapılırken bir hata oluştu.");
     }
   };
 
@@ -876,12 +876,12 @@ export default function App() {
             : "bg-orange-100 text-orange-600"
         }`}
       >
-        {isSystem ? "Sistem" : "KullanÄ±cÄ±"}
+        {isSystem ? "Sistem" : "Kullanıcı"}
       </span>
     );
   };
 
-  // --- CARD COMPONENT (GÃœNCELLENDÄ°: Yeni AlanlarÄ± GÃ¶ster) ---
+  // --- CARD COMPONENT (GÜNCELLENDİ: Yeni Alanları Göster) ---
   const WordCard = ({ wordObj }) => {
     return (
       <div className="relative w-full max-w-sm bg-white rounded-3xl shadow-xl p-6 text-center border border-slate-100">
@@ -932,10 +932,10 @@ export default function App() {
             </div>
           ))}
 
-          {/* DÄ°L BÄ°LGÄ°SÄ° DETAYLARI - FÄ°Ä°LLER */}
+          {/* DİL BİLGİSİ DETAYLARI - FİİLLER */}
           {(wordObj.plural || wordObj.v2 || wordObj.v3 || wordObj.vIng || wordObj.thirdPerson) && (
             <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 text-left space-y-1.5 mt-2">
-              <div className="text-[10px] uppercase tracking-wide text-slate-400 font-bold mb-1">Fiil & Ä°sim Ã‡ekimleri</div>
+              <div className="text-[10px] uppercase tracking-wide text-slate-400 font-bold mb-1">Fiil & İsim Çekimleri</div>
               <div className="grid grid-cols-2 gap-2 text-sm text-slate-700">
                   {wordObj.plural && <div><span className="font-semibold text-slate-900">Plural:</span> {wordObj.plural}</div>}
                   {wordObj.thirdPerson && <div><span className="font-semibold text-slate-900">3rd P:</span> {wordObj.thirdPerson}</div>}
@@ -946,10 +946,10 @@ export default function App() {
             </div>
           )}
 
-          {/* DÄ°L BÄ°LGÄ°SÄ° DETAYLARI - SIFAT/ZARF */}
+          {/* DİL BİLGİSİ DETAYLARI - SIFAT/ZARF */}
           {(wordObj.advLy || wordObj.compEr || wordObj.superEst) && (
               <div className="bg-orange-50 p-3 rounded-xl border border-orange-100 text-left space-y-1.5 mt-2">
-                  <div className="text-[10px] uppercase tracking-wide text-orange-400 font-bold mb-1">SÄ±fat & Zarf Halleri</div>
+                  <div className="text-[10px] uppercase tracking-wide text-orange-400 font-bold mb-1">Sıfat & Zarf Halleri</div>
                   <div className="text-sm text-slate-700 space-y-1">
                       {wordObj.advLy && <div><span className="font-semibold text-slate-900">Zarf (-ly):</span> {wordObj.advLy}</div>}
                       {wordObj.compEr && <div><span className="font-semibold text-slate-900">Comp (-er):</span> {wordObj.compEr}</div>}
@@ -961,12 +961,12 @@ export default function App() {
           <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 mt-2">
             <div className="flex items-center justify-between mb-2">
                 <div className="text-xs uppercase tracking-wide text-slate-400 font-bold">
-                Ã–rnek CÃ¼mle
+                Örnek Cümle
                 </div>
                 <button 
                     onClick={(e) => speak(wordObj.sentence, e)}
                     className="p-1.5 bg-white text-indigo-500 rounded-full hover:bg-indigo-100 hover:text-indigo-700 border border-slate-200 transition-colors"
-                    title="CÃ¼mleyi Oku"
+                    title="Cümleyi Oku"
                 >
                     <Volume2 className="w-4 h-4" />
                 </button>
@@ -1000,7 +1000,7 @@ export default function App() {
       } catch (err) {
         setError(
           err.message.includes("auth")
-            ? "GiriÅŸ hatasÄ±. Bilgileri kontrol et."
+            ? "Giriş hatası. Bilgileri kontrol et."
             : err.message
         );
       } finally {
@@ -1027,7 +1027,7 @@ export default function App() {
               <Brain className="text-white w-8 h-8" />
             </div>
             <h1 className="text-2xl font-bold text-slate-800">
-              Kelime AtÃ¶lye'sine HoÅŸgeldiniz
+              Kelime Atölye'sine Hoşgeldiniz
             </h1>
             <p className="text-slate-500">Kelimelerini kaybetme.</p>
           </div>
@@ -1065,7 +1065,7 @@ export default function App() {
               <Lock className="absolute left-3 top-3.5 text-slate-400 w-5 h-5" />
               <input
                 type="password"
-                placeholder="Åifre"
+                placeholder="Şifre"
                 className="w-full pl-10 p-3 border border-slate-200 rounded-xl outline-none"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -1079,9 +1079,9 @@ export default function App() {
               {loadingAuth ? (
                 <Loader2 className="animate-spin mx-auto" />
               ) : isLogin ? (
-                "GiriÅŸ Yap"
+                "Giriş Yap"
               ) : (
-                "KayÄ±t Ol"
+                "Kayıt Ol"
               )}
             </button>
           </form>
@@ -1089,7 +1089,7 @@ export default function App() {
             className="text-center mt-6 text-sm text-slate-500 cursor-pointer hover:text-indigo-600"
             onClick={() => setIsLogin(!isLogin)}
           >
-            {isLogin ? "Hesap oluÅŸtur" : "GiriÅŸ yap"}
+            {isLogin ? "Hesap oluştur" : "Giriş yap"}
           </p>
         </div>
       </div>
@@ -1100,7 +1100,7 @@ export default function App() {
     return (
       <div className="flex items-center justify-center h-screen bg-slate-100 text-slate-600">
         <Loader2 className="w-10 h-10 animate-spin mr-2" />
-        <span className="text-lg font-medium">BaÅŸlatÄ±lÄ±yor...</span>
+        <span className="text-lg font-medium">Başlatılıyor...</span>
       </div>
     );
   if (!user) return <AuthScreen />;
@@ -1108,7 +1108,7 @@ export default function App() {
     return (
       <div className="flex items-center justify-center h-screen bg-slate-100 text-slate-600">
         <Loader2 className="w-10 h-10 animate-spin mr-2" />
-        <span className="text-lg font-medium">Veriler YÃ¼kleniyor...</span>
+        <span className="text-lg font-medium">Veriler Yükleniyor...</span>
       </div>
     );
 
@@ -1131,7 +1131,7 @@ export default function App() {
               <ArrowLeft className="w-6 h-6 text-slate-600" />
             </button>
             <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-              <Shield className="w-6 h-6 text-slate-800" /> YÃ¶netici Paneli
+              <Shield className="w-6 h-6 text-slate-800" /> Yönetici Paneli
             </h2>
           </div>
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 mb-6">
@@ -1146,7 +1146,7 @@ export default function App() {
                 </span>
               </div>
               <div className="text-xs text-slate-400 text-center pt-2">
-                * Bu kelimeler tÃ¼m kullanÄ±cÄ±lar tarafÄ±ndan gÃ¶rÃ¼lÃ¼r.
+                * Bu kelimeler tüm kullanıcılar tarafından görülür.
               </div>
             </div>
           </div>
@@ -1175,12 +1175,12 @@ export default function App() {
             </div>
             {dynamicSystemWords.length === 0 ? (
               <div className="text-center p-8 text-slate-400 text-sm bg-slate-100 rounded-xl border border-dashed border-slate-300">
-                <p>HenÃ¼z hiÃ§ sistem kelimesi yok.</p>
-                <p className="text-xs mt-1">YukarÄ±daki butondan eklemeye baÅŸla.</p>
+                <p>Henüz hiç sistem kelimesi yok.</p>
+                <p className="text-xs mt-1">Yukarıdaki butondan eklemeye başla.</p>
               </div>
             ) : filteredSystemWords.length === 0 ? (
               <div className="text-center p-4 text-slate-400 text-sm bg-slate-50 rounded-xl">
-                Aranan kelime bulunamadÄ±.
+                Aranan kelime bulunamadı.
               </div>
             ) : (
               <div className="space-y-2">
@@ -1204,7 +1204,7 @@ export default function App() {
                           setCurrentView("add_system_word");
                         }}
                         className="p-2 bg-blue-50 text-blue-500 rounded-lg hover:bg-blue-100 transition-colors"
-                        title="DÃ¼zenle"
+                        title="Düzenle"
                       >
                         <Edit2 className="w-4 h-4" />
                       </button>
@@ -1236,10 +1236,10 @@ export default function App() {
           v2: editingWord.v2 || "",
           v3: editingWord.v3 || "",
           vIng: editingWord.vIng || "",
-          thirdPerson: editingWord.thirdPerson || "", // YENÄ°
-          advLy: editingWord.advLy || "",             // YENÄ°
-          compEr: editingWord.compEr || "",           // YENÄ°
-          superEst: editingWord.superEst || "",       // YENÄ°
+          thirdPerson: editingWord.thirdPerson || "", // YENİ
+          advLy: editingWord.advLy || "",             // YENİ
+          compEr: editingWord.compEr || "",           // YENİ
+          superEst: editingWord.superEst || "",       // YENİ
           definitions: editingWord.definitions.map(d => ({...d, engExplanation: d.engExplanation || ""})),
           sentence: editingWord.sentence,
         }
@@ -1286,12 +1286,12 @@ export default function App() {
       const handleSubmit = async (e) => {
         e.preventDefault();
         if (!formData.word || !formData.sentence) {
-          setError("LÃ¼tfen kelime ve Ã¶rnek cÃ¼mleyi doldurun.");
+          setError("Lütfen kelime ve örnek cümleyi doldurun.");
           return;
         }
         const hasEmptyDef = formData.definitions.some((d) => !d.meaning.trim());
         if (hasEmptyDef) {
-          setError("LÃ¼tfen tÃ¼m anlamlarÄ± doldurun.");
+          setError("Lütfen tüm anlamları doldurun.");
           return;
         }
         if (
@@ -1306,7 +1306,7 @@ export default function App() {
               (!isEditMode || w.id !== editingWord.id)
           );
           if (exists) {
-            setError("Bu kelime sistemde zaten kayÄ±tlÄ±!");
+            setError("Bu kelime sistemde zaten kayıtlı!");
             return;
           }
         }
@@ -1319,8 +1319,8 @@ export default function App() {
         if (result.success) {
           alert(
             isEditMode
-              ? "Kelime gÃ¼ncellendi!"
-              : "Kelime baÅŸarÄ±yla eklendi!"
+              ? "Kelime güncellendi!"
+              : "Kelime başarıyla eklendi!"
           );
           setEditingWord(null);
           setCurrentView("admin_dashboard");
@@ -1335,7 +1335,7 @@ export default function App() {
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
                 <Shield className="w-5 h-5 text-indigo-600" />{" "}
-                {isEditMode ? "Kelime DÃ¼zenle" : "Sistem Kelimesi Ekle"}
+                {isEditMode ? "Kelime Düzenle" : "Sistem Kelimesi Ekle"}
               </h2>
               <button
                 onClick={() => {
@@ -1348,8 +1348,8 @@ export default function App() {
               </button>
             </div>
             <div className="bg-yellow-50 text-yellow-800 p-3 rounded-lg mb-4 text-xs border border-yellow-200">
-              Dikkat: YapacaÄŸÄ±nÄ±z deÄŸiÅŸiklikler <b>tÃ¼m kullanÄ±cÄ±larda</b> anÄ±nda
-              gÃ¶rÃ¼necektir.
+              Dikkat: Yapacağınız değişiklikler <b>tüm kullanıcılarda</b> anında
+              görünecektir.
             </div>
             {error && (
               <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-4 flex items-center gap-2 text-sm">
@@ -1368,17 +1368,17 @@ export default function App() {
                     setFormData({ ...formData, word: e.target.value })
                   }
                   className="w-full p-3 border border-slate-200 rounded-xl outline-none"
-                  placeholder="Ã–rn: Bank"
+                  placeholder="Örn: Bank"
                 />
               </div>
 
-              {/* GRUP 1: Ä°SÄ°M VE FÄ°Ä°L DETAYLARI */}
+              {/* GRUP 1: İSİM VE FİİL DETAYLARI */}
               <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                  <div className="text-xs font-bold text-slate-400 mb-2 uppercase tracking-wide">Fiil & Ä°sim DetaylarÄ±</div>
+                  <div className="text-xs font-bold text-slate-400 mb-2 uppercase tracking-wide">Fiil & İsim Detayları</div>
                   <div className="space-y-3">
                       <div>
                         <label className="block text-xs font-medium text-slate-500 mb-1">
-                          Ã‡oÄŸul (Plural)
+                          Çoğul (Plural)
                         </label>
                         <input
                           type="text"
@@ -1428,9 +1428,9 @@ export default function App() {
                   </div>
               </div>
 
-              {/* GRUP 2: SIFAT VE ZARF DETAYLARI (YENÄ°) */}
+              {/* GRUP 2: SIFAT VE ZARF DETAYLARI (YENİ) */}
               <div className="bg-orange-50 p-3 rounded-xl border border-orange-100">
-                  <div className="text-xs font-bold text-orange-400 mb-2 uppercase tracking-wide">SÄ±fat & Zarf DetaylarÄ±</div>
+                  <div className="text-xs font-bold text-orange-400 mb-2 uppercase tracking-wide">Sıfat & Zarf Detayları</div>
                   <div className="space-y-3">
                       <div>
                           <label className="block text-xs font-medium text-orange-700/70 mb-1">Zarf Hali (-ly)</label>
@@ -1438,11 +1438,11 @@ export default function App() {
                       </div>
                       <div className="grid grid-cols-2 gap-3">
                           <div>
-                             <label className="block text-xs font-medium text-orange-700/70 mb-1">KarÅŸÄ±laÅŸtÄ±rma (-er)</label>
+                             <label className="block text-xs font-medium text-orange-700/70 mb-1">Karşılaştırma (-er)</label>
                              <input type="text" value={formData.compEr} onChange={(e) => setFormData({ ...formData, compEr: e.target.value })} className="w-full p-2 border border-orange-200 rounded-lg outline-none text-sm" placeholder="faster"/>
                           </div>
                           <div>
-                             <label className="block text-xs font-medium text-orange-700/70 mb-1">ÃœstÃ¼nlÃ¼k (-est)</label>
+                             <label className="block text-xs font-medium text-orange-700/70 mb-1">Üstünlük (-est)</label>
                              <input type="text" value={formData.superEst} onChange={(e) => setFormData({ ...formData, superEst: e.target.value })} className="w-full p-2 border border-orange-200 rounded-lg outline-none text-sm" placeholder="fastest"/>
                           </div>
                       </div>
@@ -1489,7 +1489,7 @@ export default function App() {
                             updateDefinition(index, "meaning", e.target.value)
                             }
                             className="w-full p-2 text-sm border border-slate-200 rounded-lg outline-none"
-                            placeholder="TÃ¼rkÃ§e anlam..."
+                            placeholder="Türkçe anlam..."
                         />
                         </div>
                         {formData.definitions.length > 1 && (
@@ -1502,7 +1502,7 @@ export default function App() {
                         </button>
                         )}
                     </div>
-                    {/* Ä°NGÄ°LÄ°ZCE AÃ‡IKLAMA - ANLAM Ä°Ã‡Ä°NDE */}
+                    {/* İNGİLİZCE AÇIKLAMA - ANLAM İÇİNDE */}
                     <input
                         type="text"
                         value={def.engExplanation}
@@ -1510,14 +1510,14 @@ export default function App() {
                             updateDefinition(index, "engExplanation", e.target.value)
                         }
                         className="w-full p-2 text-sm border border-indigo-100 bg-indigo-50/50 rounded-lg outline-none placeholder:text-slate-400"
-                        placeholder="Bu anlam iÃ§in Ä°ngilizce aÃ§Ä±klama (Opsiyonel)..."
+                        placeholder="Bu anlam için İngilizce açıklama (Opsiyonel)..."
                     />
                   </div>
                 ))}
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Ã–rnek CÃ¼mle
+                  Örnek Cümle
                 </label>
                 <textarea
                   value={formData.sentence}
@@ -1525,7 +1525,7 @@ export default function App() {
                     setFormData({ ...formData, sentence: e.target.value })
                   }
                   className="w-full p-3 border border-slate-200 rounded-xl outline-none h-24 resize-none"
-                  placeholder="Ã–rn: I put my money in the bank."
+                  placeholder="Örn: I put my money in the bank."
                 />
               </div>
               <button
@@ -1538,7 +1538,7 @@ export default function App() {
                 ) : (
                   <Save className="w-5 h-5" />
                 )}{" "}
-                {isEditMode ? "GÃ¼ncelle" : "Sisteme Kaydet"}
+                {isEditMode ? "Güncelle" : "Sisteme Kaydet"}
               </button>
             </form>
           </div>
@@ -1560,10 +1560,10 @@ export default function App() {
           v2: normalizedEditWord.v2 || "",
           v3: normalizedEditWord.v3 || "",
           vIng: normalizedEditWord.vIng || "",
-          thirdPerson: normalizedEditWord.thirdPerson || "", // YENÄ°
-          advLy: normalizedEditWord.advLy || "",             // YENÄ°
-          compEr: normalizedEditWord.compEr || "",           // YENÄ°
-          superEst: normalizedEditWord.superEst || "",       // YENÄ°
+          thirdPerson: normalizedEditWord.thirdPerson || "", // YENİ
+          advLy: normalizedEditWord.advLy || "",             // YENİ
+          compEr: normalizedEditWord.compEr || "",           // YENİ
+          superEst: normalizedEditWord.superEst || "",       // YENİ
           definitions: normalizedEditWord.definitions.map(d => ({...d, engExplanation: d.engExplanation || ""})),
           sentence: normalizedEditWord.sentence,
         }
@@ -1610,7 +1610,7 @@ export default function App() {
       const handleSubmit = async (e) => {
         e.preventDefault();
         if (!formData.word || !formData.sentence) {
-          setError("LÃ¼tfen kelime ve Ã¶rnek cÃ¼mleyi doldurun.");
+          setError("Lütfen kelime ve örnek cümleyi doldurun.");
           return;
         }
         const hasEmptyDef = formData.definitions.some(
@@ -1618,7 +1618,7 @@ export default function App() {
         );
         if (hasEmptyDef) {
           setError(
-            "LÃ¼tfen tÃ¼m anlam alanlarÄ±nÄ± doldurun veya boÅŸ olanlarÄ± silin."
+            "Lütfen tüm anlam alanlarını doldurun veya boş olanları silin."
           );
           return;
         }
@@ -1631,7 +1631,7 @@ export default function App() {
           const result = await handleSaveNewWord(formData);
           setSaving(false);
           if (result.success) {
-            alert("Kelime baÅŸarÄ±yla eklendi!");
+            alert("Kelime başarıyla eklendi!");
             setFormData({
               word: "",
               plural: "",
@@ -1657,7 +1657,7 @@ export default function App() {
           <div className="w-full max-w-md bg-white rounded-2xl shadow-lg p-6 my-8 overflow-y-auto max-h-screen">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold text-slate-800">
-                {isEditMode ? "Kelimeyi DÃ¼zenle" : "Yeni Kelime Ekle"}
+                {isEditMode ? "Kelimeyi Düzenle" : "Yeni Kelime Ekle"}
               </h2>
               <button
                 onClick={() =>
@@ -1678,7 +1678,7 @@ export default function App() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Ä°ngilizce Kelime
+                  İngilizce Kelime
                 </label>
                 <input
                   type="text"
@@ -1687,18 +1687,18 @@ export default function App() {
                     setFormData({ ...formData, word: e.target.value })
                   }
                   className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
-                  placeholder="Ã–rn: Bank"
+                  placeholder="Örn: Bank"
                   autoFocus
                 />
               </div>
 
-              {/* GRUP 1: Ä°SÄ°M VE FÄ°Ä°L DETAYLARI */}
+              {/* GRUP 1: İSİM VE FİİL DETAYLARI */}
               <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                  <div className="text-xs font-bold text-slate-400 mb-2 uppercase tracking-wide">Fiil & Ä°sim DetaylarÄ±</div>
+                  <div className="text-xs font-bold text-slate-400 mb-2 uppercase tracking-wide">Fiil & İsim Detayları</div>
                   <div className="space-y-3">
                       <div>
                         <label className="block text-xs font-medium text-slate-500 mb-1">
-                          Ã‡oÄŸul (Plural)
+                          Çoğul (Plural)
                         </label>
                         <input
                           type="text"
@@ -1749,9 +1749,9 @@ export default function App() {
                   </div>
               </div>
 
-              {/* GRUP 2: SIFAT VE ZARF DETAYLARI (YENÄ°) */}
+              {/* GRUP 2: SIFAT VE ZARF DETAYLARI (YENİ) */}
               <div className="bg-orange-50 p-3 rounded-xl border border-orange-100">
-                  <div className="text-xs font-bold text-orange-400 mb-2 uppercase tracking-wide">SÄ±fat & Zarf DetaylarÄ±</div>
+                  <div className="text-xs font-bold text-orange-400 mb-2 uppercase tracking-wide">Sıfat & Zarf Detayları</div>
                   <div className="space-y-3">
                       <div>
                           <label className="block text-xs font-medium text-orange-700/70 mb-1">Zarf Hali (-ly)</label>
@@ -1759,11 +1759,11 @@ export default function App() {
                       </div>
                       <div className="grid grid-cols-2 gap-3">
                           <div>
-                             <label className="block text-xs font-medium text-orange-700/70 mb-1">KarÅŸÄ±laÅŸtÄ±rma (-er)</label>
+                             <label className="block text-xs font-medium text-orange-700/70 mb-1">Karşılaştırma (-er)</label>
                              <input type="text" value={formData.compEr} onChange={(e) => setFormData({ ...formData, compEr: e.target.value })} className="w-full p-2 border border-orange-200 rounded-lg outline-none text-sm" placeholder="faster"/>
                           </div>
                           <div>
-                             <label className="block text-xs font-medium text-orange-700/70 mb-1">ÃœstÃ¼nlÃ¼k (-est)</label>
+                             <label className="block text-xs font-medium text-orange-700/70 mb-1">Üstünlük (-est)</label>
                              <input type="text" value={formData.superEst} onChange={(e) => setFormData({ ...formData, superEst: e.target.value })} className="w-full p-2 border border-orange-200 rounded-lg outline-none text-sm" placeholder="fastest"/>
                           </div>
                       </div>
@@ -1810,7 +1810,7 @@ export default function App() {
                             updateDefinition(index, "meaning", e.target.value)
                             }
                             className="w-full p-2 text-sm border border-slate-200 rounded-lg outline-none"
-                            placeholder="TÃ¼rkÃ§e anlamÄ±..."
+                            placeholder="Türkçe anlamı..."
                         />
                         </div>
                         {formData.definitions.length > 1 && (
@@ -1823,7 +1823,7 @@ export default function App() {
                         </button>
                         )}
                     </div>
-                    {/* Ä°NGÄ°LÄ°ZCE AÃ‡IKLAMA BURAYA TAÅINDI */}
+                    {/* İNGİLİZCE AÇIKLAMA BURAYA TAŞINDI */}
                     <input
                         type="text"
                         value={def.engExplanation}
@@ -1831,14 +1831,14 @@ export default function App() {
                             updateDefinition(index, "engExplanation", e.target.value)
                         }
                         className="w-full p-2 text-sm border border-indigo-100 bg-indigo-50/50 rounded-lg outline-none placeholder:text-slate-400"
-                        placeholder="Bu anlam iÃ§in Ä°ngilizce aÃ§Ä±klama (Opsiyonel)..."
+                        placeholder="Bu anlam için İngilizce açıklama (Opsiyonel)..."
                     />
                   </div>
                 ))}
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Ã–rnek CÃ¼mle
+                  Örnek Cümle
                 </label>
                 <textarea
                   value={formData.sentence}
@@ -1846,7 +1846,7 @@ export default function App() {
                     setFormData({ ...formData, sentence: e.target.value })
                   }
                   className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none h-24 resize-none"
-                  placeholder="Ã–rn: I went to the bank."
+                  placeholder="Örn: I went to the bank."
                 />
               </div>
               <button
@@ -1859,7 +1859,7 @@ export default function App() {
                 ) : (
                   <Save className="w-5 h-5" />
                 )}{" "}
-                {isEditMode ? "DeÄŸiÅŸiklikleri Kaydet" : "Kelimeyi Kaydet"}
+                {isEditMode ? "Değişiklikleri Kaydet" : "Kelimeyi Kaydet"}
               </button>
             </form>
           </div>
@@ -1900,10 +1900,10 @@ export default function App() {
 
     filteredWords.sort((a, b) => a.word.localeCompare(b.word));
     const title = isKnown
-      ? "Ã–ÄŸrendiÄŸim Kelimeler"
+      ? "Öğrendiğim Kelimeler"
       : isTrash
       ? "Silinen Kelimeler"
-      : "Ã–ÄŸreneceÄŸim Kelimeler";
+      : "Öğreneceğim Kelimeler";
     const searchVal = isKnown
       ? searchKnown
       : isTrash
@@ -1948,10 +1948,10 @@ export default function App() {
               )}
               <p>
                 {isTrash
-                  ? "Ã‡Ã¶p kutusu boÅŸ."
+                  ? "Çöp kutusu boş."
                   : isKnown
-                  ? "HenÃ¼z hiÃ§ kelime Ã¶ÄŸrenmedin."
-                  : "Harika! TÃ¼m kelimeleri Ã¶ÄŸrendin."}
+                  ? "Henüz hiç kelime öğrenmedin."
+                  : "Harika! Tüm kelimeleri öğrendin."}
               </p>
             </div>
           ) : (
@@ -1980,7 +1980,7 @@ export default function App() {
                             </button>
                           )}
                         </div>
-                        {/* LÄ°STE GÃ–RÃœNÃœMÃœNDE ANLAMLAR */}
+                        {/* LİSTE GÖRÜNÜMÜNDE ANLAMLAR */}
                         {item.definitions.map((def, idx) => (
                             <div key={idx} className="mb-1">
                                 <div className="flex items-baseline gap-2">
@@ -1997,7 +1997,7 @@ export default function App() {
                             </div>
                         ))}
 
-                        {/* LÄ°STE GÃ–RÃœNÃœMÃœ DETAYLARI */}
+                        {/* LİSTE GÖRÜNÜMÜ DETAYLARI */}
                         {(item.plural || item.v2 || item.v3 || item.vIng || item.thirdPerson) && (
                           <div className="mt-2 text-xs text-slate-600 space-y-1 bg-slate-50 p-2 rounded-lg">
                             <div className="flex flex-wrap gap-x-3 gap-y-1">
@@ -2020,13 +2020,13 @@ export default function App() {
                           </div>
                         )}
 
-                        {/* LÄ°STE GÃ–RÃœNÃœMÃœNDE CÃœMLE + SES */}
+                        {/* LİSTE GÖRÜNÜMÜNDE CÜMLE + SES */}
                         {!isTrash && (
                           <div className="mt-2 pt-2 border-t border-slate-50 flex gap-2 items-start group">
                             <button 
                                 onClick={(e) => speak(item.sentence, e)}
                                 className="shrink-0 p-1.5 text-slate-300 hover:text-indigo-500 hover:bg-indigo-50 rounded-full transition-colors"
-                                title="CÃ¼mleyi Oku"
+                                title="Cümleyi Oku"
                             >
                                 <Volume2 className="w-3.5 h-3.5" />
                             </button>
@@ -2050,7 +2050,7 @@ export default function App() {
                                 onClick={() => restoreWord(item)}
                                 className="px-3 py-1 bg-green-100 text-green-600 rounded-lg hover:bg-green-200 text-xs font-semibold"
                               >
-                                Geri YÃ¼kle
+                                Geri Yükle
                               </button>
                             )}
                             {isUser && (
@@ -2117,14 +2117,14 @@ export default function App() {
                     <button onClick={handleGoHome} className="p-2 hover:bg-slate-200 rounded-full transition-colors bg-white shadow-sm">
                         <ArrowLeft className="w-6 h-6 text-slate-600" />
                     </button>
-                    <h2 className="text-2xl font-bold text-slate-800">SÃ¶zlÃ¼k</h2>
+                    <h2 className="text-2xl font-bold text-slate-800">Sözlük</h2>
                 </div>
 
                 <form onSubmit={handleDictionarySearch} className="relative">
                     <Search className="absolute left-4 top-4 text-slate-400" />
                     <input 
                         type="text" 
-                        placeholder="Kelime ara (Ä°ngilizce)..." 
+                        placeholder="Kelime ara (İngilizce)..." 
                         value={dictSearchTerm}
                         onChange={(e) => setDictSearchTerm(e.target.value)}
                         className="w-full pl-12 p-4 rounded-2xl border border-slate-200 shadow-sm focus:ring-2 focus:ring-indigo-500 outline-none"
@@ -2142,11 +2142,11 @@ export default function App() {
                     </div>
                 )}
 
-                {/* Ã‡OKLU SONUÃ‡ LÄ°STELEME */}
+                {/* ÇOKLU SONUÇ LİSTELEME */}
                 {dictResults.length > 0 && (
                     <div className="mt-6 animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-8">
                          <div className="text-center text-sm text-slate-500">
-                            {dictResults.length} sonuÃ§ bulundu:
+                            {dictResults.length} sonuç bulundu:
                          </div>
                          {dictResults.map((resultWord) => (
                              <div key={resultWord.id} className="flex justify-center">
@@ -2159,7 +2159,7 @@ export default function App() {
                 {dictResults.length === 0 && !dictError && (
                     <div className="text-center text-slate-400 mt-10">
                         <Book className="w-20 h-20 mx-auto mb-4 opacity-20" />
-                        <p>Aramak istediÄŸin kelimeyi yaz.</p>
+                        <p>Aramak istediğin kelimeyi yaz.</p>
                     </div>
                 )}
             </div>
@@ -2196,7 +2196,7 @@ export default function App() {
                 {/* Question Card */}
                 <div className="bg-white p-8 rounded-3xl shadow-lg border border-slate-100 text-center space-y-6 mt-6">
                     <div className="inline-block bg-indigo-50 text-indigo-600 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
-                        Bu kelimenin anlamÄ± nedir?
+                        Bu kelimenin anlamı nedir?
                     </div>
                     <h2 className="text-4xl font-extrabold text-slate-800">{currentQuestion.wordObj.word}</h2>
                     <button onClick={() => speak(currentQuestion.wordObj.word)} className="mx-auto p-2 bg-slate-50 rounded-full text-indigo-500 hover:bg-indigo-50 transition-colors">
@@ -2242,9 +2242,9 @@ export default function App() {
   if (currentView === "quiz_result") {
       const maxScore = quizQuestions.length * 5;
       const successRate = (quizScore / maxScore) * 100;
-      let message = "Daha Ã§ok Ã§alÄ±ÅŸmalÄ±sÄ±n.";
-      if (successRate > 50) message = "Fena deÄŸil!";
-      if (successRate > 80) message = "Harika iÅŸ!";
+      let message = "Daha çok çalışmalısın.";
+      if (successRate > 50) message = "Fena değil!";
+      if (successRate > 80) message = "Harika iş!";
 
       return (
           <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
@@ -2253,7 +2253,7 @@ export default function App() {
                        <Trophy className="w-12 h-12" />
                    </div>
                    <div>
-                       <h2 className="text-2xl font-bold text-slate-800">Test TamamlandÄ±!</h2>
+                       <h2 className="text-2xl font-bold text-slate-800">Test Tamamlandı!</h2>
                        <p className="text-slate-500">{message}</p>
                    </div>
 
@@ -2264,7 +2264,7 @@ export default function App() {
                    </div>
 
                    <button onClick={handleGoHome} className="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200">
-                       Ana Sayfaya DÃ¶n
+                       Ana Sayfaya Dön
                    </button>
                    <button onClick={handleStartQuiz} className="w-full bg-white text-slate-600 font-bold py-3 rounded-xl border border-slate-200 hover:bg-slate-50 transition-colors">
                        Tekrar Dene
@@ -2288,10 +2288,10 @@ export default function App() {
           <h2 className="text-2xl font-bold text-slate-800 mb-2">
             {allWords.length - knownWordIds.length === 0
               ? "Tebrikler!"
-              : "Oturum TamamlandÄ±"}
+              : "Oturum Tamamlandı"}
           </h2>
           {allWords.length - knownWordIds.length === 0 ? (
-            <p className="text-slate-600 mb-6">TÃ¼m kelimeleri Ã¶ÄŸrendin!</p>
+            <p className="text-slate-600 mb-6">Tüm kelimeleri öğrendin!</p>
           ) : (
             <>
               <div className="flex justify-center gap-8 my-6">
@@ -2299,13 +2299,13 @@ export default function App() {
                   <div className="text-3xl font-bold text-green-600">
                     {sessionStats.known}
                   </div>
-                  <div className="text-sm text-slate-500">Ã–ÄŸrendim</div>
+                  <div className="text-sm text-slate-500">Öğrendim</div>
                 </div>
                 <div className="text-center">
                   <div className="text-3xl font-bold text-orange-500">
                     {sessionStats.learning}
                   </div>
-                  <div className="text-sm text-slate-500">Ã‡alÄ±ÅŸmalÄ±yÄ±m</div>
+                  <div className="text-sm text-slate-500">Çalışmalıyım</div>
                 </div>
               </div>
               <p className="text-slate-600 mb-6">
@@ -2317,13 +2317,13 @@ export default function App() {
             onClick={handleStartGame}
             className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-xl transition-colors flex items-center justify-center gap-2 mb-3"
           >
-            <RotateCcw className="w-5 h-5" /> Yeni Oturum BaÅŸlat
+            <RotateCcw className="w-5 h-5" /> Yeni Oturum Başlat
           </button>
           <button
             onClick={handleGoHome}
             className="w-full bg-white border border-slate-200 text-slate-600 font-bold py-3 px-6 rounded-xl hover:bg-slate-50 transition-colors flex items-center justify-center gap-2"
           >
-            <Home className="w-5 h-5" /> Ana Sayfaya DÃ¶n
+            <Home className="w-5 h-5" /> Ana Sayfaya Dön
           </button>
         </div>
       </div>
@@ -2388,7 +2388,7 @@ export default function App() {
               <div className="p-3 bg-orange-100 rounded-full mb-1">
                 <X className="w-6 h-6" />
               </div>
-              <span>Ã–ÄŸreniyorum</span>
+              <span>Öğreniyorum</span>
               <span className="text-xs opacity-60 font-normal">(Sol)</span>
             </button>
             <button
@@ -2400,7 +2400,7 @@ export default function App() {
                 <Check className="w-6 h-6" />
               </div>
               <span>Biliyorum</span>
-              <span className="text-xs opacity-60 font-normal">(SaÄŸ)</span>
+              <span className="text-xs opacity-60 font-normal">(Sağ)</span>
             </button>
           </div>
           <button
@@ -2429,7 +2429,7 @@ export default function App() {
             <button
               onClick={resetProfileToDefaults}
               className="absolute left-10 top-0 p-2 bg-white rounded-full shadow-sm border border-slate-200 text-slate-400 hover:text-red-500 z-50 transition-transform active:scale-90"
-              title="VarsayÄ±lan Ayarlara DÃ¶n"
+              title="Varsayılan Ayarlara Dön"
             >
               <RotateCcw size={18} />
             </button>
@@ -2437,7 +2437,7 @@ export default function App() {
             <button
               onClick={handleLogout}
               className="absolute right-10 top-0 p-2 bg-white rounded-full shadow-sm border border-slate-200 text-slate-400 hover:text-red-500 z-50 transition-transform active:scale-90"
-              title="Ã‡Ä±kÄ±ÅŸ Yap"
+              title="Çıkış Yap"
             >
               <LogOut size={18} />
             </button>
@@ -2453,13 +2453,13 @@ export default function App() {
                   <span className="font-bold text-sm">{streak}</span>
                 </div>
                 <span className="text-xs font-bold text-orange-600 mt-1 bg-orange-100 px-2 rounded-full">
-                  GÃ¼nlÃ¼k Seri
+                  Günlük Seri
                 </span>
               </div>
             </div>
 
             <h1 className="text-3xl font-extrabold text-slate-800 tracking-tight">
-              Kelime AtÃ¶lyesi
+              Kelime Atölyesi
             </h1>
             <p className="text-slate-500 mt-2">
               Merhaba, {user.displayName || user.email}
@@ -2469,7 +2469,7 @@ export default function App() {
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
             <div className="flex justify-between items-end mb-2">
               <span className="text-sm font-medium text-slate-500">
-                Genel Ä°lerleme
+                Genel İlerleme
               </span>
               <span className="text-2xl font-bold text-indigo-600">
                 %{progressPercentage.toFixed(1)}
@@ -2486,7 +2486,7 @@ export default function App() {
                 <div className="font-bold text-slate-800">
                   {knownWordIds.length}
                 </div>
-                <div className="text-slate-400">Ã–ÄŸrenilen</div>
+                <div className="text-slate-400">Öğrenilen</div>
               </div>
               <div className="text-center p-2 flex-1">
                 <div className="font-bold text-slate-800">
@@ -2510,7 +2510,7 @@ export default function App() {
                   <div className="text-left">
                     <div className="text-base">Admin Paneli</div>
                     <div className="text-xs text-slate-400 font-normal">
-                      Sistem yÃ¶netimi
+                      Sistem yönetimi
                     </div>
                   </div>
                 </div>
@@ -2528,7 +2528,7 @@ export default function App() {
                 <span className="text-sm">
                   Yeni Oyun
                   <br />
-                  BaÅŸlat
+                  Başlat
                 </span>
               </button>
 
@@ -2540,7 +2540,7 @@ export default function App() {
                   <Book className="w-6 h-6" />
                 </div>
                 <span className="text-sm">
-                  SÃ¶zlÃ¼kte
+                  Sözlükte
                   <br />
                   Ara
                 </span>
@@ -2580,7 +2580,7 @@ export default function App() {
                 <div className="text-left">
                   <div className="text-base">Yeni Kelime Ekle</div>
                   <div className="text-xs text-slate-400 font-normal">
-                    Kendi kelimelerini oluÅŸtur
+                    Kendi kelimelerini oluştur
                   </div>
                 </div>
               </div>
@@ -2596,7 +2596,7 @@ export default function App() {
                   <BookOpen className="w-5 h-5" />
                 </div>
                 <span className="text-sm">
-                  Ã–ÄŸreneceÄŸim
+                  Öğreneceğim
                   <br />
                   Kelimeler
                 </span>
@@ -2609,7 +2609,7 @@ export default function App() {
                   <Check className="w-5 h-5" />
                 </div>
                 <span className="text-sm">
-                  Ã–ÄŸrendiÄŸim
+                  Öğrendiğim
                   <br />
                   Kelimeler
                 </span>
@@ -2627,7 +2627,7 @@ export default function App() {
                 <div className="text-left">
                   <div className="text-sm">Silinen Kelimeler</div>
                   <div className="text-xs text-slate-400 font-normal">
-                    Ã‡Ã¶p kutusundan geri yÃ¼kle
+                    Çöp kutusundan geri yükle
                   </div>
                 </div>
               </div>
@@ -2644,18 +2644,19 @@ export default function App() {
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
       <div className="text-center">
         <h1 className="text-2xl font-bold text-slate-800 mb-2">
-          Bir Åeyler Ters Gitti
+          Bir Şeyler Ters Gitti
         </h1>
         <p className="text-slate-500 mb-4">
-          Sayfa yÃ¼klenemedi veya geÃ§ersiz bir durum oluÅŸtu.
+          Sayfa yüklenemedi veya geçersiz bir durum oluştu.
         </p>
         <button
           onClick={handleGoHome}
           className="bg-indigo-600 text-white px-6 py-3 rounded-xl font-bold"
         >
-          Ana Sayfaya DÃ¶n
+          Ana Sayfaya Dön
         </button>
       </div>
     </div>
   );
 }
+
