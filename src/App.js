@@ -2471,8 +2471,9 @@ export default function App() {
                     </button>
                 </div>
 
-                {/* Options */}
-                <div className="space-y-3 mt-6">
+                {/* Options - DÜZELTİLEN KISIM BURASI */}
+                {/* key={quizIndex} sayesinde her soruda burası sıfırlanır */}
+                <div className="space-y-3 mt-6" key={quizIndex}>
                     {currentQuestion.options.map((option, idx) => {
                         let btnClass = "w-full p-4 rounded-xl text-left font-medium border-2 transition-all active:scale-95 shadow-sm ";
                         
@@ -2490,8 +2491,11 @@ export default function App() {
 
                         return (
                             <button 
-                                key={`${quizIndex}-${idx}`}
-                                onClick={() => handleQuizAnswer(option)}
+                                key={idx} 
+                                onClick={(e) => {
+                                    e.currentTarget.blur(); // Tıklanınca odaklanmayı kaldırır
+                                    handleQuizAnswer(option);
+                                }}
                                 disabled={quizIsAnswered}
                                 className={btnClass}
                             >
