@@ -2577,7 +2577,7 @@ export default function App() {
             </div>
 
             <h1 className="text-3xl font-extrabold text-slate-800 tracking-tight">
-              Kelime Atölyesi 3
+              Kelime Atölyesi
             </h1>
             <p className="text-slate-500 mt-2">
               Merhaba, {user.displayName || user.email}
