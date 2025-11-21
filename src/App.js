@@ -1812,7 +1812,7 @@ export default function App() {
     };
     return <FormComponent />;
   }
-   // --- HIZLI EKLEME MODALI (Analiz Ekranı İçin - FULL DETAYLI) ---
+// --- HIZLI EKLEME MODALI (POPUP - ORİJİNAL TASARIM) ---
   const QuickAddModal = () => {
     const initialData = {
         word: quickAddWord || "",
@@ -1828,7 +1828,6 @@ export default function App() {
     const [rootLoading, setRootLoading] = useState(false);
     const [saving, setSaving] = useState(false);
 
-    // Pencere açılınca otomatik anlam bul
     useEffect(() => { if(quickAddWord) handleAIFill(); }, []); 
 
     const handleConvertToRoot = async () => {
@@ -1852,12 +1851,7 @@ export default function App() {
                         engExplanation: d.engExplanation || ""
                       }))
                     : [{ type: "noun", meaning: "", engExplanation: "" }];
-
-                setFormData(prev => ({
-                    ...prev, 
-                    ...data, 
-                    definitions: safeDefinitions
-                }));
+                setFormData(prev => ({...prev, ...data, definitions: safeDefinitions }));
             }
         } catch(e) { console.error(e); }
         setLoadingAI(false);
@@ -1886,21 +1880,20 @@ export default function App() {
                 </div>
                 
                 <div className="space-y-4">
-                    {/* Kelime ve AI Butonları */}
                     <div className="flex gap-2">
                         <input value={formData.word} onChange={e=>setFormData({...formData, word: e.target.value})} className="flex-1 p-3 border rounded-xl font-bold" placeholder="Kelime"/>
                         <button type="button" onClick={handleConvertToRoot} disabled={rootLoading} className="bg-orange-100 text-orange-600 p-3 rounded-xl" title="Kök Bul">{rootLoading ? <Loader2 className="animate-spin"/> : <Wand2/>}</button>
                         <button type="button" onClick={handleAIFill} disabled={loadingAI} className="bg-purple-600 text-white px-3 rounded-xl" title="AI Doldur">{loadingAI ? <Loader2 className="animate-spin"/> : <Brain/>}</button>
                     </div>
 
-                    {/* GRUP 1: FİİL DETAYLARI */}
+                    {/* --- ORİJİNAL GRUP 1: FİİL DETAYLARI --- */}
                     <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
                         <div className="text-xs font-bold text-slate-400 mb-2 uppercase tracking-wide">Fiil & İsim Detayları</div>
                         <div className="space-y-3">
-                            <div><label className="block text-xs font-medium text-slate-500 mb-1">Çoğul</label><input value={formData.plural} onChange={(e) => setFormData({ ...formData, plural: e.target.value })} className="w-full p-2 border border-slate-200 rounded-lg outline-none text-sm"/></div>
+                            <div><label className="block text-xs font-medium text-slate-500 mb-1">Çoğul (Plural)</label><input value={formData.plural} onChange={(e) => setFormData({ ...formData, plural: e.target.value })} className="w-full p-2 border border-slate-200 rounded-lg outline-none text-sm"/></div>
                             <div className="grid grid-cols-2 gap-3">
-                                <div><label className="block text-xs font-medium text-slate-500 mb-1">3. Tekil</label><input value={formData.thirdPerson} onChange={(e) => setFormData({ ...formData, thirdPerson: e.target.value })} className="w-full p-2 border border-slate-200 rounded-lg outline-none text-sm" placeholder="goes"/></div>
-                                <div><label className="block text-xs font-medium text-slate-500 mb-1">V-ing</label><input value={formData.vIng} onChange={(e) => setFormData({ ...formData, vIng: e.target.value })} className="w-full p-2 border border-slate-200 rounded-lg outline-none text-sm" placeholder="going"/></div>
+                                <div><label className="block text-xs font-medium text-slate-500 mb-1">3. Tekil (He/She/It)</label><input value={formData.thirdPerson} onChange={(e) => setFormData({ ...formData, thirdPerson: e.target.value })} className="w-full p-2 border border-slate-200 rounded-lg outline-none text-sm" placeholder="goes"/></div>
+                                <div><label className="block text-xs font-medium text-slate-500 mb-1">V-ing (Gerund)</label><input value={formData.vIng} onChange={(e) => setFormData({ ...formData, vIng: e.target.value })} className="w-full p-2 border border-slate-200 rounded-lg outline-none text-sm" placeholder="going"/></div>
                             </div>
                             <div className="grid grid-cols-2 gap-3">
                                 <div><label className="block text-xs font-medium text-slate-500 mb-1">V2 (Past)</label><input value={formData.v2} onChange={(e) => setFormData({ ...formData, v2: e.target.value })} className="w-full p-2 border border-slate-200 rounded-lg outline-none text-sm" placeholder="went"/></div>
@@ -1909,14 +1902,14 @@ export default function App() {
                         </div>
                     </div>
 
-                    {/* GRUP 2: SIFAT VE ZARF DETAYLARI */}
+                    {/* --- ORİJİNAL GRUP 2: SIFAT BÖLÜMÜ --- */}
                     <div className="bg-orange-50 p-3 rounded-xl border border-orange-100">
                         <div className="text-xs font-bold text-orange-400 mb-2 uppercase tracking-wide">Sıfat & Zarf Detayları</div>
                         <div className="space-y-3">
                             <div><label className="block text-xs font-medium text-orange-700/70 mb-1">Zarf Hali (-ly)</label><input value={formData.advLy} onChange={(e) => setFormData({ ...formData, advLy: e.target.value })} className="w-full p-2 border border-orange-200 rounded-lg outline-none text-sm" placeholder="quickly"/></div>
                             <div className="grid grid-cols-2 gap-3">
-                                <div><label className="block text-xs font-medium text-orange-700/70 mb-1">Karşılaştırma</label><input value={formData.compEr} onChange={(e) => setFormData({ ...formData, compEr: e.target.value })} className="w-full p-2 border border-orange-200 rounded-lg outline-none text-sm" placeholder="faster"/></div>
-                                <div><label className="block text-xs font-medium text-orange-700/70 mb-1">Üstünlük</label><input value={formData.superEst} onChange={(e) => setFormData({ ...formData, superEst: e.target.value })} className="w-full p-2 border border-orange-200 rounded-lg outline-none text-sm" placeholder="fastest"/></div>
+                                <div><label className="block text-xs font-medium text-orange-700/70 mb-1">Karşılaştırma (-er)</label><input value={formData.compEr} onChange={(e) => setFormData({ ...formData, compEr: e.target.value })} className="w-full p-2 border border-orange-200 rounded-lg outline-none text-sm" placeholder="faster"/></div>
+                                <div><label className="block text-xs font-medium text-orange-700/70 mb-1">Üstünlük (-est)</label><input value={formData.superEst} onChange={(e) => setFormData({ ...formData, superEst: e.target.value })} className="w-full p-2 border border-orange-200 rounded-lg outline-none text-sm" placeholder="fastest"/></div>
                             </div>
                         </div>
                     </div>
@@ -1925,18 +1918,20 @@ export default function App() {
                     <div className="space-y-2">
                         <label className="block text-sm font-medium text-slate-700">Anlamlar</label>
                         {formData.definitions.map((def, i) => (
-                            <div key={i} className="p-2 bg-slate-50 border rounded-lg">
-                                <div className="flex gap-2 mb-2">
-                                    <select value={def.type} onChange={(e) => updateDefinition(i, "type", e.target.value)} className="p-1.5 text-xs border rounded bg-white">
-                                        {WORD_TYPES.map((t) => (<option key={t.value} value={t.value}>{t.label}</option>))}
-                                    </select>
-                                    <input value={def.meaning} onChange={e=>updateDefinition(i, 'meaning', e.target.value)} className="flex-1 p-1.5 border rounded text-sm" placeholder="Türkçe Anlam"/>
-                                    <button type="button" onClick={()=>removeDefinition(i)} className="text-xs text-red-500 px-1">Sil</button>
+                            <div key={i} className="flex flex-col gap-2 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                                <div className="flex gap-2 items-start">
+                                    <div className="flex-1 space-y-2">
+                                        <select value={def.type} onChange={(e) => updateDefinition(i, "type", e.target.value)} className="w-full p-2 text-sm border border-slate-200 rounded-lg outline-none bg-white">
+                                            {WORD_TYPES.map((t) => (<option key={t.value} value={t.value}>{t.label}</option>))}
+                                        </select>
+                                        <input value={def.meaning} onChange={e=>updateDefinition(i, 'meaning', e.target.value)} className="w-full p-2 text-sm border border-slate-200 rounded-lg outline-none" placeholder="Türkçe anlam..."/>
+                                    </div>
+                                    {formData.definitions.length > 1 && (<button type="button" onClick={() => removeDefinition(i)} className="p-2 text-slate-400 hover:text-red-500 mt-1"><Trash2 className="w-4 h-4" /></button>)}
                                 </div>
-                                <input value={def.engExplanation} onChange={e=>updateDefinition(i, 'engExplanation', e.target.value)} className="w-full p-1.5 border rounded text-xs" placeholder="İngilizce Açıklama"/>
+                                <input value={def.engExplanation} onChange={e=>updateDefinition(i, 'engExplanation', e.target.value)} className="w-full p-2 text-sm border border-indigo-100 bg-indigo-50/50 rounded-lg outline-none placeholder:text-slate-400" placeholder="Bu anlam için İngilizce açıklama..."/>
                             </div>
                         ))}
-                        <button type="button" onClick={addDefinition} className="text-xs text-indigo-600 font-bold">+ Anlam Ekle</button>
+                        <button type="button" onClick={addDefinition} className="text-sm text-indigo-600 font-bold flex items-center gap-1"><Plus className="w-4 h-4"/> Ekle</button>
                     </div>
 
                     <textarea value={formData.sentence} onChange={e=>setFormData({...formData, sentence:e.target.value})} className="w-full p-3 border rounded-xl text-sm" placeholder="Örnek cümle..." rows={2}></textarea>
@@ -1950,10 +1945,11 @@ export default function App() {
     );
   };
 
-  // --- ADD / EDIT FORM (USER - FULL DETAYLI) ---
+  // --- ADD / EDIT FORM (USER - ORİJİNAL TASARIM) ---
   if (currentView === "add_word" || currentView === "edit_word") {
     const isEditMode = currentView === "edit_word";
     const normalizedEditWord = isEditMode && editingWord ? normalizeWord(editingWord) : null;
+    
     const initialData = normalizedEditWord
       ? {
           ...normalizedEditWord,
@@ -1964,8 +1960,11 @@ export default function App() {
           }))
         }
       : {
-          word: "", plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
-          definitions: [{ type: "noun", meaning: "", engExplanation: "" }], sentence: "",
+          word: "",
+          plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", 
+          advLy: "", compEr: "", superEst: "",
+          definitions: [{ type: "noun", meaning: "", engExplanation: "" }],
+          sentence: "",
         };
 
     const FormComponent = () => {
@@ -2034,14 +2033,17 @@ export default function App() {
                   <button type="button" onClick={handleAIFill} disabled={aiLoading || !formData.word} className="bg-purple-600 text-white px-3 rounded-xl" title="AI Doldur">{aiLoading ? <Loader2 className="animate-spin"/> : <Brain/>}</button>
               </div>
 
-              {/* --- DETAYLI FİİL BÖLÜMÜ --- */}
+              {/* --- ORİJİNAL GRUP 1: FİİL DETAYLARI --- */}
               <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
                   <div className="text-xs font-bold text-slate-400 mb-2 uppercase tracking-wide">Fiil & İsim Detayları</div>
                   <div className="space-y-3">
-                      <div><label className="block text-xs font-medium text-slate-500 mb-1">Çoğul</label><input value={formData.plural} onChange={(e) => setFormData({ ...formData, plural: e.target.value })} className="w-full p-2 border border-slate-200 rounded-lg outline-none text-sm"/></div>
+                      <div>
+                        <label className="block text-xs font-medium text-slate-500 mb-1">Çoğul (Plural)</label>
+                        <input value={formData.plural} onChange={(e) => setFormData({ ...formData, plural: e.target.value })} className="w-full p-2 border border-slate-200 rounded-lg outline-none text-sm"/>
+                      </div>
                       <div className="grid grid-cols-2 gap-3">
-                          <div><label className="block text-xs font-medium text-slate-500 mb-1">3. Tekil</label><input value={formData.thirdPerson} onChange={(e) => setFormData({ ...formData, thirdPerson: e.target.value })} className="w-full p-2 border border-slate-200 rounded-lg outline-none text-sm" placeholder="goes"/></div>
-                          <div><label className="block text-xs font-medium text-slate-500 mb-1">V-ing</label><input value={formData.vIng} onChange={(e) => setFormData({ ...formData, vIng: e.target.value })} className="w-full p-2 border border-slate-200 rounded-lg outline-none text-sm" placeholder="going"/></div>
+                          <div><label className="block text-xs font-medium text-slate-500 mb-1">3. Tekil (He/She/It)</label><input value={formData.thirdPerson} onChange={(e) => setFormData({ ...formData, thirdPerson: e.target.value })} className="w-full p-2 border border-slate-200 rounded-lg outline-none text-sm" placeholder="goes"/></div>
+                          <div><label className="block text-xs font-medium text-slate-500 mb-1">V-ing (Gerund)</label><input value={formData.vIng} onChange={(e) => setFormData({ ...formData, vIng: e.target.value })} className="w-full p-2 border border-slate-200 rounded-lg outline-none text-sm" placeholder="going"/></div>
                       </div>
                       <div className="grid grid-cols-2 gap-3">
                         <div><label className="block text-xs font-medium text-slate-500 mb-1">V2 (Past)</label><input value={formData.v2} onChange={(e) => setFormData({ ...formData, v2: e.target.value })} className="w-full p-2 border border-slate-200 rounded-lg outline-none text-sm" placeholder="went"/></div>
@@ -2050,14 +2052,14 @@ export default function App() {
                   </div>
               </div>
 
-              {/* --- DETAYLI SIFAT BÖLÜMÜ --- */}
+              {/* --- ORİJİNAL GRUP 2: SIFAT BÖLÜMÜ --- */}
               <div className="bg-orange-50 p-3 rounded-xl border border-orange-100">
                   <div className="text-xs font-bold text-orange-400 mb-2 uppercase tracking-wide">Sıfat & Zarf Detayları</div>
                   <div className="space-y-3">
                       <div><label className="block text-xs font-medium text-orange-700/70 mb-1">Zarf Hali (-ly)</label><input value={formData.advLy} onChange={(e) => setFormData({ ...formData, advLy: e.target.value })} className="w-full p-2 border border-orange-200 rounded-lg outline-none text-sm" placeholder="quickly"/></div>
                       <div className="grid grid-cols-2 gap-3">
-                          <div><label className="block text-xs font-medium text-orange-700/70 mb-1">Karşılaştırma</label><input value={formData.compEr} onChange={(e) => setFormData({ ...formData, compEr: e.target.value })} className="w-full p-2 border border-orange-200 rounded-lg outline-none text-sm" placeholder="faster"/></div>
-                          <div><label className="block text-xs font-medium text-orange-700/70 mb-1">Üstünlük</label><input value={formData.superEst} onChange={(e) => setFormData({ ...formData, superEst: e.target.value })} className="w-full p-2 border border-orange-200 rounded-lg outline-none text-sm" placeholder="fastest"/></div>
+                          <div><label className="block text-xs font-medium text-orange-700/70 mb-1">Karşılaştırma (-er)</label><input value={formData.compEr} onChange={(e) => setFormData({ ...formData, compEr: e.target.value })} className="w-full p-2 border border-orange-200 rounded-lg outline-none text-sm" placeholder="faster"/></div>
+                          <div><label className="block text-xs font-medium text-orange-700/70 mb-1">Üstünlük (-est)</label><input value={formData.superEst} onChange={(e) => setFormData({ ...formData, superEst: e.target.value })} className="w-full p-2 border border-orange-200 rounded-lg outline-none text-sm" placeholder="fastest"/></div>
                       </div>
                   </div>
               </div>
@@ -2078,7 +2080,7 @@ export default function App() {
                         </div>
                         {formData.definitions.length > 1 && (<button type="button" onClick={() => removeDefinition(index)} className="p-2 text-slate-400 hover:text-red-500 mt-1"><Trash2 className="w-4 h-4" /></button>)}
                     </div>
-                    <input value={def.engExplanation} onChange={(e) => updateDefinition(index, "engExplanation", e.target.value)} className="w-full p-2 text-sm border border-indigo-100 bg-indigo-50/50 rounded-lg outline-none placeholder:text-slate-400" placeholder="Bu anlam için İngilizce açıklama..."/>
+                    <input value={def.engExplanation} onChange={(e) => updateDefinition(index, "engExplanation", e.target.value)} className="w-full p-2 text-sm border border-indigo-100 bg-indigo-50/50 rounded-lg outline-none placeholder:text-slate-400" placeholder="Bu anlam için İngilizce açıklama (Opsiyonel)..."/>
                   </div>
                 ))}
               </div>
@@ -2092,7 +2094,7 @@ export default function App() {
     return <FormComponent />;
   }
 
-  // --- SENTENCE ANALYSIS VIEW ---
+  // --- SENTENCE ANALYSIS VIEW (GÜNCELLENMİŞ - DETAYLI & SAĞLAM) ---
   if (currentView === "sentence_analysis") {
     return (
       <div className="min-h-screen bg-slate-50 p-6 flex flex-col items-center relative">
@@ -2104,8 +2106,13 @@ export default function App() {
           </div>
           <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
             <textarea value={analysisText} onChange={(e) => setAnalysisText(e.target.value)} className="w-full p-3 border-0 outline-none resize-none text-slate-700 min-h-[100px]" placeholder="Analiz edilecek cümleyi yaz..." />
-            <div className="flex justify-end mt-2"><button onClick={handleAnalyzeSentence} disabled={isAnalyzing} className="bg-teal-600 text-white px-6 py-2.5 rounded-xl font-bold flex items-center gap-2">{isAnalyzing ? <Loader2 className="animate-spin"/> : <Microscope/>} Analiz Et</button></div>
+            <div className="flex justify-end mt-2">
+                <button onClick={handleAnalyzeSentence} disabled={isAnalyzing} className="bg-teal-600 text-white px-6 py-2.5 rounded-xl font-bold flex items-center gap-2">
+                    {isAnalyzing ? <Loader2 className="animate-spin"/> : <Microscope/>} Analiz Et
+                </button>
+            </div>
           </div>
+          
           {analysisResult && (
             <div className="space-y-4 animate-in fade-in slide-in-from-bottom-6 duration-500">
               {/* 1. DOĞAL ÇEVİRİ */}
@@ -2128,7 +2135,13 @@ export default function App() {
                     {analysisResult.rootWords.map((word, idx) => {
                         const exists = isWordInRegistry(word);
                         return (
-                            <button key={idx} onClick={() => { if (!exists) setQuickAddWord(word); }} disabled={exists} className={`px-3 py-1.5 rounded-lg font-bold text-sm border transition-all ${exists ? "bg-green-50 text-green-700 border-green-200 cursor-default" : "bg-red-50 text-red-600 border-red-200 hover:bg-red-100 cursor-pointer shadow-sm"}`} title={exists ? "Bu kelime zaten var" : "Eklemek için tıkla"}>
+                            <button 
+                                key={idx} 
+                                onClick={() => { if (!exists) setQuickAddWord(word); }} 
+                                disabled={exists} 
+                                className={`px-3 py-1.5 rounded-lg font-bold text-sm border transition-all ${exists ? "bg-green-50 text-green-700 border-green-200 cursor-default" : "bg-red-50 text-red-600 border-red-200 hover:bg-red-100 cursor-pointer shadow-sm"}`} 
+                                title={exists ? "Bu kelime zaten var" : "Eklemek için tıkla"}
+                            >
                                 {word} {!exists && <Plus className="w-3 h-3 inline ml-1"/>}
                             </button>
                         )
@@ -2138,17 +2151,6 @@ export default function App() {
               )}
               
               {/* 4. MANUEL EKLEME BUTONU */}
-              <div className="pt-2">
-                <button onClick={() => setQuickAddWord("")} className="w-full bg-white hover:bg-slate-50 text-slate-700 border-2 border-dashed border-slate-300 font-bold py-4 px-6 rounded-xl flex items-center justify-between group">
-                  <div className="flex items-center gap-3"><div className="bg-blue-50 p-2 rounded-lg text-blue-600"><Plus className="w-6 h-6" /></div><div className="text-left"><div className="text-base">Manuel Kelime Ekle</div></div></div><Plus className="w-5 h-5 opacity-40" />
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
               <div className="pt-2">
                 <button onClick={() => setQuickAddWord("")} className="w-full bg-white hover:bg-slate-50 text-slate-700 border-2 border-dashed border-slate-300 font-bold py-4 px-6 rounded-xl flex items-center justify-between group">
                   <div className="flex items-center gap-3"><div className="bg-blue-50 p-2 rounded-lg text-blue-600"><Plus className="w-6 h-6" /></div><div className="text-left"><div className="text-base">Manuel Kelime Ekle</div></div></div><Plus className="w-5 h-5 opacity-40" />
