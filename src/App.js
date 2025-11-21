@@ -68,7 +68,7 @@ const firebaseConfig = {
 
 // --- API KEY AYARI ---
 // BURAYA YENİ ALDIĞIN GÜNCEL ŞİFREYİ YAPIŞTIR
-const GEMINI_API_KEY = "BURAYA_YENI_SIFRENI_YAPISTIR"; 
+const GEMINI_API_KEY = "AIzaSyC_ykELbAxTKg2rX4jKZnrgCjIq7SIEULs"; 
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
