@@ -3016,7 +3016,7 @@ export default function App() {
                   <Play className="w-6 h-6" fill="currentColor" />
                 </div>
                 <span className="text-sm">
-                  Yeni Oyun
+                  Flash Kart
                   <br />
                   Başlat
                 </span>
