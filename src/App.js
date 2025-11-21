@@ -52,7 +52,8 @@ import {
   Flame,
   Book,
   Target,
-  Wand2, // <-- YENİ İKON EKLENDİ
+  Wand2,       // Kök bulma ikonu
+  Microscope,  // Cümle analizi ikonu
 } from "lucide-react";
 
 // --- FIREBASE CONFIG ---
@@ -66,6 +67,7 @@ const firebaseConfig = {
 };
 
 // --- API KEY AYARI ---
+// BURAYA YENİ ALDIĞIN ŞİFREYİ YAPIŞTIRMAYI UNUTMA
 const GEMINI_API_KEY = "AIzaSyC_ykELbAxTKg2rX4jKZnrgCjIq7SIEULs"; 
 
 const app = initializeApp(firebaseConfig);
@@ -91,88 +93,114 @@ const WORD_TYPES = [
 
 const WORDS_PER_SESSION = 20;
 
-// --- YARDIMCI FONKSİYON: AI İLE KELİME ANALİZİ ---
-const fetchWordAnalysisFromAI = async (word) => {
-  const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-
-  const prompt = `
-    You are a dictionary assistant used in a vocabulary learning app. Analyze the English word "${word}".
-    Return ONLY a raw JSON object (no markdown formatting, no backticks) with the following structure suited for a Turkish learner.
+// --- YARDIMCI FONKSİYON: JSON TEMİZLEME ---
+// Yapay zeka bazen cevabın başına yazı ekler, bu fonksiyon onu temizler.
+const cleanAndParseJSON = (text) => {
+  try {
+    // Markdown işaretlerini sil
+    let cleanText = text.replace(/```json/g, "").replace(/```/g, "").trim();
     
-    Rules:
-    1. "word": The word itself (capitalized correctly).
-    2. "sentence": A simple, clear A2-B1 level example sentence containing the word.
-    3. "plural": If noun, provide plural form. Else empty string.
-    4. "v2", "v3", "vIng", "thirdPerson": If verb, provide these forms. Else empty strings.
-    5. "advLy": If adjective/adverb has a typical -ly adverb form, provide it. Else empty.
-    6. "compEr", "superEst": If adjective/adverb has comparative/superlative forms, provide them. Else empty.
-    7. "definitions": Array of definitions. Each object: { "type": "noun/verb/etc", "meaning": "Turkish meaning", "engExplanation": "Simple English explanation" }.
-
-    Structure:
-    {
-      "word": "${word}",
-      "plural": "",
-      "v2": "",
-      "v3": "",
-      "vIng": "",
-      "thirdPerson": "",
-      "advLy": "",
-      "compEr": "",
-      "superEst": "",
-      "sentence": "",
-      "definitions": [
-        {
-          "type": "noun",
-          "meaning": "",
-          "engExplanation": ""
-        }
-      ]
+    // İlk süslü parantez { ile son süslü parantez } arasını al
+    const firstBrace = cleanText.indexOf("{");
+    const lastBrace = cleanText.lastIndexOf("}");
+    
+    if (firstBrace !== -1 && lastBrace !== -1) {
+      cleanText = cleanText.substring(firstBrace, lastBrace + 1);
     }
-  `;
-
-  const result = await model.generateContent(prompt);
-  const response = await result.response;
-  let text = response.text();
-  
-  text = text.replace(/```json|```/g, "").trim();
-  
-  return JSON.parse(text);
+    
+    return JSON.parse(cleanText);
+  } catch (e) {
+    console.error("JSON Parse Hatası:", e);
+    return null; 
+  }
 };
 
-// --- YARDIMCI FONKSİYON: KELİME KÖKÜNÜ BULMA (YENİ) ---
-const fetchRootFromAI = async (word) => {
-  const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-
-  const prompt = `
-    You are a linguistic expert. Identify the dictionary root form (lemma) of the English word "${word}".
-    If the word is already in its base form, return it as is.
-    
-    Examples:
-    "sitting" -> "sit"
-    "better" -> "good"
-    "apples" -> "apple"
-    "quickly" -> "quick"
-    "went" -> "go"
-
-    Return ONLY a raw JSON object:
-    {
-      "root": "the_root_word",
-      "original": "${word}",
-      "changed": true/false (true if root is different from original)
-    }
-  `;
-
+// --- 1. AI İLE KELİME ANALİZİ (Türkçe Anlamlı) ---
+const fetchWordAnalysisFromAI = async (word) => {
   try {
+    const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+
+    const prompt = `
+      You are a dictionary app helper. Analyze the English word: "${word}".
+      
+      IMPORTANT: 
+      1. In the "definitions" array, the "meaning" field MUST be the TURKISH translation.
+      2. The "engExplanation" field MUST be a simple English explanation.
+      
+      Return ONLY JSON. No markdown.
+      
+      Structure:
+      {
+        "word": "${word}",
+        "plural": "", "v2": "", "v3": "", "vIng": "", "thirdPerson": "",
+        "advLy": "", "compEr": "", "superEst": "",
+        "sentence": "Simple A2 level sentence.",
+        "definitions": [
+          { "type": "noun/verb/etc", "meaning": "TURKISH TRANSLATION", "engExplanation": "Simple English explanation" }
+        ]
+      }
+    `;
+
     const result = await model.generateContent(prompt);
     const response = await result.response;
-    let text = response.text();
-    text = text.replace(/```json|```/g, "").trim();
-    return JSON.parse(text);
+    return cleanAndParseJSON(response.text());
   } catch (e) {
-    console.error("Root fetch error", e);
+    console.error("Word Analysis Error:", e);
+    return null;
+  }
+};
+
+// --- 2. KELİME KÖKÜNÜ BULMA (Sihirli Değnek) ---
+const fetchRootFromAI = async (word) => {
+  try {
+    const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+
+    const prompt = `
+      Find the dictionary root form (lemma) of english word: "${word}".
+      Return ONLY JSON:
+      { "root": "base_form", "original": "${word}", "changed": true/false }
+    `;
+
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const data = cleanAndParseJSON(response.text());
+    return data || { root: word, changed: false };
+  } catch (e) {
+    console.error("Root Error:", e);
     return { root: word, changed: false };
+  }
+};
+
+// --- 3. CÜMLE ANALİZİ (Detaylı Rapor) ---
+const fetchSentenceAnalysisFromAI = async (text) => {
+  try {
+    const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+
+    const prompt = `
+      Act as an expert English teacher for Turkish students. Analyze this text: "${text}"
+      
+      Tasks:
+      1. Translate the text to Turkish naturally (Natural translation, not robotic).
+      2. Analyze the grammar structure in detail (e.g., explaining tenses used and why). Write this in Turkish.
+      3. Extract all words, convert them to their base/root form (lemma), remove duplicates, and remove proper names (like Alice, London).
+      
+      Return ONLY JSON. No markdown. Structure:
+      {
+        "turkishTranslation": "Doğal Türkçe çeviri buraya",
+        "grammarAnalysis": "Burada geniş zaman kullanılmış çünkü... Şurada şu yapı var...",
+        "rootWords": ["sit", "by", "her", "sister", "on", "bank"] 
+      }
+    `;
+
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    return cleanAndParseJSON(response.text());
+  } catch (e) {
+    console.error("Sentence Analysis Error:", e);
+    throw e;
   }
 };
 export default function App() {
@@ -205,7 +233,7 @@ export default function App() {
   // Quiz State
   const [quizQuestions, setQuizQuestions] = useState([]);
   const [quizScore, setQuizScore] = useState(0);
-  const [quizTransition, setQuizTransition] = useState(false);
+  const [quizTransition, setQuizTransition] = useState(false); // Mobil düzeltme için
   const [quizIndex, setQuizIndex] = useState(0);
   const [quizSelectedOption, setQuizSelectedOption] = useState(null);
   const [quizIsAnswered, setQuizIsAnswered] = useState(false);
@@ -214,6 +242,12 @@ export default function App() {
   const [dictSearchTerm, setDictSearchTerm] = useState("");
   const [dictResults, setDictResults] = useState([]); 
   const [dictError, setDictError] = useState("");
+
+  // --- YENİ: CÜMLE ANALİZİ STATE'LERİ ---
+  const [analysisText, setAnalysisText] = useState("");
+  const [analysisResult, setAnalysisResult] = useState(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [quickAddWord, setQuickAddWord] = useState(null); // Popup kelime ekleme
 
   const [currentView, setCurrentView] = useState("home");
   const [editingWord, setEditingWord] = useState(null);
@@ -225,6 +259,30 @@ export default function App() {
 
   // Admin Arama
   const [adminSearch, setAdminSearch] = useState("");
+
+  // --- YENİ: CÜMLE ANALİZİ FONKSİYONU ---
+  const handleAnalyzeSentence = async () => {
+    if (!analysisText.trim()) {
+        alert("Lütfen analiz edilecek bir cümle yazın.");
+        return;
+    }
+    setIsAnalyzing(true);
+    setAnalysisResult(null); // Önceki sonucu temizle
+
+    try {
+        const result = await fetchSentenceAnalysisFromAI(analysisText);
+        if (result) {
+            setAnalysisResult(result);
+        } else {
+            alert("Analiz yapılamadı. Lütfen tekrar deneyin.");
+        }
+    } catch (error) {
+        console.error(error);
+        alert("Hata oluştu: " + error.message);
+    } finally {
+        setIsAnalyzing(false);
+    }
+  };
 
   // --- AUTH ---
   useEffect(() => {
@@ -254,6 +312,12 @@ export default function App() {
       setCurrentView("home");
     }
   }, [user]);
+
+  // --- QUIZ STATE TEMİZLEYİCİ (Mobil Sorunu İçin) ---
+  useEffect(() => {
+    setQuizSelectedOption(null);
+    setQuizIsAnswered(false);
+  }, [quizIndex]);
 
   const fetchUserData = async () => {
     setLoading(true);
@@ -498,6 +562,15 @@ export default function App() {
     );
   };
 
+  // YENİ: Kelime veritabanında var mı kontrolü (Analiz ekranı için)
+  const isWordInRegistry = (wordToCheck) => {
+    if (!wordToCheck) return false;
+    const lower = wordToCheck.toLowerCase().trim();
+    if (dynamicSystemWords.some(sw => sw.word.toLowerCase() === lower)) return true;
+    if (customWords.some(cw => cw.word.toLowerCase() === lower && !deletedWordIds.includes(cw.id))) return true;
+    return false;
+  };
+
   const canRestoreWord = (word) => {
     const allWords = getAllWords();
     const existsActive = allWords.some(
@@ -704,6 +777,7 @@ export default function App() {
     setCurrentView("quiz");
   };
 
+  // --- QUIZ ANSWER HANDLER (GEÇİŞ EFEKTİ - KESİN ÇÖZÜM) ---
   const handleQuizAnswer = (selectedOption) => {
     if (quizIsAnswered) return;
 
@@ -915,6 +989,9 @@ export default function App() {
     setDictResults([]);
     setDictError("");
     setQuizQuestions([]);
+    // Analiz state'lerini temizle
+    setAnalysisResult(null);
+    setAnalysisText("");
   };
 
   const resetProfileToDefaults = async () => {
@@ -1131,7 +1208,7 @@ export default function App() {
               <Brain className="text-white w-8 h-8" />
             </div>
             <h1 className="text-2xl font-bold text-slate-800">
-              Kelime Defteri'ne Hoşgeldiniz
+              Kelime Atölye'sine Hoşgeldiniz
             </h1>
             <p className="text-slate-500">Kelimelerini kaybetme.</p>
           </div>
@@ -1367,7 +1444,7 @@ export default function App() {
       const [saving, setSaving] = useState(false);
       // --- AI LOADING STATES ---
       const [aiLoading, setAiLoading] = useState(false);
-      const [rootLoading, setRootLoading] = useState(false); // <-- YENİ
+      const [rootLoading, setRootLoading] = useState(false);
 
       const addDefinition = () =>
         setFormData((prev) => ({
@@ -1390,7 +1467,7 @@ export default function App() {
         setFormData((prev) => ({ ...prev, definitions: newDefs }));
       };
 
-      // --- YENİ: KÖK BULMA ---
+      // --- KÖK BULMA (ADMIN) ---
       const handleConvertToRoot = async () => {
           if (!formData.word) return;
           setRootLoading(true);
@@ -1406,7 +1483,7 @@ export default function App() {
           }
       };
 
-      // --- AI HANDLER ---
+      // --- AI HANDLER (ADMIN) ---
       const handleAIFill = async () => {
         if (!formData.word) {
             alert("Lütfen önce bir kelime yazın!");
@@ -1735,411 +1812,147 @@ export default function App() {
     };
     return <FormComponent />;
   }
-      // --- ADD / EDIT FORM (USER) ---
+      // --- HIZLI EKLEME MODALI (Analiz Ekranı İçin Popup) ---
+  const QuickAddModal = () => {
+    const initialData = {
+        word: quickAddWord || "", plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+        definitions: [{ type: "noun", meaning: "", engExplanation: "" }], sentence: "", source: isAdmin ? "system" : "user"
+    };
+    const [formData, setFormData] = useState(initialData);
+    const [loadingAI, setLoadingAI] = useState(false);
+    const [saving, setSaving] = useState(false);
+
+    // Pencere açılınca otomatik anlam bul (İsteğe bağlı, kullanıcıya kolaylık olsun diye ekledim)
+    useEffect(() => { if(quickAddWord) handleAIFill(); }, []); 
+
+    const handleAIFill = async () => {
+        setLoadingAI(true);
+        try {
+            const data = await fetchWordAnalysisFromAI(formData.word);
+            if(data) {
+                setFormData(prev => ({...prev, ...data, definitions: data.definitions.map(d => ({...d, engExplanation: d.engExplanation || ""})) }));
+            }
+        } catch(e) { console.error(e); }
+        setLoadingAI(false);
+    };
+
+    const handleSave = async (e) => {
+        e.preventDefault();
+        if(!formData.word || !formData.sentence) { alert("Lütfen kelime ve cümle alanlarını doldurun."); return; }
+        setSaving(true);
+        if(isAdmin) await handleSaveSystemWord(formData);
+        else await handleSaveNewWord(formData);
+        setSaving(false);
+        setQuickAddWord(null); // Modalı kapat
+    };
+
+    const updateDef = (i, f, v) => {
+        const n = [...formData.definitions]; n[i] = {...n[i], [f]: v}; setFormData({...formData, definitions: n});
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+            <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 max-h-[90vh] overflow-y-auto">
+                <div className="flex justify-between items-center mb-4">
+                    <h3 className="font-bold text-lg">Hızlı Kelime Ekle</h3>
+                    <button onClick={() => setQuickAddWord(null)} className="p-2 bg-slate-100 rounded-full"><X className="w-5 h-5"/></button>
+                </div>
+                <div className="space-y-4">
+                    <div className="flex gap-2">
+                        <input value={formData.word} onChange={e=>setFormData({...formData, word: e.target.value})} className="flex-1 p-3 border rounded-xl font-bold" />
+                        <button onClick={handleAIFill} disabled={loadingAI} className="bg-purple-600 text-white px-3 rounded-xl">
+                            {loadingAI ? <Loader2 className="animate-spin"/> : <Brain/>}
+                        </button>
+                    </div>
+                    <div className="space-y-2">
+                        {formData.definitions.map((def, i) => (
+                            <div key={i} className="p-2 bg-slate-50 border rounded-lg">
+                                <input placeholder="Türkçe Anlam" value={def.meaning} onChange={e=>updateDef(i, 'meaning', e.target.value)} className="w-full p-2 border rounded mb-1 text-sm"/>
+                                <input placeholder="İngilizce Açıklama" value={def.engExplanation} onChange={e=>updateDef(i, 'engExplanation', e.target.value)} className="w-full p-2 border rounded text-xs"/>
+                            </div>
+                        ))}
+                        <button onClick={()=>setFormData(p=>({...p, definitions:[...p.definitions, {type:"noun", meaning:"", engExplanation:""}]}))} className="text-xs text-indigo-600 font-bold">+ Anlam Ekle</button>
+                    </div>
+                    <textarea value={formData.sentence} onChange={e=>setFormData({...formData, sentence:e.target.value})} className="w-full p-3 border rounded-xl text-sm" placeholder="Örnek cümle..." rows={2}></textarea>
+                    <button onClick={handleSave} disabled={saving} className="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl flex justify-center gap-2">
+                        {saving ? <Loader2 className="animate-spin"/> : <Save className="w-5 h-5"/>} Kaydet ve Kapat
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+  };
+
+  // --- ADD / EDIT FORM (USER) ---
   if (currentView === "add_word" || currentView === "edit_word") {
     const isEditMode = currentView === "edit_word";
-    const normalizedEditWord =
-      isEditMode && editingWord ? normalizeWord(editingWord) : null;
-    const initialData = normalizedEditWord
-      ? {
-          word: normalizedEditWord.word,
-          plural: normalizedEditWord.plural || "",
-          v2: normalizedEditWord.v2 || "",
-          v3: normalizedEditWord.v3 || "",
-          vIng: normalizedEditWord.vIng || "",
-          thirdPerson: normalizedEditWord.thirdPerson || "", 
-          advLy: normalizedEditWord.advLy || "",             
-          compEr: normalizedEditWord.compEr || "",            
-          superEst: normalizedEditWord.superEst || "",        
-          definitions: normalizedEditWord.definitions.map(d => ({...d, engExplanation: d.engExplanation || ""})),
-          sentence: normalizedEditWord.sentence,
-        }
-      : {
-          word: "",
-          plural: "",
-          v2: "",
-          v3: "",
-          vIng: "",
-          thirdPerson: "",
-          advLy: "",
-          compEr: "",
-          superEst: "",
-          definitions: [{ type: "noun", meaning: "", engExplanation: "" }],
-          sentence: "",
-        };
+    const normalizedEditWord = isEditMode && editingWord ? { ...editingWord, definitions: editingWord.definitions.map(d => ({...d, engExplanation: d.engExplanation || ""})) } : { word: "", plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "", definitions: [{ type: "noun", meaning: "", engExplanation: "" }], sentence: "" };
 
     const FormComponent = () => {
       const [formData, setFormData] = useState(initialData);
-      const [error, setError] = useState("");
       const [saving, setSaving] = useState(false);
-      // --- AI LOADING ---
       const [aiLoading, setAiLoading] = useState(false);
-      const [rootLoading, setRootLoading] = useState(false); // <-- YENİ
+      const [rootLoading, setRootLoading] = useState(false);
 
-      const addDefinition = () =>
-        setFormData((prev) => ({
-          ...prev,
-          definitions: [
-            ...prev.definitions,
-            { type: "noun", meaning: "", engExplanation: "" },
-          ],
-        }));
-      const removeDefinition = (index) => {
-        if (formData.definitions.length === 1) return;
-        setFormData((prev) => ({
-          ...prev,
-          definitions: prev.definitions.filter((_, i) => i !== index),
-        }));
-      };
-      const updateDefinition = (index, field, value) => {
-        const newDefs = [...formData.definitions];
-        newDefs[index] = { ...newDefs[index], [field]: value };
-        setFormData((prev) => ({ ...prev, definitions: newDefs }));
-      };
-
-      // --- YENİ: KÖK BULMA (USER) ---
       const handleConvertToRoot = async () => {
           if (!formData.word) return;
           setRootLoading(true);
           try {
               const result = await fetchRootFromAI(formData.word);
-              if (result.changed) {
-                  setFormData(prev => ({ ...prev, word: result.root }));
-              }
-          } catch (e) {
-              console.error(e);
-          } finally {
-              setRootLoading(false);
-          }
+              if (result.changed) setFormData(prev => ({ ...prev, word: result.root }));
+          } catch (e) { console.error(e); } finally { setRootLoading(false); }
       };
 
-      // --- AI HANDLER (USER) ---
       const handleAIFill = async () => {
-        if (!formData.word) {
-            alert("Lütfen önce bir kelime yazın!");
-            return;
-        }
+        if (!formData.word) { alert("Lütfen önce bir kelime yazın!"); return; }
         setAiLoading(true);
-        setError("");
         try {
             const data = await fetchWordAnalysisFromAI(formData.word);
-            setFormData((prev) => ({
-                ...prev,
-                word: data.word,
-                plural: data.plural || "",
-                v2: data.v2 || "",
-                v3: data.v3 || "",
-                vIng: data.vIng || "",
-                thirdPerson: data.thirdPerson || "",
-                advLy: data.advLy || "",
-                compEr: data.compEr || "",
-                superEst: data.superEst || "",
-                sentence: data.sentence || "",
-                definitions: data.definitions.map(def => ({
-                    type: def.type || "noun",
-                    meaning: def.meaning || "",
-                    engExplanation: def.engExplanation || ""
-                }))
-            }));
-        } catch (err) {
-            setError("AI Hatası: " + err.message);
-        } finally {
-            setAiLoading(false);
-        }
+            if(data) setFormData((prev) => ({ ...prev, ...data, definitions: data.definitions.map(def => ({...def, engExplanation: def.engExplanation || ""})) }));
+        } catch (err) { alert("AI Hatası: " + err.message); } finally { setAiLoading(false); }
       };
 
       const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!formData.word || !formData.sentence) {
-          setError("Lütfen kelime ve örnek cümleyi doldurun.");
-          return;
-        }
-        const hasEmptyDef = formData.definitions.some(
-          (d) => !d.meaning.trim()
-        );
-        if (hasEmptyDef) {
-          setError(
-            "Lütfen tüm anlam alanlarını doldurun veya boş olanları silin."
-          );
-          return;
-        }
+        if (!formData.word || !formData.sentence) { alert("Eksik alanları doldurun."); return; }
         setSaving(true);
-        if (isEditMode) {
-          await handleUpdateWord(editingWord.id, formData);
-          setSaving(false);
-          setCurrentView(returnView);
-        } else {
-          const result = await handleSaveNewWord(formData);
-          setSaving(false);
-          if (result.success) {
-            alert("Kelime başarıyla eklendi!");
-            setFormData({
-              word: "",
-              plural: "",
-              v2: "",
-              v3: "",
-              vIng: "",
-              thirdPerson: "",
-              advLy: "",
-              compEr: "",
-              superEst: "",
-              definitions: [{ type: "noun", meaning: "", engExplanation: "" }],
-              sentence: "",
-            });
-            setError("");
-          } else {
-            setError(result.message);
-          }
+        if (isEditMode) { await handleUpdateWord(editingWord.id, formData); setCurrentView(returnView); }
+        else { 
+            const res = await handleSaveNewWord(formData); 
+            if(res.success) { alert("Eklendi!"); setFormData({ word: "", plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "", definitions: [{ type: "noun", meaning: "", engExplanation: "" }], sentence: "" }); }
+            else alert(res.message);
         }
+        setSaving(false);
       };
+
+      const addDefinition = () => setFormData((p) => ({ ...p, definitions: [...p.definitions, { type: "noun", meaning: "", engExplanation: "" }] }));
+      const updateDefinition = (i, f, v) => { const n = [...formData.definitions]; n[i] = { ...n[i], [f]: v }; setFormData((p) => ({ ...p, definitions: n })); };
+      const removeDefinition = (i) => { if(formData.definitions.length > 1) setFormData(p => ({...p, definitions: p.definitions.filter((_, idx) => idx !== i)})); };
 
       return (
         <div className="min-h-screen bg-slate-50 p-4 flex items-center justify-center">
           <div className="w-full max-w-md bg-white rounded-2xl shadow-lg p-6 my-8 overflow-y-auto max-h-screen">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-slate-800">
-                {isEditMode ? "Kelimeyi Düzenle" : "Yeni Kelime Ekle"}
-              </h2>
-              <button
-                onClick={() =>
-                  isEditMode
-                    ? setCurrentView(returnView)
-                    : handleGoHome()
-                }
-                className="p-2 bg-slate-100 rounded-full hover:bg-slate-200"
-              >
-                <X className="w-5 h-5 text-slate-600" />
-              </button>
+              <h2 className="text-xl font-bold text-slate-800">{isEditMode ? "Kelimeyi Düzenle" : "Yeni Kelime Ekle"}</h2>
+              <button onClick={() => isEditMode ? setCurrentView(returnView) : handleGoHome()} className="p-2 bg-slate-100 rounded-full"><X className="w-5 h-5" /></button>
             </div>
-            {error && (
-              <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-4 flex items-center gap-2 text-sm">
-                <AlertCircle className="w-4 h-4" /> {error}
-              </div>
-            )}
             <form onSubmit={handleSubmit} className="space-y-4">
-              
-              {/* KELİME, KÖK BUL VE AI BUTONU (USER) */}
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  İngilizce Kelime
-                </label>
-                <div className="flex gap-2">
-                    <input
-                        type="text"
-                        value={formData.word}
-                        onChange={(e) =>
-                        setFormData({ ...formData, word: e.target.value })
-                        }
-                        className="flex-1 p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
-                        placeholder="Örn: Bank"
-                        autoFocus
-                    />
-                    {/* YENİ: KÖK BULMA BUTONU */}
-                    <button
-                      type="button"
-                      onClick={handleConvertToRoot}
-                      disabled={rootLoading || !formData.word}
-                      className="bg-orange-100 hover:bg-orange-200 text-orange-600 p-3 rounded-xl transition-colors disabled:opacity-50"
-                      title="Kelimeyi Yalın Hâle (Kök) Çevir"
-                    >
-                      {rootLoading ? (
-                        <Loader2 className="w-5 h-5 animate-spin" />
-                      ) : (
-                        <Wand2 className="w-5 h-5" />
-                      )}
-                    </button>
-
-                    {/* AI BUTONU */}
-                    <button
-                        type="button"
-                        onClick={handleAIFill}
-                        disabled={aiLoading || !formData.word}
-                        className="bg-purple-600 hover:bg-purple-700 text-white px-4 rounded-xl font-bold shadow-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                        title="Yapay Zeka ile Doldur"
-                    >
-                        {aiLoading ? (
-                        <Loader2 className="w-5 h-5 animate-spin" />
-                        ) : (
-                        <>
-                            <Brain className="w-5 h-5" />
-                            <span className="hidden sm:inline">AI Doldur</span>
-                        </>
-                        )}
-                    </button>
-                </div>
-                <p className="text-[10px] text-slate-400 mt-1 ml-1">
-                  İpucu: "Running" yazıp <Wand2 className="w-3 h-3 inline"/> ikonuna basarsan "Run" olur.
-                </p>
+              <div className="flex gap-2">
+                  <input value={formData.word} onChange={(e) => setFormData({ ...formData, word: e.target.value })} className="flex-1 p-3 border rounded-xl" placeholder="Kelime" autoFocus />
+                  <button type="button" onClick={handleConvertToRoot} disabled={rootLoading || !formData.word} className="bg-orange-100 text-orange-600 p-3 rounded-xl" title="Kök Bul">{rootLoading ? <Loader2 className="animate-spin"/> : <Wand2/>}</button>
+                  <button type="button" onClick={handleAIFill} disabled={aiLoading || !formData.word} className="bg-purple-600 text-white px-3 rounded-xl" title="AI Doldur">{aiLoading ? <Loader2 className="animate-spin"/> : <Brain/>}</button>
               </div>
-
-              {/* GRUP 1: İSİM VE FİİL DETAYLARI */}
-              <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                  <div className="text-xs font-bold text-slate-400 mb-2 uppercase tracking-wide">Fiil & İsim Detayları</div>
-                  <div className="space-y-3">
-                      <div>
-                        <label className="block text-xs font-medium text-slate-500 mb-1">
-                          Çoğul (Plural)
-                        </label>
-                        <input
-                          type="text"
-                          value={formData.plural}
-                          onChange={(e) =>
-                            setFormData({ ...formData, plural: e.target.value })
-                          }
-                          className="w-full p-2 border border-slate-200 rounded-lg outline-none text-sm"
-                          placeholder="cars, cities"
-                        />
+              <div className="space-y-2">
+                  {formData.definitions.map((def, i) => (
+                      <div key={i} className="p-2 bg-slate-50 border rounded-lg">
+                          <input value={def.meaning} onChange={e=>updateDefinition(i, 'meaning', e.target.value)} className="w-full p-2 border rounded mb-1" placeholder="Anlam"/>
+                          <button type="button" onClick={()=>removeDefinition(i)} className="text-xs text-red-500">Sil</button>
                       </div>
-                      <div className="grid grid-cols-2 gap-3">
-                          <div>
-                             <label className="block text-xs font-medium text-slate-500 mb-1">3. Tekil (He/She/It)</label>
-                             <input type="text" value={formData.thirdPerson} onChange={(e) => setFormData({ ...formData, thirdPerson: e.target.value })} className="w-full p-2 border border-slate-200 rounded-lg outline-none text-sm" placeholder="goes"/>
-                          </div>
-                          <div>
-                             <label className="block text-xs font-medium text-slate-500 mb-1">V-ing (Gerund)</label>
-                             <input type="text" value={formData.vIng} onChange={(e) => setFormData({ ...formData, vIng: e.target.value })} className="w-full p-2 border border-slate-200 rounded-lg outline-none text-sm" placeholder="going"/>
-                          </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <label className="block text-xs font-medium text-slate-500 mb-1">V2 (Past)</label>
-                          <input
-                            type="text"
-                            value={formData.v2}
-                            onChange={(e) =>
-                              setFormData({ ...formData, v2: e.target.value })
-                            }
-                            className="w-full p-2 border border-slate-200 rounded-lg outline-none text-sm"
-                            placeholder="went"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-medium text-slate-500 mb-1">V3 (Participle)</label>
-                          <input
-                            type="text"
-                            value={formData.v3}
-                            onChange={(e) =>
-                              setFormData({ ...formData, v3: e.target.value })
-                            }
-                            className="w-full p-2 border border-slate-200 rounded-lg outline-none text-sm"
-                            placeholder="gone"
-                          />
-                        </div>
-                      </div>
-                  </div>
+                  ))}
+                  <button type="button" onClick={addDefinition} className="text-indigo-600 text-sm font-bold">+ Anlam</button>
               </div>
-
-              {/* GRUP 2: SIFAT VE ZARF DETAYLARI (YENİ) */}
-              <div className="bg-orange-50 p-3 rounded-xl border border-orange-100">
-                  <div className="text-xs font-bold text-orange-400 mb-2 uppercase tracking-wide">Sıfat & Zarf Detayları</div>
-                  <div className="space-y-3">
-                      <div>
-                          <label className="block text-xs font-medium text-orange-700/70 mb-1">Zarf Hali (-ly)</label>
-                          <input type="text" value={formData.advLy} onChange={(e) => setFormData({ ...formData, advLy: e.target.value })} className="w-full p-2 border border-orange-200 rounded-lg outline-none text-sm" placeholder="quickly"/>
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
-                          <div>
-                             <label className="block text-xs font-medium text-orange-700/70 mb-1">Karşılaştırma (-er)</label>
-                             <input type="text" value={formData.compEr} onChange={(e) => setFormData({ ...formData, compEr: e.target.value })} className="w-full p-2 border border-orange-200 rounded-lg outline-none text-sm" placeholder="faster"/>
-                          </div>
-                          <div>
-                             <label className="block text-xs font-medium text-orange-700/70 mb-1">Üstünlük (-est)</label>
-                             <input type="text" value={formData.superEst} onChange={(e) => setFormData({ ...formData, superEst: e.target.value })} className="w-full p-2 border border-orange-200 rounded-lg outline-none text-sm" placeholder="fastest"/>
-                          </div>
-                      </div>
-                  </div>
-              </div>
-
-              <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <label className="block text-sm font-medium text-slate-700">
-                    Anlamlar
-                  </label>
-                  <button
-                    type="button"
-                    onClick={addDefinition}
-                    className="text-sm text-indigo-600 hover:text-indigo-800 flex items-center gap-1 font-medium"
-                  >
-                    <Plus className="w-4 h-4" /> Anlam Ekle
-                  </button>
-                </div>
-                {formData.definitions.map((def, index) => (
-                  <div
-                    key={index}
-                    className="flex flex-col gap-2 bg-slate-50 p-3 rounded-xl border border-slate-100"
-                  >
-                    <div className="flex gap-2 items-start">
-                        <div className="flex-1 space-y-2">
-                        <select
-                            value={def.type}
-                            onChange={(e) =>
-                            updateDefinition(index, "type", e.target.value)
-                            }
-                            className="w-full p-2 text-sm border border-slate-200 rounded-lg outline-none bg-white"
-                        >
-                            {WORD_TYPES.map((t) => (
-                            <option key={t.value} value={t.value}>
-                                {t.label}
-                            </option>
-                            ))}
-                        </select>
-                        <input
-                            type="text"
-                            value={def.meaning}
-                            onChange={(e) =>
-                            updateDefinition(index, "meaning", e.target.value)
-                            }
-                            className="w-full p-2 text-sm border border-slate-200 rounded-lg outline-none"
-                            placeholder="Türkçe anlamı..."
-                        />
-                        </div>
-                        {formData.definitions.length > 1 && (
-                        <button
-                            type="button"
-                            onClick={() => removeDefinition(index)}
-                            className="p-2 text-slate-400 hover:text-red-500 mt-1"
-                        >
-                            <Trash2 className="w-4 h-4" />
-                        </button>
-                        )}
-                    </div>
-                    <input
-                        type="text"
-                        value={def.engExplanation}
-                        onChange={(e) =>
-                            updateDefinition(index, "engExplanation", e.target.value)
-                        }
-                        className="w-full p-2 text-sm border border-indigo-100 bg-indigo-50/50 rounded-lg outline-none placeholder:text-slate-400"
-                        placeholder="Bu anlam için İngilizce açıklama (Opsiyonel)..."
-                    />
-                  </div>
-                ))}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Örnek Cümle
-                </label>
-                <textarea
-                  value={formData.sentence}
-                  onChange={(e) =>
-                    setFormData({ ...formData, sentence: e.target.value })
-                  }
-                  className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none h-24 resize-none"
-                  placeholder="Örn: I went to the bank."
-                />
-              </div>
-              <button
-                type="submit"
-                disabled={saving}
-                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-xl shadow-md flex items-center justify-center gap-2 transition-all active:scale-95"
-              >
-                {saving ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                ) : (
-                  <Save className="w-5 h-5" />
-                )}{" "}
-                {isEditMode ? "Değişiklikleri Kaydet" : "Kelimeyi Kaydet"}
-              </button>
+              <textarea value={formData.sentence} onChange={e=>setFormData({...formData, sentence:e.target.value})} className="w-full p-3 border rounded-xl" placeholder="Cümle"/>
+              <button type="submit" disabled={saving} className="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl">{saving ? <Loader2 className="animate-spin mx-auto"/> : "Kaydet"}</button>
             </form>
           </div>
         </div>
@@ -2148,812 +1961,169 @@ export default function App() {
     return <FormComponent />;
   }
 
-  // --- LIST VIEWS ---
-  if (
-    currentView === "known_list" ||
-    currentView === "unknown_list" ||
-    currentView === "trash"
-  ) {
-    const isKnown = currentView === "known_list";
-    const isTrash = currentView === "trash";
-    const allWords = isTrash ? getDeletedWords() : getAllWords();
-    let filteredWords = [];
-
-    if (isTrash) {
-      filteredWords = allWords.filter((w) =>
-        w.word.toLowerCase().includes(searchTrash.toLowerCase())
-      );
-    } else if (isKnown) {
-      filteredWords = allWords
-        .filter((w) => knownWordIds.includes(w.id))
-        .filter((w) =>
-          w.word.toLowerCase().includes(searchKnown.toLowerCase())
-        );
-    } else {
-      filteredWords = allWords
-        .filter((w) => !knownWordIds.includes(w.id))
-        .filter((w) =>
-          w.word.toLowerCase().includes(searchUnknown.toLowerCase())
-        );
-    }
-
-    filteredWords.sort((a, b) => a.word.localeCompare(b.word));
-    const title = isKnown
-      ? "Öğrendiğim Kelimeler"
-      : isTrash
-      ? "Silinen Kelimeler"
-      : "Öğreneceğim Kelimeler";
-    const searchVal = isKnown
-      ? searchKnown
-      : isTrash
-      ? searchTrash
-      : searchUnknown;
-    const setSearch = isKnown
-      ? setSearchKnown
-      : isTrash
-      ? setSearchTrash
-      : setSearchUnknown;
-
+  // --- SENTENCE ANALYSIS VIEW (GÜNCELLENMİŞ - DETAYLI) ---
+  if (currentView === "sentence_analysis") {
     return (
-      <div className="min-h-screen bg-slate-50 p-4">
-        <div className="max-w-md mx-auto">
-          <div className="flex items-center gap-3 mb-4 sticky top-0 bg-slate-50 py-2 z-10">
-            <button
-              onClick={handleGoHome}
-              className="p-2 hover:bg-slate-200 rounded-full transition-colors"
-            >
-              <ArrowLeft className="w-6 h-6 text-slate-600" />
-            </button>
-            <h2 className="text-xl font-bold text-slate-800">
-              {title} ({filteredWords.length})
-            </h2>
+      <div className="min-h-screen bg-slate-50 p-6 flex flex-col items-center relative">
+        {quickAddWord !== null && <QuickAddModal />}
+        <div className="w-full max-w-lg space-y-6">
+          <div className="flex items-center gap-3">
+            <button onClick={() => { handleGoHome(); setAnalysisResult(null); setAnalysisText(""); }} className="p-2 hover:bg-slate-200 rounded-full transition-colors bg-white shadow-sm"><ArrowLeft className="w-6 h-6 text-slate-600" /></button>
+            <h2 className="text-2xl font-bold text-slate-800">Cümle Analizi</h2>
           </div>
-          <input
-            type="text"
-            placeholder="Kelime ara..."
-            value={searchVal}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full p-3 mb-4 bg-white border border-slate-200 rounded-xl outline-none"
-          />
-
-          {filteredWords.length === 0 ? (
-            <div className="text-center text-slate-400 mt-20">
-              {isTrash ? (
-                <Trash2 className="w-16 h-16 mx-auto mb-4 opacity-20" />
-              ) : isKnown ? (
-                <Check className="w-16 h-16 mx-auto mb-4 opacity-20" />
-              ) : (
-                <Trophy className="w-16 h-16 mx-auto mb-4 text-yellow-500" />
-              )}
-              <p>
-                {isTrash
-                  ? "Çöp kutusu boş."
-                  : isKnown
-                  ? "Henüz hiç kelime öğrenmedin."
-                  : "Harika! Tüm kelimeleri öğrendin."}
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {filteredWords.map((item) => {
-                const canRestore = isTrash ? canRestoreWord(item) : false;
-                const isUser = item.source === "user";
-                return (
-                  <div
-                    key={item.id}
-                    className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex flex-col gap-2"
-                  >
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 flex-wrap mb-1">
-                          <span className="text-lg font-bold text-slate-800">
-                            {item.word}
-                          </span>
-                          {renderSourceBadge(item.source)}
-                          {!isTrash && (
-                            <button
-                              onClick={(e) => speak(item.word, e)}
-                              className="p-1 text-indigo-400 hover:text-indigo-600 bg-indigo-50 rounded-full"
-                            >
-                              <Volume2 className="w-4 h-4" />
-                            </button>
-                          )}
-                        </div>
-                        {/* LİSTE GÖRÜNÜMÜNDE ANLAMLAR */}
-                        {item.definitions.map((def, idx) => (
-                            <div key={idx} className="mb-1">
-                                <div className="flex items-baseline gap-2">
-                                    <span className="text-xs font-bold text-slate-400 w-8 text-right shrink-0">
-                                        {getShortTypeLabel(def.type)}
-                                    </span>
-                                    <span className="text-sm text-slate-700 font-medium">
-                                        {def.meaning}
-                                    </span>
-                                </div>
-                                {def.engExplanation && (
-                                    <div className="ml-10 text-[10px] text-indigo-400 italic">"{def.engExplanation}"</div>
-                                )}
-                            </div>
-                        ))}
-
-                        {/* LİSTE GÖRÜNÜMÜ DETAYLARI */}
-                        {(item.plural || item.v2 || item.v3 || item.vIng || item.thirdPerson) && (
-                          <div className="mt-2 text-xs text-slate-600 space-y-1 bg-slate-50 p-2 rounded-lg">
-                            <div className="flex flex-wrap gap-x-3 gap-y-1">
-                                {item.plural && <div><span className="font-semibold">Pl:</span> {item.plural}</div>}
-                                {item.thirdPerson && <div><span className="font-semibold">3rd:</span> {item.thirdPerson}</div>}
-                                {item.v2 && <div><span className="font-semibold">V2:</span> {item.v2}</div>}
-                                {item.v3 && <div><span className="font-semibold">V3:</span> {item.v3}</div>}
-                                {item.vIng && <div><span className="font-semibold">Ing:</span> {item.vIng}</div>}
-                            </div>
-                          </div>
-                        )}
-
-                        {(item.advLy || item.compEr || item.superEst) && (
-                          <div className="mt-1 text-xs text-slate-600 space-y-1 bg-orange-50 p-2 rounded-lg">
-                            <div className="flex flex-wrap gap-x-3 gap-y-1">
-                                {item.advLy && <div><span className="font-semibold">Ly:</span> {item.advLy}</div>}
-                                {item.compEr && <div><span className="font-semibold">Comp:</span> {item.compEr}</div>}
-                                {item.superEst && <div><span className="font-semibold">Super:</span> {item.superEst}</div>}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* LİSTE GÖRÜNÜMÜNDE CÜMLE + SES */}
-                        {!isTrash && (
-                          <div className="mt-2 pt-2 border-t border-slate-50 flex gap-2 items-start group">
-                            <button 
-                                onClick={(e) => speak(item.sentence, e)}
-                                className="shrink-0 p-1.5 text-slate-300 hover:text-indigo-500 hover:bg-indigo-50 rounded-full transition-colors"
-                                title="Cümleyi Oku"
-                            >
-                                <Volume2 className="w-3.5 h-3.5" />
-                            </button>
-                            <div className="text-xs text-slate-400 italic leading-relaxed py-0.5">
-                                "{item.sentence}"
-                            </div>
-                          </div>
-                        )}
-
-                        {isTrash && !canRestore && (
-                          <div className="text-[10px] text-slate-400 italic mt-1">
-                            Bu kelimenin aktif bir versiyonu zaten var
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex flex-col gap-1 ml-2">
-                        {isTrash ? (
-                          <div className="flex flex-col items-end gap-2">
-                            {canRestore && (
-                              <button
-                                onClick={() => restoreWord(item)}
-                                className="px-3 py-1 bg-green-100 text-green-600 rounded-lg hover:bg-green-200 text-xs font-semibold"
-                              >
-                                Geri Yükle
-                              </button>
-                            )}
-                            {isUser && (
-                              <button
-                                onClick={() => permanentlyDeleteWord(item)}
-                                className="px-3 py-1 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 text-xs font-semibold"
-                              >
-                                Tamamen Sil
-                              </button>
-                            )}
-                          </div>
-                        ) : (
-                          <>
-                            {item.source === "user" && (
-                              <button
-                                onClick={() => {
-                                  setEditingWord(item);
-                                  setReturnView(currentView);
-                                  setCurrentView("edit_word");
-                                }}
-                                className="p-2 text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg"
-                              >
-                                <Edit2 className="w-4 h-4" />
-                              </button>
-                            )}
-                            {isKnown ? (
-                              <button
-                                onClick={() =>
-                                  handleRemoveFromKnown(item.id)
-                                }
-                                className="p-2 text-slate-300 hover:text-amber-500 hover:bg-amber-50 rounded-lg"
-                              >
-                                <RotateCcw className="w-5 h-5" />
-                              </button>
-                            ) : null}
-                            {item.source === "user" && (
-                              <button
-                                onClick={() => handleDeleteWord(item.id)}
-                                className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg"
-                              >
-                                <X className="w-4 h-4" />
-                              </button>
-                            )}
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  // --- DICTIONARY VIEW ---
-  if (currentView === "dictionary") {
-    return (
-        <div className="min-h-screen bg-slate-50 p-6 flex flex-col items-center">
-            <div className="w-full max-w-md space-y-6">
-                <div className="flex items-center gap-3">
-                    <button onClick={handleGoHome} className="p-2 hover:bg-slate-200 rounded-full transition-colors bg-white shadow-sm">
-                        <ArrowLeft className="w-6 h-6 text-slate-600" />
-                    </button>
-                    <h2 className="text-2xl font-bold text-slate-800">Sözlük</h2>
-                </div>
-
-                <form onSubmit={handleDictionarySearch} className="relative">
-                    <Search className="absolute left-4 top-4 text-slate-400" />
-                    <input 
-                        type="text" 
-                        placeholder="Kelime ara (İngilizce)..." 
-                        value={dictSearchTerm}
-                        onChange={(e) => setDictSearchTerm(e.target.value)}
-                        className="w-full pl-12 p-4 rounded-2xl border border-slate-200 shadow-sm focus:ring-2 focus:ring-indigo-500 outline-none"
-                        autoFocus
-                    />
-                    <button type="submit" className="absolute right-2 top-2 bg-indigo-600 text-white p-2 rounded-xl hover:bg-indigo-700 transition-colors">
-                        Ara
-                    </button>
-                </form>
-
-                {dictError && (
-                    <div className="bg-red-50 text-red-600 p-4 rounded-xl flex items-center gap-3">
-                        <AlertCircle className="w-5 h-5" />
-                        {dictError}
-                    </div>
-                )}
-
-                {/* ÇOKLU SONUÇ LİSTELEME */}
-                {dictResults.length > 0 && (
-                    <div className="mt-6 animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-8">
-                          <div className="text-center text-sm text-slate-500">
-                            {dictResults.length} sonuç bulundu:
-                          </div>
-                          {dictResults.map((resultWord) => (
-                             <div key={resultWord.id} className="flex justify-center">
-                                 <WordCard wordObj={resultWord} />
-                             </div>
-                          ))}
-                    </div>
-                )}
-
-                {dictResults.length === 0 && !dictError && (
-                    <div className="text-center text-slate-400 mt-10">
-                        <Book className="w-20 h-20 mx-auto mb-4 opacity-20" />
-                        <p>Aramak istediğin kelimeyi yaz.</p>
-                    </div>
-                )}
-            </div>
-        </div>
-    )
-  }
-
-  // --- QUIZ VIEW (KESİN ÇÖZÜM - GEÇİŞ EFEKTİ İLE) ---
-  if (currentView === "quiz") {
-      // Eğer geçiş yapılıyorsa (soru değişiyorsa) ekrana yükleniyor simgesi koy.
-      // Bu işlem eski butonları DOM'dan tamamen siler.
-      if (quizTransition) {
-          return (
-            <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-                <Loader2 className="w-10 h-10 text-indigo-600 animate-spin" />
-            </div>
-          );
-      }
-
-      const currentQuestion = quizQuestions[quizIndex];
-      const progress = ((quizIndex + 1) / quizQuestions.length) * 100;
-
-      return (
-        <div className="min-h-screen bg-slate-50 flex flex-col items-center p-4">
-            <div className="w-full max-w-md space-y-6 mt-4">
-                {/* Header */}
-                <div className="flex justify-between items-center">
-                    <button onClick={handleGoHome} className="text-slate-400 hover:text-slate-600">
-                        <X className="w-6 h-6" />
-                    </button>
-                    <div className="font-bold text-indigo-600">
-                        Soru {quizIndex + 1} / {quizQuestions.length}
-                    </div>
-                    <div className="flex items-center gap-1 bg-amber-100 text-amber-600 px-2 py-1 rounded-lg font-bold text-sm">
-                        <Trophy className="w-4 h-4" /> {quizScore}
-                    </div>
-                </div>
-                
-                {/* Progress Bar */}
-                <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
-                    <div className="bg-indigo-500 h-full transition-all duration-500 ease-out" style={{width: `${progress}%`}}></div>
-                </div>
-
-                {/* Question Card */}
-                <div className="bg-white p-8 rounded-3xl shadow-lg border border-slate-100 text-center space-y-6 mt-6 animate-in fade-in zoom-in duration-300">
-                    <div className="inline-block bg-indigo-50 text-indigo-600 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
-                        Bu kelimenin anlamı nedir?
-                    </div>
-                    <h2 className="text-4xl font-extrabold text-slate-800">{currentQuestion.wordObj.word}</h2>
-                    <button onClick={() => speak(currentQuestion.wordObj.word)} className="mx-auto p-2 bg-slate-50 rounded-full text-indigo-500 hover:bg-indigo-50 transition-colors">
-                        <Volume2 className="w-6 h-6" />
-                    </button>
-                </div>
-
-                {/* Options */}
-                <div className="space-y-3 mt-6">
-                    {currentQuestion.options.map((option, idx) => {
-                        let btnClass = "w-full p-4 rounded-xl text-left font-medium border-2 transition-all active:scale-95 shadow-sm ";
-                        
-                        if (quizIsAnswered) {
-                            if (option === currentQuestion.correctAnswer) {
-                                btnClass += "bg-green-100 border-green-500 text-green-700";
-                            } else if (option === quizSelectedOption) {
-                                btnClass += "bg-red-100 border-red-500 text-red-700";
-                            } else {
-                                btnClass += "bg-white border-slate-100 text-slate-400 opacity-50";
-                            }
-                        } else {
-                            btnClass += "bg-white border-slate-200 text-slate-700 hover:border-indigo-300 hover:bg-indigo-50";
-                        }
-
+          <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
+            <textarea value={analysisText} onChange={(e) => setAnalysisText(e.target.value)} className="w-full p-3 border-0 outline-none resize-none text-slate-700 min-h-[100px]" placeholder="Analiz edilecek cümleyi yaz..." />
+            <div className="flex justify-end mt-2"><button onClick={handleAnalyzeSentence} disabled={isAnalyzing} className="bg-teal-600 text-white px-6 py-2.5 rounded-xl font-bold flex items-center gap-2">{isAnalyzing ? <Loader2 className="animate-spin"/> : <Microscope/>} Analiz Et</button></div>
+          </div>
+          {analysisResult && (
+            <div className="space-y-4 animate-in fade-in slide-in-from-bottom-6 duration-500">
+              {/* 1. DOĞAL ÇEVİRİ */}
+              <div className="bg-indigo-50 p-5 rounded-2xl border border-indigo-100 shadow-sm">
+                <h3 className="text-xs font-bold text-indigo-400 uppercase mb-2 flex items-center gap-2"><Globe className="w-4 h-4" /> Türkçe Çeviri</h3>
+                <p className="text-lg text-slate-800 font-medium leading-relaxed">{analysisResult.turkishTranslation}</p>
+              </div>
+              {/* 2. GRAMER ANALİZİ */}
+              <div className="bg-teal-50 p-5 rounded-2xl border border-teal-100 shadow-sm">
+                <h3 className="text-xs font-bold text-teal-500 uppercase mb-2 flex items-center gap-2"><Brain className="w-4 h-4" /> Gramer Yapısı</h3>
+                <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">{analysisResult.grammarAnalysis}</p>
+              </div>
+              {/* 3. SAF KELİMELER VE RENKLENDİRME */}
+              {analysisResult.rootWords?.length > 0 && (
+                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                   <h3 className="text-xs font-bold text-slate-400 uppercase mb-3 flex items-center gap-2"><BookOpen className="w-4 h-4" /> Kelime Kökleri</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {analysisResult.rootWords.map((word, idx) => {
+                        const exists = isWordInRegistry(word);
                         return (
-                            <button 
-                                key={idx} 
-                                onClick={() => handleQuizAnswer(option)}
-                                disabled={quizIsAnswered}
-                                className={btnClass}
-                            >
-                                {option}
+                            <button key={idx} onClick={() => { if (!exists) setQuickAddWord(word); }} disabled={exists} className={`px-3 py-1.5 rounded-lg font-bold text-sm border transition-all ${exists ? "bg-green-50 text-green-700 border-green-200 cursor-default" : "bg-red-50 text-red-600 border-red-200 hover:bg-red-100 cursor-pointer shadow-sm"}`} title={exists ? "Bu kelime zaten var" : "Eklemek için tıkla"}>
+                                {word} {!exists && <Plus className="w-3 h-3 inline ml-1"/>}
                             </button>
                         )
                     })}
+                  </div>
                 </div>
+              )}
+              {/* 4. MANUEL EKLEME BUTONU */}
+              <div className="pt-2">
+                <button onClick={() => setQuickAddWord("")} className="w-full bg-white hover:bg-slate-50 text-slate-700 border-2 border-dashed border-slate-300 font-bold py-4 px-6 rounded-xl flex items-center justify-between group">
+                  <div className="flex items-center gap-3"><div className="bg-blue-50 p-2 rounded-lg text-blue-600"><Plus className="w-6 h-6" /></div><div className="text-left"><div className="text-base">Manuel Kelime Ekle</div></div></div><Plus className="w-5 h-5 opacity-40" />
+                </button>
+              </div>
             </div>
+          )}
         </div>
-      )
+      </div>
+    );
   }
 
-  // --- QUIZ RESULT VIEW ---
-  if (currentView === "quiz_result") {
-      const maxScore = quizQuestions.length * 5;
-      const successRate = (quizScore / maxScore) * 100;
-      let message = "Daha çok çalışmalısın.";
-      if (successRate > 50) message = "Fena değil!";
-      if (successRate > 80) message = "Harika iş!";
+  // --- LIST VIEWS ---
+  if (currentView === "known_list" || currentView === "unknown_list" || currentView === "trash") {
+    const isKnown = currentView === "known_list"; const isTrash = currentView === "trash";
+    const allWords = isTrash ? getDeletedWords() : getAllWords();
+    let filteredWords = allWords.filter(w => w.word.toLowerCase().includes((isKnown ? searchKnown : isTrash ? searchTrash : searchUnknown).toLowerCase()));
+    if(!isTrash) filteredWords = filteredWords.filter(w => isKnown ? knownWordIds.includes(w.id) : !knownWordIds.includes(w.id));
+    
+    return (
+      <div className="min-h-screen bg-slate-50 p-4"><div className="max-w-md mx-auto">
+          <div className="flex items-center gap-3 mb-4 sticky top-0 bg-slate-50 py-2 z-10">
+            <button onClick={handleGoHome} className="p-2 hover:bg-slate-200 rounded-full"><ArrowLeft className="w-6 h-6 text-slate-600"/></button>
+            <h2 className="text-xl font-bold text-slate-800">{isKnown ? "Öğrendiklerim" : isTrash ? "Çöp" : "Öğreneceklerim"} ({filteredWords.length})</h2>
+          </div>
+          <input className="w-full p-3 mb-4 bg-white border rounded-xl" placeholder="Ara..." onChange={e => isKnown ? setSearchKnown(e.target.value) : isTrash ? setSearchTrash(e.target.value) : setSearchUnknown(e.target.value)}/>
+          <div className="space-y-3">
+              {filteredWords.map(item => (
+                  <div key={item.id} className="bg-white p-4 rounded-xl shadow-sm border flex flex-col gap-2">
+                      <div className="flex justify-between">
+                          <div>
+                              <div className="flex items-center gap-2"><span className="font-bold text-lg">{item.word}</span><button onClick={()=>speak(item.word)}><Volume2 className="w-4 h-4 text-indigo-500"/></button></div>
+                              <div className="text-sm text-slate-600">{item.definitions[0]?.meaning}</div>
+                          </div>
+                          <div className="flex gap-1">
+                              {isTrash ? <button onClick={()=>restoreWord(item)} className="text-green-600 bg-green-100 px-2 rounded text-xs">Geri Al</button> : <>
+                                {item.source === "user" && <button onClick={()=>{setEditingWord(item); setCurrentView("edit_word");}} className="p-2 text-blue-500"><Edit2 className="w-4 h-4"/></button>}
+                                {isKnown && <button onClick={()=>handleRemoveFromKnown(item.id)} className="p-2 text-amber-500"><RotateCcw className="w-4 h-4"/></button>}
+                                {item.source === "user" && <button onClick={()=>handleDeleteWord(item.id)} className="p-2 text-red-500"><X className="w-4 h-4"/></button>}
+                              </>}
+                          </div>
+                      </div>
+                  </div>
+              ))}
+          </div>
+      </div></div>
+    );
+  }
 
+  // --- DICTIONARY ---
+  if (currentView === "dictionary") {
+    return (
+        <div className="min-h-screen bg-slate-50 p-6 flex flex-col items-center"><div className="w-full max-w-md space-y-6">
+            <div className="flex items-center gap-3"><button onClick={handleGoHome} className="p-2 bg-white rounded-full"><ArrowLeft className="w-6 h-6"/></button><h2 className="text-2xl font-bold">Sözlük</h2></div>
+            <form onSubmit={handleDictionarySearch} className="relative"><input className="w-full pl-4 p-4 rounded-xl border" placeholder="Ara..." value={dictSearchTerm} onChange={e=>setDictSearchTerm(e.target.value)} autoFocus /><button className="absolute right-2 top-2 bg-indigo-600 text-white p-2 rounded-lg">Ara</button></form>
+            {dictError && <div className="bg-red-50 text-red-600 p-4 rounded-xl">{dictError}</div>}
+            {dictResults.map(res => <div key={res.id} className="flex justify-center"><WordCard wordObj={res}/></div>)}
+        </div></div>
+    )
+  }
+
+  // --- QUIZ (MOBİL DÜZELTİLMİŞ) ---
+  if (currentView === "quiz") {
+      if (quizTransition) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-10 h-10 animate-spin text-indigo-600"/></div>;
+      const q = quizQuestions[quizIndex];
       return (
-          <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
-              <div className="bg-white p-8 rounded-3xl shadow-xl max-w-sm w-full text-center space-y-6">
-                    <div className="inline-block p-4 rounded-full bg-yellow-100 text-yellow-500 mb-2">
-                        <Trophy className="w-12 h-12" />
-                    </div>
-                    <div>
-                        <h2 className="text-2xl font-bold text-slate-800">Test Tamamlandı!</h2>
-                        <p className="text-slate-500">{message}</p>
-                    </div>
-
-                    <div className="py-6 bg-slate-50 rounded-2xl border border-slate-100">
-                        <div className="text-sm text-slate-400 uppercase font-bold tracking-wider">Toplam Puan</div>
-                        <div className="text-5xl font-extrabold text-indigo-600 mt-2">{quizScore}</div>
-                        <div className="text-xs text-slate-400 mt-1">/ {maxScore}</div>
-                    </div>
-
-                    <button onClick={handleGoHome} className="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200">
-                        Ana Sayfaya Dön
-                    </button>
-                    <button onClick={handleStartQuiz} className="w-full bg-white text-slate-600 font-bold py-3 rounded-xl border border-slate-200 hover:bg-slate-50 transition-colors">
-                        Tekrar Dene
-                    </button>
-              </div>
-          </div>
+        <div className="min-h-screen bg-slate-50 flex flex-col items-center p-4"><div className="w-full max-w-md space-y-6 mt-4">
+            <div className="flex justify-between items-center"><button onClick={handleGoHome}><X className="w-6 h-6 text-slate-400"/></button><div className="font-bold text-indigo-600">Soru {quizIndex+1}/{quizQuestions.length}</div><div className="bg-amber-100 text-amber-600 px-2 py-1 rounded font-bold">{quizScore}</div></div>
+            <div className="bg-white p-8 rounded-3xl shadow-lg text-center animate-in fade-in zoom-in duration-300"><h2 className="text-4xl font-extrabold">{q.wordObj.word}</h2></div>
+            <div className="space-y-3">
+                {q.options.map((opt, i) => (
+                    <button key={idx} onClick={()=>handleQuizAnswer(opt)} disabled={quizIsAnswered} className={`w-full p-4 rounded-xl border-2 font-bold ${quizIsAnswered ? (opt===q.correctAnswer ? "bg-green-100 border-green-500" : opt===quizSelectedOption ? "bg-red-100 border-red-500" : "bg-white opacity-50") : "bg-white hover:bg-indigo-50"}`}>{opt}</button>
+                ))}
+            </div>
+        </div></div>
       )
   }
+  if (currentView === "quiz_result") return <div className="min-h-screen flex items-center justify-center bg-slate-50"><div className="bg-white p-8 rounded-3xl shadow-xl text-center space-y-6"><Trophy className="w-16 h-16 mx-auto text-yellow-500"/><h2 className="text-3xl font-bold">Puan: {quizScore}</h2><button onClick={handleGoHome} className="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold">Tamam</button></div></div>;
 
-  // --- SESSION COMPLETE ---
-  if (sessionComplete) {
-    const allWords = getAllWords();
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50 p-6 text-center">
-        <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full">
-          {allWords.length - knownWordIds.length === 0 ? (
-            <Trophy className="w-20 h-20 text-yellow-500 mx-auto mb-4" />
-          ) : (
-            <BookOpen className="w-16 h-16 text-blue-500 mx-auto mb-4" />
-          )}
-          <h2 className="text-2xl font-bold text-slate-800 mb-2">
-            {allWords.length - knownWordIds.length === 0
-              ? "Tebrikler!"
-              : "Oturum Tamamlandı"}
-          </h2>
-          {allWords.length - knownWordIds.length === 0 ? (
-            <p className="text-slate-600 mb-6">Tüm kelimeleri öğrendin!</p>
-          ) : (
-            <>
-              <div className="flex justify-center gap-8 my-6">
-                <div className="text-center">
-                  <div className="text-3xl font-bold text-green-600">
-                    {sessionStats.known}
-                  </div>
-                  <div className="text-sm text-slate-500">Öğrendim</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-3xl font-bold text-orange-500">
-                    {sessionStats.learning}
-                  </div>
-                  <div className="text-sm text-slate-500">Çalışmalıyım</div>
-                </div>
-              </div>
-              <p className="text-slate-600 mb-6">
-                Kalan kelime: {allWords.length - knownWordIds.length}
-              </p>
-            </>
-          )}
-          <button
-            onClick={handleStartGame}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-xl transition-colors flex items-center justify-center gap-2 mb-3"
-          >
-            <RotateCcw className="w-5 h-5" /> Yeni Oturum Başlat
-          </button>
-          <button
-            onClick={handleGoHome}
-            className="w-full bg-white border border-slate-200 text-slate-600 font-bold py-3 px-6 rounded-xl hover:bg-slate-50 transition-colors flex items-center justify-center gap-2"
-          >
-            <Home className="w-5 h-5" /> Ana Sayfaya Dön
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // --- GAME VIEW ---
+  // --- GAME ---
   if (currentView === "game") {
-    const currentCard = sessionWords[currentIndex];
-    const gameProgress =
-      sessionWords.length === 0
-        ? 0
-        : (currentIndex / sessionWords.length) * 100;
-
+    if (sessionComplete) return <div className="min-h-screen flex items-center justify-center text-center"><div className="bg-white p-8 rounded-xl shadow-xl space-y-4"><h2 className="text-2xl font-bold">Oturum Bitti!</h2><button onClick={handleStartGame} className="w-full bg-blue-600 text-white py-3 rounded-xl">Tekrar</button><button onClick={handleGoHome} className="w-full border py-3 rounded-xl">Çıkış</button></div></div>;
+    const card = sessionWords[currentIndex];
     return (
-      <div className="flex flex-col min-h-screen bg-slate-100 overflow-hidden">
-        <div className="bg-white shadow-sm p-4 z-10">
-          <div className="max-w-md mx-auto">
-            <div className="flex justify-between items-center mb-2">
-              <button
-                onClick={handleGoHome}
-                className="text-slate-400 hover:text-slate-700"
-              >
-                <X className="w-6 h-6" />
-              </button>
-              <span className="text-xs font-semibold bg-indigo-100 text-indigo-700 px-2 py-1 rounded-full">
-                {currentIndex + 1} / {sessionWords.length}
-              </span>
-            </div>
-            <div className="w-full bg-slate-200 rounded-full h-2.5">
-              <div
-                className="bg-indigo-600 h-2.5 rounded-full transition-all duration-500"
-                style={{ width: `${gameProgress}%` }}
-              ></div>
-            </div>
-          </div>
-        </div>
-        <div className="flex-1 flex items-center justify-center p-4 relative">
-          {currentCard && (
-            <div
-              className={`relative w-full max-w-sm transition-all duration-300 transform ${
-                swipeDirection === "left"
-                  ? "-translate-x-24 -rotate-6 opacity-0"
-                  : ""
-              } ${
-                swipeDirection === "right"
-                  ? "translate-x-24 rotate-6 opacity-0"
-                  : ""
-              }`}
-            >
-              <WordCard wordObj={currentCard} />
-            </div>
-          )}
-        </div>
-        <div className="pb-10 px-6 max-w-md mx-auto w-full">
-          <div className="flex gap-4 justify-center">
-            <button
-              onClick={() => handleSwipe("left")}
-              disabled={!!swipeDirection}
-              className="flex-1 bg-white border-2 border-orange-100 hover:bg-orange-50 text-orange-500 font-bold py-4 px-6 rounded-2xl shadow-sm active:scale-95 transition-all flex flex-col items-center gap-1"
-            >
-              <div className="p-3 bg-orange-100 rounded-full mb-1">
-                <X className="w-6 h-6" />
-              </div>
-              <span>Öğreniyorum</span>
-              <span className="text-xs opacity-60 font-normal">(Sol)</span>
-            </button>
-            <button
-              onClick={() => handleSwipe("right")}
-              disabled={!!swipeDirection}
-              className="flex-1 bg-white border-2 border-green-100 hover:bg-green-50 text-green-600 font-bold py-4 px-6 rounded-2xl shadow-sm active:scale-95 transition-all flex flex-col items-center gap-1"
-            >
-              <div className="p-3 bg-green-100 rounded-full mb-1">
-                <Check className="w-6 h-6" />
-              </div>
-              <span>Biliyorum</span>
-              <span className="text-xs opacity-60 font-normal">(Sağ)</span>
-            </button>
-          </div>
-          <button
-            onClick={handleEndSessionEarly}
-            className="mt-6 flex items-center justify-center gap-2 text-slate-400 hover:text-red-500 transition-colors text-sm font-medium mx-auto"
-          >
-            <Target className="w-4 h-4" /> Pes Et ve Bitir
-          </button>
-        </div>
+      <div className="flex flex-col min-h-screen bg-slate-100 overflow-hidden"><div className="bg-white shadow p-4 z-10"><div className="max-w-md mx-auto flex justify-between"><button onClick={handleGoHome}><X/></button><span>{currentIndex+1}/{sessionWords.length}</span></div></div>
+        <div className="flex-1 flex items-center justify-center p-4 relative">{card && <div className={`transition-all duration-300 transform ${swipeDirection==="left" ? "-translate-x-24 rotate-6 opacity-0" : swipeDirection==="right" ? "translate-x-24 rotate-6 opacity-0" : ""}`}><WordCard wordObj={card}/></div>}</div>
+        <div className="pb-10 px-6 max-w-md mx-auto w-full flex gap-4 justify-center"><button onClick={()=>handleSwipe("left")} className="flex-1 bg-white border-2 border-orange-100 text-orange-500 py-4 rounded-2xl">Öğreniyorum</button><button onClick={()=>handleSwipe("right")} className="flex-1 bg-white border-2 border-green-100 text-green-600 py-4 rounded-2xl">Biliyorum</button></div>
       </div>
     );
   }
 
-  // --- HOME ---
-  if (currentView === "home") {
-    const allWords = getAllWords();
-    const progressPercentage =
-      (knownWordIds.length / allWords.length) * 100 || 0;
-    const remainingCount = allWords.length - knownWordIds.length;
-
-    return (
-      <div className="min-h-screen bg-slate-50 flex flex-col items-center p-6">
-        <div className="w-full max-w-md space-y-6 mt-2">
-          
-          {/* 1. YENİ ÜST BAR: Butonlar artık burada ve içerikle çakışmaz */}
-          <div className="flex justify-between items-center w-full px-1">
-            <button
-              onClick={resetProfileToDefaults}
-              className="p-2.5 bg-white rounded-xl shadow-sm border border-slate-200 text-slate-400 hover:text-red-500 transition-transform active:scale-95 flex items-center gap-2"
-              title="Varsayılan Ayarlara Dön"
-            >
-              <RotateCcw size={18} />
-            </button>
-
-            <button
-              onClick={handleLogout}
-              className="p-2.5 bg-white rounded-xl shadow-sm border border-slate-200 text-slate-400 hover:text-red-500 transition-transform active:scale-95 flex items-center gap-2"
-              title="Çıkış Yap"
-            >
-              <LogOut size={18} />
-            </button>
-          </div>
-
-          {/* 2. HEADER ALANI (Logo ve Seri) - Artık yukarıdan bağımsız */}
-          <div className="text-center relative">
-            <div className="flex justify-center mb-4 relative mt-4">
-              <div className="bg-indigo-600 p-4 rounded-2xl shadow-lg transform rotate-3 relative z-10">
-                <Brain className="w-12 h-12 text-white" />
-              </div>
-
-              {/* Seri Göstergesi */}
-              <div className="absolute -right-6 -top-2 flex flex-col items-center z-20">
-                <div className="flex items-center gap-1 bg-orange-500 text-white px-3 py-1.5 rounded-full shadow-lg border-2 border-white">
-                  <Flame className="w-4 h-4 fill-white" />
-                  <span className="font-bold text-sm">{streak}</span>
-                </div>
-                <span className="text-xs font-bold text-orange-600 mt-1 bg-orange-100 px-2 rounded-full">
-                  Günlük Seri
-                </span>
-              </div>
-            </div>
-
-            <h1 className="text-3xl font-extrabold text-slate-800 tracking-tight">
-              Kelime Defteri
-            </h1>
-            <p className="text-slate-500 mt-2 text-sm">
-              Merhaba, <span className="font-medium text-indigo-600">{user.displayName || user.email}</span>
-            </p>
-          </div>
-
-          {/* İLERLEME KARTI */}
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-            <div className="flex justify-between items-end mb-2">
-              <span className="text-sm font-medium text-slate-500">
-                Genel İlerleme
-              </span>
-              <span className="text-2xl font-bold text-indigo-600">
-                %{progressPercentage.toFixed(1)}
-              </span>
-            </div>
-            <div className="w-full bg-slate-100 rounded-full h-3 mb-4">
-              <div
-                className="bg-indigo-600 h-3 rounded-full transition-all duration-500"
-                style={{ width: `${progressPercentage}%` }}
-              ></div>
-            </div>
-            <div className="flex justify-between text-sm">
-              <div className="text-center p-2 flex-1 border-r border-slate-100">
-                <div className="font-bold text-slate-800">
-                  {knownWordIds.length}
-                </div>
-                <div className="text-slate-400">Öğrenilen</div>
-              </div>
-              <div className="text-center p-2 flex-1">
-                <div className="font-bold text-slate-800">
-                  {remainingCount}
-                </div>
-                <div className="text-slate-400">Kalan</div>
-              </div>
-            </div>
-          </div>
-
-          {/* MENÜ BUTONLARI */}
-          <div className="space-y-3 pb-8">
-            {isAdmin && (
-              <button
-                onClick={() => setCurrentView("admin_dashboard")}
-                className="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 px-6 rounded-xl shadow-md transition-all active:scale-95 flex items-center justify-between mb-3"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="bg-white/20 p-2 rounded-lg">
-                    <Shield className="w-5 h-5 text-yellow-400" />
-                  </div>
-                  <div className="text-left">
-                    <div className="text-base">Admin Paneli</div>
-                    <div className="text-xs text-slate-400 font-normal">
-                      Sistem yönetimi
-                    </div>
-                  </div>
-                </div>
-              </button>
-            )}
-
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                onClick={handleStartGame}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 px-4 rounded-xl shadow-md shadow-indigo-200 transition-all active:scale-95 flex flex-col items-center gap-2 text-center"
-              >
-                <div className="bg-white/20 p-2 rounded-full">
-                  <Play className="w-6 h-6" fill="currentColor" />
-                </div>
-                <span className="text-sm">
-                  Yeni Oyun
-                  <br />
-                  Başlat
-                </span>
-              </button>
-
-              <button
-                onClick={() => setCurrentView("dictionary")}
-                className="bg-sky-500 hover:bg-sky-600 text-white font-bold py-4 px-4 rounded-xl shadow-md shadow-sky-200 transition-all active:scale-95 flex flex-col items-center gap-2 text-center"
-              >
-                <div className="bg-white/20 p-2 rounded-full">
-                  <Book className="w-6 h-6" />
-                </div>
-                <span className="text-sm">
-                  Sözlükte
-                  <br />
-                  Ara
-                </span>
-              </button>
-            </div>
-
-            <button
-              onClick={handleStartQuiz}
-              className="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-4 px-6 rounded-xl shadow-md shadow-amber-200 transition-all active:scale-95 flex items-center justify-between group"
-            >
-              <div className="flex items-center gap-3">
-                <div className="bg-white/20 p-2 rounded-lg group-hover:bg-white/30 transition-colors">
-                  <HelpCircle className="w-6 h-6" />
-                </div>
-                <div className="text-left">
-                  <div className="text-lg">Kelime Testi (Quiz)</div>
-                  <div className="text-xs text-amber-100 font-normal">
-                    Soru - Cevap Modu
-                  </div>
-                </div>
-              </div>
-              <ArrowLeft className="w-5 h-5 rotate-180 opacity-60" />
-            </button>
-
-            <button
-              onClick={() => {
-                setEditingWord(null);
-                setReturnView("home");
-                setCurrentView("add_word");
-              }}
-              className="w-full bg-white hover:bg-slate-50 text-slate-700 border-2 border-dashed border-slate-300 font-bold py-4 px-6 rounded-xl transition-all active:scale-95 flex items-center justify-between group"
-            >
-              <div className="flex items-center gap-3">
-                <div className="bg-blue-50 p-2 rounded-lg text-blue-600">
-                  <Plus className="w-6 h-6" />
-                </div>
-                <div className="text-left">
-                  <div className="text-base">Yeni Kelime Ekle</div>
-                  <div className="text-xs text-slate-400 font-normal">
-                    Kendi kelimelerini oluştur
-                  </div>
-                </div>
-              </div>
-              <Plus className="w-5 h-5 opacity-40" />
-            </button>
-
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                onClick={() => setCurrentView("unknown_list")}
-                className="bg-white hover:bg-slate-50 text-slate-700 border-2 border-slate-200 font-bold py-4 px-4 rounded-xl transition-all active:scale-95 flex flex-col items-center gap-2 text-center"
-              >
-                <div className="bg-orange-100 p-2 rounded-full text-orange-500">
-                  <BookOpen className="w-5 h-5" />
-                </div>
-                <span className="text-sm">
-                  Öğreneceğim
-                  <br />
-                  Kelimeler
-                </span>
-              </button>
-              <button
-                onClick={() => setCurrentView("known_list")}
-                className="bg-white hover:bg-slate-50 text-slate-700 border-2 border-slate-200 font-bold py-4 px-4 rounded-xl transition-all active:scale-95 flex flex-col items-center gap-2 text-center"
-              >
-                <div className="bg-green-100 p-2 rounded-full text-green-600">
-                  <Check className="w-5 h-5" />
-                </div>
-                <span className="text-sm">
-                  Öğrendiğim
-                  <br />
-                  Kelimeler
-                </span>
-              </button>
-            </div>
-
-            <button
-              onClick={() => setCurrentView("trash")}
-              className="w-full bg-white hover:bg-slate-50 text-slate-700 border-2 border-slate-200 font-bold py-3 px-4 rounded-xl transition-all active:scale-95 flex items-center justify-between"
-            >
-              <div className="flex items-center gap-3">
-                <div className="bg-red-100 p-2 rounded-full text-red-500">
-                  <Trash2 className="w-5 h-5" />
-                </div>
-                <div className="text-left">
-                  <div className="text-sm">Silinen Kelimeler</div>
-                  <div className="text-xs text-slate-400 font-normal">
-                    Çöp kutusundan geri yükle
-                  </div>
-                </div>
-              </div>
-              <ArrowLeft className="w-4 h-4 rotate-180 opacity-40" />
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // --- FALLBACK VIEW ---
+  // --- HOME VIEW ---
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
-      <div className="text-center">
-        <h1 className="text-2xl font-bold text-slate-800 mb-2">
-          Bir Şeyler Ters Gitti
-        </h1>
-        <p className="text-slate-500 mb-4">
-          Sayfa yüklenemedi veya geçersiz bir durum oluştu.
-        </p>
-        <button
-          onClick={handleGoHome}
-          className="bg-indigo-600 text-white px-6 py-3 rounded-xl font-bold"
-        >
-          Ana Sayfaya Dön
-        </button>
+    <div className="min-h-screen bg-slate-50 flex flex-col items-center p-6">
+      <div className="w-full max-w-md space-y-6 mt-2">
+        <div className="flex justify-between w-full px-1">
+            <button onClick={resetProfileToDefaults} className="p-2.5 bg-white rounded-xl shadow-sm border"><RotateCcw size={18}/></button>
+            <button onClick={handleLogout} className="p-2.5 bg-white rounded-xl shadow-sm border"><LogOut size={18}/></button>
+        </div>
+        <div className="text-center relative">
+            <div className="bg-indigo-600 w-16 h-16 mx-auto rounded-2xl flex items-center justify-center rotate-3 shadow-lg mb-4"><Brain className="text-white w-8 h-8"/></div>
+            <h1 className="text-3xl font-extrabold text-slate-800">Kelime Atölyesi</h1>
+            <p className="text-slate-500">Merhaba, {user?.displayName || user?.email}</p>
+        </div>
+        <div className="space-y-3 pb-8">
+            {isAdmin && <button onClick={()=>setCurrentView("admin_dashboard")} className="w-full bg-slate-800 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2"><Shield/> Admin</button>}
+            <div className="grid grid-cols-2 gap-3">
+                <button onClick={handleStartGame} className="bg-indigo-600 text-white font-bold py-4 rounded-xl flex flex-col items-center"><Play className="mb-1"/> Yeni Oyun</button>
+                <button onClick={()=>setCurrentView("dictionary")} className="bg-sky-500 text-white font-bold py-4 rounded-xl flex flex-col items-center"><Book className="mb-1"/> Sözlük</button>
+            </div>
+            <button onClick={()=>setCurrentView("sentence_analysis")} className="w-full bg-teal-600 text-white font-bold py-4 rounded-xl flex items-center justify-between px-6"><div className="flex items-center gap-3"><Microscope/><div><div className="text-lg text-left">AI Cümle Analizi</div><div className="text-xs text-teal-100 font-normal text-left">Gramer & Hata Kontrolü</div></div></div><ArrowLeft className="rotate-180"/></button>
+            <button onClick={handleStartQuiz} className="w-full bg-amber-500 text-white font-bold py-4 rounded-xl flex items-center justify-between px-6"><div className="flex items-center gap-3"><HelpCircle/><div><div className="text-lg text-left">Quiz</div><div className="text-xs text-amber-100 font-normal text-left">Soru - Cevap</div></div></div><ArrowLeft className="rotate-180"/></button>
+            <button onClick={()=>{setEditingWord(null); setReturnView("home"); setCurrentView("add_word");}} className="w-full bg-white border-2 border-dashed border-slate-300 text-slate-700 font-bold py-4 rounded-xl flex items-center justify-center gap-2"><Plus/> Yeni Kelime Ekle</button>
+            <div className="grid grid-cols-2 gap-3">
+                <button onClick={()=>setCurrentView("unknown_list")} className="bg-white border py-4 rounded-xl text-orange-500 font-bold">Öğreneceklerim</button>
+                <button onClick={()=>setCurrentView("known_list")} className="bg-white border py-4 rounded-xl text-green-600 font-bold">Öğrendiklerim</button>
+            </div>
+            <button onClick={()=>setCurrentView("trash")} className="w-full bg-white border py-3 rounded-xl text-slate-400 flex items-center justify-center gap-2"><Trash2 size={16}/> Çöp Kutusu</button>
+        </div>
       </div>
     </div>
   );
 }
-
-
