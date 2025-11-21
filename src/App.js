@@ -166,12 +166,12 @@ const fetchRootFromAI = async (word) => {
   }
 };
 
-// --- 3. CÜMLE ANALİZİ (TEKRAR ENGELLEYİCİLİ & KESİN VERSİYON) ---
+// --- 3. CÜMLE ANALİZİ (POSSESSIVE 'S VE NOKTALAMA TEMİZLİĞİ EKLİ) ---
 const fetchSentenceAnalysisFromAI = async (text) => {
   try {
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
     
-    // Temperature 0: Yaratıcılığı kapat, matematiksel kesinlik kullan
+    // Temperature 0: Kesinlik modu
     const model = genAI.getGenerativeModel({ 
         model: "gemini-2.0-flash",
         generationConfig: { temperature: 0 } 
@@ -184,9 +184,10 @@ const fetchSentenceAnalysisFromAI = async (text) => {
       1. Translate the text to Turkish naturally.
       2. Analyze the grammar structure in detail in Turkish.
       3. Extract EVERY single word used in the sentence to a list.
-         - Convert them to their root form (lemma) (e.g. "went" -> "go", "apples" -> "apple").
-         - Remove proper names (like Alice, London, John).
-         - CRITICAL: Do NOT skip simple words, numbers (one, two), prepositions (in, on, at). list ALL of them.
+         - Convert them to their dictionary root form (lemma).
+         - IMPORTANT: Handle possessives correctly. For "sister's", return "sister". DO NOT return "'s" as a word.
+         - Remove proper names (like Alice, London).
+         - Include numbers, prepositions (in, on, at), verbs, adjectives.
       
       Return ONLY JSON. No markdown. Structure:
       {
@@ -199,15 +200,25 @@ const fetchSentenceAnalysisFromAI = async (text) => {
     const result = await model.generateContent(prompt);
     const response = await result.response;
     
-    // 1. Önce JSON'u temizle ve parse et
     const data = cleanAndParseJSON(response.text());
 
-    // 2. JAVASCRIPT İLE TEKRAR KONTROLÜ (KESİN ÇÖZÜM)
+    // --- JAVASCRIPT İLE EKSTRA TEMİZLİK (ZIMPARA) ---
     if (data && data.rootWords && Array.isArray(data.rootWords)) {
-        // Set yapısı otomatik olarak kopyaları siler.
-        // Önce hepsini küçük harfe çeviriyoruz ki "The" ve "the" ayrı sayılmasın.
-        const uniqueWords = [...new Set(data.rootWords.map(w => w.toLowerCase()))];
-        data.rootWords = uniqueWords;
+        const cleanList = data.rootWords
+            .map(w => {
+                // 1. Küçük harfe çevir
+                let clean = w.toLowerCase();
+                // 2. Sonundaki 's takısını sil (sister's -> sister)
+                clean = clean.replace(/'s$/, "");
+                // 3. Sadece harfleri ve tireyi bırak (noktalama işaretlerini sil)
+                clean = clean.replace(/[^a-z-]/g, "");
+                return clean;
+            })
+            // 4. Boşalan veya tek başına harf kalan (a ve i hariç) gürültüleri sil
+            .filter(w => w.length > 1 || w === 'a' || w === 'i');
+
+        // 5. Tekrarları sil
+        data.rootWords = [...new Set(cleanList)];
     }
 
     return data;
