@@ -333,6 +333,16 @@ export default function App() {
   const [ocrLoading, setOcrLoading] = useState(false); // Resim tarama yükleniyor mu?
   const fileInputRef = React.useRef(null); // Gizli dosya inputu için referans
 
+  // --- QUIZ ÇEVİRİSİ İÇİN GEREKLİ STATE'LER (YENİ) ---
+  const [hintTranslation, setHintTranslation] = useState(null);
+  const [loadingHint, setLoadingHint] = useState(false);
+
+  // Quiz sorusu değişince (quizIndex değişince) çeviriyi sıfırlayan kod
+  useEffect(() => {
+      setHintTranslation(null);
+      setLoadingHint(false);
+  }, [quizIndex]);
+
   // Resim Seçme İşlemi
   const handleImageSelect = async (e) => {
     const file = e.target.files[0];
@@ -2637,17 +2647,39 @@ export default function App() {
 
                 <form onSubmit={handleDictionarySearch} className="relative">
                     <Search className="absolute left-4 top-4 text-slate-400" />
+                    
                     <input 
                         type="text" 
                         placeholder="Kelime ara (İngilizce)..." 
                         value={dictSearchTerm}
                         onChange={(e) => setDictSearchTerm(e.target.value)}
-                        className="w-full pl-12 p-4 rounded-2xl border border-slate-200 shadow-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                        className="w-full pl-12 pr-20 p-4 rounded-2xl border border-slate-200 shadow-sm focus:ring-2 focus:ring-indigo-500 outline-none"
                         autoFocus
                     />
-                    <button type="submit" className="absolute right-2 top-2 bg-indigo-600 text-white p-2 rounded-xl hover:bg-indigo-700 transition-colors">
-                        Ara
-                    </button>
+                    
+                    {/* --- X BUTONU VE ARA BUTONU GRUBU --- */}
+                    <div className="absolute right-2 top-2 flex gap-1">
+                        {/* X Butonu: Sadece yazı varsa görünür */}
+                        {dictSearchTerm && (
+                            <button 
+                                type="button"
+                                onClick={() => {
+                                    setDictSearchTerm("");
+                                    setDictResults([]);
+                                    setDictError("");
+                                }}
+                                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
+                                title="Temizle"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        )}
+                        
+                        {/* Ara Butonu */}
+                        <button type="submit" className="bg-indigo-600 text-white p-2 rounded-xl hover:bg-indigo-700 transition-colors">
+                            Ara
+                        </button>
+                    </div>
                 </form>
 
                 {dictError && (
@@ -2681,7 +2713,7 @@ export default function App() {
     )
   }
 
-// --- QUIZ VIEW (GÜNCELLENDİ: İngilizce Açıklama Eklendi) ---
+// --- QUIZ VIEW (DÜZELTİLMİŞ HALİ) ---
   if (currentView === "quiz") {
       if (quizTransition) {
           return (
@@ -2693,9 +2725,16 @@ export default function App() {
 
       const currentQuestion = quizQuestions[quizIndex];
       const progress = ((quizIndex + 1) / quizQuestions.length) * 100;
-      
-      // Kelimenin İngilizce açıklamasını alıyoruz (Yoksa boş gelir)
-      const engHint = currentQuestion.wordObj.definitions[0]?.engExplanation;
+      const engHint = currentQuestion?.wordObj?.definitions[0]?.engExplanation;
+
+      // Çeviri Fonksiyonu
+      const handleTranslateHint = async () => {
+          if (!engHint) return;
+          setLoadingHint(true);
+          const text = await translateTextWithAI(engHint);
+          setHintTranslation(text);
+          setLoadingHint(false);
+      };
 
       return (
         <div className="min-h-screen bg-slate-50 flex flex-col items-center p-4">
@@ -2721,12 +2760,33 @@ export default function App() {
                 {/* Question Card */}
                 <div className="bg-white p-8 rounded-3xl shadow-lg border border-slate-100 text-center space-y-6 mt-6 animate-in fade-in zoom-in duration-300">
                     
-                    {/* --- BURASI DEĞİŞTİ: İNGİLİZCE AÇIKLAMA ALANI --- */}
-                    <div className="inline-block bg-indigo-50 text-indigo-800 px-4 py-2 rounded-xl border border-indigo-100 max-w-full">
+                    {/* --- İPUCU VE ÇEVİRİ ALANI --- */}
+                    <div className="inline-block max-w-full">
                         {engHint ? (
-                            <span className="text-sm italic font-medium">"{engHint}"</span>
+                            <div className="flex flex-col items-center gap-2">
+                                {/* İngilizce İpucu ve Buton */}
+                                <div className="bg-indigo-50 text-indigo-800 px-4 py-2 rounded-xl border border-indigo-100 flex items-center gap-2">
+                                    <span className="text-sm italic font-medium">"{engHint}"</span>
+                                    <button 
+                                        onClick={handleTranslateHint}
+                                        className="p-1.5 bg-white rounded-full shadow-sm text-indigo-500 hover:text-indigo-700 transition-colors"
+                                        title="Türkçeye Çevir"
+                                    >
+                                        {loadingHint ? <Loader2 className="w-3 h-3 animate-spin"/> : <Languages className="w-3 h-3"/>}
+                                    </button>
+                                </div>
+
+                                {/* Çeviri Sonucu */}
+                                {hintTranslation && (
+                                    <div className="bg-green-50 text-green-700 px-3 py-1.5 rounded-lg border border-green-100 text-xs font-bold animate-in fade-in slide-in-from-top-1">
+                                        TR: {hintTranslation}
+                                    </div>
+                                )}
+                            </div>
                         ) : (
-                            <span className="text-xs font-bold uppercase tracking-wider">Bu kelimenin anlamı nedir?</span>
+                            <div className="bg-slate-100 text-slate-500 px-4 py-2 rounded-xl border border-slate-200">
+                                <span className="text-xs font-bold uppercase tracking-wider">Bu kelimenin anlamı nedir?</span>
+                            </div>
                         )}
                     </div>
 
@@ -2740,7 +2800,6 @@ export default function App() {
                 <div className="space-y-3 mt-6">
                     {currentQuestion.options.map((option, idx) => {
                         let btnClass = "w-full p-4 rounded-xl text-left font-medium border-2 transition-all active:scale-95 shadow-sm ";
-                        
                         if (quizIsAnswered) {
                             if (option === currentQuestion.correctAnswer) {
                                 btnClass += "bg-green-100 border-green-500 text-green-700";
@@ -2767,7 +2826,7 @@ export default function App() {
                 </div>
             </div>
         </div>
-      )
+      );
   }
 
   // --- QUIZ RESULT VIEW ---
@@ -2996,7 +3055,7 @@ export default function App() {
             </div>
 
             <h1 className="text-3xl font-extrabold text-slate-800 tracking-tight">
-              Kelime Defteri 6
+              Kelime Defteri
             </h1>
             <p className="text-slate-500 mt-2 text-sm">
               Merhaba, <span className="font-medium text-indigo-600">{user.displayName || user.email}</span>
