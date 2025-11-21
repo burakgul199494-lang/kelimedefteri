@@ -2593,9 +2593,8 @@ export default function App() {
     )
   }
 
-  // --- QUIZ VIEW (MOBİL DÜZELTİLMİŞ - GEÇİŞ EFEKTİ İLE) ---
+  // --- QUIZ VIEW (GÜNCELLENDİ: İngilizce Açıklama Eklendi) ---
   if (currentView === "quiz") {
-      // Mobil cihazlarda buton renginin takılı kalmaması için geçiş ekranı
       if (quizTransition) {
           return (
             <div className="min-h-screen bg-slate-50 flex items-center justify-center">
@@ -2606,6 +2605,9 @@ export default function App() {
 
       const currentQuestion = quizQuestions[quizIndex];
       const progress = ((quizIndex + 1) / quizQuestions.length) * 100;
+      
+      // Kelimenin İngilizce açıklamasını alıyoruz (Yoksa boş gelir)
+      const engHint = currentQuestion.wordObj.definitions[0]?.engExplanation;
 
       return (
         <div className="min-h-screen bg-slate-50 flex flex-col items-center p-4">
@@ -2630,9 +2632,16 @@ export default function App() {
 
                 {/* Question Card */}
                 <div className="bg-white p-8 rounded-3xl shadow-lg border border-slate-100 text-center space-y-6 mt-6 animate-in fade-in zoom-in duration-300">
-                    <div className="inline-block bg-indigo-50 text-indigo-600 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
-                        Bu kelimenin anlamı nedir?
+                    
+                    {/* --- BURASI DEĞİŞTİ: İNGİLİZCE AÇIKLAMA ALANI --- */}
+                    <div className="inline-block bg-indigo-50 text-indigo-800 px-4 py-2 rounded-xl border border-indigo-100 max-w-full">
+                        {engHint ? (
+                            <span className="text-sm italic font-medium">"{engHint}"</span>
+                        ) : (
+                            <span className="text-xs font-bold uppercase tracking-wider">Bu kelimenin anlamı nedir?</span>
+                        )}
                     </div>
+
                     <h2 className="text-4xl font-extrabold text-slate-800">{currentQuestion.wordObj.word}</h2>
                     <button onClick={() => speak(currentQuestion.wordObj.word)} className="mx-auto p-2 bg-slate-50 rounded-full text-indigo-500 hover:bg-indigo-50 transition-colors">
                         <Volume2 className="w-6 h-6" />
