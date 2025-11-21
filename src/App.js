@@ -52,7 +52,8 @@ import {
   Flame,
   Book,
   Target,
-  Wand2, // <-- YENİ İKON EKLENDİ
+  Wand2,
+  Microscope, // <-- YENİ İKON EKLENDİ (Analiz için)
 } from "lucide-react";
 
 // --- FIREBASE CONFIG ---
@@ -140,7 +141,7 @@ const fetchWordAnalysisFromAI = async (word) => {
   return JSON.parse(text);
 };
 
-// --- YARDIMCI FONKSİYON: KELİME KÖKÜNÜ BULMA (YENİ) ---
+// --- YARDIMCI FONKSİYON: KELİME KÖKÜNÜ BULMA ---
 const fetchRootFromAI = async (word) => {
   const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
   const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
@@ -173,6 +174,40 @@ const fetchRootFromAI = async (word) => {
   } catch (e) {
     console.error("Root fetch error", e);
     return { root: word, changed: false };
+  }
+};
+
+// --- YARDIMCI FONKSİYON: CÜMLE ANALİZİ (YENİ EKLENDİ) ---
+const fetchSentenceAnalysisFromAI = async (text) => {
+  const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+
+  const prompt = `
+    You are an expert English teacher for Turkish students. Analyze the following English text:
+    "${text}"
+
+    Return ONLY a raw JSON object with this structure:
+    {
+      "correctedText": "The text with grammar errors fixed (if any)",
+      "level": "CEFR Level (A1, A2, B1, etc.)",
+      "feedback": "General feedback in Turkish about the text.",
+      "grammarPoints": [
+        { "rule": "Name of the grammar rule found", "explanation": "Explanation in Turkish why it is used here" }
+      ],
+      "betterVocabulary": [
+        { "original": "word from text", "suggestion": "better/more academic alternative", "reason": "Turkish explanation" }
+      ]
+    }
+  `;
+
+  try {
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    let jsonText = response.text().replace(/```json|```/g, "").trim();
+    return JSON.parse(jsonText);
+  } catch (e) {
+    console.error("Analysis error", e);
+    return null;
   }
 };
 export default function App() {
@@ -215,6 +250,11 @@ export default function App() {
   const [dictResults, setDictResults] = useState([]); 
   const [dictError, setDictError] = useState("");
 
+  // --- YENİ: CÜMLE ANALİZİ STATE'LERİ ---
+  const [analysisText, setAnalysisText] = useState("");
+  const [analysisResult, setAnalysisResult] = useState(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+
   const [currentView, setCurrentView] = useState("home");
   const [editingWord, setEditingWord] = useState(null);
   const [returnView, setReturnView] = useState("unknown_list");
@@ -225,6 +265,15 @@ export default function App() {
 
   // Admin Arama
   const [adminSearch, setAdminSearch] = useState("");
+
+  // --- YENİ: CÜMLE ANALİZİ FONKSİYONU ---
+  const handleAnalyzeSentence = async () => {
+    if (!analysisText.trim()) return;
+    setIsAnalyzing(true);
+    const result = await fetchSentenceAnalysisFromAI(analysisText);
+    setAnalysisResult(result);
+    setIsAnalyzing(false);
+  };
 
   // --- AUTH ---
   useEffect(() => {
@@ -254,6 +303,12 @@ export default function App() {
       setCurrentView("home");
     }
   }, [user]);
+
+  // --- QUIZ STATE TEMİZLEYİCİ ---
+  useEffect(() => {
+    setQuizSelectedOption(null);
+    setQuizIsAnswered(false);
+  }, [quizIndex]);
 
   const fetchUserData = async () => {
     setLoading(true);
@@ -704,6 +759,7 @@ export default function App() {
     setCurrentView("quiz");
   };
 
+  // --- QUIZ ANSWER HANDLER (GEÇİŞ EFEKTİ İLE) ---
   const handleQuizAnswer = (selectedOption) => {
     if (quizIsAnswered) return;
 
@@ -734,7 +790,7 @@ export default function App() {
         
         // 3. Ekranı tekrar görünür yap
         setQuizTransition(false);
-      }, 100); // 100 milisaniyelik temizlik molası
+      }, 100); // 100ms bekleme
       
     }, 1000);
   };
@@ -915,6 +971,9 @@ export default function App() {
     setDictResults([]);
     setDictError("");
     setQuizQuestions([]);
+    // Analiz state'lerini temizle
+    setAnalysisResult(null);
+    setAnalysisText("");
   };
 
   const resetProfileToDefaults = async () => {
@@ -1131,7 +1190,7 @@ export default function App() {
               <Brain className="text-white w-8 h-8" />
             </div>
             <h1 className="text-2xl font-bold text-slate-800">
-              Kelime Defteri'ne Hoşgeldiniz
+              Kelime Atölye'sine Hoşgeldiniz
             </h1>
             <p className="text-slate-500">Kelimelerini kaybetme.</p>
           </div>
@@ -1367,7 +1426,7 @@ export default function App() {
       const [saving, setSaving] = useState(false);
       // --- AI LOADING STATES ---
       const [aiLoading, setAiLoading] = useState(false);
-      const [rootLoading, setRootLoading] = useState(false); // <-- YENİ
+      const [rootLoading, setRootLoading] = useState(false);
 
       const addDefinition = () =>
         setFormData((prev) => ({
@@ -1390,7 +1449,7 @@ export default function App() {
         setFormData((prev) => ({ ...prev, definitions: newDefs }));
       };
 
-      // --- YENİ: KÖK BULMA ---
+      // --- KÖK BULMA (ADMIN) ---
       const handleConvertToRoot = async () => {
           if (!formData.word) return;
           setRootLoading(true);
@@ -1406,7 +1465,7 @@ export default function App() {
           }
       };
 
-      // --- AI HANDLER ---
+      // --- AI HANDLER (ADMIN) ---
       const handleAIFill = async () => {
         if (!formData.word) {
             alert("Lütfen önce bir kelime yazın!");
@@ -1774,7 +1833,7 @@ export default function App() {
       const [saving, setSaving] = useState(false);
       // --- AI LOADING ---
       const [aiLoading, setAiLoading] = useState(false);
-      const [rootLoading, setRootLoading] = useState(false); // <-- YENİ
+      const [rootLoading, setRootLoading] = useState(false);
 
       const addDefinition = () =>
         setFormData((prev) => ({
@@ -1797,7 +1856,7 @@ export default function App() {
         setFormData((prev) => ({ ...prev, definitions: newDefs }));
       };
 
-      // --- YENİ: KÖK BULMA (USER) ---
+      // --- KÖK BULMA (USER) ---
       const handleConvertToRoot = async () => {
           if (!formData.word) return;
           setRootLoading(true);
@@ -1918,7 +1977,6 @@ export default function App() {
             )}
             <form onSubmit={handleSubmit} className="space-y-4">
               
-              {/* KELİME, KÖK BUL VE AI BUTONU (USER) */}
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
                   İngilizce Kelime
@@ -1934,7 +1992,7 @@ export default function App() {
                         placeholder="Örn: Bank"
                         autoFocus
                     />
-                    {/* YENİ: KÖK BULMA BUTONU */}
+                    {/* KÖK BULMA BUTONU */}
                     <button
                       type="button"
                       onClick={handleConvertToRoot}
@@ -2029,7 +2087,7 @@ export default function App() {
                   </div>
               </div>
 
-              {/* GRUP 2: SIFAT VE ZARF DETAYLARI (YENİ) */}
+              {/* GRUP 2: SIFAT VE ZARF DETAYLARI */}
               <div className="bg-orange-50 p-3 rounded-xl border border-orange-100">
                   <div className="text-xs font-bold text-orange-400 mb-2 uppercase tracking-wide">Sıfat & Zarf Detayları</div>
                   <div className="space-y-3">
@@ -2259,7 +2317,6 @@ export default function App() {
                             </button>
                           )}
                         </div>
-                        {/* LİSTE GÖRÜNÜMÜNDE ANLAMLAR */}
                         {item.definitions.map((def, idx) => (
                             <div key={idx} className="mb-1">
                                 <div className="flex items-baseline gap-2">
@@ -2276,7 +2333,6 @@ export default function App() {
                             </div>
                         ))}
 
-                        {/* LİSTE GÖRÜNÜMÜ DETAYLARI */}
                         {(item.plural || item.v2 || item.v3 || item.vIng || item.thirdPerson) && (
                           <div className="mt-2 text-xs text-slate-600 space-y-1 bg-slate-50 p-2 rounded-lg">
                             <div className="flex flex-wrap gap-x-3 gap-y-1">
@@ -2299,7 +2355,6 @@ export default function App() {
                           </div>
                         )}
 
-                        {/* LİSTE GÖRÜNÜMÜNDE CÜMLE + SES */}
                         {!isTrash && (
                           <div className="mt-2 pt-2 border-t border-slate-50 flex gap-2 items-start group">
                             <button 
@@ -2421,7 +2476,6 @@ export default function App() {
                     </div>
                 )}
 
-                {/* ÇOKLU SONUÇ LİSTELEME */}
                 {dictResults.length > 0 && (
                     <div className="mt-6 animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-8">
                           <div className="text-center text-sm text-slate-500">
@@ -2446,10 +2500,112 @@ export default function App() {
     )
   }
 
+  // --- SENTENCE ANALYSIS VIEW (YENİ EKLENDİ) ---
+  if (currentView === "sentence_analysis") {
+    return (
+      <div className="min-h-screen bg-slate-50 p-6 flex flex-col items-center">
+        <div className="w-full max-w-lg space-y-6">
+          
+          {/* Header */}
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={() => {
+                handleGoHome();
+                setAnalysisResult(null);
+                setAnalysisText("");
+              }} 
+              className="p-2 hover:bg-slate-200 rounded-full transition-colors bg-white shadow-sm"
+            >
+              <ArrowLeft className="w-6 h-6 text-slate-600" />
+            </button>
+            <h2 className="text-2xl font-bold text-slate-800">Cümle Analizi</h2>
+          </div>
+
+          {/* Giriş Alanı */}
+          <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
+            <textarea
+              value={analysisText}
+              onChange={(e) => setAnalysisText(e.target.value)}
+              className="w-full p-3 border-0 outline-none resize-none text-slate-700 min-h-[120px] placeholder:text-slate-400"
+              placeholder="Analiz edilecek İngilizce cümleyi veya metni buraya yaz..."
+            />
+            <div className="flex justify-end mt-2">
+              <button
+                onClick={handleAnalyzeSentence}
+                disabled={isAnalyzing || !analysisText.trim()}
+                className="bg-teal-600 hover:bg-teal-700 text-white px-6 py-2.5 rounded-xl font-bold shadow-md shadow-teal-100 transition-all active:scale-95 disabled:opacity-50 flex items-center gap-2"
+              >
+                {isAnalyzing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Microscope className="w-5 h-5" />}
+                Analiz Et
+              </button>
+            </div>
+          </div>
+
+          {/* Sonuç Alanı */}
+          {analysisResult && (
+            <div className="space-y-4 animate-in fade-in slide-in-from-bottom-6 duration-500">
+              
+              {/* Düzeltilmiş Metin & Seviye */}
+              <div className="bg-white p-5 rounded-2xl shadow-lg border border-teal-100 relative overflow-hidden">
+                <div className="absolute top-0 right-0 bg-teal-100 text-teal-700 px-3 py-1 rounded-bl-xl text-xs font-bold">
+                  Seviye: {analysisResult.level}
+                </div>
+                <h3 className="text-sm font-bold text-slate-400 uppercase mb-2">Düzeltilmiş / Orijinal Metin</h3>
+                <p className="text-lg text-slate-800 font-medium leading-relaxed">
+                  {analysisResult.correctedText}
+                </p>
+                <p className="text-sm text-slate-500 mt-3 italic border-l-4 border-teal-500 pl-3">
+                  "{analysisResult.feedback}"
+                </p>
+              </div>
+
+              {/* Gramer Noktaları */}
+              {analysisResult.grammarPoints?.length > 0 && (
+                <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+                  <h3 className="flex items-center gap-2 font-bold text-indigo-600 mb-4">
+                    <Brain className="w-5 h-5" /> Gramer Analizi
+                  </h3>
+                  <div className="space-y-3">
+                    {analysisResult.grammarPoints.map((point, idx) => (
+                      <div key={idx} className="bg-indigo-50 p-3 rounded-xl">
+                        <div className="font-bold text-indigo-900 text-sm">{point.rule}</div>
+                        <div className="text-indigo-700/80 text-sm mt-1">{point.explanation}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Kelime Önerileri */}
+              {analysisResult.betterVocabulary?.length > 0 && (
+                <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+                   <h3 className="flex items-center gap-2 font-bold text-orange-600 mb-4">
+                    <BookOpen className="w-5 h-5" /> Kelime Tavsiyeleri
+                  </h3>
+                  <div className="space-y-3">
+                    {analysisResult.betterVocabulary.map((vocab, idx) => (
+                      <div key={idx} className="flex items-center justify-between bg-orange-50 p-3 rounded-xl">
+                        <div>
+                          <span className="line-through text-slate-400 text-xs mr-2">{vocab.original}</span>
+                          <span className="font-bold text-slate-800">{vocab.suggestion}</span>
+                        </div>
+                        <div className="text-xs text-orange-600 max-w-[50%] text-right">
+                          {vocab.reason}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   // --- QUIZ VIEW (KESİN ÇÖZÜM - GEÇİŞ EFEKTİ İLE) ---
   if (currentView === "quiz") {
-      // Eğer geçiş yapılıyorsa (soru değişiyorsa) ekrana yükleniyor simgesi koy.
-      // Bu işlem eski butonları DOM'dan tamamen siler.
       if (quizTransition) {
           return (
             <div className="min-h-screen bg-slate-50 flex items-center justify-center">
@@ -2733,7 +2889,7 @@ export default function App() {
             </button>
           </div>
 
-          {/* 2. HEADER ALANI (Logo ve Seri) - Artık yukarıdan bağımsız */}
+          {/* 2. HEADER ALANI (Logo ve Seri) */}
           <div className="text-center relative">
             <div className="flex justify-center mb-4 relative mt-4">
               <div className="bg-indigo-600 p-4 rounded-2xl shadow-lg transform rotate-3 relative z-10">
@@ -2753,7 +2909,7 @@ export default function App() {
             </div>
 
             <h1 className="text-3xl font-extrabold text-slate-800 tracking-tight">
-              Kelime Defteri
+              Kelime Atölyesi
             </h1>
             <p className="text-slate-500 mt-2 text-sm">
               Merhaba, <span className="font-medium text-indigo-600">{user.displayName || user.email}</span>
@@ -2842,6 +2998,25 @@ export default function App() {
                 </span>
               </button>
             </div>
+
+            {/* YENİ EKLENEN BUTON: CÜMLE ANALİZİ */}
+            <button
+              onClick={() => setCurrentView("sentence_analysis")}
+              className="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-4 px-6 rounded-xl shadow-md shadow-teal-200 transition-all active:scale-95 flex items-center justify-between group mb-3"
+            >
+              <div className="flex items-center gap-3">
+                <div className="bg-white/20 p-2 rounded-lg group-hover:bg-white/30 transition-colors">
+                  <Microscope className="w-6 h-6" />
+                </div>
+                <div className="text-left">
+                  <div className="text-lg">AI Cümle Analizi</div>
+                  <div className="text-xs text-teal-100 font-normal">
+                    Gramer ve hata kontrolü
+                  </div>
+                </div>
+              </div>
+              <ArrowLeft className="w-5 h-5 rotate-180 opacity-60" />
+            </button>
 
             <button
               onClick={handleStartQuiz}
