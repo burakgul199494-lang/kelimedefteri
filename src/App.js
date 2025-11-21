@@ -1768,24 +1768,7 @@ export default function App() {
 
       return (
         <div className="min-h-screen bg-slate-800 p-4 flex items-center justify-center">
-         // 1. Dış kapsayıcıdan 'items-center'ı kaldırdık, 'items-start' yaptık.
-// 2. 'overflow-y-auto' ekledik ki sayfa kayabilsin.
-<div className="min-h-screen bg-slate-50 p-4 flex items-start justify-center overflow-y-auto">
-  
-  {/* 3. İç kutudan 'max-h', 'overflow-y-auto' özelliklerini SİLDİK. 
-      4. 'my-10' ekleyerek üstten ve alttan biraz boşluk bıraktık. */}
-  <div className="w-full max-w-md bg-white rounded-2xl shadow-lg p-6 my-10 relative">
-    
-    {/* ... (İçerik aynen kalacak) ... */}
-    <div className="flex items-center justify-between mb-6">
-       ...
-    </div>
-    <form onSubmit={handleSubmit} className="space-y-4">
-       ...
-    </form>
-
-  </div>
-</div>
+         <div className="w-full max-w-md bg-white rounded-2xl shadow-lg p-6 my-8 overflow-y-auto max-h-screen">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
                 <Shield className="w-5 h-5 text-indigo-600" />{" "}
@@ -2237,24 +2220,7 @@ export default function App() {
 
       return (
         <div className="min-h-screen bg-slate-50 p-4 flex items-center justify-center">
-         // 1. Dış kapsayıcıdan 'items-center'ı kaldırdık, 'items-start' yaptık.
-// 2. 'overflow-y-auto' ekledik ki sayfa kayabilsin.
-<div className="min-h-screen bg-slate-50 p-4 flex items-start justify-center overflow-y-auto">
-  
-  {/* 3. İç kutudan 'max-h', 'overflow-y-auto' özelliklerini SİLDİK. 
-      4. 'my-10' ekleyerek üstten ve alttan biraz boşluk bıraktık. */}
-  <div className="w-full max-w-md bg-white rounded-2xl shadow-lg p-6 my-10 relative">
-    
-    {/* ... (İçerik aynen kalacak) ... */}
-    <div className="flex items-center justify-between mb-6">
-       ...
-    </div>
-    <form onSubmit={handleSubmit} className="space-y-4">
-       ...
-    </form>
-
-  </div>
-</div>
+          <div className="w-full max-w-md bg-white rounded-2xl shadow-lg p-6 my-8 overflow-y-auto max-h-screen">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold text-slate-800">{isEditMode ? "Kelimeyi Düzenle" : "Yeni Kelime Ekle"}</h2>
               <button onClick={() => isEditMode ? setCurrentView(returnView) : handleGoHome()} className="p-2 bg-slate-100 rounded-full"><X className="w-5 h-5" /></button>
@@ -3089,7 +3055,7 @@ export default function App() {
             </div>
 
             <h1 className="text-3xl font-extrabold text-slate-800 tracking-tight">
-              Kelime Defteri 3
+              Kelime Defteri
             </h1>
             <p className="text-slate-500 mt-2 text-sm">
               Merhaba, <span className="font-medium text-indigo-600">{user.displayName || user.email}</span>
@@ -3309,3 +3275,4 @@ export default function App() {
     </div>
   );
 }
+
