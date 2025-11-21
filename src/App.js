@@ -66,7 +66,7 @@ const firebaseConfig = {
 };
 
 // --- API KEY AYARI ---
-const GEMINI_API_KEY = "AIzaSyC_ykELbAxTKg2rX4jKZnrgCjIq7SIEUL'ler"; 
+const GEMINI_API_KEY = "AIzaSyC_ykELbAxTKg2rX4jKZnrgCjIq7SIEULs"; 
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
