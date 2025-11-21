@@ -177,8 +177,9 @@ const fetchRootFromAI = async (word) => {
   }
 };
 
-// --- YARDIMCI FONKSİYON: CÜMLE ANALİZİ (YENİ EKLENDİ) ---
+// --- YARDIMCI FONKSİYON: CÜMLE ANALİZİ (GÜÇLENDİRİLMİŞ 2.0 VERSİYONU) ---
 const fetchSentenceAnalysisFromAI = async (text) => {
+  // Modelini değiştirmedik, 2.0 olarak kalıyor
   const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
   const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
@@ -186,7 +187,7 @@ const fetchSentenceAnalysisFromAI = async (text) => {
     You are an expert English teacher for Turkish students. Analyze the following English text:
     "${text}"
 
-    Return ONLY a raw JSON object with this structure:
+    Return ONLY a raw JSON object with this structure. Do not add any markdown formatting like \`\`\`json.
     {
       "correctedText": "The text with grammar errors fixed (if any)",
       "level": "CEFR Level (A1, A2, B1, etc.)",
@@ -203,10 +204,23 @@ const fetchSentenceAnalysisFromAI = async (text) => {
   try {
     const result = await model.generateContent(prompt);
     const response = await result.response;
-    let jsonText = response.text().replace(/```json|```/g, "").trim();
-    return JSON.parse(jsonText);
+    const textResult = response.text();
+
+    console.log("AI Ham Cevap:", textResult); // Hata ayıklama için konsola yazdır
+
+    // --- GÜÇLÜ TEMİZLİK ---
+    // Cevabın içindeki ilk '{' ile son '}' arasını bulup alıyoruz.
+    // Bu sayede başta/sonda "Here is the JSON" gibi yazılar varsa kurtuluyoruz.
+    const jsonMatch = textResult.match(/\{[\s\S]*\}/);
+    
+    if (!jsonMatch) {
+        console.error("AI JSON üretmedi:", textResult);
+        return null;
+    }
+    
+    return JSON.parse(jsonMatch[0]);
   } catch (e) {
-    console.error("Analysis error", e);
+    console.error("Analiz hatası:", e);
     return null;
   }
 };
@@ -266,13 +280,30 @@ export default function App() {
   // Admin Arama
   const [adminSearch, setAdminSearch] = useState("");
 
-  // --- YENİ: CÜMLE ANALİZİ FONKSİYONU ---
+ // --- YENİ: CÜMLE ANALİZİ FONKSİYONU (HATA YAKALAMALI) ---
   const handleAnalyzeSentence = async () => {
-    if (!analysisText.trim()) return;
+    if (!analysisText.trim()) {
+        alert("Lütfen analiz edilecek bir cümle yazın.");
+        return;
+    }
+    
     setIsAnalyzing(true);
-    const result = await fetchSentenceAnalysisFromAI(analysisText);
-    setAnalysisResult(result);
-    setIsAnalyzing(false);
+    setAnalysisResult(null); // Önceki sonucu temizle
+
+    try {
+        const result = await fetchSentenceAnalysisFromAI(analysisText);
+        
+        if (result) {
+            setAnalysisResult(result);
+        } else {
+            alert("Analiz yapılamadı. Lütfen cümlenizi kontrol edip tekrar deneyin.");
+        }
+    } catch (error) {
+        console.error(error);
+        alert("Bir hata oluştu: " + error.message);
+    } finally {
+        setIsAnalyzing(false);
+    }
   };
 
   // --- AUTH ---
