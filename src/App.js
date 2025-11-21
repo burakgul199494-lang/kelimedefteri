@@ -54,6 +54,8 @@ import {
   Target,
   Wand2,      // Kök bulma ikonu
   Microscope, // Analiz ikonu
+  Image,   // <-- YENİ EKLENDİ (Galeri İkonu)
+  Camera,  // <-- YENİ EKLENDİ (Kamera İkonu)
 } from "lucide-react";
 
 // --- FIREBASE CONFIG ---
@@ -228,6 +230,37 @@ const fetchSentenceAnalysisFromAI = async (text) => {
     throw e;
   }
 };
+// --- 4. RESİMDEN METİN OKUMA (OCR) ---
+const extractTextFromImage = async (file) => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      try {
+        const base64Data = reader.result.split(",")[1]; // "data:image/jpeg;base64," kısmını atıyoruz
+        const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+
+        const prompt = "Extract all the text from this image clearly. Do not add any comments, just return the text found.";
+        
+        const result = await model.generateContent([
+          prompt,
+          {
+            inlineData: {
+              data: base64Data,
+              mimeType: file.type,
+            },
+          },
+        ]);
+        const response = await result.response;
+        resolve(response.text().trim());
+      } catch (e) {
+        console.error("OCR Error:", e);
+        reject(e);
+      }
+    };
+    reader.readAsDataURL(file);
+  });
+};
 export default function App() {
   useEffect(() => {
     const script = document.createElement("script");
@@ -272,6 +305,42 @@ export default function App() {
   const [analysisText, setAnalysisText] = useState("");
   const [analysisResult, setAnalysisResult] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+
+  // ... diğer stateler ...
+  const [ocrLoading, setOcrLoading] = useState(false); // Resim tarama yükleniyor mu?
+  const fileInputRef = React.useRef(null); // Gizli dosya inputu için referans
+
+  // Resim Seçme İşlemi
+  const handleImageSelect = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Sadece resim dosyalarını kabul et
+    if (!file.type.startsWith("image/")) {
+      alert("Lütfen geçerli bir resim dosyası seçin.");
+      return;
+    }
+
+    setOcrLoading(true);
+    try {
+      const text = await extractTextFromImage(file);
+      if (text) {
+        setAnalysisText((prev) => (prev ? prev + "\n" + text : text)); // Varsa altına ekle, yoksa direkt yaz
+      } else {
+        alert("Resimden metin okunamadı.");
+      }
+    } catch (error) {
+      console.error(error);
+      alert("Resim taranırken hata oluştu.");
+    } finally {
+      setOcrLoading(false);
+      // Input'u sıfırla ki aynı dosyayı tekrar seçebilsin
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+
+  
   
   // --- YENİ: HIZLI EKLEME MODAL STATE'İ ---
   const [quickAddWord, setQuickAddWord] = useState(null); 
@@ -2126,25 +2195,58 @@ export default function App() {
     return <FormComponent />;
   }
 
-  // --- SENTENCE ANALYSIS VIEW (GÜNCELLENMİŞ - DETAYLI & SAĞLAM) ---
+// --- SENTENCE ANALYSIS VIEW (RESİM EKLEME EKLENDİ) ---
   if (currentView === "sentence_analysis") {
     return (
       <div className="min-h-screen bg-slate-50 p-6 flex flex-col items-center relative">
         {quickAddWord !== null && <QuickAddModal />}
+        
+        {/* GİZLİ DOSYA INPUTU */}
+        <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleImageSelect}
+            accept="image/*"
+            className="hidden"
+        />
+
         <div className="w-full max-w-lg space-y-6">
           <div className="flex items-center gap-3">
-            <button onClick={() => { handleGoHome(); setAnalysisResult(null); setAnalysisText(""); }} className="p-2 hover:bg-slate-200 rounded-full transition-colors bg-white shadow-sm"><ArrowLeft className="w-6 h-6 text-slate-600" /></button>
+            <button onClick={() => { handleGoHome(); setAnalysisResult(null); setAnalysisText(""); }} className="p-2 hover:bg-slate-200 rounded-full transition-colors bg-white shadow-sm">
+                <ArrowLeft className="w-6 h-6 text-slate-600" />
+            </button>
             <h2 className="text-2xl font-bold text-slate-800">Cümle Analizi</h2>
           </div>
+          
           <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
-            <textarea value={analysisText} onChange={(e) => setAnalysisText(e.target.value)} className="w-full p-3 border-0 outline-none resize-none text-slate-700 min-h-[100px]" placeholder="Analiz edilecek cümleyi yaz..." />
-            <div className="flex justify-end mt-2">
-                <button onClick={handleAnalyzeSentence} disabled={isAnalyzing} className="bg-teal-600 text-white px-6 py-2.5 rounded-xl font-bold flex items-center gap-2">
-                    {isAnalyzing ? <Loader2 className="animate-spin"/> : <Microscope/>} Analiz Et
+            
+            {/* RESİM YÜKLEME BUTONLARI */}
+            <div className="flex gap-2 mb-3">
+                <button 
+                    onClick={() => fileInputRef.current?.click()} 
+                    disabled={ocrLoading || isAnalyzing}
+                    className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 py-2 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-colors"
+                >
+                    {ocrLoading ? <Loader2 className="w-4 h-4 animate-spin"/> : <Camera className="w-4 h-4"/>}
+                    Fotoğraf Çek / Yükle
                 </button>
+            </div>
+
+            <textarea 
+                value={analysisText} 
+                onChange={(e) => setAnalysisText(e.target.value)} 
+                className="w-full p-3 border border-slate-100 rounded-xl outline-none resize-none text-slate-700 min-h-[120px] focus:border-indigo-300 transition-colors" 
+                placeholder="Analiz edilecek cümleyi yaz veya fotoğraf yükle..." 
+            />
+            
+            <div className="flex justify-end mt-2">
+              <button onClick={handleAnalyzeSentence} disabled={isAnalyzing || ocrLoading} className="bg-teal-600 hover:bg-teal-700 text-white px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-colors shadow-md shadow-teal-100">
+                  {isAnalyzing ? <Loader2 className="animate-spin"/> : <Microscope/>} Analiz Et
+              </button>
             </div>
           </div>
           
+          {/* ... BURADAN SONRASI AYNI (SONUÇ EKRANLARI) ... */}
           {analysisResult && (
             <div className="space-y-4 animate-in fade-in slide-in-from-bottom-6 duration-500">
               {/* 1. DOĞAL ÇEVİRİ */}
