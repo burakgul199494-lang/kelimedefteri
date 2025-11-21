@@ -56,6 +56,7 @@ import {
   Microscope, // Analiz ikonu
   Image,   // <-- YENİ EKLENDİ (Galeri İkonu)
   Camera,  // <-- YENİ EKLENDİ (Kamera İkonu)
+  Languages, // <-- Bunu listeye ekle
 } from "lucide-react";
 
 // --- FIREBASE CONFIG ---
@@ -230,6 +231,28 @@ const fetchSentenceAnalysisFromAI = async (text) => {
     throw e;
   }
 };
+
+// --- 5. HIZLI ÇEVİRİ (TEK CÜMLE) ---
+const translateTextWithAI = async (text) => {
+  try {
+    const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    
+    const prompt = `Translate this English text to Turkish accurately and naturally. Return ONLY the translation, nothing else: "${text}"`;
+    
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    return response.text().trim();
+  } catch (e) {
+    console.error("Translation Error:", e);
+    return "Çeviri yapılamadı.";
+  }
+};
+
+
+
+
+
 // --- 4. RESİMDEN METİN OKUMA (OCR) ---
 const extractTextFromImage = async (file) => {
   return new Promise((resolve, reject) => {
@@ -1160,8 +1183,38 @@ export default function App() {
       </span>
     );
   };
-// --- CARD COMPONENT ---
+// --- CARD COMPONENT (GÜNCELLENDİ: ÇEVİRİ ÖZELLİKLİ) ---
   const WordCard = ({ wordObj }) => {
+    // Çeviri State'leri
+    const [sentenceTranslation, setSentenceTranslation] = useState(null);
+    const [loadingSentence, setLoadingSentence] = useState(false);
+    
+    // Her bir tanım açıklaması için ayrı çeviri durumu (index tabanlı)
+    const [defTranslations, setDefTranslations] = useState({}); 
+    const [loadingDefs, setLoadingDefs] = useState({});
+
+    // Cümle Çevirisi Başlat
+    const handleTranslateSentence = async (e) => {
+        e.stopPropagation();
+        if (sentenceTranslation) return; // Zaten çevrilmişse tekrar yapma
+        
+        setLoadingSentence(true);
+        const text = await translateTextWithAI(wordObj.sentence);
+        setSentenceTranslation(text);
+        setLoadingSentence(false);
+    };
+
+    // Tanım Açıklaması Çevirisi Başlat
+    const handleTranslateDef = async (index, text, e) => {
+        e.stopPropagation();
+        if (defTranslations[index]) return;
+
+        setLoadingDefs(prev => ({...prev, [index]: true}));
+        const translated = await translateTextWithAI(text);
+        setDefTranslations(prev => ({...prev, [index]: translated}));
+        setLoadingDefs(prev => ({...prev, [index]: false}));
+    };
+
     return (
       <div className="relative w-full max-w-sm bg-white rounded-3xl shadow-xl p-6 text-center border border-slate-100">
         <div className="flex items-center justify-center gap-2 mb-2">
@@ -1194,18 +1247,36 @@ export default function App() {
               }`}
             >
               <div className="flex items-center gap-2 mb-1">
-                 <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded ${idx === 0 ? 'bg-indigo-200 text-indigo-700' : 'bg-slate-200 text-slate-600'}`}>
-                   {getShortTypeLabel(def.type)}
-                 </span>
-                 <span className={`font-bold text-lg ${idx===0 ? 'text-indigo-900' : 'text-slate-700'}`}>
-                   {def.meaning}
-                 </span>
+                  <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded ${idx === 0 ? 'bg-indigo-200 text-indigo-700' : 'bg-slate-200 text-slate-600'}`}>
+                    {getShortTypeLabel(def.type)}
+                  </span>
+                  <span className={`font-bold text-lg ${idx===0 ? 'text-indigo-900' : 'text-slate-700'}`}>
+                    {def.meaning}
+                  </span>
               </div>
+              
+              {/* İNGİLİZCE AÇIKLAMA VE ÇEVİRİ BUTONU */}
               {def.engExplanation && (
-                  <div className="mt-1 pl-2 border-l-2 border-indigo-200/50">
-                      <p className={`text-sm italic font-medium ${idx === 0 ? 'text-indigo-500' : 'text-slate-500'}`}>
-                          "{def.engExplanation}"
-                      </p>
+                  <div className="mt-1 pl-2 border-l-2 border-indigo-200/50 group">
+                      <div className="flex items-start justify-between gap-2">
+                          <p className={`text-sm italic font-medium ${idx === 0 ? 'text-indigo-500' : 'text-slate-500'}`}>
+                              "{def.engExplanation}"
+                          </p>
+                          <button 
+                            onClick={(e) => handleTranslateDef(idx, def.engExplanation, e)}
+                            className="opacity-50 hover:opacity-100 p-1 bg-white rounded-full shadow-sm transition-opacity"
+                            title="Türkçeye Çevir"
+                          >
+                             {loadingDefs[idx] ? <Loader2 className="w-3 h-3 animate-spin text-indigo-500"/> : <Languages className="w-3 h-3 text-indigo-500"/>}
+                          </button>
+                      </div>
+                      
+                      {/* Çeviri Sonucu Görünümü */}
+                      {defTranslations[idx] && (
+                          <div className="mt-1 text-xs text-indigo-800 bg-indigo-100/50 p-1.5 rounded animate-in fade-in">
+                              <span className="font-bold">TR:</span> {defTranslations[idx]}
+                          </div>
+                      )}
                   </div>
               )}
             </div>
@@ -1242,19 +1313,36 @@ export default function App() {
                 <div className="text-xs uppercase tracking-wide text-slate-400 font-bold">
                 Örnek Cümle
                 </div>
-                <button 
-                    onClick={(e) => speak(wordObj.sentence, e)}
-                    className="p-1.5 bg-white text-indigo-500 rounded-full hover:bg-indigo-100 hover:text-indigo-700 border border-slate-200 transition-colors"
-                    title="Cümleyi Oku"
-                >
-                    <Volume2 className="w-4 h-4" />
-                </button>
+                <div className="flex gap-2">
+                    <button 
+                        onClick={handleTranslateSentence}
+                        className="p-1.5 bg-white text-indigo-500 rounded-full hover:bg-indigo-100 hover:text-indigo-700 border border-slate-200 transition-colors"
+                        title="Türkçeye Çevir"
+                    >
+                        {loadingSentence ? <Loader2 className="w-4 h-4 animate-spin" /> : <Languages className="w-4 h-4" />}
+                    </button>
+                    <button 
+                        onClick={(e) => speak(wordObj.sentence, e)}
+                        className="p-1.5 bg-white text-indigo-500 rounded-full hover:bg-indigo-100 hover:text-indigo-700 border border-slate-200 transition-colors"
+                        title="Cümleyi Oku"
+                    >
+                        <Volume2 className="w-4 h-4" />
+                    </button>
+                </div>
             </div>
             <div className="text-base text-slate-600 italic space-y-1">
               {wordObj.sentence.split("\n").map((line, idx) => (
                 <p key={idx}>"{line}"</p>
               ))}
             </div>
+            
+            {/* CÜMLE ÇEVİRİ SONUCU */}
+            {sentenceTranslation && (
+                <div className="mt-3 pt-2 border-t border-slate-200 animate-in fade-in slide-in-from-top-2">
+                    <div className="text-xs font-bold text-indigo-600 mb-1">Türkçesi:</div>
+                    <p className="text-slate-800 text-sm font-medium">{sentenceTranslation}</p>
+                </div>
+            )}
           </div>
         </div>
       </div>
@@ -2908,7 +2996,7 @@ export default function App() {
             </div>
 
             <h1 className="text-3xl font-extrabold text-slate-800 tracking-tight">
-              Kelime Defteri 3
+              Kelime Defteri 4
             </h1>
             <p className="text-slate-500 mt-2 text-sm">
               Merhaba, <span className="font-medium text-indigo-600">{user.displayName || user.email}</span>
