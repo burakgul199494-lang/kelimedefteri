@@ -70,7 +70,7 @@ const firebaseConfig = {
 
 // --- API KEY AYARI ---
 // BURAYA GÜNCEL ŞİFREYİ YAPIŞTIR
-const GEMINI_API_KEY = "AIzaSyC_ykELbAxTKg2rX4jKZnrgCjIq7SIEULs"; 
+const GEMINI_API_KEY = "AIzaSyDQb-j8sezrFLHXM85BLavWQ7GyhcGs-K8"; 
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -2899,7 +2899,7 @@ export default function App() {
             </div>
 
             <h1 className="text-3xl font-extrabold text-slate-800 tracking-tight">
-              Kelime Defteri
+              Kelime Defteri 2
             </h1>
             <p className="text-slate-500 mt-2 text-sm">
               Merhaba, <span className="font-medium text-indigo-600">{user.displayName || user.email}</span>
