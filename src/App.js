@@ -166,31 +166,52 @@ const fetchRootFromAI = async (word) => {
   }
 };
 
-// --- 3. CÜMLE ANALİZİ (Detaylı Rapor) ---
+// --- 3. CÜMLE ANALİZİ (TEKRAR ENGELLEYİCİLİ & KESİN VERSİYON) ---
 const fetchSentenceAnalysisFromAI = async (text) => {
   try {
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    
+    // Temperature 0: Yaratıcılığı kapat, matematiksel kesinlik kullan
+    const model = genAI.getGenerativeModel({ 
+        model: "gemini-2.0-flash",
+        generationConfig: { temperature: 0 } 
+    });
 
     const prompt = `
-      Act as an expert English teacher for Turkish students. Analyze this text: "${text}"
+      Act as an expert English teacher. Analyze this text: "${text}"
       
       Tasks:
-      1. Translate the text to Turkish naturally (Natural translation, not robotic).
-      2. Analyze the grammar structure in detail (e.g., explaining tenses used and why). Write this in Turkish.
-      3. Extract all words, convert them to their base/root form (lemma), remove duplicates, and remove proper names (like Alice, London).
+      1. Translate the text to Turkish naturally.
+      2. Analyze the grammar structure in detail in Turkish.
+      3. Extract EVERY single word used in the sentence to a list.
+         - Convert them to their root form (lemma) (e.g. "went" -> "go", "apples" -> "apple").
+         - Remove proper names (like Alice, London, John).
+         - CRITICAL: Do NOT skip simple words, numbers (one, two), prepositions (in, on, at). list ALL of them.
       
       Return ONLY JSON. No markdown. Structure:
       {
-        "turkishTranslation": "Doğal Türkçe çeviri buraya",
-        "grammarAnalysis": "Burada geniş zaman kullanılmış çünkü... Şurada şu yapı var...",
-        "rootWords": ["sit", "by", "her", "sister", "on", "bank"] 
+        "turkishTranslation": "Doğal Türkçe çeviri",
+        "grammarAnalysis": "Gramer analizi...",
+        "rootWords": ["list", "of", "words"] 
       }
     `;
 
     const result = await model.generateContent(prompt);
     const response = await result.response;
-    return cleanAndParseJSON(response.text());
+    
+    // 1. Önce JSON'u temizle ve parse et
+    const data = cleanAndParseJSON(response.text());
+
+    // 2. JAVASCRIPT İLE TEKRAR KONTROLÜ (KESİN ÇÖZÜM)
+    if (data && data.rootWords && Array.isArray(data.rootWords)) {
+        // Set yapısı otomatik olarak kopyaları siler.
+        // Önce hepsini küçük harfe çeviriyoruz ki "The" ve "the" ayrı sayılmasın.
+        const uniqueWords = [...new Set(data.rootWords.map(w => w.toLowerCase()))];
+        data.rootWords = uniqueWords;
+    }
+
+    return data;
+
   } catch (e) {
     console.error("Sentence Analysis Error:", e);
     throw e;
