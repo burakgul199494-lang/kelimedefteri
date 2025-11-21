@@ -52,8 +52,8 @@ import {
   Flame,
   Book,
   Target,
-  Wand2,       // Kök bulma ikonu
-  Microscope,  // Cümle analizi ikonu
+  Wand2,      // Kök bulma ikonu
+  Microscope, // Analiz ikonu
 } from "lucide-react";
 
 // --- FIREBASE CONFIG ---
@@ -67,7 +67,7 @@ const firebaseConfig = {
 };
 
 // --- API KEY AYARI ---
-// BURAYA YENİ ALDIĞIN ŞİFREYİ YAPIŞTIRMAYI UNUTMA
+// BURAYA GÜNCEL ŞİFREYİ YAPIŞTIR
 const GEMINI_API_KEY = "AIzaSyC_ykELbAxTKg2rX4jKZnrgCjIq7SIEULs"; 
 
 const app = initializeApp(firebaseConfig);
@@ -93,21 +93,15 @@ const WORD_TYPES = [
 
 const WORDS_PER_SESSION = 20;
 
-// --- YARDIMCI FONKSİYON: JSON TEMİZLEME ---
-// Yapay zeka bazen cevabın başına yazı ekler, bu fonksiyon onu temizler.
+// --- ORTAK TEMİZLİK FONKSİYONU (JSON PARSER) ---
 const cleanAndParseJSON = (text) => {
   try {
-    // Markdown işaretlerini sil
     let cleanText = text.replace(/```json/g, "").replace(/```/g, "").trim();
-    
-    // İlk süslü parantez { ile son süslü parantez } arasını al
     const firstBrace = cleanText.indexOf("{");
     const lastBrace = cleanText.lastIndexOf("}");
-    
     if (firstBrace !== -1 && lastBrace !== -1) {
       cleanText = cleanText.substring(firstBrace, lastBrace + 1);
     }
-    
     return JSON.parse(cleanText);
   } catch (e) {
     console.error("JSON Parse Hatası:", e);
@@ -129,7 +123,6 @@ const fetchWordAnalysisFromAI = async (word) => {
       2. The "engExplanation" field MUST be a simple English explanation.
       
       Return ONLY JSON. No markdown.
-      
       Structure:
       {
         "word": "${word}",
@@ -247,7 +240,9 @@ export default function App() {
   const [analysisText, setAnalysisText] = useState("");
   const [analysisResult, setAnalysisResult] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [quickAddWord, setQuickAddWord] = useState(null); // Popup kelime ekleme
+  
+  // --- YENİ: HIZLI EKLEME MODAL STATE'İ ---
+  const [quickAddWord, setQuickAddWord] = useState(null); 
 
   const [currentView, setCurrentView] = useState("home");
   const [editingWord, setEditingWord] = useState(null);
@@ -566,8 +561,11 @@ export default function App() {
   const isWordInRegistry = (wordToCheck) => {
     if (!wordToCheck) return false;
     const lower = wordToCheck.toLowerCase().trim();
+    // 1. Sistem kelimelerinde var mı?
     if (dynamicSystemWords.some(sw => sw.word.toLowerCase() === lower)) return true;
+    // 2. Kullanıcı kelimelerinde var mı?
     if (customWords.some(cw => cw.word.toLowerCase() === lower && !deletedWordIds.includes(cw.id))) return true;
+    
     return false;
   };
 
@@ -777,7 +775,7 @@ export default function App() {
     setCurrentView("quiz");
   };
 
-  // --- QUIZ ANSWER HANDLER (GEÇİŞ EFEKTİ - KESİN ÇÖZÜM) ---
+  // --- QUIZ ANSWER HANDLER (GEÇİŞ EFEKTLİ - KESİN ÇÖZÜM) ---
   const handleQuizAnswer = (selectedOption) => {
     if (quizIsAnswered) return;
 
@@ -808,7 +806,7 @@ export default function App() {
         
         // 3. Ekranı tekrar görünür yap
         setQuizTransition(false);
-      }, 100); // 100 milisaniyelik temizlik molası
+      }, 100); // 100ms bekleme
       
     }, 1000);
   };
@@ -989,7 +987,6 @@ export default function App() {
     setDictResults([]);
     setDictError("");
     setQuizQuestions([]);
-    // Analiz state'lerini temizle
     setAnalysisResult(null);
     setAnalysisText("");
   };
@@ -1493,24 +1490,30 @@ export default function App() {
         setError("");
         try {
             const data = await fetchWordAnalysisFromAI(formData.word);
-            setFormData((prev) => ({
-                ...prev,
-                word: data.word, 
-                plural: data.plural || "",
-                v2: data.v2 || "",
-                v3: data.v3 || "",
-                vIng: data.vIng || "",
-                thirdPerson: data.thirdPerson || "",
-                advLy: data.advLy || "",
-                compEr: data.compEr || "",
-                superEst: data.superEst || "",
-                sentence: data.sentence || "",
-                definitions: data.definitions.map(def => ({
-                    type: def.type || "noun",
-                    meaning: def.meaning || "",
-                    engExplanation: def.engExplanation || ""
-                }))
-            }));
+            if (data) {
+                const safeDefinitions = Array.isArray(data.definitions) 
+                    ? data.definitions.map(d => ({
+                        type: d.type || "noun", 
+                        meaning: d.meaning || "", 
+                        engExplanation: d.engExplanation || ""
+                      }))
+                    : [{ type: "noun", meaning: "", engExplanation: "" }];
+                
+                setFormData((prev) => ({
+                    ...prev,
+                    word: data.word, 
+                    plural: data.plural || "",
+                    v2: data.v2 || "",
+                    v3: data.v3 || "",
+                    vIng: data.vIng || "",
+                    thirdPerson: data.thirdPerson || "",
+                    advLy: data.advLy || "",
+                    compEr: data.compEr || "",
+                    superEst: data.superEst || "",
+                    sentence: data.sentence || "",
+                    definitions: safeDefinitions
+                }));
+            }
         } catch (err) {
             setError("AI Hatası: " + err.message);
         } finally {
@@ -1633,9 +1636,6 @@ export default function App() {
                         {aiLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Brain className="w-5 h-5" />}
                     </button>
                 </div>
-                <p className="text-[10px] text-slate-400 mt-1 ml-1">
-                  İpucu: "Running" yazıp <Wand2 className="w-3 h-3 inline"/> ikonuna basarsan "Run" olur.
-                </p>
               </div>
 
               {/* GRUP 1: İSİM VE FİİL DETAYLARI */}
@@ -1812,18 +1812,12 @@ export default function App() {
     };
     return <FormComponent />;
   }
-     // --- HIZLI EKLEME MODALI (Analiz Ekranı İçin Popup) ---
+      // --- HIZLI EKLEME MODALI (Analiz Ekranı İçin Popup) ---
   const QuickAddModal = () => {
     const initialData = {
         word: quickAddWord || "",
-        plural: "", 
-        v2: "", 
-        v3: "", 
-        vIng: "", 
-        thirdPerson: "", 
-        advLy: "", 
-        compEr: "", 
-        superEst: "",
+        plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", 
+        advLy: "", compEr: "", superEst: "",
         definitions: [{ type: "noun", meaning: "", engExplanation: "" }], 
         sentence: "", 
         source: isAdmin ? "system" : "user"
@@ -1845,10 +1839,19 @@ export default function App() {
         try {
             const data = await fetchWordAnalysisFromAI(formData.word);
             if(data) {
+                // Hata önleyici: Gelen veride definitions dizisi yoksa boş dizi ata
+                const safeDefinitions = Array.isArray(data.definitions) 
+                    ? data.definitions.map(d => ({
+                        type: d.type || "noun", 
+                        meaning: d.meaning || "", 
+                        engExplanation: d.engExplanation || ""
+                      }))
+                    : [{ type: "noun", meaning: "", engExplanation: "" }];
+
                 setFormData(prev => ({
                     ...prev, 
                     ...data, 
-                    definitions: data.definitions.map(d => ({...d, engExplanation: d.engExplanation || ""})) 
+                    definitions: safeDefinitions
                 }));
             }
         } catch(e) { console.error(e); }
@@ -1952,7 +1955,24 @@ export default function App() {
   // --- ADD / EDIT FORM (USER) ---
   if (currentView === "add_word" || currentView === "edit_word") {
     const isEditMode = currentView === "edit_word";
-    const normalizedEditWord = isEditMode && editingWord ? { ...editingWord, definitions: editingWord.definitions.map(d => ({...d, engExplanation: d.engExplanation || ""})) } : { word: "", plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "", definitions: [{ type: "noun", meaning: "", engExplanation: "" }], sentence: "" };
+    
+    // Güvenli veri hazırlama
+    const safeEditData = isEditMode && editingWord ? normalizeWord(editingWord) : null;
+    const initialData = safeEditData
+      ? {
+          ...safeEditData,
+          definitions: (safeEditData.definitions || []).map(d => ({
+             type: d.type || "noun",
+             meaning: d.meaning || "",
+             engExplanation: d.engExplanation || ""
+          }))
+        }
+      : {
+          word: "",
+          plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+          definitions: [{ type: "noun", meaning: "", engExplanation: "" }],
+          sentence: "",
+        };
 
     const FormComponent = () => {
       const [formData, setFormData] = useState(initialData);
@@ -1960,22 +1980,44 @@ export default function App() {
       const [aiLoading, setAiLoading] = useState(false);
       const [rootLoading, setRootLoading] = useState(false);
 
+      // KÖK BULMA
       const handleConvertToRoot = async () => {
           if (!formData.word) return;
           setRootLoading(true);
           try {
               const result = await fetchRootFromAI(formData.word);
-              if (result.changed) setFormData(prev => ({ ...prev, word: result.root }));
+              if (result && result.changed) setFormData(prev => ({ ...prev, word: result.root }));
           } catch (e) { console.error(e); } finally { setRootLoading(false); }
       };
 
+      // AI İLE DOLDURMA
       const handleAIFill = async () => {
         if (!formData.word) { alert("Lütfen önce bir kelime yazın!"); return; }
         setAiLoading(true);
         try {
             const data = await fetchWordAnalysisFromAI(formData.word);
-            if(data) setFormData((prev) => ({ ...prev, ...data, definitions: data.definitions.map(def => ({...def, engExplanation: def.engExplanation || ""})) }));
-        } catch (err) { alert("AI Hatası: " + err.message); } finally { setAiLoading(false); }
+            if(data) {
+                const safeDefinitions = Array.isArray(data.definitions) 
+                    ? data.definitions.map(d => ({
+                        type: d.type || "noun", 
+                        meaning: d.meaning || "", 
+                        engExplanation: d.engExplanation || ""
+                      }))
+                    : [{ type: "noun", meaning: "", engExplanation: "" }];
+
+                setFormData((prev) => ({ 
+                    ...prev, 
+                    ...data, 
+                    definitions: safeDefinitions
+                }));
+            } else {
+                alert("Yapay zeka verisi alınamadı.");
+            }
+        } catch (err) { 
+            alert("AI Hatası: " + err.message); 
+        } finally { 
+            setAiLoading(false); 
+        }
       };
 
       const handleSubmit = async (e) => {
@@ -2017,13 +2059,16 @@ export default function App() {
               <div className="space-y-2">
                   {formData.definitions.map((def, i) => (
                       <div key={i} className="p-2 bg-slate-50 border rounded-lg">
-                          <input value={def.meaning} onChange={e=>updateDefinition(i, 'meaning', e.target.value)} className="w-full p-2 border rounded mb-1" placeholder="Anlam"/>
-                          <button type="button" onClick={()=>removeDefinition(i)} className="text-xs text-red-500">Sil</button>
+                          <input value={def.meaning} onChange={e=>updateDefinition(i, 'meaning', e.target.value)} className="w-full p-2 border rounded mb-1" placeholder="Türkçe Anlam"/>
+                          <div className="flex gap-2">
+                             <input value={def.engExplanation} onChange={e=>updateDefinition(i, 'engExplanation', e.target.value)} className="flex-1 p-2 border rounded text-xs" placeholder="İngilizce Açıklama"/>
+                             <button type="button" onClick={()=>removeDefinition(i)} className="text-xs text-red-500 px-2">Sil</button>
+                          </div>
                       </div>
                   ))}
                   <button type="button" onClick={addDefinition} className="text-indigo-600 text-sm font-bold">+ Anlam</button>
               </div>
-              <textarea value={formData.sentence} onChange={e=>setFormData({...formData, sentence:e.target.value})} className="w-full p-3 border rounded-xl" placeholder="Cümle"/>
+              <textarea value={formData.sentence} onChange={e=>setFormData({...formData, sentence:e.target.value})} className="w-full p-3 border rounded-xl" placeholder="Örnek Cümle"/>
               <button type="submit" disabled={saving} className="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl">{saving ? <Loader2 className="animate-spin mx-auto"/> : "Kaydet"}</button>
             </form>
           </div>
@@ -2033,19 +2078,16 @@ export default function App() {
     return <FormComponent />;
   }
 
-  // --- SENTENCE ANALYSIS VIEW (GÜNCELLENMİŞ - MODAL VE RENK) ---
+  // --- SENTENCE ANALYSIS VIEW (GÜNCELLENMİŞ - DETAYLI & SAĞLAM) ---
   if (currentView === "sentence_analysis") {
     return (
       <div className="min-h-screen bg-slate-50 p-6 flex flex-col items-center relative">
-        {/* MODAL */}
         {quickAddWord !== null && <QuickAddModal />}
-        
         <div className="w-full max-w-lg space-y-6">
           <div className="flex items-center gap-3">
             <button onClick={() => { handleGoHome(); setAnalysisResult(null); setAnalysisText(""); }} className="p-2 hover:bg-slate-200 rounded-full transition-colors bg-white shadow-sm"><ArrowLeft className="w-6 h-6 text-slate-600" /></button>
             <h2 className="text-2xl font-bold text-slate-800">Cümle Analizi</h2>
           </div>
-          
           <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
             <textarea value={analysisText} onChange={(e) => setAnalysisText(e.target.value)} className="w-full p-3 border-0 outline-none resize-none text-slate-700 min-h-[100px]" placeholder="Analiz edilecek cümleyi yaz..." />
             <div className="flex justify-end mt-2">
@@ -2072,7 +2114,7 @@ export default function App() {
               {/* 3. SAF KELİMELER VE RENKLENDİRME */}
               {analysisResult.rootWords?.length > 0 && (
                 <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-                   <h3 className="text-xs font-bold text-slate-400 uppercase mb-3 flex items-center gap-2"><BookOpen className="w-4 h-4" /> Kelime Kökleri (Eksikleri Ekle)</h3>
+                   <h3 className="text-xs font-bold text-slate-400 uppercase mb-3 flex items-center gap-2"><BookOpen className="w-4 h-4" /> Kelime Kökleri</h3>
                   <div className="flex flex-wrap gap-2">
                     {analysisResult.rootWords.map((word, idx) => {
                         const exists = isWordInRegistry(word);
@@ -2104,44 +2146,246 @@ export default function App() {
       </div>
     );
   }
-
-  // --- LIST VIEWS ---
-  if (currentView === "known_list" || currentView === "unknown_list" || currentView === "trash") {
-    const isKnown = currentView === "known_list"; const isTrash = currentView === "trash";
+// --- LIST VIEWS ---
+  if (
+    currentView === "known_list" ||
+    currentView === "unknown_list" ||
+    currentView === "trash"
+  ) {
+    const isKnown = currentView === "known_list";
+    const isTrash = currentView === "trash";
     const allWords = isTrash ? getDeletedWords() : getAllWords();
-    let filteredWords = allWords.filter(w => w.word.toLowerCase().includes((isKnown ? searchKnown : isTrash ? searchTrash : searchUnknown).toLowerCase()));
-    if(!isTrash) filteredWords = filteredWords.filter(w => isKnown ? knownWordIds.includes(w.id) : !knownWordIds.includes(w.id));
-    
+    let filteredWords = [];
+
+    if (isTrash) {
+      filteredWords = allWords.filter((w) =>
+        w.word.toLowerCase().includes(searchTrash.toLowerCase())
+      );
+    } else if (isKnown) {
+      filteredWords = allWords
+        .filter((w) => knownWordIds.includes(w.id))
+        .filter((w) =>
+          w.word.toLowerCase().includes(searchKnown.toLowerCase())
+        );
+    } else {
+      filteredWords = allWords
+        .filter((w) => !knownWordIds.includes(w.id))
+        .filter((w) =>
+          w.word.toLowerCase().includes(searchUnknown.toLowerCase())
+        );
+    }
+
+    filteredWords.sort((a, b) => a.word.localeCompare(b.word));
+    const title = isKnown
+      ? "Öğrendiğim Kelimeler"
+      : isTrash
+      ? "Silinen Kelimeler"
+      : "Öğreneceğim Kelimeler";
+    const searchVal = isKnown
+      ? searchKnown
+      : isTrash
+      ? searchTrash
+      : searchUnknown;
+    const setSearch = isKnown
+      ? setSearchKnown
+      : isTrash
+      ? setSearchTrash
+      : setSearchUnknown;
+
     return (
-      <div className="min-h-screen bg-slate-50 p-4"><div className="max-w-md mx-auto">
+      <div className="min-h-screen bg-slate-50 p-4">
+        <div className="max-w-md mx-auto">
           <div className="flex items-center gap-3 mb-4 sticky top-0 bg-slate-50 py-2 z-10">
-            <button onClick={handleGoHome} className="p-2 hover:bg-slate-200 rounded-full"><ArrowLeft className="w-6 h-6 text-slate-600"/></button>
-            <h2 className="text-xl font-bold text-slate-800">{isKnown ? "Öğrendiklerim" : isTrash ? "Çöp" : "Öğreneceklerim"} ({filteredWords.length})</h2>
+            <button
+              onClick={handleGoHome}
+              className="p-2 hover:bg-slate-200 rounded-full transition-colors"
+            >
+              <ArrowLeft className="w-6 h-6 text-slate-600" />
+            </button>
+            <h2 className="text-xl font-bold text-slate-800">
+              {title} ({filteredWords.length})
+            </h2>
           </div>
-          <input className="w-full p-3 mb-4 bg-white border rounded-xl" placeholder="Ara..." onChange={e => isKnown ? setSearchKnown(e.target.value) : isTrash ? setSearchTrash(e.target.value) : setSearchUnknown(e.target.value)}/>
-          <div className="space-y-3">
-              {filteredWords.map(item => (
-                  <div key={item.id} className="bg-white p-4 rounded-xl shadow-sm border flex flex-col gap-2">
-                      <div className="flex justify-between">
-                          <div>
-                              <div className="flex items-center gap-2"><span className="font-bold text-lg">{item.word}</span><button onClick={()=>speak(item.word)}><Volume2 className="w-4 h-4 text-indigo-500"/></button></div>
-                              <div className="text-sm text-slate-600">{item.definitions[0]?.meaning}</div>
+          <input
+            type="text"
+            placeholder="Kelime ara..."
+            value={searchVal}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full p-3 mb-4 bg-white border border-slate-200 rounded-xl outline-none"
+          />
+
+          {filteredWords.length === 0 ? (
+            <div className="text-center text-slate-400 mt-20">
+              {isTrash ? (
+                <Trash2 className="w-16 h-16 mx-auto mb-4 opacity-20" />
+              ) : isKnown ? (
+                <Check className="w-16 h-16 mx-auto mb-4 opacity-20" />
+              ) : (
+                <Trophy className="w-16 h-16 mx-auto mb-4 text-yellow-500" />
+              )}
+              <p>
+                {isTrash
+                  ? "Çöp kutusu boş."
+                  : isKnown
+                  ? "Henüz hiç kelime öğrenmedin."
+                  : "Harika! Tüm kelimeleri öğrendin."}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {filteredWords.map((item) => {
+                const canRestore = isTrash ? canRestoreWord(item) : false;
+                const isUser = item.source === "user";
+                return (
+                  <div
+                    key={item.id}
+                    className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex flex-col gap-2"
+                  >
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 flex-wrap mb-1">
+                          <span className="text-lg font-bold text-slate-800">
+                            {item.word}
+                          </span>
+                          {renderSourceBadge(item.source)}
+                          {!isTrash && (
+                            <button
+                              onClick={(e) => speak(item.word, e)}
+                              className="p-1 text-indigo-400 hover:text-indigo-600 bg-indigo-50 rounded-full"
+                            >
+                              <Volume2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                        
+                        {/* LİSTE GÖRÜNÜMÜNDE ANLAMLAR */}
+                        {item.definitions.map((def, idx) => (
+                            <div key={idx} className="mb-1">
+                                <div className="flex items-baseline gap-2">
+                                    <span className="text-xs font-bold text-slate-400 w-8 text-right shrink-0">
+                                        {getShortTypeLabel(def.type)}
+                                    </span>
+                                    <span className="text-sm text-slate-700 font-medium">
+                                        {def.meaning}
+                                    </span>
+                                </div>
+                                {def.engExplanation && (
+                                    <div className="ml-10 text-[10px] text-indigo-400 italic">"{def.engExplanation}"</div>
+                                )}
+                            </div>
+                        ))}
+
+                        {/* LİSTE GÖRÜNÜMÜ DETAYLARI */}
+                        {(item.plural || item.v2 || item.v3 || item.vIng || item.thirdPerson) && (
+                          <div className="mt-2 text-xs text-slate-600 space-y-1 bg-slate-50 p-2 rounded-lg">
+                            <div className="flex flex-wrap gap-x-3 gap-y-1">
+                                {item.plural && <div><span className="font-semibold">Pl:</span> {item.plural}</div>}
+                                {item.thirdPerson && <div><span className="font-semibold">3rd:</span> {item.thirdPerson}</div>}
+                                {item.v2 && <div><span className="font-semibold">V2:</span> {item.v2}</div>}
+                                {item.v3 && <div><span className="font-semibold">V3:</span> {item.v3}</div>}
+                                {item.vIng && <div><span className="font-semibold">Ing:</span> {item.vIng}</div>}
+                            </div>
                           </div>
-                          <div className="flex gap-1">
-                              {isTrash ? <button onClick={()=>restoreWord(item)} className="text-green-600 bg-green-100 px-2 rounded text-xs">Geri Al</button> : <>
-                                {item.source === "user" && <button onClick={()=>{setEditingWord(item); setCurrentView("edit_word");}} className="p-2 text-blue-500"><Edit2 className="w-4 h-4"/></button>}
-                                {isKnown && <button onClick={()=>handleRemoveFromKnown(item.id)} className="p-2 text-amber-500"><RotateCcw className="w-4 h-4"/></button>}
-                                {item.source === "user" && <button onClick={()=>handleDeleteWord(item.id)} className="p-2 text-red-500"><X className="w-4 h-4"/></button>}
-                              </>}
+                        )}
+
+                        {(item.advLy || item.compEr || item.superEst) && (
+                          <div className="mt-1 text-xs text-slate-600 space-y-1 bg-orange-50 p-2 rounded-lg">
+                            <div className="flex flex-wrap gap-x-3 gap-y-1">
+                                {item.advLy && <div><span className="font-semibold">Ly:</span> {item.advLy}</div>}
+                                {item.compEr && <div><span className="font-semibold">Comp:</span> {item.compEr}</div>}
+                                {item.superEst && <div><span className="font-semibold">Super:</span> {item.superEst}</div>}
+                            </div>
                           </div>
+                        )}
+
+                        {!isTrash && (
+                          <div className="mt-2 pt-2 border-t border-slate-50 flex gap-2 items-start group">
+                            <button 
+                                onClick={(e) => speak(item.sentence, e)}
+                                className="shrink-0 p-1.5 text-slate-300 hover:text-indigo-500 hover:bg-indigo-50 rounded-full transition-colors"
+                                title="Cümleyi Oku"
+                            >
+                                <Volume2 className="w-3.5 h-3.5" />
+                            </button>
+                            <div className="text-xs text-slate-400 italic leading-relaxed py-0.5">
+                                "{item.sentence}"
+                            </div>
+                          </div>
+                        )}
+
+                        {isTrash && !canRestore && (
+                          <div className="text-[10px] text-slate-400 italic mt-1">
+                            Bu kelimenin aktif bir versiyonu zaten var
+                          </div>
+                        )}
                       </div>
+                      <div className="flex flex-col gap-1 ml-2">
+                        {isTrash ? (
+                          <div className="flex flex-col items-end gap-2">
+                            {canRestore && (
+                              <button
+                                onClick={() => restoreWord(item)}
+                                className="px-3 py-1 bg-green-100 text-green-600 rounded-lg hover:bg-green-200 text-xs font-semibold"
+                              >
+                                Geri Yükle
+                              </button>
+                            )}
+                            {isUser && (
+                              <button
+                                onClick={() => permanentlyDeleteWord(item)}
+                                className="px-3 py-1 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 text-xs font-semibold"
+                              >
+                                Tamamen Sil
+                              </button>
+                            )}
+                          </div>
+                        ) : (
+                          <>
+                            {item.source === "user" && (
+                              <button
+                                onClick={() => {
+                                  setEditingWord(item);
+                                  setReturnView(currentView);
+                                  setCurrentView("edit_word");
+                                }}
+                                className="p-2 text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg"
+                              >
+                                <Edit2 className="w-4 h-4" />
+                              </button>
+                            )}
+                            {isKnown ? (
+                              <button
+                                onClick={() =>
+                                  handleRemoveFromKnown(item.id)
+                                }
+                                className="p-2 text-slate-300 hover:text-amber-500 hover:bg-amber-50 rounded-lg"
+                              >
+                                <RotateCcw className="w-5 h-5" />
+                              </button>
+                            ) : null}
+                            {item.source === "user" && (
+                              <button
+                                onClick={() => handleDeleteWord(item.id)}
+                                className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg"
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    </div>
                   </div>
-              ))}
-          </div>
-      </div></div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
     );
   }
-                                 // --- DICTIONARY VIEW ---
+
+  // --- DICTIONARY VIEW ---
   if (currentView === "dictionary") {
     return (
         <div className="min-h-screen bg-slate-50 p-6 flex flex-col items-center">
@@ -2201,6 +2445,7 @@ export default function App() {
 
   // --- QUIZ VIEW (MOBİL DÜZELTİLMİŞ - GEÇİŞ EFEKTİ İLE) ---
   if (currentView === "quiz") {
+      // Mobil cihazlarda buton renginin takılı kalmaması için geçiş ekranı
       if (quizTransition) {
           return (
             <div className="min-h-screen bg-slate-50 flex items-center justify-center">
@@ -2504,7 +2749,7 @@ export default function App() {
             </div>
 
             <h1 className="text-3xl font-extrabold text-slate-800 tracking-tight">
-              Kelime Defteri
+              Kelime Atölyesi
             </h1>
             <p className="text-slate-500 mt-2 text-sm">
               Merhaba, <span className="font-medium text-indigo-600">{user.displayName || user.email}</span>
