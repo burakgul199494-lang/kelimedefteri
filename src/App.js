@@ -1812,7 +1812,7 @@ export default function App() {
     };
     return <FormComponent />;
   }
-      // --- HIZLI EKLEME MODALI (Analiz Ekranı İçin Popup) ---
+    // --- HIZLI EKLEME MODALI (POPUP - DETAYLI FORMAT) ---
   const QuickAddModal = () => {
     const initialData = {
         word: quickAddWord || "",
@@ -1827,19 +1827,14 @@ export default function App() {
     const [loadingAI, setLoadingAI] = useState(false);
     const [saving, setSaving] = useState(false);
 
-    // Pencere açılınca otomatik anlam bul (Kullanıcıya kolaylık olsun)
-    useEffect(() => { 
-        if(quickAddWord) {
-            handleAIFill(); 
-        }
-    }, []); 
+    // Pencere açılınca otomatik AI verisini çek
+    useEffect(() => { if(quickAddWord) handleAIFill(); }, []); 
 
     const handleAIFill = async () => {
         setLoadingAI(true);
         try {
             const data = await fetchWordAnalysisFromAI(formData.word);
             if(data) {
-                // Hata önleyici: Gelen veride definitions dizisi yoksa boş dizi ata
                 const safeDefinitions = Array.isArray(data.definitions) 
                     ? data.definitions.map(d => ({
                         type: d.type || "noun", 
@@ -1847,12 +1842,8 @@ export default function App() {
                         engExplanation: d.engExplanation || ""
                       }))
                     : [{ type: "noun", meaning: "", engExplanation: "" }];
-
-                setFormData(prev => ({
-                    ...prev, 
-                    ...data, 
-                    definitions: safeDefinitions
-                }));
+                
+                setFormData(prev => ({...prev, ...data, definitions: safeDefinitions }));
             }
         } catch(e) { console.error(e); }
         setLoadingAI(false);
@@ -1860,90 +1851,62 @@ export default function App() {
 
     const handleSave = async (e) => {
         e.preventDefault();
-        if(!formData.word || !formData.sentence) { 
-            alert("Lütfen kelime ve cümle alanlarını doldurun."); 
-            return; 
-        }
+        if(!formData.word || !formData.sentence) { alert("Lütfen temel alanları doldurun."); return; }
         setSaving(true);
-        if(isAdmin) {
-            await handleSaveSystemWord(formData);
-        } else {
-            await handleSaveNewWord(formData);
-        }
+        if(isAdmin) await handleSaveSystemWord(formData);
+        else await handleSaveNewWord(formData);
         setSaving(false);
-        setQuickAddWord(null); // Modalı kapat
+        setQuickAddWord(null);
     };
 
-    const updateDef = (i, f, v) => {
-        const n = [...formData.definitions]; 
-        n[i] = {...n[i], [f]: v}; 
-        setFormData({...formData, definitions: n});
-    };
+    const addDefinition = () => setFormData((p) => ({ ...p, definitions: [...p.definitions, { type: "noun", meaning: "", engExplanation: "" }] }));
+    const updateDefinition = (i, f, v) => { const n = [...formData.definitions]; n[i] = { ...n[i], [f]: v }; setFormData((p) => ({ ...p, definitions: n })); };
+    const removeDefinition = (i) => { if(formData.definitions.length > 1) setFormData(p => ({...p, definitions: p.definitions.filter((_, idx) => idx !== i)})); };
 
     return (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
             <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 max-h-[90vh] overflow-y-auto">
                 <div className="flex justify-between items-center mb-4">
                     <h3 className="font-bold text-lg">Hızlı Kelime Ekle</h3>
-                    <button onClick={() => setQuickAddWord(null)} className="p-2 bg-slate-100 rounded-full">
-                        <X className="w-5 h-5"/>
-                    </button>
+                    <button onClick={() => setQuickAddWord(null)} className="p-2 bg-slate-100 rounded-full"><X className="w-5 h-5"/></button>
                 </div>
                 
                 <div className="space-y-4">
                     <div className="flex gap-2">
-                        <input 
-                            value={formData.word} 
-                            onChange={e=>setFormData({...formData, word: e.target.value})} 
-                            className="flex-1 p-3 border rounded-xl font-bold" 
-                        />
-                        <button 
-                            onClick={handleAIFill} 
-                            disabled={loadingAI} 
-                            className="bg-purple-600 text-white px-3 rounded-xl"
-                        >
+                        <input value={formData.word} onChange={e=>setFormData({...formData, word: e.target.value})} className="flex-1 p-3 border rounded-xl font-bold" placeholder="Kelime"/>
+                        <button onClick={handleAIFill} disabled={loadingAI} className="bg-purple-600 text-white px-3 rounded-xl">
                             {loadingAI ? <Loader2 className="animate-spin"/> : <Brain/>}
                         </button>
                     </div>
 
+                    {/* GRUP 1: FİİL DETAYLARI (POPUP İÇİN) */}
+                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 space-y-3">
+                        <div>
+                            <label className="block text-[10px] font-bold text-slate-400 uppercase">Çoğul</label>
+                            <input value={formData.plural} onChange={e=>setFormData({...formData, plural:e.target.value})} className="w-full p-2 border rounded text-sm"/>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                            <input value={formData.v2} onChange={e=>setFormData({...formData, v2:e.target.value})} className="w-full p-2 border rounded text-sm" placeholder="V2"/>
+                            <input value={formData.v3} onChange={e=>setFormData({...formData, v3:e.target.value})} className="w-full p-2 border rounded text-sm" placeholder="V3"/>
+                            <input value={formData.vIng} onChange={e=>setFormData({...formData, vIng:e.target.value})} className="w-full p-2 border rounded text-sm" placeholder="V-ing"/>
+                            <input value={formData.thirdPerson} onChange={e=>setFormData({...formData, thirdPerson:e.target.value})} className="w-full p-2 border rounded text-sm" placeholder="3rd Person"/>
+                        </div>
+                    </div>
+
+                    {/* ANLAMLAR */}
                     <div className="space-y-2">
                         {formData.definitions.map((def, i) => (
                             <div key={i} className="p-2 bg-slate-50 border rounded-lg">
-                                <input 
-                                    placeholder="Türkçe Anlam" 
-                                    value={def.meaning} 
-                                    onChange={e=>updateDef(i, 'meaning', e.target.value)} 
-                                    className="w-full p-2 border rounded mb-1 text-sm"
-                                />
-                                <input 
-                                    placeholder="İngilizce Açıklama" 
-                                    value={def.engExplanation} 
-                                    onChange={e=>updateDef(i, 'engExplanation', e.target.value)} 
-                                    className="w-full p-2 border rounded text-xs"
-                                />
+                                <input placeholder="Türkçe Anlam" value={def.meaning} onChange={e=>updateDefinition(i, 'meaning', e.target.value)} className="w-full p-2 border rounded mb-1 text-sm"/>
+                                <input placeholder="İngilizce Açıklama" value={def.engExplanation} onChange={e=>updateDefinition(i, 'engExplanation', e.target.value)} className="w-full p-2 border rounded text-xs"/>
                             </div>
                         ))}
-                        <button 
-                            onClick={()=>setFormData(p=>({...p, definitions:[...p.definitions, {type:"noun", meaning:"", engExplanation:""}]}))} 
-                            className="text-xs text-indigo-600 font-bold"
-                        >
-                            + Anlam Ekle
-                        </button>
+                        <button onClick={addDefinition} className="text-xs text-indigo-600 font-bold">+ Anlam Ekle</button>
                     </div>
 
-                    <textarea 
-                        value={formData.sentence} 
-                        onChange={e=>setFormData({...formData, sentence:e.target.value})} 
-                        className="w-full p-3 border rounded-xl text-sm" 
-                        placeholder="Örnek cümle..." 
-                        rows={2}
-                    ></textarea>
+                    <textarea value={formData.sentence} onChange={e=>setFormData({...formData, sentence:e.target.value})} className="w-full p-3 border rounded-xl text-sm" placeholder="Örnek cümle..." rows={2}></textarea>
 
-                    <button 
-                        onClick={handleSave} 
-                        disabled={saving} 
-                        className="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl flex justify-center gap-2"
-                    >
+                    <button onClick={handleSave} disabled={saving} className="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl flex justify-center gap-2">
                         {saving ? <Loader2 className="animate-spin"/> : <Save className="w-5 h-5"/>} Kaydet ve Kapat
                     </button>
                 </div>
@@ -1952,16 +1915,15 @@ export default function App() {
     );
   };
 
-  // --- ADD / EDIT FORM (USER) ---
+  // --- ADD / EDIT FORM (USER - DETAYLI FULL VERSİYON) ---
   if (currentView === "add_word" || currentView === "edit_word") {
     const isEditMode = currentView === "edit_word";
+    const normalizedEditWord = isEditMode && editingWord ? normalizeWord(editingWord) : null;
     
-    // Güvenli veri hazırlama
-    const safeEditData = isEditMode && editingWord ? normalizeWord(editingWord) : null;
-    const initialData = safeEditData
+    const initialData = normalizedEditWord
       ? {
-          ...safeEditData,
-          definitions: (safeEditData.definitions || []).map(d => ({
+          ...normalizedEditWord,
+          definitions: (normalizedEditWord.definitions || []).map(d => ({
              type: d.type || "noun",
              meaning: d.meaning || "",
              engExplanation: d.engExplanation || ""
@@ -1969,7 +1931,8 @@ export default function App() {
         }
       : {
           word: "",
-          plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+          plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", 
+          advLy: "", compEr: "", superEst: "",
           definitions: [{ type: "noun", meaning: "", engExplanation: "" }],
           sentence: "",
         };
@@ -1980,7 +1943,6 @@ export default function App() {
       const [aiLoading, setAiLoading] = useState(false);
       const [rootLoading, setRootLoading] = useState(false);
 
-      // KÖK BULMA
       const handleConvertToRoot = async () => {
           if (!formData.word) return;
           setRootLoading(true);
@@ -1990,51 +1952,38 @@ export default function App() {
           } catch (e) { console.error(e); } finally { setRootLoading(false); }
       };
 
-      // AI İLE DOLDURMA
       const handleAIFill = async () => {
         if (!formData.word) { alert("Lütfen önce bir kelime yazın!"); return; }
         setAiLoading(true);
         try {
             const data = await fetchWordAnalysisFromAI(formData.word);
             if(data) {
-                const safeDefinitions = Array.isArray(data.definitions) 
+                 const safeDefinitions = Array.isArray(data.definitions) 
                     ? data.definitions.map(d => ({
                         type: d.type || "noun", 
                         meaning: d.meaning || "", 
                         engExplanation: d.engExplanation || ""
                       }))
                     : [{ type: "noun", meaning: "", engExplanation: "" }];
-
-                setFormData((prev) => ({ 
-                    ...prev, 
-                    ...data, 
-                    definitions: safeDefinitions
-                }));
+                
+                setFormData((prev) => ({ ...prev, ...data, definitions: safeDefinitions }));
             } else {
                 alert("Yapay zeka verisi alınamadı.");
             }
-        } catch (err) { 
-            alert("AI Hatası: " + err.message); 
-        } finally { 
-            setAiLoading(false); 
-        }
+        } catch (err) { alert("AI Hatası: " + err.message); } finally { setAiLoading(false); }
       };
 
       const handleSubmit = async (e) => {
         e.preventDefault();
         if (!formData.word || !formData.sentence) { alert("Eksik alanları doldurun."); return; }
         setSaving(true);
-        if (isEditMode) { 
-            await handleUpdateWord(editingWord.id, formData); 
-            setCurrentView(returnView); 
-        } else { 
+        if (isEditMode) { await handleUpdateWord(editingWord.id, formData); setCurrentView(returnView); }
+        else { 
             const res = await handleSaveNewWord(formData); 
             if(res.success) { 
                 alert("Eklendi!"); 
                 setFormData({ word: "", plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "", definitions: [{ type: "noun", meaning: "", engExplanation: "" }], sentence: "" }); 
-            } else {
-                alert(res.message);
-            }
+            } else { alert(res.message); }
         }
         setSaving(false);
       };
@@ -2056,17 +2005,57 @@ export default function App() {
                   <button type="button" onClick={handleConvertToRoot} disabled={rootLoading || !formData.word} className="bg-orange-100 text-orange-600 p-3 rounded-xl" title="Kök Bul">{rootLoading ? <Loader2 className="animate-spin"/> : <Wand2/>}</button>
                   <button type="button" onClick={handleAIFill} disabled={aiLoading || !formData.word} className="bg-purple-600 text-white px-3 rounded-xl" title="AI Doldur">{aiLoading ? <Loader2 className="animate-spin"/> : <Brain/>}</button>
               </div>
-              <div className="space-y-2">
-                  {formData.definitions.map((def, i) => (
-                      <div key={i} className="p-2 bg-slate-50 border rounded-lg">
-                          <input value={def.meaning} onChange={e=>updateDefinition(i, 'meaning', e.target.value)} className="w-full p-2 border rounded mb-1" placeholder="Türkçe Anlam"/>
-                          <div className="flex gap-2">
-                             <input value={def.engExplanation} onChange={e=>updateDefinition(i, 'engExplanation', e.target.value)} className="flex-1 p-2 border rounded text-xs" placeholder="İngilizce Açıklama"/>
-                             <button type="button" onClick={()=>removeDefinition(i)} className="text-xs text-red-500 px-2">Sil</button>
-                          </div>
+
+              {/* --- DETAYLI FİİL BÖLÜMÜ --- */}
+              <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                  <div className="text-xs font-bold text-slate-400 mb-2 uppercase tracking-wide">Fiil & İsim Detayları</div>
+                  <div className="space-y-3">
+                      <div>
+                        <label className="block text-xs font-medium text-slate-500 mb-1">Çoğul (Plural)</label>
+                        <input value={formData.plural} onChange={(e) => setFormData({ ...formData, plural: e.target.value })} className="w-full p-2 border border-slate-200 rounded-lg outline-none text-sm"/>
                       </div>
-                  ))}
-                  <button type="button" onClick={addDefinition} className="text-indigo-600 text-sm font-bold">+ Anlam</button>
+                      <div className="grid grid-cols-2 gap-3">
+                          <div><label className="block text-xs font-medium text-slate-500 mb-1">3. Tekil</label><input value={formData.thirdPerson} onChange={(e) => setFormData({ ...formData, thirdPerson: e.target.value })} className="w-full p-2 border border-slate-200 rounded-lg outline-none text-sm" placeholder="goes"/></div>
+                          <div><label className="block text-xs font-medium text-slate-500 mb-1">V-ing</label><input value={formData.vIng} onChange={(e) => setFormData({ ...formData, vIng: e.target.value })} className="w-full p-2 border border-slate-200 rounded-lg outline-none text-sm" placeholder="going"/></div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div><label className="block text-xs font-medium text-slate-500 mb-1">V2 (Past)</label><input value={formData.v2} onChange={(e) => setFormData({ ...formData, v2: e.target.value })} className="w-full p-2 border border-slate-200 rounded-lg outline-none text-sm" placeholder="went"/></div>
+                        <div><label className="block text-xs font-medium text-slate-500 mb-1">V3 (Participle)</label><input value={formData.v3} onChange={(e) => setFormData({ ...formData, v3: e.target.value })} className="w-full p-2 border border-slate-200 rounded-lg outline-none text-sm" placeholder="gone"/></div>
+                      </div>
+                  </div>
+              </div>
+
+              {/* --- DETAYLI SIFAT BÖLÜMÜ --- */}
+              <div className="bg-orange-50 p-3 rounded-xl border border-orange-100">
+                  <div className="text-xs font-bold text-orange-400 mb-2 uppercase tracking-wide">Sıfat & Zarf Detayları</div>
+                  <div className="space-y-3">
+                      <div><label className="block text-xs font-medium text-orange-700/70 mb-1">Zarf Hali (-ly)</label><input value={formData.advLy} onChange={(e) => setFormData({ ...formData, advLy: e.target.value })} className="w-full p-2 border border-orange-200 rounded-lg outline-none text-sm" placeholder="quickly"/></div>
+                      <div className="grid grid-cols-2 gap-3">
+                          <div><label className="block text-xs font-medium text-orange-700/70 mb-1">Karşılaştırma</label><input value={formData.compEr} onChange={(e) => setFormData({ ...formData, compEr: e.target.value })} className="w-full p-2 border border-orange-200 rounded-lg outline-none text-sm" placeholder="faster"/></div>
+                          <div><label className="block text-xs font-medium text-orange-700/70 mb-1">Üstünlük</label><input value={formData.superEst} onChange={(e) => setFormData({ ...formData, superEst: e.target.value })} className="w-full p-2 border border-orange-200 rounded-lg outline-none text-sm" placeholder="fastest"/></div>
+                      </div>
+                  </div>
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <label className="block text-sm font-medium text-slate-700">Anlamlar</label>
+                  <button type="button" onClick={addDefinition} className="text-sm text-indigo-600 flex items-center gap-1 font-medium"><Plus className="w-4 h-4" /> Ekle</button>
+                </div>
+                {formData.definitions.map((def, index) => (
+                  <div key={index} className="flex flex-col gap-2 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                    <div className="flex gap-2 items-start">
+                        <div className="flex-1 space-y-2">
+                        <select value={def.type} onChange={(e) => updateDefinition(index, "type", e.target.value)} className="w-full p-2 text-sm border border-slate-200 rounded-lg outline-none bg-white">
+                            {WORD_TYPES.map((t) => (<option key={t.value} value={t.value}>{t.label}</option>))}
+                        </select>
+                        <input value={def.meaning} onChange={(e) => updateDefinition(index, "meaning", e.target.value)} className="w-full p-2 text-sm border border-slate-200 rounded-lg outline-none" placeholder="Türkçe anlam..."/>
+                        </div>
+                        {formData.definitions.length > 1 && (<button type="button" onClick={() => removeDefinition(index)} className="p-2 text-slate-400 hover:text-red-500 mt-1"><Trash2 className="w-4 h-4" /></button>)}
+                    </div>
+                    <input value={def.engExplanation} onChange={(e) => updateDefinition(index, "engExplanation", e.target.value)} className="w-full p-2 text-sm border border-indigo-100 bg-indigo-50/50 rounded-lg outline-none placeholder:text-slate-400" placeholder="İngilizce açıklama..."/>
+                  </div>
+                ))}
               </div>
               <textarea value={formData.sentence} onChange={e=>setFormData({...formData, sentence:e.target.value})} className="w-full p-3 border rounded-xl" placeholder="Örnek Cümle"/>
               <button type="submit" disabled={saving} className="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl">{saving ? <Loader2 className="animate-spin mx-auto"/> : "Kaydet"}</button>
@@ -2078,7 +2067,7 @@ export default function App() {
     return <FormComponent />;
   }
 
-  // --- SENTENCE ANALYSIS VIEW (GÜNCELLENMİŞ - DETAYLI & SAĞLAM) ---
+  // --- SENTENCE ANALYSIS VIEW (GÜNCELLENMİŞ) ---
   if (currentView === "sentence_analysis") {
     return (
       <div className="min-h-screen bg-slate-50 p-6 flex flex-col items-center relative">
@@ -2090,28 +2079,18 @@ export default function App() {
           </div>
           <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
             <textarea value={analysisText} onChange={(e) => setAnalysisText(e.target.value)} className="w-full p-3 border-0 outline-none resize-none text-slate-700 min-h-[100px]" placeholder="Analiz edilecek cümleyi yaz..." />
-            <div className="flex justify-end mt-2">
-                <button onClick={handleAnalyzeSentence} disabled={isAnalyzing} className="bg-teal-600 text-white px-6 py-2.5 rounded-xl font-bold flex items-center gap-2">
-                    {isAnalyzing ? <Loader2 className="animate-spin"/> : <Microscope/>} Analiz Et
-                </button>
-            </div>
+            <div className="flex justify-end mt-2"><button onClick={handleAnalyzeSentence} disabled={isAnalyzing} className="bg-teal-600 text-white px-6 py-2.5 rounded-xl font-bold flex items-center gap-2">{isAnalyzing ? <Loader2 className="animate-spin"/> : <Microscope/>} Analiz Et</button></div>
           </div>
-          
           {analysisResult && (
             <div className="space-y-4 animate-in fade-in slide-in-from-bottom-6 duration-500">
-              {/* 1. DOĞAL ÇEVİRİ */}
               <div className="bg-indigo-50 p-5 rounded-2xl border border-indigo-100 shadow-sm">
                 <h3 className="text-xs font-bold text-indigo-400 uppercase mb-2 flex items-center gap-2"><Globe className="w-4 h-4" /> Türkçe Çeviri</h3>
                 <p className="text-lg text-slate-800 font-medium leading-relaxed">{analysisResult.turkishTranslation}</p>
               </div>
-              
-              {/* 2. GRAMER ANALİZİ */}
               <div className="bg-teal-50 p-5 rounded-2xl border border-teal-100 shadow-sm">
                 <h3 className="text-xs font-bold text-teal-500 uppercase mb-2 flex items-center gap-2"><Brain className="w-4 h-4" /> Gramer Yapısı</h3>
                 <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">{analysisResult.grammarAnalysis}</p>
               </div>
-              
-              {/* 3. SAF KELİMELER VE RENKLENDİRME */}
               {analysisResult.rootWords?.length > 0 && (
                 <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
                    <h3 className="text-xs font-bold text-slate-400 uppercase mb-3 flex items-center gap-2"><BookOpen className="w-4 h-4" /> Kelime Kökleri</h3>
@@ -2119,13 +2098,7 @@ export default function App() {
                     {analysisResult.rootWords.map((word, idx) => {
                         const exists = isWordInRegistry(word);
                         return (
-                            <button 
-                                key={idx} 
-                                onClick={() => { if (!exists) setQuickAddWord(word); }} 
-                                disabled={exists} 
-                                className={`px-3 py-1.5 rounded-lg font-bold text-sm border transition-all ${exists ? "bg-green-50 text-green-700 border-green-200 cursor-default" : "bg-red-50 text-red-600 border-red-200 hover:bg-red-100 cursor-pointer shadow-sm"}`} 
-                                title={exists ? "Bu kelime zaten var" : "Eklemek için tıkla"}
-                            >
+                            <button key={idx} onClick={() => { if (!exists) setQuickAddWord(word); }} disabled={exists} className={`px-3 py-1.5 rounded-lg font-bold text-sm border transition-all ${exists ? "bg-green-50 text-green-700 border-green-200 cursor-default" : "bg-red-50 text-red-600 border-red-200 hover:bg-red-100 cursor-pointer shadow-sm"}`} title={exists ? "Bu kelime zaten var" : "Eklemek için tıkla"}>
                                 {word} {!exists && <Plus className="w-3 h-3 inline ml-1"/>}
                             </button>
                         )
@@ -2133,8 +2106,6 @@ export default function App() {
                   </div>
                 </div>
               )}
-              
-              {/* 4. MANUEL EKLEME BUTONU */}
               <div className="pt-2">
                 <button onClick={() => setQuickAddWord("")} className="w-full bg-white hover:bg-slate-50 text-slate-700 border-2 border-dashed border-slate-300 font-bold py-4 px-6 rounded-xl flex items-center justify-between group">
                   <div className="flex items-center gap-3"><div className="bg-blue-50 p-2 rounded-lg text-blue-600"><Plus className="w-6 h-6" /></div><div className="text-left"><div className="text-base">Manuel Kelime Ekle</div></div></div><Plus className="w-5 h-5 opacity-40" />
