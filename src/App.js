@@ -2144,7 +2144,7 @@ export default function App() {
     );
   };
 
-  // --- ADD / EDIT FORM (USER - COMPACT TOP BAR) ---
+  // --- ADD / EDIT FORM (MOBİLDE TAM EKRAN, PC'DE KUTU - KESİN ÇÖZÜM) ---
   if (currentView === "add_word" || currentView === "edit_word") {
     const isEditMode = currentView === "edit_word";
     const normalizedEditWord = isEditMode && editingWord ? normalizeWord(editingWord) : null;
@@ -2221,39 +2221,44 @@ export default function App() {
       const removeDefinition = (i) => { if(formData.definitions.length > 1) setFormData(p => ({...p, definitions: p.definitions.filter((_, idx) => idx !== i)})); };
 
       return (
-        <div className="fixed inset-0 bg-slate-50/95 z-50 flex items-center justify-center p-4">
-          <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl flex flex-col max-h-[90vh] border border-slate-200">
+        // DIŞ KAP: Mobilde padding yok (p-0), Masaüstünde var (sm:p-4).
+        <div className="fixed inset-0 bg-slate-50/95 z-50 flex items-center justify-center p-0 sm:p-4">
+          
+          {/* KART YAPISI: 
+              Mobilde: w-full h-full rounded-none (Tam Ekran)
+              Masaüstünde: sm:h-auto sm:max-h-[90vh] sm:rounded-2xl (Kutu Görünümü)
+          */}
+          <div className="w-full h-full sm:h-auto sm:max-h-[90vh] sm:max-w-md bg-white sm:rounded-2xl shadow-2xl flex flex-col border-none sm:border sm:border-slate-200">
             
             {/* HEADER */}
-            <div className="flex items-center justify-between p-4 border-b border-slate-100 shrink-0">
+            <div className="flex items-center justify-between p-4 border-b border-slate-100 shrink-0 bg-white">
               <h2 className="text-xl font-bold text-slate-800">{isEditMode ? "Düzenle" : "Yeni Kelime"}</h2>
               <button onClick={() => isEditMode ? setCurrentView(returnView) : handleGoHome()} className="p-2 bg-slate-100 rounded-full hover:bg-red-50 hover:text-red-500 transition-colors">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* CONTENT - SCROLLABLE */}
-            <div className="p-5 overflow-y-auto">
-              <form onSubmit={handleSubmit} className="space-y-4">
+            {/* CONTENT - flex-1 ve overflow-y-auto sayesinde kalan tüm boşluğu burası alır ve kayar */}
+            <div className="flex-1 overflow-y-auto p-4 sm:p-5">
+              <form onSubmit={handleSubmit} className="space-y-4 pb-10 sm:pb-0">
                 
-                {/* --- BURASI KÜÇÜLTÜLDÜ (Compact Mode) --- */}
-                <div className="flex gap-2 items-center">
+                {/* --- COMPACT INPUT ALANI --- */}
+                <div className="flex gap-2 items-center sticky top-0 bg-white z-10 py-1">
                     <input 
                       value={formData.word} 
                       onChange={(e) => setFormData({ ...formData, word: e.target.value })} 
-                      className="flex-1 p-2 border rounded-lg font-bold focus:ring-2 focus:ring-indigo-500 outline-none text-sm h-10" 
+                      className="flex-1 p-2 border border-slate-300 rounded-lg font-bold focus:ring-2 focus:ring-indigo-500 outline-none text-sm h-11 shadow-sm" 
                       placeholder="Kelime Yaz..." 
                       autoFocus 
                     />
-                    {/* Butonların paddingi azaltıldı ve boyutları sabitlendi */}
-                    <button type="button" onClick={handleConvertToRoot} disabled={rootLoading || !formData.word} className="bg-orange-100 text-orange-600 w-10 h-10 flex items-center justify-center rounded-lg hover:bg-orange-200 shrink-0" title="Kök Bul">
+                    <button type="button" onClick={handleConvertToRoot} disabled={rootLoading || !formData.word} className="bg-orange-50 border border-orange-100 text-orange-600 w-11 h-11 flex items-center justify-center rounded-lg hover:bg-orange-100 shrink-0 shadow-sm" title="Kök Bul">
                         {rootLoading ? <Loader2 className="w-5 h-5 animate-spin"/> : <Wand2 className="w-5 h-5"/>}
                     </button>
-                    <button type="button" onClick={handleAIFill} disabled={aiLoading || !formData.word} className="bg-purple-600 text-white w-10 h-10 flex items-center justify-center rounded-lg hover:bg-purple-700 shrink-0" title="AI Doldur">
+                    <button type="button" onClick={handleAIFill} disabled={aiLoading || !formData.word} className="bg-purple-600 text-white w-11 h-11 flex items-center justify-center rounded-lg hover:bg-purple-700 shrink-0 shadow-sm" title="AI Doldur">
                         {aiLoading ? <Loader2 className="w-5 h-5 animate-spin"/> : <Brain className="w-5 h-5"/>}
                     </button>
                 </div>
-                {/* ---------------------------------------- */}
+                {/* -------------------------- */}
 
                 {/* GRUP 1: FİİL DETAYLARI */}
                 <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
@@ -2304,7 +2309,7 @@ export default function App() {
                   ))}
                 </div>
                 <textarea value={formData.sentence} onChange={e=>setFormData({...formData, sentence:e.target.value})} className="w-full p-3 border rounded-xl min-h-[100px] outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Örnek Cümle"/>
-                <button type="submit" disabled={saving} className="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl hover:bg-indigo-700 transition-colors">{saving ? <Loader2 className="animate-spin mx-auto"/> : "Kaydet"}</button>
+                <button type="submit" disabled={saving} className="w-full bg-indigo-600 text-white font-bold py-3.5 rounded-xl hover:bg-indigo-700 transition-colors shadow-lg">{saving ? <Loader2 className="animate-spin mx-auto"/> : "Kaydet"}</button>
               </form>
             </div>
           </div>
