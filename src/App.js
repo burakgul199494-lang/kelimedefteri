@@ -1603,7 +1603,7 @@ export default function App() {
     );
   }
 
-  // --- ADMIN: ADD / EDIT SYSTEM WORD ---
+// --- ADMIN: ADD / EDIT SYSTEM WORD ---
   if (currentView === "add_system_word" && isAdmin) {
     const isEditMode = !!editingWord;
     const initialData = isEditMode
@@ -1616,20 +1616,14 @@ export default function App() {
           thirdPerson: editingWord.thirdPerson || "", 
           advLy: editingWord.advLy || "",             
           compEr: editingWord.compEr || "",            
-          superEst: editingWord.superEst || "",        
+          superEst: editingWord.superEst || "",       
           definitions: editingWord.definitions.map(d => ({...d, engExplanation: d.engExplanation || ""})),
           sentence: editingWord.sentence,
         }
       : {
           word: "",
-          plural: "",
-          v2: "",
-          v3: "",
-          vIng: "",
-          thirdPerson: "",
-          advLy: "",
-          compEr: "",
-          superEst: "",
+          plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", 
+          advLy: "", compEr: "", superEst: "",
           definitions: [{ type: "noun", meaning: "", engExplanation: "" }],
           sentence: "",
         };
@@ -1638,378 +1632,174 @@ export default function App() {
       const [formData, setFormData] = useState(initialData);
       const [error, setError] = useState("");
       const [saving, setSaving] = useState(false);
-      // --- AI LOADING STATES ---
       const [aiLoading, setAiLoading] = useState(false);
       const [rootLoading, setRootLoading] = useState(false);
 
-      const addDefinition = () =>
-        setFormData((prev) => ({
-          ...prev,
-          definitions: [
-            ...prev.definitions,
-            { type: "noun", meaning: "", engExplanation: "" },
-          ],
-        }));
-      const removeDefinition = (index) => {
-        if (formData.definitions.length === 1) return;
-        setFormData((prev) => ({
-          ...prev,
-          definitions: prev.definitions.filter((_, i) => i !== index),
-        }));
-      };
-      const updateDefinition = (index, field, value) => {
-        const newDefs = [...formData.definitions];
-        newDefs[index] = { ...newDefs[index], [field]: value };
-        setFormData((prev) => ({ ...prev, definitions: newDefs }));
-      };
+      const addDefinition = () => setFormData((prev) => ({ ...prev, definitions: [ ...prev.definitions, { type: "noun", meaning: "", engExplanation: "" } ] }));
+      const removeDefinition = (index) => { if (formData.definitions.length === 1) return; setFormData((prev) => ({ ...prev, definitions: prev.definitions.filter((_, i) => i !== index) })); };
+      const updateDefinition = (index, field, value) => { const newDefs = [...formData.definitions]; newDefs[index] = { ...newDefs[index], [field]: value }; setFormData((prev) => ({ ...prev, definitions: newDefs })); };
 
-      // --- KÖK BULMA (ADMIN) ---
       const handleConvertToRoot = async () => {
           if (!formData.word) return;
           setRootLoading(true);
           try {
               const result = await fetchRootFromAI(formData.word);
-              if (result.changed) {
-                  setFormData(prev => ({ ...prev, word: result.root }));
-              }
-          } catch (e) {
-              console.error(e);
-          } finally {
-              setRootLoading(false);
-          }
+              if (result.changed) { setFormData(prev => ({ ...prev, word: result.root })); }
+          } catch (e) { console.error(e); } finally { setRootLoading(false); }
       };
 
-      // --- AI HANDLER (ADMIN) ---
       const handleAIFill = async () => {
-        if (!formData.word) {
-            alert("Lütfen önce bir kelime yazın!");
-            return;
-        }
+        if (!formData.word) { alert("Lütfen önce bir kelime yazın!"); return; }
         setAiLoading(true);
         setError("");
         try {
             const data = await fetchWordAnalysisFromAI(formData.word);
             if (data) {
                 const safeDefinitions = Array.isArray(data.definitions) 
-                    ? data.definitions.map(d => ({
-                        type: d.type || "noun", 
-                        meaning: d.meaning || "", 
-                        engExplanation: d.engExplanation || ""
-                      }))
+                    ? data.definitions.map(d => ({ type: d.type || "noun", meaning: d.meaning || "", engExplanation: d.engExplanation || "" }))
                     : [{ type: "noun", meaning: "", engExplanation: "" }];
                 
                 setFormData((prev) => ({
                     ...prev,
                     word: data.word, 
-                    plural: data.plural || "",
-                    v2: data.v2 || "",
-                    v3: data.v3 || "",
-                    vIng: data.vIng || "",
-                    thirdPerson: data.thirdPerson || "",
-                    advLy: data.advLy || "",
-                    compEr: data.compEr || "",
-                    superEst: data.superEst || "",
+                    plural: data.plural || "", v2: data.v2 || "", v3: data.v3 || "", vIng: data.vIng || "", thirdPerson: data.thirdPerson || "",
+                    advLy: data.advLy || "", compEr: data.compEr || "", superEst: data.superEst || "",
                     sentence: data.sentence || "",
                     definitions: safeDefinitions
                 }));
             }
-        } catch (err) {
-            setError("AI Hatası: " + err.message);
-        } finally {
-            setAiLoading(false);
-        }
+        } catch (err) { setError("AI Hatası: " + err.message); } finally { setAiLoading(false); }
       };
 
       const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!formData.word || !formData.sentence) {
-          setError("Lütfen kelime ve örnek cümleyi doldurun.");
-          return;
-        }
+        if (!formData.word || !formData.sentence) { setError("Lütfen kelime ve örnek cümleyi doldurun."); return; }
         const hasEmptyDef = formData.definitions.some((d) => !d.meaning.trim());
-        if (hasEmptyDef) {
-          setError("Lütfen tüm anlamları doldurun.");
-          return;
-        }
-        if (
-          !isEditMode ||
-          (isEditMode &&
-            formData.word.toLowerCase() !== editingWord.word.toLowerCase())
-        ) {
+        if (hasEmptyDef) { setError("Lütfen tüm anlamları doldurun."); return; }
+        
+        if (!isEditMode || (isEditMode && formData.word.toLowerCase() !== editingWord.word.toLowerCase())) {
           const normalizedInput = formData.word.toLowerCase().trim();
-          const exists = dynamicSystemWords.some(
-            (w) =>
-              w.word.toLowerCase() === normalizedInput &&
-              (!isEditMode || w.id !== editingWord.id)
-          );
-          if (exists) {
-            setError("Bu kelime sistemde zaten kayıtlı!");
-            return;
-          }
+          const exists = dynamicSystemWords.some((w) => w.word.toLowerCase() === normalizedInput && (!isEditMode || w.id !== editingWord.id));
+          if (exists) { setError("Bu kelime sistemde zaten kayıtlı!"); return; }
         }
+
         setSaving(true);
         let result;
-        if (isEditMode)
-          result = await handleUpdateSystemWord(editingWord.id, formData);
+        if (isEditMode) result = await handleUpdateSystemWord(editingWord.id, formData);
         else result = await handleSaveSystemWord(formData);
         setSaving(false);
+
         if (result.success) {
-          alert(
-            isEditMode
-              ? "Kelime güncellendi!"
-              : "Kelime başarıyla eklendi!"
-          );
-          setEditingWord(null);
-          setCurrentView("admin_dashboard");
+          alert(isEditMode ? "Kelime güncellendi!" : "Kelime başarıyla eklendi!");
+          
+          if (isEditMode) {
+             setEditingWord(null);
+             setCurrentView("admin_dashboard");
+          } else {
+             // YENİ EKLENDİĞİNDE KAPANMA, TEMİZLE
+             setFormData({
+                 word: "", plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+                 definitions: [{ type: "noun", meaning: "", engExplanation: "" }],
+                 sentence: "",
+             });
+             setError("");
+          }
         } else {
           setError(result.message);
         }
       };
 
       return (
-        <div className="min-h-screen bg-slate-800 p-4 flex items-center justify-center">
-         <div className="w-full max-w-md bg-white rounded-2xl shadow-lg p-6 my-8 overflow-y-auto max-h-screen">
-            <div className="flex items-center justify-between mb-6">
+        <div className="fixed inset-0 bg-slate-800 z-50 flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-white rounded-2xl shadow-lg flex flex-col max-h-[90vh]">
+            <div className="flex items-center justify-between p-4 border-b border-slate-100 shrink-0">
               <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                <Shield className="w-5 h-5 text-indigo-600" />{" "}
-                {isEditMode ? "Kelime Düzenle" : "Sistem Kelimesi Ekle"}
+                <Shield className="w-5 h-5 text-indigo-600" /> {isEditMode ? "Kelime Düzenle" : "Sistem Kelimesi Ekle"}
               </h2>
-              <button
-                onClick={() => {
-                  setEditingWord(null);
-                  setCurrentView("admin_dashboard");
-                }}
-                className="p-2 bg-slate-100 rounded-full hover:bg-slate-200"
-              >
+              <button onClick={() => { setEditingWord(null); setCurrentView("admin_dashboard"); }} className="p-2 bg-slate-100 rounded-full hover:bg-slate-200">
                 <X className="w-5 h-5 text-slate-600" />
               </button>
             </div>
-            <div className="bg-yellow-50 text-yellow-800 p-3 rounded-lg mb-4 text-xs border border-yellow-200">
-              Dikkat: Yapacağınız değişiklikler <b>tüm kullanıcılarda</b> anında
-              görünecektir.
-            </div>
-            {error && (
-              <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-4 flex items-center gap-2 text-sm">
-                <AlertCircle className="w-4 h-4" /> {error}
-              </div>
-            )}
-            <form onSubmit={handleSubmit} className="space-y-4">
-              
-              {/* KELİME, KÖK BUL VE AI BUTONU (ADMIN) */}
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Kelime
-                </label>
-                <div className="flex gap-2">
-                    <input
-                    type="text"
-                    value={formData.word}
-                    onChange={(e) =>
-                        setFormData({ ...formData, word: e.target.value })
-                    }
-                    className="flex-1 p-3 border border-slate-200 rounded-xl outline-none"
-                    placeholder="Örn: Bank"
-                    />
-                    {/* KÖK BULMA BUTONU */}
-                    <button
-                      type="button"
-                      onClick={handleConvertToRoot}
-                      disabled={rootLoading || !formData.word}
-                      className="bg-orange-100 hover:bg-orange-200 text-orange-600 p-3 rounded-xl transition-colors disabled:opacity-50"
-                      title="Kelimeyi Yalın Hâle (Kök) Çevir"
-                    >
-                      {rootLoading ? (
-                        <Loader2 className="w-5 h-5 animate-spin" />
-                      ) : (
-                        <Wand2 className="w-5 h-5" />
-                      )}
-                    </button>
-                    {/* AI BUTONU */}
-                    <button
-                        type="button"
-                        onClick={handleAIFill}
-                        disabled={aiLoading || !formData.word}
-                        className="bg-purple-600 hover:bg-purple-700 text-white px-3 rounded-xl font-bold transition-colors disabled:opacity-50 flex items-center justify-center"
-                        title="AI ile Doldur"
-                    >
-                        {aiLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Brain className="w-5 h-5" />}
-                    </button>
+            
+            <div className="p-6 overflow-y-auto">
+                <div className="bg-yellow-50 text-yellow-800 p-3 rounded-lg mb-4 text-xs border border-yellow-200">
+                  Dikkat: Yapacağınız değişiklikler <b>tüm kullanıcılarda</b> anında görünecektir.
                 </div>
-              </div>
-
-              {/* GRUP 1: İSİM VE FİİL DETAYLARI */}
-              <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                  <div className="text-xs font-bold text-slate-400 mb-2 uppercase tracking-wide">Fiil & İsim Detayları</div>
-                  <div className="space-y-3">
-                      <div>
-                        <label className="block text-xs font-medium text-slate-500 mb-1">
-                          Çoğul (Plural)
-                        </label>
-                        <input
-                          type="text"
-                          value={formData.plural}
-                          onChange={(e) =>
-                            setFormData({ ...formData, plural: e.target.value })
-                          }
-                          className="w-full p-2 border border-slate-200 rounded-lg outline-none text-sm"
-                        />
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
-                          <div>
-                             <label className="block text-xs font-medium text-slate-500 mb-1">3. Tekil (He/She/It)</label>
-                             <input type="text" value={formData.thirdPerson} onChange={(e) => setFormData({ ...formData, thirdPerson: e.target.value })} className="w-full p-2 border border-slate-200 rounded-lg outline-none text-sm" placeholder="goes"/>
-                          </div>
-                          <div>
-                             <label className="block text-xs font-medium text-slate-500 mb-1">V-ing (Gerund)</label>
-                             <input type="text" value={formData.vIng} onChange={(e) => setFormData({ ...formData, vIng: e.target.value })} className="w-full p-2 border border-slate-200 rounded-lg outline-none text-sm" placeholder="going"/>
-                          </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <label className="block text-xs font-medium text-slate-500 mb-1">V2 (Past)</label>
-                          <input
-                            type="text"
-                            value={formData.v2}
-                            onChange={(e) =>
-                              setFormData({ ...formData, v2: e.target.value })
-                            }
-                            className="w-full p-2 border border-slate-200 rounded-lg outline-none text-sm"
-                            placeholder="went"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-medium text-slate-500 mb-1">V3 (Participle)</label>
-                          <input
-                            type="text"
-                            value={formData.v3}
-                            onChange={(e) =>
-                              setFormData({ ...formData, v3: e.target.value })
-                            }
-                            className="w-full p-2 border border-slate-200 rounded-lg outline-none text-sm"
-                            placeholder="gone"
-                          />
-                        </div>
-                      </div>
-                  </div>
-              </div>
-
-              {/* GRUP 2: SIFAT VE ZARF DETAYLARI (YENİ) */}
-              <div className="bg-orange-50 p-3 rounded-xl border border-orange-100">
-                  <div className="text-xs font-bold text-orange-400 mb-2 uppercase tracking-wide">Sıfat & Zarf Detayları</div>
-                  <div className="space-y-3">
-                      <div>
-                          <label className="block text-xs font-medium text-orange-700/70 mb-1">Zarf Hali (-ly)</label>
-                          <input type="text" value={formData.advLy} onChange={(e) => setFormData({ ...formData, advLy: e.target.value })} className="w-full p-2 border border-orange-200 rounded-lg outline-none text-sm" placeholder="quickly"/>
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
-                          <div>
-                             <label className="block text-xs font-medium text-orange-700/70 mb-1">Karşılaştırma (-er)</label>
-                             <input type="text" value={formData.compEr} onChange={(e) => setFormData({ ...formData, compEr: e.target.value })} className="w-full p-2 border border-orange-200 rounded-lg outline-none text-sm" placeholder="faster"/>
-                          </div>
-                          <div>
-                             <label className="block text-xs font-medium text-orange-700/70 mb-1">Üstünlük (-est)</label>
-                             <input type="text" value={formData.superEst} onChange={(e) => setFormData({ ...formData, superEst: e.target.value })} className="w-full p-2 border border-orange-200 rounded-lg outline-none text-sm" placeholder="fastest"/>
-                          </div>
-                      </div>
-                  </div>
-              </div>
-
-              <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <label className="block text-sm font-medium text-slate-700">
-                    Anlamlar
-                  </label>
-                  <button
-                    type="button"
-                    onClick={addDefinition}
-                    className="text-sm text-indigo-600 flex items-center gap-1 font-medium"
-                  >
-                    <Plus className="w-4 h-4" /> Ekle
-                  </button>
-                </div>
-                {formData.definitions.map((def, index) => (
-                  <div
-                    key={index}
-                    className="flex flex-col gap-2 bg-slate-50 p-3 rounded-xl border border-slate-100"
-                  >
-                    <div className="flex gap-2 items-start">
-                        <div className="flex-1 space-y-2">
-                        <select
-                            value={def.type}
-                            onChange={(e) =>
-                            updateDefinition(index, "type", e.target.value)
-                            }
-                            className="w-full p-2 text-sm border border-slate-200 rounded-lg outline-none bg-white"
-                        >
-                            {WORD_TYPES.map((t) => (
-                            <option key={t.value} value={t.value}>
-                                {t.label}
-                            </option>
-                            ))}
-                        </select>
-                        <input
-                            type="text"
-                            value={def.meaning}
-                            onChange={(e) =>
-                            updateDefinition(index, "meaning", e.target.value)
-                            }
-                            className="w-full p-2 text-sm border border-slate-200 rounded-lg outline-none"
-                            placeholder="Türkçe anlam..."
-                        />
-                        </div>
-                        {formData.definitions.length > 1 && (
-                        <button
-                            type="button"
-                            onClick={() => removeDefinition(index)}
-                            className="p-2 text-slate-400 hover:text-red-500 mt-1"
-                        >
-                            <Trash2 className="w-4 h-4" />
-                        </button>
-                        )}
+                {error && (<div className="bg-red-50 text-red-600 p-3 rounded-lg mb-4 flex items-center gap-2 text-sm"><AlertCircle className="w-4 h-4" /> {error}</div>)}
+                
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Kelime</label>
+                    <div className="flex gap-2">
+                        <input type="text" value={formData.word} onChange={(e) => setFormData({ ...formData, word: e.target.value })} className="flex-1 p-3 border border-slate-200 rounded-xl outline-none" placeholder="Örn: Bank" />
+                        <button type="button" onClick={handleConvertToRoot} disabled={rootLoading || !formData.word} className="bg-orange-100 hover:bg-orange-200 text-orange-600 p-3 rounded-xl transition-colors disabled:opacity-50" title="Kök Bul">{rootLoading ? (<Loader2 className="w-5 h-5 animate-spin" />) : (<Wand2 className="w-5 h-5" />)}</button>
+                        <button type="button" onClick={handleAIFill} disabled={aiLoading || !formData.word} className="bg-purple-600 hover:bg-purple-700 text-white px-3 rounded-xl font-bold transition-colors disabled:opacity-50 flex items-center justify-center" title="AI ile Doldur">{aiLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Brain className="w-5 h-5" />}</button>
                     </div>
-                    <input
-                        type="text"
-                        value={def.engExplanation}
-                        onChange={(e) =>
-                            updateDefinition(index, "engExplanation", e.target.value)
-                        }
-                        className="w-full p-2 text-sm border border-indigo-100 bg-indigo-50/50 rounded-lg outline-none placeholder:text-slate-400"
-                        placeholder="Bu anlam için İngilizce açıklama (Opsiyonel)..."
-                    />
                   </div>
-                ))}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Örnek Cümle
-                </label>
-                <textarea
-                  value={formData.sentence}
-                  onChange={(e) =>
-                    setFormData({ ...formData, sentence: e.target.value })
-                  }
-                  className="w-full p-3 border border-slate-200 rounded-xl outline-none h-24 resize-none"
-                  placeholder="Örn: I put my money in the bank."
-                />
-              </div>
-              <button
-                type="submit"
-                disabled={saving}
-                className="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 px-6 rounded-xl shadow-md flex items-center justify-center gap-2"
-              >
-                {saving ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                ) : (
-                  <Save className="w-5 h-5" />
-                )}{" "}
-                {isEditMode ? "Güncelle" : "Sisteme Kaydet"}
-              </button>
-            </form>
+
+                  {/* GRUP 1 */}
+                  <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                      <div className="text-xs font-bold text-slate-400 mb-2 uppercase tracking-wide">Fiil & İsim Detayları</div>
+                      <div className="space-y-3">
+                          <div><label className="block text-xs font-medium text-slate-500 mb-1">Çoğul</label><input type="text" value={formData.plural} onChange={(e) => setFormData({ ...formData, plural: e.target.value })} className="w-full p-2 border border-slate-200 rounded-lg outline-none text-sm bg-white"/></div>
+                          <div className="grid grid-cols-2 gap-3">
+                              <div><label className="block text-xs font-medium text-slate-500 mb-1">3. Tekil</label><input type="text" value={formData.thirdPerson} onChange={(e) => setFormData({ ...formData, thirdPerson: e.target.value })} className="w-full p-2 border border-slate-200 rounded-lg outline-none text-sm bg-white" placeholder="goes"/></div>
+                              <div><label className="block text-xs font-medium text-slate-500 mb-1">V-ing</label><input type="text" value={formData.vIng} onChange={(e) => setFormData({ ...formData, vIng: e.target.value })} className="w-full p-2 border border-slate-200 rounded-lg outline-none text-sm bg-white" placeholder="going"/></div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div><label className="block text-xs font-medium text-slate-500 mb-1">V2</label><input type="text" value={formData.v2} onChange={(e) => setFormData({ ...formData, v2: e.target.value })} className="w-full p-2 border border-slate-200 rounded-lg outline-none text-sm bg-white" placeholder="went"/></div>
+                            <div><label className="block text-xs font-medium text-slate-500 mb-1">V3</label><input type="text" value={formData.v3} onChange={(e) => setFormData({ ...formData, v3: e.target.value })} className="w-full p-2 border border-slate-200 rounded-lg outline-none text-sm bg-white" placeholder="gone"/></div>
+                          </div>
+                      </div>
+                  </div>
+
+                  {/* GRUP 2 */}
+                  <div className="bg-orange-50 p-3 rounded-xl border border-orange-100">
+                      <div className="text-xs font-bold text-orange-400 mb-2 uppercase tracking-wide">Sıfat & Zarf Detayları</div>
+                      <div className="space-y-3">
+                          <div><label className="block text-xs font-medium text-orange-700/70 mb-1">Zarf (-ly)</label><input type="text" value={formData.advLy} onChange={(e) => setFormData({ ...formData, advLy: e.target.value })} className="w-full p-2 border border-orange-200 rounded-lg outline-none text-sm bg-white" placeholder="quickly"/></div>
+                          <div className="grid grid-cols-2 gap-3">
+                              <div><label className="block text-xs font-medium text-orange-700/70 mb-1">Comp (-er)</label><input type="text" value={formData.compEr} onChange={(e) => setFormData({ ...formData, compEr: e.target.value })} className="w-full p-2 border border-orange-200 rounded-lg outline-none text-sm bg-white" placeholder="faster"/></div>
+                              <div><label className="block text-xs font-medium text-orange-700/70 mb-1">Super (-est)</label><input type="text" value={formData.superEst} onChange={(e) => setFormData({ ...formData, superEst: e.target.value })} className="w-full p-2 border border-orange-200 rounded-lg outline-none text-sm bg-white" placeholder="fastest"/></div>
+                          </div>
+                      </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <label className="block text-sm font-medium text-slate-700">Anlamlar</label>
+                      <button type="button" onClick={addDefinition} className="text-sm text-indigo-600 flex items-center gap-1 font-medium"><Plus className="w-4 h-4" /> Ekle</button>
+                    </div>
+                    {formData.definitions.map((def, index) => (
+                      <div key={index} className="flex flex-col gap-2 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                        <div className="flex gap-2 items-start">
+                            <div className="flex-1 space-y-2">
+                            <select value={def.type} onChange={(e) => updateDefinition(index, "type", e.target.value)} className="w-full p-2 text-sm border border-slate-200 rounded-lg outline-none bg-white">
+                                {WORD_TYPES.map((t) => (<option key={t.value} value={t.value}>{t.label}</option>))}
+                            </select>
+                            <input type="text" value={def.meaning} onChange={(e) => updateDefinition(index, "meaning", e.target.value)} className="w-full p-2 text-sm border border-slate-200 rounded-lg outline-none" placeholder="Türkçe anlam..." />
+                            </div>
+                            {formData.definitions.length > 1 && (<button type="button" onClick={() => removeDefinition(index)} className="p-2 text-slate-400 hover:text-red-500 mt-1"><Trash2 className="w-4 h-4" /></button>)}
+                        </div>
+                        <input type="text" value={def.engExplanation} onChange={(e) => updateDefinition(index, "engExplanation", e.target.value)} className="w-full p-2 text-sm border border-indigo-100 bg-indigo-50/50 rounded-lg outline-none placeholder:text-slate-400" placeholder="İngilizce açıklama..." />
+                      </div>
+                    ))}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Örnek Cümle</label>
+                    <textarea value={formData.sentence} onChange={(e) => setFormData({ ...formData, sentence: e.target.value })} className="w-full p-3 border border-slate-200 rounded-xl outline-none h-24 resize-none" placeholder="Örn: I put my money in the bank." />
+                  </div>
+                  <button type="submit" disabled={saving} className="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 px-6 rounded-xl shadow-md flex items-center justify-center gap-2">
+                    {saving ? (<Loader2 className="w-5 h-5 animate-spin" />) : (<Save className="w-5 h-5" />)} {isEditMode ? "Güncelle" : "Sisteme Kaydet"}
+                  </button>
+                </form>
+            </div>
           </div>
         </div>
       );
     };
     return <FormComponent />;
+  }
   }
 // --- HIZLI EKLEME MODALI (POPUP - ORİJİNAL TASARIM) ---
   const QuickAddModal = () => {
