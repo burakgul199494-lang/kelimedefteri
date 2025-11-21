@@ -2681,8 +2681,32 @@ export default function App() {
     )
   }
 
-  // --- QUIZ VIEW (GÜNCELLENDİ: İngilizce Açıklama Eklendi) ---
+// --- QUIZ VIEW (GÜNCELLENDİ: İPUCU ÇEVİRİSİ EKLENDİ) ---
   if (currentView === "quiz") {
+      // Quiz içi çeviri state'leri
+      const [hintTranslation, setHintTranslation] = useState(null);
+      const [loadingHint, setLoadingHint] = useState(false);
+
+      // Her yeni soruya geçildiğinde çeviriyi temizle
+      useEffect(() => {
+          setHintTranslation(null);
+          setLoadingHint(false);
+      }, [quizIndex]);
+
+      const currentQuestion = quizQuestions[quizIndex];
+      const progress = ((quizIndex + 1) / quizQuestions.length) * 100;
+      const engHint = currentQuestion?.wordObj?.definitions[0]?.engExplanation;
+
+      // Çeviri Butonuna Basılınca Çalışacak
+      const handleTranslateHint = async () => {
+          if (!engHint) return;
+          setLoadingHint(true);
+          const text = await translateTextWithAI(engHint);
+          setHintTranslation(text);
+          setLoadingHint(false);
+      };
+
+      // Geçiş Efekti Ekranı
       if (quizTransition) {
           return (
             <div className="min-h-screen bg-slate-50 flex items-center justify-center">
@@ -2690,12 +2714,6 @@ export default function App() {
             </div>
           );
       }
-
-      const currentQuestion = quizQuestions[quizIndex];
-      const progress = ((quizIndex + 1) / quizQuestions.length) * 100;
-      
-      // Kelimenin İngilizce açıklamasını alıyoruz (Yoksa boş gelir)
-      const engHint = currentQuestion.wordObj.definitions[0]?.engExplanation;
 
       return (
         <div className="min-h-screen bg-slate-50 flex flex-col items-center p-4">
@@ -2721,12 +2739,33 @@ export default function App() {
                 {/* Question Card */}
                 <div className="bg-white p-8 rounded-3xl shadow-lg border border-slate-100 text-center space-y-6 mt-6 animate-in fade-in zoom-in duration-300">
                     
-                    {/* --- BURASI DEĞİŞTİ: İNGİLİZCE AÇIKLAMA ALANI --- */}
-                    <div className="inline-block bg-indigo-50 text-indigo-800 px-4 py-2 rounded-xl border border-indigo-100 max-w-full">
+                    {/* --- İPUCU VE ÇEVİRİ ALANI --- */}
+                    <div className="inline-block max-w-full">
                         {engHint ? (
-                            <span className="text-sm italic font-medium">"{engHint}"</span>
+                            <div className="flex flex-col items-center gap-2">
+                                {/* İngilizce İpucu ve Buton */}
+                                <div className="bg-indigo-50 text-indigo-800 px-4 py-2 rounded-xl border border-indigo-100 flex items-center gap-2">
+                                    <span className="text-sm italic font-medium">"{engHint}"</span>
+                                    <button 
+                                        onClick={handleTranslateHint}
+                                        className="p-1.5 bg-white rounded-full shadow-sm text-indigo-500 hover:text-indigo-700 transition-colors"
+                                        title="Türkçeye Çevir"
+                                    >
+                                        {loadingHint ? <Loader2 className="w-3 h-3 animate-spin"/> : <Languages className="w-3 h-3"/>}
+                                    </button>
+                                </div>
+
+                                {/* Çeviri Sonucu (Varsa Göster) */}
+                                {hintTranslation && (
+                                    <div className="bg-green-50 text-green-700 px-3 py-1.5 rounded-lg border border-green-100 text-xs font-bold animate-in fade-in slide-in-from-top-1">
+                                        TR: {hintTranslation}
+                                    </div>
+                                )}
+                            </div>
                         ) : (
-                            <span className="text-xs font-bold uppercase tracking-wider">Bu kelimenin anlamı nedir?</span>
+                            <div className="bg-slate-100 text-slate-500 px-4 py-2 rounded-xl border border-slate-200">
+                                <span className="text-xs font-bold uppercase tracking-wider">Bu kelimenin anlamı nedir?</span>
+                            </div>
                         )}
                     </div>
 
@@ -2996,7 +3035,7 @@ export default function App() {
             </div>
 
             <h1 className="text-3xl font-extrabold text-slate-800 tracking-tight">
-              Kelime Defteri 4
+              Kelime Defteri 5
             </h1>
             <p className="text-slate-500 mt-2 text-sm">
               Merhaba, <span className="font-medium text-indigo-600">{user.displayName || user.email}</span>
