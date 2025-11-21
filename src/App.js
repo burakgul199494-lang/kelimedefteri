@@ -177,26 +177,27 @@ const fetchRootFromAI = async (word) => {
   }
 };
 
-// --- YARDIMCI FONKSİYON: CÜMLE ANALİZİ (GÜÇLENDİRİLMİŞ 2.0 VERSİYONU) ---
+// --- YARDIMCI FONKSİYON: CÜMLE ANALİZİ (KESİN ÇÖZÜM - AGRESİF TEMİZLİK) ---
 const fetchSentenceAnalysisFromAI = async (text) => {
-  // Modelini değiştirmedik, 2.0 olarak kalıyor
   const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+  // Modeli 2.0 Flash olarak koruyoruz
   const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
   const prompt = `
-    You are an expert English teacher for Turkish students. Analyze the following English text:
-    "${text}"
-
-    Return ONLY a raw JSON object with this structure. Do not add any markdown formatting like \`\`\`json.
+    Act as a strict API endpoint. Analyze the English text: "${text}" for a Turkish student.
+    
+    Return PURE JSON data. Do not use Markdown code blocks. Do not write any introduction.
+    
+    Required JSON Structure:
     {
-      "correctedText": "The text with grammar errors fixed (if any)",
-      "level": "CEFR Level (A1, A2, B1, etc.)",
-      "feedback": "General feedback in Turkish about the text.",
+      "correctedText": "Corrected version of the text",
+      "level": "A1, A2, B1 etc.",
+      "feedback": "Brief feedback in Turkish",
       "grammarPoints": [
-        { "rule": "Name of the grammar rule found", "explanation": "Explanation in Turkish why it is used here" }
+        { "rule": "Name of rule", "explanation": "Explanation in Turkish" }
       ],
       "betterVocabulary": [
-        { "original": "word from text", "suggestion": "better/more academic alternative", "reason": "Turkish explanation" }
+        { "original": "word", "suggestion": "better word", "reason": "Explanation in Turkish" }
       ]
     }
   `;
@@ -204,23 +205,29 @@ const fetchSentenceAnalysisFromAI = async (text) => {
   try {
     const result = await model.generateContent(prompt);
     const response = await result.response;
-    const textResult = response.text();
+    let textResult = response.text();
 
-    console.log("AI Ham Cevap:", textResult); // Hata ayıklama için konsola yazdır
+    console.log("AI Ham Cevap:", textResult); // Tarayıcı konsolunda görebilmen için
 
-    // --- GÜÇLÜ TEMİZLİK ---
-    // Cevabın içindeki ilk '{' ile son '}' arasını bulup alıyoruz.
-    // Bu sayede başta/sonda "Here is the JSON" gibi yazılar varsa kurtuluyoruz.
-    const jsonMatch = textResult.match(/\{[\s\S]*\}/);
-    
-    if (!jsonMatch) {
-        console.error("AI JSON üretmedi:", textResult);
-        return null;
+    // --- AGRESİF TEMİZLİK ---
+    // 1. Markdown işaretlerini (```json ve ```) tamamen sil
+    textResult = textResult.replace(/```json/g, "").replace(/```/g, "");
+
+    // 2. Cevabın içindeki ilk '{' (süslü parantez) işaretini bul
+    const firstBrace = textResult.indexOf("{");
+    // 3. Cevabın içindeki son '}' işaretini bul
+    const lastBrace = textResult.lastIndexOf("}");
+
+    // 4. Eğer parantezler bulunduysa, sadece o aralığı al
+    if (firstBrace !== -1 && lastBrace !== -1) {
+        textResult = textResult.substring(firstBrace, lastBrace + 1);
+    } else {
+        throw new Error("Cevapta JSON parantezleri bulunamadı.");
     }
-    
-    return JSON.parse(jsonMatch[0]);
+
+    return JSON.parse(textResult);
   } catch (e) {
-    console.error("Analiz hatası:", e);
+    console.error("Analiz Hatası Detayı:", e);
     return null;
   }
 };
