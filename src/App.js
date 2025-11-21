@@ -2144,7 +2144,7 @@ export default function App() {
     );
   };
 
-  // --- ADD / EDIT FORM (USER - ADMIN YAPISINA EŞİTLENDİ) ---
+  // --- ADD / EDIT FORM (USER - COMPACT TOP BAR) ---
   if (currentView === "add_word" || currentView === "edit_word") {
     const isEditMode = currentView === "edit_word";
     const normalizedEditWord = isEditMode && editingWord ? normalizeWord(editingWord) : null;
@@ -2221,30 +2221,39 @@ export default function App() {
       const removeDefinition = (i) => { if(formData.definitions.length > 1) setFormData(p => ({...p, definitions: p.definitions.filter((_, idx) => idx !== i)})); };
 
       return (
-        // ADMIN YAPISI: Dış Katman (Fixed)
         <div className="fixed inset-0 bg-slate-50/95 z-50 flex items-center justify-center p-4">
-          
-          {/* ADMIN YAPISI: Kart (Flex-Col & Max-H) 
-              Bu yapı sayesinde başlık sabit kalır, içerik kayar. */}
           <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl flex flex-col max-h-[90vh] border border-slate-200">
             
-            {/* ADMIN YAPISI: Header (Shrink-0 ile sıkışmaz) */}
+            {/* HEADER */}
             <div className="flex items-center justify-between p-4 border-b border-slate-100 shrink-0">
-              <h2 className="text-xl font-bold text-slate-800">{isEditMode ? "Kelimeyi Düzenle" : "Yeni Kelime Ekle"}</h2>
+              <h2 className="text-xl font-bold text-slate-800">{isEditMode ? "Düzenle" : "Yeni Kelime"}</h2>
               <button onClick={() => isEditMode ? setCurrentView(returnView) : handleGoHome()} className="p-2 bg-slate-100 rounded-full hover:bg-red-50 hover:text-red-500 transition-colors">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* ADMIN YAPISI: İçerik (Overflow-y-auto ile sadece burası kayar) */}
-            <div className="p-6 overflow-y-auto">
+            {/* CONTENT - SCROLLABLE */}
+            <div className="p-5 overflow-y-auto">
               <form onSubmit={handleSubmit} className="space-y-4">
                 
-                <div className="flex gap-2">
-                    <input value={formData.word} onChange={(e) => setFormData({ ...formData, word: e.target.value })} className="flex-1 p-3 border rounded-xl font-bold focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Kelime" autoFocus />
-                    <button type="button" onClick={handleConvertToRoot} disabled={rootLoading || !formData.word} className="bg-orange-100 text-orange-600 p-3 rounded-xl hover:bg-orange-200" title="Kök Bul">{rootLoading ? <Loader2 className="animate-spin"/> : <Wand2/>}</button>
-                    <button type="button" onClick={handleAIFill} disabled={aiLoading || !formData.word} className="bg-purple-600 text-white px-3 rounded-xl hover:bg-purple-700" title="AI Doldur">{aiLoading ? <Loader2 className="animate-spin"/> : <Brain/>}</button>
+                {/* --- BURASI KÜÇÜLTÜLDÜ (Compact Mode) --- */}
+                <div className="flex gap-2 items-center">
+                    <input 
+                      value={formData.word} 
+                      onChange={(e) => setFormData({ ...formData, word: e.target.value })} 
+                      className="flex-1 p-2 border rounded-lg font-bold focus:ring-2 focus:ring-indigo-500 outline-none text-sm h-10" 
+                      placeholder="Kelime Yaz..." 
+                      autoFocus 
+                    />
+                    {/* Butonların paddingi azaltıldı ve boyutları sabitlendi */}
+                    <button type="button" onClick={handleConvertToRoot} disabled={rootLoading || !formData.word} className="bg-orange-100 text-orange-600 w-10 h-10 flex items-center justify-center rounded-lg hover:bg-orange-200 shrink-0" title="Kök Bul">
+                        {rootLoading ? <Loader2 className="w-5 h-5 animate-spin"/> : <Wand2 className="w-5 h-5"/>}
+                    </button>
+                    <button type="button" onClick={handleAIFill} disabled={aiLoading || !formData.word} className="bg-purple-600 text-white w-10 h-10 flex items-center justify-center rounded-lg hover:bg-purple-700 shrink-0" title="AI Doldur">
+                        {aiLoading ? <Loader2 className="w-5 h-5 animate-spin"/> : <Brain className="w-5 h-5"/>}
+                    </button>
                 </div>
+                {/* ---------------------------------------- */}
 
                 {/* GRUP 1: FİİL DETAYLARI */}
                 <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
