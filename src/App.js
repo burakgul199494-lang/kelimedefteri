@@ -291,7 +291,7 @@ export default function App() {
     document.head.appendChild(script);
   }, []);
 
-  <script>
+ 
   // Mobil Zoom Düzeltici (Vanilla JS Versiyonu)
   document.addEventListener("DOMContentLoaded", function() {
     const meta = document.querySelector('meta[name="viewport"]');
@@ -312,7 +312,7 @@ export default function App() {
       });
     }
   });
-</script>
+
 
   const [user, setUser] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
