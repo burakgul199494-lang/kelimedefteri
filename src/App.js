@@ -291,6 +291,29 @@ export default function App() {
     document.head.appendChild(script);
   }, []);
 
+  <script>
+  // Mobil Zoom Düzeltici (Vanilla JS Versiyonu)
+  document.addEventListener("DOMContentLoaded", function() {
+    const meta = document.querySelector('meta[name="viewport"]');
+    
+    if (meta) {
+      meta.content = "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0";
+      
+      const handleBlur = () => {
+        setTimeout(() => {
+          meta.content = "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0";
+          window.scrollTo(0, 0);
+        }, 100);
+      };
+
+      const inputs = document.querySelectorAll('input, select, textarea');
+      inputs.forEach(input => {
+        input.addEventListener('blur', handleBlur);
+      });
+    }
+  });
+</script>
+
   const [user, setUser] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [authLoading, setAuthLoading] = useState(true);
