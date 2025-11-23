@@ -24,11 +24,12 @@ export const fetchWordAnalysisFromAI = async (word) => {
 
     const prompt = `
       You are a dictionary app helper. Analyze the English word: "${word}".
+      
       IMPORTANT: 
       1. In the "definitions" array, the "meaning" field MUST be the TURKISH translation.
       2. The "engExplanation" field MUST be a simple English explanation.
-      3. The "category" field MUST be a general topic in TURKISH (e.g., Hayvanlar, Teknoloji).
-      
+      3. The "category" field MUST be a general topic in TURKISH (e.g., Hayvanlar, Teknoloji, Seyahat, Günlük Yaşam, Yiyecek, İş Dünyası).
+
       Return ONLY JSON. No markdown.
       Structure:
       {
@@ -107,15 +108,3 @@ export const extractTextFromImage = async (file) => {
   });
 };
 
-// --- YENİ: KELİMEYİ GÖRSELLEŞTİRME ---
-export const getVisualPromptFromAI = async (word) => {
-    try {
-      const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-      // Gemini'den kelimeyi anlatan kısa bir görsel tarif istiyoruz
-      const prompt = `Describe the English word "${word}" visually in 4-5 english words for an image generator. Example for 'Apple': 'Red fresh apple on table'. Don't use abstract words. Just visual description.`;
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
-      return response.text().trim();
-    } catch (e) { return word; } // Hata olursa kelimenin kendisini döndür
-};
