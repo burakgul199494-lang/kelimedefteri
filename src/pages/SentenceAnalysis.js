@@ -1,9 +1,10 @@
-import React, { useState, useRef } from "react";
-import { ArrowLeft, Camera, Microscope, Loader2, Globe, Brain, BookOpen, Plus } from "lucide-react";
+import React, { useState, useRef, useCallback } from "react";
+import { ArrowLeft, Camera, Microscope, Loader2, Globe, Brain, BookOpen, Plus, Check, X, ZoomIn } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useData } from "../context/DataContext";
 import { fetchSentenceAnalysisFromAI, extractTextFromImage } from "../services/aiService";
 import QuickAddModal from "../components/QuickAddModal";
+import Cropper from "react-easy-crop"; 
 
 export default function SentenceAnalysis() {
   const { customWords, dynamicSystemWords, deletedWordIds } = useData();
@@ -15,6 +16,12 @@ export default function SentenceAnalysis() {
   const [ocrLoading, setOcrLoading] = useState(false);
   const [quickAddWord, setQuickAddWord] = useState(null);
   const fileInputRef = useRef(null);
+
+  // --- Kırpma (Crop) State'leri ---
+  const [imageSrc, setImageSrc] = useState(null);
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
 
   const isWordInRegistry = (wordToCheck) => {
     if (!wordToCheck) return false;
@@ -29,13 +36,38 @@ export default function SentenceAnalysis() {
     if (!file) return;
     if (!file.type.startsWith("image/")) { alert("Lütfen geçerli bir resim seçin."); return; }
 
-    setOcrLoading(true);
+    const reader = new FileReader();
+    reader.addEventListener("load", () => {
+      setImageSrc(reader.result);
+    });
+    reader.readAsDataURL(file);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const onCropComplete = useCallback((croppedArea, croppedAreaPixels) => {
+    setCroppedAreaPixels(croppedAreaPixels);
+  }, []);
+
+  const handleCropAndAnalyze = async () => {
     try {
-      const text = await extractTextFromImage(file);
+      setOcrLoading(true);
+      // 1. Resmi Kırp
+      const croppedImageBlob = await getCroppedImg(imageSrc, croppedAreaPixels);
+      
+      // Kırpma ekranını kapat
+      setImageSrc(null); 
+
+      // 2. Kırpılmış resmi OCR servisine gönder
+      const text = await extractTextFromImage(croppedImageBlob);
       if (text) setAnalysisText((prev) => (prev ? prev + "\n" + text : text));
       else alert("Resimden metin okunamadı.");
-    } catch (error) { console.error(error); alert("Hata oluştu."); } 
-    finally { setOcrLoading(false); if (fileInputRef.current) fileInputRef.current.value = ""; }
+
+    } catch (e) {
+      console.error(e);
+      alert("Kırpma veya okuma hatası oluştu.");
+    } finally {
+      setOcrLoading(false);
+    }
   };
 
   const handleAnalyze = async () => {
@@ -53,6 +85,54 @@ export default function SentenceAnalysis() {
     <div className="min-h-screen bg-slate-50 p-6 flex flex-col items-center relative">
       {quickAddWord && <QuickAddModal word={quickAddWord} onClose={() => setQuickAddWord(null)} />}
       <input type="file" ref={fileInputRef} onChange={handleImageSelect} accept="image/*" className="hidden" />
+
+      {/* --- KIRPMA MODALI (Overlay) --- */}
+      {imageSrc && (
+        <div className="fixed inset-0 z-50 bg-black flex flex-col">
+          <div className="relative flex-1 bg-black">
+            <Cropper
+              image={imageSrc}
+              crop={crop}
+              zoom={zoom}
+              aspect={4 / 3}
+              onCropChange={setCrop}
+              onCropComplete={onCropComplete}
+              onZoomChange={setZoom}
+              objectFit="contain"
+            />
+          </div>
+          
+          <div className="bg-slate-900 p-6 pb-10 space-y-4">
+             <div className="flex items-center gap-4">
+               <ZoomIn className="text-white w-5 h-5" />
+               <input
+                 type="range"
+                 value={zoom}
+                 min={1}
+                 max={3}
+                 step={0.1}
+                 aria-labelledby="Zoom"
+                 onChange={(e) => setZoom(e.target.value)}
+                 className="w-full h-2 bg-slate-600 rounded-lg appearance-none cursor-pointer"
+               />
+             </div>
+             <div className="flex gap-4">
+                <button 
+                  onClick={() => setImageSrc(null)}
+                  className="flex-1 py-3 bg-slate-700 text-white rounded-xl font-bold flex items-center justify-center gap-2"
+                >
+                   <X className="w-5 h-5"/> İptal
+                </button>
+                <button 
+                  onClick={handleCropAndAnalyze}
+                  className="flex-1 py-3 bg-teal-600 text-white rounded-xl font-bold flex items-center justify-center gap-2"
+                >
+                   <Check className="w-5 h-5"/> Kırp ve Tara
+                </button>
+             </div>
+          </div>
+        </div>
+      )}
 
       <div className="w-full max-w-lg space-y-6">
         <div className="flex items-center gap-3">
@@ -105,4 +185,51 @@ export default function SentenceAnalysis() {
       </div>
     </div>
   );
+}
+
+// --- RESİM İŞLEME YARDIMCISI ---
+const createImage = (url) =>
+  new Promise((resolve, reject) => {
+    const image = new Image();
+    image.addEventListener("load", () => resolve(image));
+    image.addEventListener("error", (error) => reject(error));
+    image.setAttribute("crossOrigin", "anonymous");
+    image.src = url;
+  });
+
+async function getCroppedImg(imageSrc, pixelCrop) {
+  const image = await createImage(imageSrc);
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d");
+
+  if (!ctx) {
+    return null;
+  }
+
+  // Canvas boyutunu ayarla
+  canvas.width = pixelCrop.width;
+  canvas.height = pixelCrop.height;
+
+  // Resmi çiz
+  ctx.drawImage(
+    image,
+    pixelCrop.x,
+    pixelCrop.y,
+    pixelCrop.width,
+    pixelCrop.height,
+    0,
+    0,
+    pixelCrop.width,
+    pixelCrop.height
+  );
+
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (!blob) {
+        reject(new Error("Canvas is empty"));
+        return;
+      }
+      resolve(blob);
+    }, "image/jpeg");
+  });
 }
