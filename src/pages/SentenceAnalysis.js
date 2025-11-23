@@ -1,10 +1,10 @@
 import React, { useState, useRef, useCallback } from "react";
-import { ArrowLeft, Camera, Microscope, Loader2, Globe, Brain, BookOpen, Plus, Check, X, ZoomIn } from "lucide-react";
+import { ArrowLeft, Camera, Microscope, Loader2, Globe, Brain, BookOpen, Plus, Check, X, ZoomIn, RectangleHorizontal, Square, RectangleVertical } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useData } from "../context/DataContext";
 import { fetchSentenceAnalysisFromAI, extractTextFromImage } from "../services/aiService";
 import QuickAddModal from "../components/QuickAddModal";
-import Cropper from "react-easy-crop"; 
+import Cropper from "react-easy-crop";
 
 export default function SentenceAnalysis() {
   const { customWords, dynamicSystemWords, deletedWordIds } = useData();
@@ -21,6 +21,7 @@ export default function SentenceAnalysis() {
   const [imageSrc, setImageSrc] = useState(null);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
+  const [aspect, setAspect] = useState(16 / 9); // Varsayılan: Geniş (Cümle için)
   const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
 
   const isWordInRegistry = (wordToCheck) => {
@@ -39,6 +40,8 @@ export default function SentenceAnalysis() {
     const reader = new FileReader();
     reader.addEventListener("load", () => {
       setImageSrc(reader.result);
+      setZoom(1);
+      setAspect(16/9); // Açılışta cümle modunda başla
     });
     reader.readAsDataURL(file);
     if (fileInputRef.current) fileInputRef.current.value = "";
@@ -51,17 +54,11 @@ export default function SentenceAnalysis() {
   const handleCropAndAnalyze = async () => {
     try {
       setOcrLoading(true);
-      // 1. Resmi Kırp
       const croppedImageBlob = await getCroppedImg(imageSrc, croppedAreaPixels);
-      
-      // Kırpma ekranını kapat
       setImageSrc(null); 
-
-      // 2. Kırpılmış resmi OCR servisine gönder
       const text = await extractTextFromImage(croppedImageBlob);
       if (text) setAnalysisText((prev) => (prev ? prev + "\n" + text : text));
       else alert("Resimden metin okunamadı.");
-
     } catch (e) {
       console.error(e);
       alert("Kırpma veya okuma hatası oluştu.");
@@ -88,44 +85,63 @@ export default function SentenceAnalysis() {
 
       {/* --- KIRPMA MODALI (Overlay) --- */}
       {imageSrc && (
-        <div className="fixed inset-0 z-50 bg-black flex flex-col">
+        <div className="fixed inset-0 z-50 bg-black flex flex-col animate-in fade-in duration-300">
           <div className="relative flex-1 bg-black">
             <Cropper
               image={imageSrc}
               crop={crop}
               zoom={zoom}
-              aspect={4 / 3}
+              aspect={aspect}
               onCropChange={setCrop}
               onCropComplete={onCropComplete}
               onZoomChange={setZoom}
               objectFit="contain"
+              maxZoom={5} // Daha detaylı zoom için artırıldı
             />
           </div>
           
-          <div className="bg-slate-900 p-6 pb-10 space-y-4">
-             <div className="flex items-center gap-4">
-               <ZoomIn className="text-white w-5 h-5" />
+          <div className="bg-slate-900 p-4 pb-8 space-y-4">
+             {/* ORAN SEÇİM BUTONLARI */}
+             <div className="flex justify-center gap-2 mb-2">
+                <button onClick={() => setAspect(16/5)} className={`p-2 rounded-lg flex flex-col items-center gap-1 text-[10px] font-bold ${aspect === 16/5 ? "bg-teal-600 text-white" : "bg-slate-700 text-slate-300"}`}>
+                   <RectangleHorizontal className="w-5 h-5" /> Yatay (Satır)
+                </button>
+                <button onClick={() => setAspect(16/9)} className={`p-2 rounded-lg flex flex-col items-center gap-1 text-[10px] font-bold ${aspect === 16/9 ? "bg-teal-600 text-white" : "bg-slate-700 text-slate-300"}`}>
+                   <RectangleHorizontal className="w-5 h-5 scale-y-150" /> Geniş
+                </button>
+                <button onClick={() => setAspect(1)} className={`p-2 rounded-lg flex flex-col items-center gap-1 text-[10px] font-bold ${aspect === 1 ? "bg-teal-600 text-white" : "bg-slate-700 text-slate-300"}`}>
+                   <Square className="w-5 h-5" /> Kare
+                </button>
+                <button onClick={() => setAspect(9/16)} className={`p-2 rounded-lg flex flex-col items-center gap-1 text-[10px] font-bold ${aspect === 9/16 ? "bg-teal-600 text-white" : "bg-slate-700 text-slate-300"}`}>
+                   <RectangleVertical className="w-5 h-5" /> Dikey
+                </button>
+             </div>
+
+             {/* ZOOM SLIDER */}
+             <div className="flex items-center gap-4 px-2">
+               <ZoomIn className="text-slate-400 w-4 h-4" />
                <input
                  type="range"
                  value={zoom}
                  min={1}
-                 max={3}
+                 max={5} // Daha hassas zoom
                  step={0.1}
-                 aria-labelledby="Zoom"
                  onChange={(e) => setZoom(e.target.value)}
-                 className="w-full h-2 bg-slate-600 rounded-lg appearance-none cursor-pointer"
+                 className="w-full h-2 bg-slate-600 rounded-lg appearance-none cursor-pointer accent-teal-500"
                />
              </div>
-             <div className="flex gap-4">
+
+             {/* AKSİYON BUTONLARI */}
+             <div className="flex gap-3 mt-2">
                 <button 
                   onClick={() => setImageSrc(null)}
-                  className="flex-1 py-3 bg-slate-700 text-white rounded-xl font-bold flex items-center justify-center gap-2"
+                  className="flex-1 py-3 bg-slate-800 text-white rounded-xl font-bold flex items-center justify-center gap-2 border border-slate-700"
                 >
                    <X className="w-5 h-5"/> İptal
                 </button>
                 <button 
                   onClick={handleCropAndAnalyze}
-                  className="flex-1 py-3 bg-teal-600 text-white rounded-xl font-bold flex items-center justify-center gap-2"
+                  className="flex-1 py-3 bg-teal-600 text-white rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-teal-900/50"
                 >
                    <Check className="w-5 h-5"/> Kırp ve Tara
                 </button>
@@ -187,7 +203,7 @@ export default function SentenceAnalysis() {
   );
 }
 
-// --- RESİM İŞLEME YARDIMCISI ---
+// --- YARDIMCI ---
 const createImage = (url) =>
   new Promise((resolve, reject) => {
     const image = new Image();
@@ -201,34 +217,13 @@ async function getCroppedImg(imageSrc, pixelCrop) {
   const image = await createImage(imageSrc);
   const canvas = document.createElement("canvas");
   const ctx = canvas.getContext("2d");
-
-  if (!ctx) {
-    return null;
-  }
-
-  // Canvas boyutunu ayarla
+  if (!ctx) return null;
   canvas.width = pixelCrop.width;
   canvas.height = pixelCrop.height;
-
-  // Resmi çiz
-  ctx.drawImage(
-    image,
-    pixelCrop.x,
-    pixelCrop.y,
-    pixelCrop.width,
-    pixelCrop.height,
-    0,
-    0,
-    pixelCrop.width,
-    pixelCrop.height
-  );
-
+  ctx.drawImage(image, pixelCrop.x, pixelCrop.y, pixelCrop.width, pixelCrop.height, 0, 0, pixelCrop.width, pixelCrop.height);
   return new Promise((resolve, reject) => {
     canvas.toBlob((blob) => {
-      if (!blob) {
-        reject(new Error("Canvas is empty"));
-        return;
-      }
+      if (!blob) { reject(new Error("Canvas is empty")); return; }
       resolve(blob);
     }, "image/jpeg");
   });
