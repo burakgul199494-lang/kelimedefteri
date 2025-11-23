@@ -1,15 +1,21 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-// API Anahtarını çekiyoruz
 const GEN_AI_KEY = process.env.REACT_APP_GEMINI_API_KEY; 
 
-// Model Kurulumu
-const genAI = new GoogleGenerativeAI(GEN_AI_KEY);
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+// YARDIMCI: Modeli her seferinde güvenli bir şekilde çağırır
+const getModel = () => {
+  if (!GEN_AI_KEY) {
+    console.error("API Key bulunamadı! .env dosyasını kontrol et.");
+    throw new Error("API Key eksik. Lütfen yönetici ile iletişime geçin.");
+  }
+  const genAI = new GoogleGenerativeAI(GEN_AI_KEY);
+  return genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+};
 
-// 1. TEK KELİME/CÜMLE ÇEVİRİSİ
+// 1. TEK KELİME ÇEVİRİSİ
 export const translateTextWithAI = async (text, targetLang = "Turkish") => {
   try {
+    const model = getModel(); // Modeli burada çağırıyoruz (Daha güvenli)
     const prompt = `Translate the following text to ${targetLang}: "${text}". Only provide the translation, no extra text.`;
     const result = await model.generateContent(prompt);
     const response = await result.response;
@@ -20,9 +26,10 @@ export const translateTextWithAI = async (text, targetLang = "Turkish") => {
   }
 };
 
-// 2. TOPLU KELİME ÇEVİRİSİ (API DOSTU - HIZLI)
+// 2. TOPLU ÇEVİRİ (HIZLI & GÜVENLİ)
 export const translateBulkWordsWithAI = async (wordList) => {
   try {
+    const model = getModel();
     const wordsString = wordList.join(", ");
     const prompt = `
       You are a translator. Translate the following English words to Turkish.
@@ -36,20 +43,19 @@ export const translateBulkWordsWithAI = async (wordList) => {
     const result = await model.generateContent(prompt);
     const response = await result.response;
     let text = response.text();
-
-    // Temizlik (Markdown işaretlerini kaldır)
     text = text.replace(/```json/g, "").replace(/```/g, "").trim();
     
     return JSON.parse(text);
   } catch (error) {
     console.error("AI Bulk Translation Error:", error);
-    return null;
+    return null; // Hata olursa null döner, uygulama çökmez
   }
 };
 
 // 3. CÜMLE ANALİZİ
 export const fetchSentenceAnalysisFromAI = async (sentence) => {
   try {
+    const model = getModel();
     const prompt = `
       Analyze the following English sentence: "${sentence}"
       
@@ -74,13 +80,14 @@ export const fetchSentenceAnalysisFromAI = async (sentence) => {
     return JSON.parse(text);
   } catch (error) {
     console.error("AI Analysis Error:", error);
-    throw new Error("Analiz servisi yanıt vermedi.");
+    throw new Error("Analiz servisi yanıt vermedi: " + error.message);
   }
 };
 
-// 4. RESİMDEN METİN OKUMA (OCR)
+// 4. OCR (RESİMDEN YAZI)
 export const extractTextFromImage = async (imageFile) => {
   try {
+    const model = getModel();
     const base64Data = await new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.readAsDataURL(imageFile);
