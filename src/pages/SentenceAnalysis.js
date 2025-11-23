@@ -1,125 +1,92 @@
 import React, { useState, useRef } from "react";
-import { ArrowLeft, Camera, Microscope, Loader2, Globe, Brain, BookOpen, Plus, Save, ShieldCheck } from "lucide-react";
+import { ArrowLeft, Camera, Microscope, Loader2, Globe, Brain, BookOpen, Plus, Check, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useData } from "../context/DataContext";
-import { fetchSentenceAnalysisFromAI, extractTextFromImage, translateTextWithAI, fetchWordDetails } from "../services/aiService";
+import { fetchSentenceAnalysisFromAI, extractTextFromImage } from "../services/aiService";
 import QuickAddModal from "../components/QuickAddModal";
 
-// DİKKAT: Kırpma kütüphanesini kaldırdık. Artık hata verme ihtimali yok.
+// YENİ KÜTÜPHANE
+import ReactCrop, { centerCrop, makeAspectCrop } from 'react-image-crop';
+import 'react-image-crop/dist/ReactCrop.css'; 
 
 export default function SentenceAnalysis() {
-  const { 
-    user, 
-    customWords, 
-    dynamicSystemWords, 
-    deletedWordIds, 
-    handleSaveNewWord,    
-    handleSaveSystemWord  
-  } = useData();
-
+  const { customWords, dynamicSystemWords, deletedWordIds } = useData();
   const navigate = useNavigate();
   
-  // ADMIN KONTROLÜ
-  const ADMIN_EMAILS = ["burakgul1994@outlook.com.tr"]; 
-  const isAdmin = user && ADMIN_EMAILS.includes(user.email);
-
   const [analysisText, setAnalysisText] = useState("");
   const [analysisResult, setAnalysisResult] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [ocrLoading, setOcrLoading] = useState(false);
-  
-  const [bulkLoading, setBulkLoading] = useState(false);
-  const [bulkProgress, setBulkProgress] = useState("");
-
   const [quickAddWord, setQuickAddWord] = useState(null);
   const fileInputRef = useRef(null);
+
+  // --- Kırpma State'leri ---
+  const [imgSrc, setImgSrc] = useState(null);
+  const [crop, setCrop] = useState();
+  const [completedCrop, setCompletedCrop] = useState(null);
+  const imgRef = useRef(null);
 
   const isWordInRegistry = (wordToCheck) => {
     if (!wordToCheck) return false;
     const lower = wordToCheck.toLowerCase().trim();
-    if (dynamicSystemWords?.some(sw => sw.word.toLowerCase() === lower)) return true;
-    if (customWords?.some(cw => cw.word.toLowerCase() === lower && !deletedWordIds?.includes(cw.id))) return true;
+    if (dynamicSystemWords.some(sw => sw.word.toLowerCase() === lower)) return true;
+    if (customWords.some(cw => cw.word.toLowerCase() === lower && !deletedWordIds.includes(cw.id))) return true;
     return false;
   };
 
-  // --- RESİM YÜKLEME (Basit ve Hatasız Yöntem) ---
-  const handleImageSelect = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    setOcrLoading(true);
-    try {
-      // Resmi direkt AI'ya gönderiyoruz (Kırpma yok)
-      const text = await extractTextFromImage(file);
-      if (text) setAnalysisText((prev) => (prev ? prev + "\n" + text : text));
-      else alert("Resimden metin okunamadı.");
-    } catch (error) {
-      console.error(error);
-      alert("OCR Hatası: " + error.message);
-    } finally {
-      setOcrLoading(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
+  const handleImageSelect = (e) => {
+    if (e.target.files && e.target.files.length > 0) {
+      setCrop(undefined); // Eski kırpmayı sıfırla
+      const reader = new FileReader();
+      reader.addEventListener("load", () => setImgSrc(reader.result));
+      reader.readAsDataURL(e.target.files[0]);
+      // Inputu temizle
+      if (fileInputRef.current) fileInputRef.current.value = ""; 
     }
   };
 
-  // --- AKILLI TOPLU EKLEME (V2, V3 Dahil) ---
-  const handleBulkAdd = async () => {
-    if (!analysisResult?.rootWords) return;
+  // Resim yüklendiğinde otomatik ortada bir seçim kutusu oluştur
+  function onImageLoad(e) {
+    const { width, height } = e.currentTarget;
+    const cropConfig = centerCrop(
+      makeAspectCrop(
+        {
+          unit: '%',
+          width: 90, // Resmin %90'ını kaplayan bir kutu ile başla
+        },
+        16 / 9,
+        width,
+        height
+      ),
+      width,
+      height
+    );
+    setCrop(cropConfig);
+  }
 
-    const saveFunction = isAdmin ? handleSaveSystemWord : handleSaveNewWord;
-    const targetName = isAdmin ? "SİSTEM" : "Kişisel";
-
-    if (!saveFunction) { alert("Kaydetme fonksiyonu bulunamadı."); return; }
-
-    const unknownWords = analysisResult.rootWords.filter(w => !isWordInRegistry(w));
-
-    if (unknownWords.length === 0) { alert("Eklenecek yeni kelime yok."); return; }
-
-    if (!window.confirm(`${unknownWords.length} kelime detaylı analiz edilip ${targetName} listesine eklenecek. Biraz zaman alabilir.`)) return;
-
-    setBulkLoading(true);
-    let successCount = 0;
+  const handleCropAndAnalyze = async () => {
+    if (!completedCrop || !imgRef.current) {
+        alert("Lütfen bir alan seçin.");
+        return;
+    }
 
     try {
-      for (let i = 0; i < unknownWords.length; i++) {
-        const word = unknownWords[i];
-        setBulkProgress(`${i + 1} / ${unknownWords.length}`);
-
-        // 1. DETAYLI ANALİZ
-        const details = await fetchWordDetails(word);
-        
-        // 2. OBJE OLUŞTURMA
-        const newWordObj = {
-          word: word,
-          sentence: details.exampleSentence || analysisText, 
-          definitions: [
-            {
-              meaning: details.meaning,
-              type: details.type || "unknown",
-              engExplanation: "AI Analysis" 
-            }
-          ],
-          v2: details.v2 || "",
-          v3: details.v3 || "",
-          plural: details.plural || ""
-        };
-
-        // 3. KAYDETME
-        const res = await saveFunction(newWordObj);
-        if (res && res.success) successCount++;
-
-        // 4. BEKLEME (1 sn)
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      }
-
-      alert(`${successCount} kelime başarıyla eklendi!`);
+      setOcrLoading(true);
+      // 1. Resmi Kırp
+      const blob = await getCroppedImg(imgRef.current, completedCrop);
       
-    } catch (error) {
-      console.error(error);
-      alert("Hata: " + error.message);
+      // Modalı kapat
+      setImgSrc(null);
+
+      // 2. OCR Yap
+      const text = await extractTextFromImage(blob);
+      if (text) setAnalysisText((prev) => (prev ? prev + "\n" + text : text));
+      else alert("Metin okunamadı.");
+    } catch (e) {
+      console.error(e);
+      alert("Hata oluştu.");
     } finally {
-      setBulkLoading(false);
-      setBulkProgress("");
+      setOcrLoading(false);
     }
   };
 
@@ -139,13 +106,48 @@ export default function SentenceAnalysis() {
       {quickAddWord && <QuickAddModal word={quickAddWord} onClose={() => setQuickAddWord(null)} />}
       <input type="file" ref={fileInputRef} onChange={handleImageSelect} accept="image/*" className="hidden" />
 
-      <div className="w-full max-w-lg space-y-6">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-             <button onClick={() => navigate("/")} className="p-2 hover:bg-slate-200 rounded-full bg-white shadow-sm"><ArrowLeft className="w-6 h-6 text-slate-600" /></button>
-             <h2 className="text-2xl font-bold text-slate-800">Cümle Analizi</h2>
+      {/* --- KIRPMA MODALI (Overlay) --- */}
+      {imgSrc && (
+        <div className="fixed inset-0 z-50 bg-black/95 flex flex-col items-center justify-center p-4">
+          <div className="w-full max-w-xl max-h-[70vh] overflow-auto bg-black border border-slate-700 rounded-lg">
+             <ReactCrop 
+                crop={crop} 
+                onChange={(c) => setCrop(c)} 
+                onComplete={(c) => setCompletedCrop(c)}
+             >
+                <img 
+                  ref={imgRef} 
+                  src={imgSrc} 
+                  alt="Crop me" 
+                  onLoad={onImageLoad}
+                  style={{ maxWidth: '100%', maxHeight: '60vh' }} 
+                />
+             </ReactCrop>
           </div>
-          {isAdmin && <span className="text-[10px] bg-red-100 text-red-600 px-2 py-1 rounded font-bold flex items-center gap-1"><ShieldCheck className="w-3 h-3"/> ADMIN</span>}
+          
+          <div className="flex gap-4 w-full max-w-xs mt-6">
+             <button 
+                onClick={() => setImgSrc(null)} 
+                className="flex-1 py-3 bg-slate-700 text-white rounded-xl font-bold flex items-center justify-center gap-2"
+             >
+               <X className="w-5 h-5"/> İptal
+             </button>
+             <button 
+                onClick={handleCropAndAnalyze} 
+                className="flex-1 py-3 bg-teal-600 text-white rounded-xl font-bold flex items-center justify-center gap-2"
+             >
+               <Check className="w-5 h-5"/> Seç ve Tara
+             </button>
+          </div>
+          <p className="text-slate-400 text-xs mt-4">Köşelerden tutarak alanı belirleyin</p>
+        </div>
+      )}
+
+      {/* --- ANA EKRAN --- */}
+      <div className="w-full max-w-lg space-y-6">
+        <div className="flex items-center gap-3">
+          <button onClick={() => navigate("/")} className="p-2 hover:bg-slate-200 rounded-full bg-white shadow-sm"><ArrowLeft className="w-6 h-6 text-slate-600" /></button>
+          <h2 className="text-2xl font-bold text-slate-800">Cümle Analizi</h2>
         </div>
 
         <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
@@ -167,36 +169,12 @@ export default function SentenceAnalysis() {
               <p className="text-lg text-slate-800 font-medium leading-relaxed">{analysisResult.turkishTranslation}</p>
             </div>
             <div className="bg-teal-50 p-5 rounded-2xl border border-teal-100 shadow-sm">
-               <h3 className="text-xs font-bold text-teal-500 uppercase mb-2 flex items-center gap-2"><Brain className="w-4 h-4" /> Gramer Yapısı</h3>
-               <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">{analysisResult.grammarAnalysis}</p>
+              <h3 className="text-xs font-bold text-teal-500 uppercase mb-2 flex items-center gap-2"><Brain className="w-4 h-4" /> Gramer Yapısı</h3>
+              <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">{analysisResult.grammarAnalysis}</p>
             </div>
-
-            {/* KELİME LİSTESİ */}
             {analysisResult.rootWords?.length > 0 && (
-              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm relative">
-                <div className="flex justify-between items-center mb-3">
-                    <h3 className="text-xs font-bold text-slate-400 uppercase flex items-center gap-2"><BookOpen className="w-4 h-4" /> Kelime Kökleri</h3>
-                    
-                    {analysisResult.rootWords.some(w => !isWordInRegistry(w)) && (
-                        <button 
-                          onClick={handleBulkAdd} 
-                          disabled={bulkLoading}
-                          className={`text-[10px] px-3 py-1.5 rounded-full font-bold flex items-center gap-1 transition-colors ${isAdmin ? "bg-red-100 text-red-600 hover:bg-red-200" : "bg-orange-100 text-orange-600 hover:bg-orange-200"}`}
-                        >
-                            {bulkLoading ? (
-                                <span className="flex items-center gap-1">
-                                    <Loader2 className="w-3 h-3 animate-spin"/> {bulkProgress}
-                                </span>
-                            ) : (
-                                <span className="flex items-center gap-1">
-                                    {isAdmin ? <ShieldCheck className="w-3 h-3"/> : <Save className="w-3 h-3"/>}
-                                    {isAdmin ? "Sisteme Ekle" : "Hepsini Ekle"}
-                                </span>
-                            )}
-                        </button>
-                    )}
-                </div>
-
+              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                <h3 className="text-xs font-bold text-slate-400 uppercase mb-3 flex items-center gap-2"><BookOpen className="w-4 h-4" /> Kelime Kökleri</h3>
                 <div className="flex flex-wrap gap-2">
                   {analysisResult.rootWords.map((word, idx) => {
                     const exists = isWordInRegistry(word);
@@ -209,7 +187,6 @@ export default function SentenceAnalysis() {
                 </div>
               </div>
             )}
-            
             <button onClick={() => setQuickAddWord("")} className="w-full bg-white text-slate-700 border-2 border-dashed border-slate-300 font-bold py-4 rounded-xl flex items-center justify-center gap-2 hover:bg-slate-50">
                <Plus className="w-5 h-5" /> Manuel Kelime Ekle
             </button>
@@ -219,3 +196,33 @@ export default function SentenceAnalysis() {
     </div>
   );
 }
+
+// --- YARDIMCI FONKSİYON (Canvas Slicing) ---
+function getCroppedImg(image, crop) {
+  const canvas = document.createElement('canvas');
+  const scaleX = image.naturalWidth / image.width;
+  const scaleY = image.naturalHeight / image.height;
+  canvas.width = crop.width;
+  canvas.height = crop.height;
+  const ctx = canvas.getContext('2d');
+
+  ctx.drawImage(
+    image,
+    crop.x * scaleX,
+    crop.y * scaleY,
+    crop.width * scaleX,
+    crop.height * scaleY,
+    0,
+    0,
+    crop.width,
+    crop.height
+  );
+
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(blob => {
+      if (!blob) { reject(new Error('Canvas is empty')); return; }
+      resolve(blob);
+    }, 'image/jpeg', 1); // 1 = %100 kalite
+  });
+}
+
