@@ -1,62 +1,40 @@
 import React, { useState } from "react";
-import { Volume2, Languages, Loader2, Tag, Image as ImageIcon } from "lucide-react";
-import { translateTextWithAI, getVisualPromptFromAI } from "../services/aiService";
+import { Volume2, Languages, Loader2, Tag } from "lucide-react";
+import { translateTextWithAI } from "../services/aiService";
 
 const WordCard = ({ wordObj }) => {
   const [sentenceTranslation, setSentenceTranslation] = useState(null);
   const [loadingSentence, setLoadingSentence] = useState(false);
   const [defTranslations, setDefTranslations] = useState({});
   const [loadingDefs, setLoadingDefs] = useState({});
-  
-  // RESİM STATE'LERİ
-  const [imageUrl, setImageUrl] = useState(null);
-  const [loadingImage, setLoadingImage] = useState(false);
 
-  // Okuma
+  // Okuma Fonksiyonu
   const speak = (text, e) => {
     if (e) e.stopPropagation();
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = "en-US"; utterance.rate = 0.9;
+    utterance.lang = "en-US";
+    utterance.rate = 0.9;
     window.speechSynthesis.speak(utterance);
   };
 
-  // Çeviriler
+  // Cümle Çevirisi
   const handleTranslateSentence = async (e) => {
-    e.stopPropagation(); if (sentenceTranslation) return;
+    e.stopPropagation();
+    if (sentenceTranslation) return;
     setLoadingSentence(true);
     const text = await translateTextWithAI(wordObj.sentence);
-    setSentenceTranslation(text); setLoadingSentence(false);
+    setSentenceTranslation(text);
+    setLoadingSentence(false);
   };
 
+  // Tanım Çevirisi
   const handleTranslateDef = async (index, text, e) => {
-    e.stopPropagation(); if (defTranslations[index]) return;
-    setLoadingDefs((p) => ({ ...p, [index]: true }));
+    e.stopPropagation();
+    if (defTranslations[index]) return;
+    setLoadingDefs((prev) => ({ ...prev, [index]: true }));
     const translated = await translateTextWithAI(text);
-    setDefTranslations((p) => ({ ...p, [index]: translated }));
-    setLoadingDefs((p) => ({ ...p, [index]: false }));
-  };
-
-  // --- YENİ: RESİM OLUŞTURMA ---
-  const handleGenerateImage = async (e) => {
-      e.stopPropagation();
-      if (imageUrl) return; // Zaten varsa tekrar yükleme
-      setLoadingImage(true);
-      
-      try {
-          // 1. Gemini'den görsel tarif al
-          const visualDescription = await getVisualPromptFromAI(wordObj.word);
-          
-          // 2. Pollinations.ai ile resim oluştur (URL tabanlıdır)
-          // Seed ekleyerek her seferinde rastgelelik sağlıyoruz ama aynı kelimeye benzer resim gelsin diye kelimeyi seed yapıyoruz.
-          const cleanDesc = encodeURIComponent(visualDescription);
-          const generatedUrl = `https://image.pollinations.ai/prompt/${cleanDesc}?width=400&height=300&nologo=true&seed=${wordObj.id}`;
-          
-          setImageUrl(generatedUrl);
-      } catch (err) {
-          console.error("Resim hatası:", err);
-      } finally {
-          setLoadingImage(false);
-      }
+    setDefTranslations((prev) => ({ ...prev, [index]: translated }));
+    setLoadingDefs((prev) => ({ ...prev, [index]: false }));
   };
 
   const getShortTypeLabel = (t) => {
@@ -65,61 +43,64 @@ const WordCard = ({ wordObj }) => {
   };
 
   const renderSourceBadge = (source) => (
-    <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${source === "system" ? "bg-blue-100 text-blue-600" : "bg-orange-100 text-orange-600"}`}>{source === "system" ? "Sistem" : "Kullanıcı"}</span>
+    <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${source === "system" ? "bg-blue-100 text-blue-600" : "bg-orange-100 text-orange-600"}`}>
+      {source === "system" ? "Sistem" : "Kullanıcı"}
+    </span>
   );
 
+  // Yardımcı Bileşen: Özellik Satırı (Örn: V2: went [speaker])
   const FeatureRow = ({ label, value }) => {
     if (!value) return null;
     return (
       <div className="flex items-center justify-between group">
         <div className="flex items-center gap-1 overflow-hidden">
-          <span className="font-semibold shrink-0">{label}:</span><span className="truncate">{value}</span>
+          <span className="font-semibold shrink-0">{label}:</span>
+          <span className="truncate">{value}</span>
         </div>
-        <button onClick={(e) => speak(value, e)} className="p-1 text-indigo-300 hover:text-indigo-600 hover:bg-indigo-50 rounded-full transition-colors opacity-60 group-hover:opacity-100" title="Oku"><Volume2 className="w-3 h-3" /></button>
+        <button 
+          onClick={(e) => speak(value, e)} 
+          className="p-1 text-indigo-300 hover:text-indigo-600 hover:bg-indigo-50 rounded-full transition-colors opacity-60 group-hover:opacity-100"
+          title="Oku"
+        >
+          <Volume2 className="w-3 h-3" />
+        </button>
       </div>
     );
   };
 
   return (
-    <div className="relative w-full max-w-sm bg-white rounded-3xl shadow-xl p-6 text-center border border-slate-100 mb-4 mx-auto overflow-hidden">
+    <div className="relative w-full max-w-sm bg-white rounded-3xl shadow-xl p-6 text-center border border-slate-100 mb-4 mx-auto">
       
+      {/* --- ÜST BİLGİ ALANI (KATEGORİ VE KAYNAK) --- */}
       <div className="flex items-center justify-center gap-2 mb-2 flex-wrap">
+        {/* Kaynak Rozeti */}
         {renderSourceBadge(wordObj.source)}
-        {wordObj.category && <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-purple-100 text-purple-600 flex items-center gap-1 border border-purple-200"><Tag className="w-3 h-3" /> {wordObj.category}</span>}
+
+        {/* Kategori Rozeti (YENİ EKLENDİ) */}
+        {wordObj.category && (
+            <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-purple-100 text-purple-600 flex items-center gap-1 border border-purple-200">
+                <Tag className="w-3 h-3" /> {wordObj.category}
+            </span>
+        )}
       </div>
       
+      {/* Ana Kelime ve Ses */}
       <div className="flex items-center justify-center gap-3 mb-4">
         <h2 className="text-4xl font-extrabold text-slate-800 break-words">{wordObj.word}</h2>
-        <button onClick={(e) => speak(wordObj.word, e)} className="p-3 bg-indigo-100 text-indigo-600 rounded-full hover:bg-indigo-200 transition-colors"><Volume2 className="w-6 h-6" /></button>
-      </div>
-
-      {/* --- YENİ: RESİM ALANI --- */}
-      <div className="mb-4 flex justify-center">
-          {imageUrl ? (
-              <div className="relative rounded-xl overflow-hidden shadow-md border border-slate-200 w-full h-48 group">
-                  <img src={imageUrl} alt={wordObj.word} className="w-full h-full object-cover animate-in fade-in duration-700" />
-                  {/* Resmi Büyütme / Yenileme Butonu Opsiyonel Olabilir */}
-              </div>
-          ) : (
-              <button 
-                onClick={handleGenerateImage} 
-                disabled={loadingImage}
-                className="w-full h-12 bg-slate-50 border-2 border-dashed border-slate-300 rounded-xl flex items-center justify-center gap-2 text-slate-500 hover:bg-indigo-50 hover:border-indigo-300 hover:text-indigo-600 transition-all"
-              >
-                  {loadingImage ? (
-                      <> <Loader2 className="w-5 h-5 animate-spin"/> Çiziliyor... </>
-                  ) : (
-                      <> <ImageIcon className="w-5 h-5"/> AI Görseli Oluştur </>
-                  )}
-              </button>
-          )}
+        <button onClick={(e) => speak(wordObj.word, e)} className="p-3 bg-indigo-100 text-indigo-600 rounded-full hover:bg-indigo-200 transition-colors">
+          <Volume2 className="w-6 h-6" />
+        </button>
       </div>
 
       <div className="space-y-4 text-left">
+        
+        {/* Anlamlar Listesi */}
         {wordObj.definitions.map((def, idx) => (
           <div key={idx} className={`p-3 rounded-xl border ${idx === 0 ? "bg-indigo-50 border-indigo-100" : "bg-slate-50 border-slate-100"}`}>
             <div className="flex items-center gap-2 mb-1">
-              <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded ${idx === 0 ? "bg-indigo-200 text-indigo-700" : "bg-slate-200 text-slate-600"}`}>{getShortTypeLabel(def.type)}</span>
+              <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded ${idx === 0 ? "bg-indigo-200 text-indigo-700" : "bg-slate-200 text-slate-600"}`}>
+                {getShortTypeLabel(def.type)}
+              </span>
               <span className={`font-bold text-lg ${idx === 0 ? "text-indigo-900" : "text-slate-700"}`}>{def.meaning}</span>
             </div>
             {def.engExplanation && (
@@ -127,8 +108,14 @@ const WordCard = ({ wordObj }) => {
                 <div className="flex items-start justify-between gap-2">
                   <p className={`text-sm italic font-medium ${idx === 0 ? "text-indigo-500" : "text-slate-500"}`}>"{def.engExplanation}"</p>
                   <div className="flex gap-1">
-                    <button onClick={(e) => speak(def.engExplanation, e)} className="opacity-50 hover:opacity-100 p-1 bg-white rounded-full shadow-sm"><Volume2 className="w-3 h-3 text-indigo-500" /></button>
-                    <button onClick={(e) => handleTranslateDef(idx, def.engExplanation, e)} className="opacity-50 hover:opacity-100 p-1 bg-white rounded-full shadow-sm">{loadingDefs[idx] ? <Loader2 className="w-3 h-3 animate-spin text-indigo-500" /> : <Languages className="w-3 h-3 text-indigo-500" />}</button>
+                    {/* İngilizce Açıklama Okuma Butonu */}
+                    <button onClick={(e) => speak(def.engExplanation, e)} className="opacity-50 hover:opacity-100 p-1 bg-white rounded-full shadow-sm">
+                        <Volume2 className="w-3 h-3 text-indigo-500" />
+                    </button>
+                    {/* Çeviri Butonu */}
+                    <button onClick={(e) => handleTranslateDef(idx, def.engExplanation, e)} className="opacity-50 hover:opacity-100 p-1 bg-white rounded-full shadow-sm">
+                      {loadingDefs[idx] ? <Loader2 className="w-3 h-3 animate-spin text-indigo-500" /> : <Languages className="w-3 h-3 text-indigo-500" />}
+                    </button>
                   </div>
                 </div>
                 {defTranslations[idx] && <div className="mt-1 text-xs text-indigo-800 bg-indigo-100/50 p-1.5 rounded">TR: {defTranslations[idx]}</div>}
@@ -137,6 +124,7 @@ const WordCard = ({ wordObj }) => {
           </div>
         ))}
 
+        {/* Dil Bilgisi Detayları (Gri Kutu) */}
         {(wordObj.plural || wordObj.v2 || wordObj.v3 || wordObj.vIng || wordObj.thirdPerson) && (
           <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 text-left space-y-1.5 mt-2">
             <div className="text-[10px] uppercase tracking-wide text-slate-400 font-bold mb-1">Fiil & İsim Çekimleri</div>
@@ -150,6 +138,7 @@ const WordCard = ({ wordObj }) => {
           </div>
         )}
 
+        {/* Sıfat/Zarf Detayları (Turuncu Kutu) */}
         {(wordObj.advLy || wordObj.compEr || wordObj.superEst) && (
             <div className="bg-orange-50 p-3 rounded-xl border border-orange-100 text-left space-y-1.5 mt-2">
                 <div className="text-[10px] uppercase tracking-wide text-orange-400 font-bold mb-1">Sıfat & Zarf Halleri</div>
@@ -161,12 +150,17 @@ const WordCard = ({ wordObj }) => {
             </div>
         )}
 
+        {/* Örnek Cümle */}
         <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 mt-2">
           <div className="flex items-center justify-between mb-2">
             <div className="text-xs uppercase tracking-wide text-slate-400 font-bold">Örnek Cümle</div>
             <div className="flex gap-2">
-              <button onClick={handleTranslateSentence} className="p-1.5 bg-white text-indigo-500 rounded-full border border-slate-200 hover:bg-indigo-50 transition-colors">{loadingSentence ? <Loader2 className="w-4 h-4 animate-spin" /> : <Languages className="w-4 h-4" />}</button>
-              <button onClick={(e) => speak(wordObj.sentence, e)} className="p-1.5 bg-white text-indigo-500 rounded-full border border-slate-200 hover:bg-indigo-50 transition-colors"><Volume2 className="w-4 h-4" /></button>
+              <button onClick={handleTranslateSentence} className="p-1.5 bg-white text-indigo-500 rounded-full border border-slate-200 hover:bg-indigo-50 transition-colors">
+                {loadingSentence ? <Loader2 className="w-4 h-4 animate-spin" /> : <Languages className="w-4 h-4" />}
+              </button>
+              <button onClick={(e) => speak(wordObj.sentence, e)} className="p-1.5 bg-white text-indigo-500 rounded-full border border-slate-200 hover:bg-indigo-50 transition-colors">
+                <Volume2 className="w-4 h-4" />
+              </button>
             </div>
           </div>
           <p className="text-base text-slate-600 italic">"{wordObj.sentence}"</p>
@@ -178,3 +172,4 @@ const WordCard = ({ wordObj }) => {
 };
 
 export default WordCard;
+
