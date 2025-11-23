@@ -1,10 +1,13 @@
-import React, { useState, useRef, useCallback } from "react";
-import { ArrowLeft, Camera, Microscope, Loader2, Globe, Brain, BookOpen, Plus, Check, X, ZoomIn, RectangleHorizontal, Square, RectangleVertical } from "lucide-react";
+import React, { useState, useRef } from "react";
+import { ArrowLeft, Camera, Microscope, Loader2, Globe, Brain, BookOpen, Plus, Check, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useData } from "../context/DataContext";
 import { fetchSentenceAnalysisFromAI, extractTextFromImage } from "../services/aiService";
 import QuickAddModal from "../components/QuickAddModal";
-import Cropper from "react-easy-crop";
+
+// YENİ KÜTÜPHANE
+import ReactCrop, { centerCrop, makeAspectCrop } from 'react-image-crop';
+import 'react-image-crop/dist/ReactCrop.css'; 
 
 export default function SentenceAnalysis() {
   const { customWords, dynamicSystemWords, deletedWordIds } = useData();
@@ -17,12 +20,11 @@ export default function SentenceAnalysis() {
   const [quickAddWord, setQuickAddWord] = useState(null);
   const fileInputRef = useRef(null);
 
-  // --- Kırpma (Crop) State'leri ---
-  const [imageSrc, setImageSrc] = useState(null);
-  const [crop, setCrop] = useState({ x: 0, y: 0 });
-  const [zoom, setZoom] = useState(1);
-  const [aspect, setAspect] = useState(16 / 9); // Varsayılan: Geniş (Cümle için)
-  const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
+  // --- Kırpma State'leri ---
+  const [imgSrc, setImgSrc] = useState(null);
+  const [crop, setCrop] = useState();
+  const [completedCrop, setCompletedCrop] = useState(null);
+  const imgRef = useRef(null);
 
   const isWordInRegistry = (wordToCheck) => {
     if (!wordToCheck) return false;
@@ -32,36 +34,57 @@ export default function SentenceAnalysis() {
     return false;
   };
 
-  const handleImageSelect = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    if (!file.type.startsWith("image/")) { alert("Lütfen geçerli bir resim seçin."); return; }
-
-    const reader = new FileReader();
-    reader.addEventListener("load", () => {
-      setImageSrc(reader.result);
-      setZoom(1);
-      setAspect(16/9); // Açılışta cümle modunda başla
-    });
-    reader.readAsDataURL(file);
-    if (fileInputRef.current) fileInputRef.current.value = "";
+  const handleImageSelect = (e) => {
+    if (e.target.files && e.target.files.length > 0) {
+      setCrop(undefined); // Eski kırpmayı sıfırla
+      const reader = new FileReader();
+      reader.addEventListener("load", () => setImgSrc(reader.result));
+      reader.readAsDataURL(e.target.files[0]);
+      // Inputu temizle
+      if (fileInputRef.current) fileInputRef.current.value = ""; 
+    }
   };
 
-  const onCropComplete = useCallback((croppedArea, croppedAreaPixels) => {
-    setCroppedAreaPixels(croppedAreaPixels);
-  }, []);
+  // Resim yüklendiğinde otomatik ortada bir seçim kutusu oluştur
+  function onImageLoad(e) {
+    const { width, height } = e.currentTarget;
+    const cropConfig = centerCrop(
+      makeAspectCrop(
+        {
+          unit: '%',
+          width: 90, // Resmin %90'ını kaplayan bir kutu ile başla
+        },
+        16 / 9,
+        width,
+        height
+      ),
+      width,
+      height
+    );
+    setCrop(cropConfig);
+  }
 
   const handleCropAndAnalyze = async () => {
+    if (!completedCrop || !imgRef.current) {
+        alert("Lütfen bir alan seçin.");
+        return;
+    }
+
     try {
       setOcrLoading(true);
-      const croppedImageBlob = await getCroppedImg(imageSrc, croppedAreaPixels);
-      setImageSrc(null); 
-      const text = await extractTextFromImage(croppedImageBlob);
+      // 1. Resmi Kırp
+      const blob = await getCroppedImg(imgRef.current, completedCrop);
+      
+      // Modalı kapat
+      setImgSrc(null);
+
+      // 2. OCR Yap
+      const text = await extractTextFromImage(blob);
       if (text) setAnalysisText((prev) => (prev ? prev + "\n" + text : text));
-      else alert("Resimden metin okunamadı.");
+      else alert("Metin okunamadı.");
     } catch (e) {
       console.error(e);
-      alert("Kırpma veya okuma hatası oluştu.");
+      alert("Hata oluştu.");
     } finally {
       setOcrLoading(false);
     }
@@ -84,72 +107,43 @@ export default function SentenceAnalysis() {
       <input type="file" ref={fileInputRef} onChange={handleImageSelect} accept="image/*" className="hidden" />
 
       {/* --- KIRPMA MODALI (Overlay) --- */}
-      {imageSrc && (
-        <div className="fixed inset-0 z-50 bg-black flex flex-col animate-in fade-in duration-300">
-          <div className="relative flex-1 bg-black">
-            <Cropper
-              image={imageSrc}
-              crop={crop}
-              zoom={zoom}
-              aspect={aspect}
-              onCropChange={setCrop}
-              onCropComplete={onCropComplete}
-              onZoomChange={setZoom}
-              objectFit="contain"
-              maxZoom={5} // Daha detaylı zoom için artırıldı
-            />
+      {imgSrc && (
+        <div className="fixed inset-0 z-50 bg-black/95 flex flex-col items-center justify-center p-4">
+          <div className="w-full max-w-xl max-h-[70vh] overflow-auto bg-black border border-slate-700 rounded-lg">
+             <ReactCrop 
+                crop={crop} 
+                onChange={(c) => setCrop(c)} 
+                onComplete={(c) => setCompletedCrop(c)}
+             >
+                <img 
+                  ref={imgRef} 
+                  src={imgSrc} 
+                  alt="Crop me" 
+                  onLoad={onImageLoad}
+                  style={{ maxWidth: '100%', maxHeight: '60vh' }} 
+                />
+             </ReactCrop>
           </div>
           
-          <div className="bg-slate-900 p-4 pb-8 space-y-4">
-             {/* ORAN SEÇİM BUTONLARI */}
-             <div className="flex justify-center gap-2 mb-2">
-                <button onClick={() => setAspect(16/5)} className={`p-2 rounded-lg flex flex-col items-center gap-1 text-[10px] font-bold ${aspect === 16/5 ? "bg-teal-600 text-white" : "bg-slate-700 text-slate-300"}`}>
-                   <RectangleHorizontal className="w-5 h-5" /> Yatay (Satır)
-                </button>
-                <button onClick={() => setAspect(16/9)} className={`p-2 rounded-lg flex flex-col items-center gap-1 text-[10px] font-bold ${aspect === 16/9 ? "bg-teal-600 text-white" : "bg-slate-700 text-slate-300"}`}>
-                   <RectangleHorizontal className="w-5 h-5 scale-y-150" /> Geniş
-                </button>
-                <button onClick={() => setAspect(1)} className={`p-2 rounded-lg flex flex-col items-center gap-1 text-[10px] font-bold ${aspect === 1 ? "bg-teal-600 text-white" : "bg-slate-700 text-slate-300"}`}>
-                   <Square className="w-5 h-5" /> Kare
-                </button>
-                <button onClick={() => setAspect(9/16)} className={`p-2 rounded-lg flex flex-col items-center gap-1 text-[10px] font-bold ${aspect === 9/16 ? "bg-teal-600 text-white" : "bg-slate-700 text-slate-300"}`}>
-                   <RectangleVertical className="w-5 h-5" /> Dikey
-                </button>
-             </div>
-
-             {/* ZOOM SLIDER */}
-             <div className="flex items-center gap-4 px-2">
-               <ZoomIn className="text-slate-400 w-4 h-4" />
-               <input
-                 type="range"
-                 value={zoom}
-                 min={1}
-                 max={5} // Daha hassas zoom
-                 step={0.1}
-                 onChange={(e) => setZoom(e.target.value)}
-                 className="w-full h-2 bg-slate-600 rounded-lg appearance-none cursor-pointer accent-teal-500"
-               />
-             </div>
-
-             {/* AKSİYON BUTONLARI */}
-             <div className="flex gap-3 mt-2">
-                <button 
-                  onClick={() => setImageSrc(null)}
-                  className="flex-1 py-3 bg-slate-800 text-white rounded-xl font-bold flex items-center justify-center gap-2 border border-slate-700"
-                >
-                   <X className="w-5 h-5"/> İptal
-                </button>
-                <button 
-                  onClick={handleCropAndAnalyze}
-                  className="flex-1 py-3 bg-teal-600 text-white rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-teal-900/50"
-                >
-                   <Check className="w-5 h-5"/> Kırp ve Tara
-                </button>
-             </div>
+          <div className="flex gap-4 w-full max-w-xs mt-6">
+             <button 
+                onClick={() => setImgSrc(null)} 
+                className="flex-1 py-3 bg-slate-700 text-white rounded-xl font-bold flex items-center justify-center gap-2"
+             >
+               <X className="w-5 h-5"/> İptal
+             </button>
+             <button 
+                onClick={handleCropAndAnalyze} 
+                className="flex-1 py-3 bg-teal-600 text-white rounded-xl font-bold flex items-center justify-center gap-2"
+             >
+               <Check className="w-5 h-5"/> Seç ve Tara
+             </button>
           </div>
+          <p className="text-slate-400 text-xs mt-4">Köşelerden tutarak alanı belirleyin</p>
         </div>
       )}
 
+      {/* --- ANA EKRAN --- */}
       <div className="w-full max-w-lg space-y-6">
         <div className="flex items-center gap-3">
           <button onClick={() => navigate("/")} className="p-2 hover:bg-slate-200 rounded-full bg-white shadow-sm"><ArrowLeft className="w-6 h-6 text-slate-600" /></button>
@@ -203,28 +197,31 @@ export default function SentenceAnalysis() {
   );
 }
 
-// --- YARDIMCI ---
-const createImage = (url) =>
-  new Promise((resolve, reject) => {
-    const image = new Image();
-    image.addEventListener("load", () => resolve(image));
-    image.addEventListener("error", (error) => reject(error));
-    image.setAttribute("crossOrigin", "anonymous");
-    image.src = url;
-  });
+// --- YARDIMCI FONKSİYON (Canvas Slicing) ---
+function getCroppedImg(image, crop) {
+  const canvas = document.createElement('canvas');
+  const scaleX = image.naturalWidth / image.width;
+  const scaleY = image.naturalHeight / image.height;
+  canvas.width = crop.width;
+  canvas.height = crop.height;
+  const ctx = canvas.getContext('2d');
 
-async function getCroppedImg(imageSrc, pixelCrop) {
-  const image = await createImage(imageSrc);
-  const canvas = document.createElement("canvas");
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return null;
-  canvas.width = pixelCrop.width;
-  canvas.height = pixelCrop.height;
-  ctx.drawImage(image, pixelCrop.x, pixelCrop.y, pixelCrop.width, pixelCrop.height, 0, 0, pixelCrop.width, pixelCrop.height);
+  ctx.drawImage(
+    image,
+    crop.x * scaleX,
+    crop.y * scaleY,
+    crop.width * scaleX,
+    crop.height * scaleY,
+    0,
+    0,
+    crop.width,
+    crop.height
+  );
+
   return new Promise((resolve, reject) => {
-    canvas.toBlob((blob) => {
-      if (!blob) { reject(new Error("Canvas is empty")); return; }
+    canvas.toBlob(blob => {
+      if (!blob) { reject(new Error('Canvas is empty')); return; }
       resolve(blob);
-    }, "image/jpeg");
+    }, 'image/jpeg', 1); // 1 = %100 kalite
   });
 }
