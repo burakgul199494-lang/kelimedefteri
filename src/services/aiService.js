@@ -1,11 +1,13 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-// API Anahtarını .env dosyasından çekiyoruz
+// API Anahtarını çekiyoruz
 const GEN_AI_KEY = process.env.REACT_APP_GEMINI_API_KEY; 
+
+// Model Kurulumu
 const genAI = new GoogleGenerativeAI(GEN_AI_KEY);
 const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-// 1. TEK KELİME VEYA CÜMLE ÇEVİRİSİ
+// 1. TEK KELİME/CÜMLE ÇEVİRİSİ
 export const translateTextWithAI = async (text, targetLang = "Turkish") => {
   try {
     const prompt = `Translate the following text to ${targetLang}: "${text}". Only provide the translation, no extra text.`;
@@ -19,6 +21,7 @@ export const translateTextWithAI = async (text, targetLang = "Turkish") => {
 };
 
 // 2. TOPLU KELİME ÇEVİRİSİ (YENİ - API DOSTU)
+// Kelime listesini alır, tek seferde hepsini çevirip JSON döner.
 export const translateBulkWordsWithAI = async (wordList) => {
   try {
     const wordsString = wordList.join(", ");
@@ -35,7 +38,7 @@ export const translateBulkWordsWithAI = async (wordList) => {
     const response = await result.response;
     let text = response.text();
 
-    // Temizlik (Markdown veya boşlukları sil)
+    // Temizlik (Markdown işaretlerini kaldır)
     text = text.replace(/```json/g, "").replace(/```/g, "").trim();
     
     return JSON.parse(text);
