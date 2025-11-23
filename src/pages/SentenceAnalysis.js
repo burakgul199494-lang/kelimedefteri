@@ -2,7 +2,6 @@ import React, { useState, useRef } from "react";
 import { ArrowLeft, Camera, Microscope, Loader2, Globe, Brain, BookOpen, Plus, Check, X, Save } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useData } from "../context/DataContext";
-// DİKKAT: translateBulkWordsWithAI buraya eklendi
 import { fetchSentenceAnalysisFromAI, extractTextFromImage, translateBulkWordsWithAI } from "../services/aiService";
 import QuickAddModal from "../components/QuickAddModal";
 
@@ -11,7 +10,6 @@ import ReactCrop, { centerCrop, makeAspectCrop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css'; 
 
 export default function SentenceAnalysis() {
-  // DİKKAT: addWord fonksiyonunu context'ten çekiyoruz
   const { customWords, dynamicSystemWords, deletedWordIds, addWord } = useData();
   const navigate = useNavigate();
   
@@ -19,10 +17,7 @@ export default function SentenceAnalysis() {
   const [analysisResult, setAnalysisResult] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [ocrLoading, setOcrLoading] = useState(false);
-  
-  // Toplu Ekleme State'i
   const [bulkLoading, setBulkLoading] = useState(false);
-
   const [quickAddWord, setQuickAddWord] = useState(null);
   const fileInputRef = useRef(null);
 
@@ -35,53 +30,46 @@ export default function SentenceAnalysis() {
   const isWordInRegistry = (wordToCheck) => {
     if (!wordToCheck) return false;
     const lower = wordToCheck.toLowerCase().trim();
-    if (dynamicSystemWords.some(sw => sw.word.toLowerCase() === lower)) return true;
-    if (customWords.some(cw => cw.word.toLowerCase() === lower && !deletedWordIds.includes(cw.id))) return true;
+    if (dynamicSystemWords?.some(sw => sw.word.toLowerCase() === lower)) return true;
+    if (customWords?.some(cw => cw.word.toLowerCase() === lower && !deletedWordIds?.includes(cw.id))) return true;
     return false;
   };
 
-  // --- GÜVENLİ & HIZLI TOPLU EKLEME ---
+  // --- TOPLU EKLEME FONKSİYONU ---
   const handleBulkAdd = async () => {
     if (!analysisResult?.rootWords) return;
 
-    // Sadece kayıtlı olmayanları bul
     const unknownWords = analysisResult.rootWords.filter(w => !isWordInRegistry(w));
-
     if (unknownWords.length === 0) {
       alert("Eklenecek yeni kelime yok.");
       return;
     }
 
-    if (!window.confirm(`${unknownWords.length} adet kelime sözlüğe eklenecek. Onaylıyor musunuz?`)) return;
+    if (!window.confirm(`${unknownWords.length} kelime eklenecek. Onaylıyor musun?`)) return;
 
     setBulkLoading(true);
 
     try {
-      // 1. ADIM: TEK SEFERDE TÜM KELİMELERİ ÇEVİR (API DOSTU)
+      // 1. ADIM: Toplu Çeviri (API Dostu)
       const translationsMap = await translateBulkWordsWithAI(unknownWords);
       
-      if (!translationsMap) {
-        throw new Error("Yapay zeka toplu çeviri yapamadı.");
-      }
+      if (!translationsMap) throw new Error("Çeviri servisi yanıt vermedi.");
 
       let successCount = 0;
 
-      // 2. ADIM: Çevirileri kullanarak kelimeleri kaydet
+      // 2. ADIM: Kelimeleri Kaydet
       for (const word of unknownWords) {
-        // AI'dan gelen listeden anlamı çek (büyük/küçük harf toleransı ile)
         const meaning = translationsMap[word] || translationsMap[word.toLowerCase()] || "Otomatik Çeviri";
 
         const newWordObj = {
           id: Date.now().toString() + Math.random().toString(36).substr(2, 5),
           word: word,
-          sentence: analysisText, // Mevcut analiz cümlesini örnek olarak kullan
-          definitions: [
-            {
+          sentence: analysisText,
+          definitions: [{
               meaning: meaning,
               type: "unknown",
               engExplanation: `Bulk added from analysis.` 
-            }
-          ],
+          }],
           source: "analysis_bulk",
           createdAt: new Date(),
           stats: { learned: false, correctCount: 0, wrongCount: 0 }
@@ -90,8 +78,6 @@ export default function SentenceAnalysis() {
         if (addWord) {
             await addWord(newWordObj);
             successCount++;
-        } else {
-            console.error("addWord fonksiyonu bulunamadı! DataContext'i kontrol et.");
         }
       }
       
@@ -99,7 +85,7 @@ export default function SentenceAnalysis() {
       
     } catch (error) {
       console.error(error);
-      alert("Toplu ekleme sırasında hata oluştu: " + error.message);
+      alert("Hata oluştu: " + error.message);
     } finally {
       setBulkLoading(false);
     }
@@ -199,13 +185,12 @@ export default function SentenceAnalysis() {
                <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">{analysisResult.grammarAnalysis}</p>
             </div>
 
-            {/* KELİME LİSTESİ */}
+            {/* KELİME LİSTESİ VE BULK ADD */}
             {analysisResult.rootWords?.length > 0 && (
               <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm relative">
                 <div className="flex justify-between items-center mb-3">
                     <h3 className="text-xs font-bold text-slate-400 uppercase flex items-center gap-2"><BookOpen className="w-4 h-4" /> Kelime Kökleri</h3>
                     
-                    {/* TOPLU KAYDET BUTONU */}
                     {analysisResult.rootWords.some(w => !isWordInRegistry(w)) && (
                         <button 
                           onClick={handleBulkAdd} 
@@ -241,7 +226,7 @@ export default function SentenceAnalysis() {
   );
 }
 
-// --- YARDIMCI (Canvas - Dosya Sonunda) ---
+// --- YARDIMCI ---
 function getCroppedImg(image, crop) {
   const canvas = document.createElement('canvas');
   const scaleX = image.naturalWidth / image.width;
