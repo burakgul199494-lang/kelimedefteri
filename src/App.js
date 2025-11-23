@@ -71,7 +71,7 @@ const firebaseConfig = {
 
 // --- API KEY AYARI ---
 // BURAYA GÜNCEL ŞİFREYİ YAPIŞTIR
-const GEMINI_API_KEY = "AIzaSyDQb-j8sezrFLHXM85BLavWQ7GyhcGs-K8"; 
+const GEMINI_API_KEY = process.env.REACT_APP_GEMINI_API_KEY;
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
