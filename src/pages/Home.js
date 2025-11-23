@@ -1,53 +1,100 @@
 import React from "react";
-import { useData } from "../context/DataContext";
 import { useNavigate } from "react-router-dom";
+import { useData } from "../context/DataContext";
 import { auth } from "../services/firebase";
-import { Brain, Flame, LogOut, Play, Book, Microscope, Plus, RotateCcw, Check, BookOpen, Trash2, HelpCircle } from "lucide-react";
+import { RotateCcw, LogOut, Brain, Flame, Play, Book, Microscope, Plus, BookOpen, Check, Trash2, HelpCircle, Shield } from "lucide-react";
 
 export default function Home() {
-  const { user, knownWordIds, getAllWords, streak } = useData();
+  const { user, knownWordIds, getAllWords, streak, resetProfile, isAdmin } = useData();
   const navigate = useNavigate();
+  
   const allWords = getAllWords();
-  const progress = (knownWordIds.length / allWords.length) * 100 || 0;
+  const progressPercentage = (knownWordIds.length / allWords.length) * 100 || 0;
+  const remainingCount = allWords.length - knownWordIds.length;
+
+  const handleLogout = async () => { await auth.signOut(); navigate("/login"); };
+  const handleReset = async () => { if(window.confirm("Emin misin? Tüm ilerleme silinecek.")) await resetProfile(); };
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center p-6">
-       <div className="w-full max-w-md space-y-6 mt-2">
-          {/* Header */}
-          <div className="flex justify-between items-center w-full px-1">
-             <button className="p-2.5 bg-white rounded-xl shadow-sm border border-slate-200"><RotateCcw size={18} /></button>
-             <button onClick={()=>auth.signOut()} className="p-2.5 bg-white rounded-xl shadow-sm border border-slate-200 hover:text-red-500"><LogOut size={18} /></button>
+      <div className="w-full max-w-md space-y-6 mt-2">
+        {/* Üst Bar */}
+        <div className="flex justify-between items-center w-full px-1">
+          <button onClick={handleReset} className="p-2.5 bg-white rounded-xl shadow-sm border border-slate-200 text-slate-400 hover:text-red-500"><RotateCcw size={18} /></button>
+          <button onClick={handleLogout} className="p-2.5 bg-white rounded-xl shadow-sm border border-slate-200 text-slate-400 hover:text-red-500"><LogOut size={18} /></button>
+        </div>
+
+        {/* Başlık ve Seri */}
+        <div className="text-center relative mt-4">
+          <div className="flex justify-center mb-4 relative">
+            <div className="bg-indigo-600 p-4 rounded-2xl shadow-lg transform rotate-3"><Brain className="w-12 h-12 text-white" /></div>
+            <div className="absolute -right-6 -top-2 flex flex-col items-center">
+              <div className="flex items-center gap-1 bg-orange-500 text-white px-3 py-1.5 rounded-full shadow-lg border-2 border-white">
+                <Flame className="w-4 h-4 fill-white" /><span className="font-bold text-sm">{streak}</span>
+              </div>
+              <span className="text-xs font-bold text-orange-600 mt-1 bg-orange-100 px-2 rounded-full">Seri</span>
+            </div>
           </div>
-          
-          <div className="text-center relative mt-4">
-             <div className="flex justify-center mb-4 relative">
-                <div className="bg-indigo-600 p-4 rounded-2xl shadow-lg transform rotate-3"><Brain className="w-12 h-12 text-white" /></div>
-                <div className="absolute -right-6 -top-2 flex flex-col items-center"><div className="flex items-center gap-1 bg-orange-500 text-white px-3 py-1.5 rounded-full shadow-lg border-2 border-white"><Flame className="w-4 h-4 fill-white" /><span className="font-bold text-sm">{streak}</span></div></div>
-             </div>
-             <h1 className="text-3xl font-extrabold text-slate-800">Kelime Defteri</h1>
-             <p className="text-slate-500 mt-2 text-sm">Merhaba, <span className="font-medium text-indigo-600">{user.displayName || user.email}</span></p>
+          <h1 className="text-3xl font-extrabold text-slate-800 tracking-tight">Kelime Defteri</h1>
+          <p className="text-slate-500 mt-2 text-sm">Merhaba, <span className="font-medium text-indigo-600">{user?.displayName || user?.email}</span></p>
+        </div>
+
+        {/* İlerleme Kartı */}
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+          <div className="flex justify-between items-end mb-2">
+             <span className="text-sm font-medium text-slate-500">Genel İlerleme</span>
+             <span className="text-2xl font-bold text-indigo-600">%{progressPercentage.toFixed(1)}</span>
+          </div>
+          <div className="w-full bg-slate-100 rounded-full h-3 mb-4"><div className="bg-indigo-600 h-3 rounded-full transition-all duration-500" style={{ width: `${progressPercentage}%` }}></div></div>
+          <div className="flex justify-between text-sm">
+             <div className="text-center flex-1 border-r"><div className="font-bold text-slate-800">{knownWordIds.length}</div><div className="text-slate-400">Öğrenilen</div></div>
+             <div className="text-center flex-1"><div className="font-bold text-slate-800">{remainingCount}</div><div className="text-slate-400">Kalan</div></div>
+          </div>
+        </div>
+
+        {/* Menü Butonları */}
+        <div className="space-y-3 pb-8">
+          {isAdmin && (
+             <button onClick={() => navigate("/admin")} className="w-full bg-slate-800 text-white font-bold py-3 px-6 rounded-xl shadow-md flex items-center justify-between mb-3">
+               <div className="flex items-center gap-3"><div className="bg-white/20 p-2 rounded-lg"><Shield className="w-5 h-5 text-yellow-400"/></div><div className="text-left"><div className="text-base">Admin Paneli</div></div></div>
+             </button>
+          )}
+
+          <div className="grid grid-cols-2 gap-3">
+             <button onClick={() => navigate("/game")} className="bg-indigo-600 text-white font-bold py-4 px-4 rounded-xl shadow-md flex flex-col items-center gap-2 text-center">
+                <div className="bg-white/20 p-2 rounded-full"><Play className="w-6 h-6" fill="currentColor"/></div><span className="text-sm">Yeni Oyun<br/>Başlat</span>
+             </button>
+             <button onClick={() => navigate("/dictionary")} className="bg-sky-500 text-white font-bold py-4 px-4 rounded-xl shadow-md flex flex-col items-center gap-2 text-center">
+                <div className="bg-white/20 p-2 rounded-full"><Book className="w-6 h-6"/></div><span className="text-sm">Sözlükte<br/>Ara</span>
+             </button>
           </div>
 
-          {/* Progress Card */}
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-             <div className="flex justify-between items-end mb-2"><span className="text-sm font-medium text-slate-500">Genel İlerleme</span><span className="text-2xl font-bold text-indigo-600">%{progress.toFixed(1)}</span></div>
-             <div className="w-full bg-slate-100 rounded-full h-3 mb-4"><div className="bg-indigo-600 h-3 rounded-full transition-all" style={{ width: `${progress}%` }}></div></div>
-             <div className="flex justify-between text-sm"><div className="text-center flex-1 border-r"><div className="font-bold">{knownWordIds.length}</div><div>Öğrenilen</div></div><div className="text-center flex-1"><div className="font-bold">{allWords.length - knownWordIds.length}</div><div>Kalan</div></div></div>
+          <button onClick={() => navigate("/analysis")} className="w-full bg-teal-600 text-white font-bold py-4 px-6 rounded-xl shadow-md flex items-center justify-between group">
+             <div className="flex items-center gap-3"><div className="bg-white/20 p-2 rounded-lg"><Microscope className="w-6 h-6"/></div><div className="text-left"><div className="text-lg">AI Cümle Analizi</div><div className="text-xs text-teal-100 font-normal">Gramer ve hata kontrolü</div></div></div>
+          </button>
+
+          <button onClick={() => navigate("/quiz")} className="w-full bg-amber-500 text-white font-bold py-4 px-6 rounded-xl shadow-md flex items-center justify-between group">
+             <div className="flex items-center gap-3"><div className="bg-white/20 p-2 rounded-lg"><HelpCircle className="w-6 h-6"/></div><div className="text-left"><div className="text-lg">Kelime Testi (Quiz)</div></div></div>
+          </button>
+
+          <button onClick={() => navigate("/add-word")} className="w-full bg-white text-slate-700 border-2 border-dashed border-slate-300 font-bold py-4 px-6 rounded-xl flex items-center justify-between group">
+             <div className="flex items-center gap-3"><div className="bg-blue-50 p-2 rounded-lg text-blue-600"><Plus className="w-6 h-6"/></div><div className="text-left"><div className="text-base">Yeni Kelime Ekle</div></div></div><Plus className="w-5 h-5 opacity-40"/>
+          </button>
+
+          <div className="grid grid-cols-2 gap-3">
+             <button onClick={() => navigate("/list/unknown")} className="bg-white border-2 border-slate-200 font-bold py-4 px-4 rounded-xl flex flex-col items-center gap-2 text-center">
+                <div className="bg-orange-100 p-2 rounded-full text-orange-500"><BookOpen className="w-5 h-5"/></div><span className="text-sm">Öğreneceğim<br/>Kelimeler</span>
+             </button>
+             <button onClick={() => navigate("/list/known")} className="bg-white border-2 border-slate-200 font-bold py-4 px-4 rounded-xl flex flex-col items-center gap-2 text-center">
+                <div className="bg-green-100 p-2 rounded-full text-green-600"><Check className="w-5 h-5"/></div><span className="text-sm">Öğrendiğim<br/>Kelimeler</span>
+             </button>
           </div>
 
-          {/* Menü */}
-          <div className="grid grid-cols-2 gap-3">
-             <button onClick={()=>navigate("/game")} className="bg-indigo-600 text-white font-bold py-4 rounded-xl shadow-md flex flex-col items-center gap-2"><Play className="w-6 h-6"/> Yeni Oyun</button>
-             <button onClick={()=>navigate("/dictionary")} className="bg-sky-500 text-white font-bold py-4 rounded-xl shadow-md flex flex-col items-center gap-2"><Book className="w-6 h-6"/> Sözlük</button>
-          </div>
-          <button onClick={()=>navigate("/analysis")} className="w-full bg-teal-600 text-white font-bold py-4 px-6 rounded-xl shadow-md flex items-center justify-between"><div className="flex items-center gap-3"><Microscope className="w-6 h-6"/> <span>AI Cümle Analizi</span></div></button>
-          <button onClick={()=>navigate("/add-word")} className="w-full bg-white text-slate-700 border-2 border-dashed border-slate-300 font-bold py-4 px-6 rounded-xl flex items-center justify-between"><div className="flex items-center gap-3"><Plus className="text-blue-600 w-6 h-6"/> <span>Yeni Kelime Ekle</span></div></button>
-          
-          <div className="grid grid-cols-2 gap-3">
-             <button onClick={()=>navigate("/list/unknown")} className="bg-white border-2 border-slate-200 font-bold py-4 rounded-xl flex flex-col items-center gap-2"><BookOpen className="text-orange-500 w-5 h-5"/> Öğreneceğim</button>
-             <button onClick={()=>navigate("/list/known")} className="bg-white border-2 border-slate-200 font-bold py-4 rounded-xl flex flex-col items-center gap-2"><Check className="text-green-600 w-5 h-5"/> Öğrendiğim</button>
-          </div>
-       </div>
+          <button onClick={() => navigate("/list/trash")} className="w-full bg-white text-slate-700 border-2 border-slate-200 font-bold py-3 px-4 rounded-xl flex items-center justify-between">
+             <div className="flex items-center gap-3"><div className="bg-red-100 p-2 rounded-full text-red-500"><Trash2 className="w-5 h-5"/></div><div className="text-sm">Silinen Kelimeler</div></div>
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
