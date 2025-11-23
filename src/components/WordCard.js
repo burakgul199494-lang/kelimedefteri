@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Volume2, Languages, Loader2 } from "lucide-react";
+import { Volume2, Languages, Loader2, Tag } from "lucide-react";
 import { translateTextWithAI } from "../services/aiService";
 
 const WordCard = ({ wordObj }) => {
@@ -71,10 +71,17 @@ const WordCard = ({ wordObj }) => {
   return (
     <div className="relative w-full max-w-sm bg-white rounded-3xl shadow-xl p-6 text-center border border-slate-100 mb-4 mx-auto">
       
-      {/* Kart Üst Bilgisi */}
-      <div className="flex items-center justify-center gap-2 mb-2">
-        <span className="text-xs uppercase tracking-widest text-slate-400 font-semibold">Kelime</span>
+      {/* --- ÜST BİLGİ ALANI (KATEGORİ VE KAYNAK) --- */}
+      <div className="flex items-center justify-center gap-2 mb-2 flex-wrap">
+        {/* Kaynak Rozeti */}
         {renderSourceBadge(wordObj.source)}
+
+        {/* Kategori Rozeti (YENİ EKLENDİ) */}
+        {wordObj.category && (
+            <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-purple-100 text-purple-600 flex items-center gap-1 border border-purple-200">
+                <Tag className="w-3 h-3" /> {wordObj.category}
+            </span>
+        )}
       </div>
       
       {/* Ana Kelime ve Ses */}
