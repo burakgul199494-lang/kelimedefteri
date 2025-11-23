@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useData } from "../context/DataContext";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Shield, Plus, Search, Edit2, Trash2, Volume2 } from "lucide-react";
+import { ArrowLeft, Shield, Plus, Search, Edit2, Trash2, Volume2, Tag } from "lucide-react";
 import QuickAddModal from "../components/QuickAddModal";
 
 export default function AdminDashboard() {
@@ -18,7 +18,7 @@ export default function AdminDashboard() {
   }
 
   const filtered = dynamicSystemWords
-     .filter(w => w.word.toLowerCase().includes(search.toLowerCase()))
+     .filter(w => w.word.toLowerCase().includes(search.toLowerCase()) || (w.category && w.category.toLowerCase().includes(search.toLowerCase())))
      .sort((a,b) => a.word.localeCompare(b.word));
 
   // Seslendirme Fonksiyonu
@@ -62,7 +62,7 @@ export default function AdminDashboard() {
 
          <div className="relative mb-4">
              <Search className="absolute left-3 top-3.5 text-slate-400 w-5 h-5"/>
-             <input type="text" placeholder="Sistem kelimelerinde ara..." value={search} onChange={e=>setSearch(e.target.value)} className="w-full pl-10 p-3 bg-white border border-slate-200 rounded-xl outline-none shadow-sm focus:border-indigo-300 transition-colors"/>
+             <input type="text" placeholder="Sistem kelimelerinde veya kategorilerde ara..." value={search} onChange={e=>setSearch(e.target.value)} className="w-full pl-10 p-3 bg-white border border-slate-200 rounded-xl outline-none shadow-sm focus:border-indigo-300 transition-colors"/>
          </div>
              
          <div className="space-y-3">
@@ -71,6 +71,16 @@ export default function AdminDashboard() {
                      
                      {/* SOL TARAF (KELİME DETAYLARI) */}
                      <div className="flex-1 min-w-0 pr-2">
+                         
+                         {/* --- YENİ: KATEGORİ ETİKETİ --- */}
+                         {item.category && (
+                             <div className="flex justify-start mb-1">
+                                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 text-[10px] font-bold uppercase tracking-wide border border-purple-100">
+                                     <Tag className="w-3 h-3"/> {item.category}
+                                 </span>
+                             </div>
+                         )}
+
                          {/* Başlık */}
                          <div className="flex items-center gap-2 mb-2 flex-wrap">
                              <span className="text-lg font-bold text-slate-800 leading-none">{item.word}</span>
