@@ -102,17 +102,31 @@ export default function Quiz() {
           <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden"><div className="bg-indigo-500 h-full transition-all duration-500" style={{width:`${progress}%`}}></div></div>
           
           <div className="bg-white p-8 rounded-3xl shadow-lg border border-slate-100 text-center space-y-6 mt-6 animate-in fade-in zoom-in duration-300">
+             
+             {/* İPUCU ALANI - GÜNCELLENDİ */}
              {hint && (
                  <div className="flex flex-col items-center gap-2">
-                     <div className="bg-indigo-50 text-indigo-800 px-4 py-2 rounded-xl border border-indigo-100 flex items-center gap-2">
-                         <span className="text-sm italic">"{hint}"</span>
-                         <button onClick={handleTranslateHint} className="p-1 bg-white rounded-full">{loadingHint?<Loader2 className="w-3 h-3 animate-spin"/>:<Languages className="w-3 h-3"/>}</button>
+                     <div className="bg-indigo-50 text-indigo-800 px-4 py-2 rounded-xl border border-indigo-100 flex items-center justify-between gap-3 w-full">
+                         <span className="text-sm italic text-left flex-1">"{hint}"</span>
+                         
+                         {/* Buton Grubu */}
+                         <div className="flex gap-1 shrink-0">
+                            {/* Yeni Seslendirme Butonu */}
+                            <button onClick={()=>speak(hint)} className="p-1 bg-white rounded-full text-indigo-500 shadow-sm hover:scale-105 transition-transform">
+                                <Volume2 className="w-3 h-3"/>
+                            </button>
+                            {/* Mevcut Çeviri Butonu */}
+                            <button onClick={handleTranslateHint} className="p-1 bg-white rounded-full text-indigo-500 shadow-sm hover:scale-105 transition-transform">
+                                {loadingHint?<Loader2 className="w-3 h-3 animate-spin"/>:<Languages className="w-3 h-3"/>}
+                            </button>
+                         </div>
                      </div>
-                     {hintTranslation && <div className="bg-green-50 text-green-700 px-3 py-1 text-xs font-bold rounded">TR: {hintTranslation}</div>}
+                     {hintTranslation && <div className="bg-green-50 text-green-700 px-3 py-1 text-xs font-bold rounded w-full text-center">TR: {hintTranslation}</div>}
                  </div>
              )}
+
              <h2 className="text-4xl font-extrabold text-slate-800">{current.wordObj.word}</h2>
-             <button onClick={()=>speak(current.wordObj.word)} className="mx-auto p-2 bg-slate-50 rounded-full text-indigo-500"><Volume2 className="w-6 h-6"/></button>
+             <button onClick={()=>speak(current.wordObj.word)} className="mx-auto p-2 bg-slate-50 rounded-full text-indigo-500 hover:bg-slate-100 transition-colors"><Volume2 className="w-6 h-6"/></button>
           </div>
 
           <div className="space-y-3 mt-6">
