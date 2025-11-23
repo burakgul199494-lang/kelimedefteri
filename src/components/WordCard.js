@@ -71,9 +71,28 @@ const WordCard = ({ wordObj }) => {
               <div className="mt-1 pl-2 border-l-2 border-indigo-200/50 group">
                 <div className="flex items-start justify-between gap-2">
                   <p className={`text-sm italic font-medium ${idx === 0 ? "text-indigo-500" : "text-slate-500"}`}>"{def.engExplanation}"</p>
-                  <button onClick={(e) => handleTranslateDef(idx, def.engExplanation, e)} className="opacity-50 hover:opacity-100 p-1 bg-white rounded-full shadow-sm">
-                    {loadingDefs[idx] ? <Loader2 className="w-3 h-3 animate-spin text-indigo-500" /> : <Languages className="w-3 h-3 text-indigo-500" />}
-                  </button>
+                  
+                  {/* DEĞİŞİKLİK BURADA: Butonları grupladık */}
+                  <div className="flex gap-1 shrink-0">
+                    {/* Yeni Seslendirme Butonu */}
+                    <button 
+                      onClick={(e) => speak(def.engExplanation, e)} 
+                      className="opacity-50 hover:opacity-100 p-1 bg-white rounded-full shadow-sm text-indigo-500"
+                      title="Seslendir"
+                    >
+                      <Volume2 className="w-3 h-3" />
+                    </button>
+
+                    {/* Mevcut Çeviri Butonu */}
+                    <button 
+                      onClick={(e) => handleTranslateDef(idx, def.engExplanation, e)} 
+                      className="opacity-50 hover:opacity-100 p-1 bg-white rounded-full shadow-sm"
+                      title="Çevir"
+                    >
+                      {loadingDefs[idx] ? <Loader2 className="w-3 h-3 animate-spin text-indigo-500" /> : <Languages className="w-3 h-3 text-indigo-500" />}
+                    </button>
+                  </div>
+
                 </div>
                 {defTranslations[idx] && <div className="mt-1 text-xs text-indigo-800 bg-indigo-100/50 p-1.5 rounded">TR: {defTranslations[idx]}</div>}
               </div>
