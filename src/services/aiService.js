@@ -1,167 +1,126 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-// API KEY GÜVENLİĞİ: Normalde .env dosyasında olmalı ama senin yapına uygun olarak buraya koyuyoruz.
-// Eğer çalışmazsa kendi KEY'ini buraya "tırnak içinde" yaz.
-const GEMINI_API_KEY = process.env.REACT_APP_GEMINI_API_KEY; 
+const GEN_AI_KEY = process.env.REACT_APP_GEMINI_API_KEY; 
 
-// --- ORTAK TEMİZLİK FONKSİYONU ---
-const cleanAndParseJSON = (text) => {
-  try {
-    let cleanText = text.replace(/```json/g, "").replace(/```/g, "").trim();
-    const firstBrace = cleanText.indexOf("{");
-    const lastBrace = cleanText.lastIndexOf("}");
-    if (firstBrace !== -1 && lastBrace !== -1) {
-      cleanText = cleanText.substring(firstBrace, lastBrace + 1);
-    }
-    return JSON.parse(cleanText);
-  } catch (e) {
-    console.error("JSON Parse Hatası:", e);
-    return null; 
+// --- GÜVENLİK KİLİDİ (Lazy Loading) ---
+// Modeli uygulama açılırken değil, lazım olduğunda çağırır.
+// API key hatası olsa bile uygulamanın beyaz ekran vermesini engeller.
+const getModel = () => {
+  if (!GEN_AI_KEY) {
+    console.error("API Key bulunamadı! .env dosyasını kontrol et.");
+    throw new Error("API Key eksik. Lütfen yönetici ile iletişime geçin.");
   }
+  const genAI = new GoogleGenerativeAI(GEN_AI_KEY);
+  return genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 };
 
-// --- 1. KELİME ANALİZİ ---
-export const fetchWordAnalysisFromAI = async (word) => {
+// 1. BASİT ÇEVİRİ
+export const translateTextWithAI = async (text, targetLang = "Turkish") => {
   try {
-    const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-
-    const prompt = `
-      You are a dictionary app helper. Analyze the English word: "${word}".
-      IMPORTANT: 
-      1. In the "definitions" array, the "meaning" field MUST be the TURKISH translation.
-      2. The "engExplanation" field MUST be a simple English explanation.
-      Return ONLY JSON. No markdown.
-      Structure:
-      {
-        "word": "${word}",
-        "plural": "", "v2": "", "v3": "", "vIng": "", "thirdPerson": "",
-        "advLy": "", "compEr": "", "superEst": "",
-        "sentence": "Simple A2 level sentence.",
-        "definitions": [
-          { "type": "noun/verb/etc", "meaning": "TURKISH TRANSLATION", "engExplanation": "Simple English explanation" }
-        ]
-      }
-    `;
-
+    const model = getModel();
+    const prompt = `Translate the following text to ${targetLang}: "${text}". Only provide the translation, no extra text.`;
     const result = await model.generateContent(prompt);
     const response = await result.response;
-    return cleanAndParseJSON(response.text());
-  } catch (e) {
-    console.error("Word Analysis Error:", e);
+    return response.text().trim();
+  } catch (error) {
+    console.error("AI Translation Error:", error);
     return null;
   }
 };
 
-// --- 2. KÖK BULMA ---
-export const fetchRootFromAI = async (word) => {
+// 2. DETAYLI KELİME ANALİZİ (YENİ ÖZELLİK)
+// Kelimenin V2, V3, Çoğul ve Kısa Örnek Cümlesini getirir.
+export const fetchWordDetails = async (word) => {
   try {
-    const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-
+    const model = getModel();
     const prompt = `
-      Find the dictionary root form (lemma) of english word: "${word}".
-      Return ONLY JSON:
-      { "root": "base_form", "original": "${word}", "changed": true/false }
+      Analyze the English word: "${word}".
+      Provide the following details in valid JSON format:
+      1. "meaning": Turkish translation (short).
+      2. "type": noun, verb, adjective, etc.
+      3. "v2": Past tense (if verb, else empty string).
+      4. "v3": Past participle (if verb, else empty string).
+      5. "plural": Plural form (if noun, else empty string).
+      6. "exampleSentence": A short, simple English sentence using this word (max 10 words).
+
+      Respond ONLY with the JSON object. No markdown.
+      Example: { "meaning": "koşmak", "type": "verb", "v2": "ran", "v3": "run", "plural": "", "exampleSentence": "I run every day." }
     `;
 
     const result = await model.generateContent(prompt);
     const response = await result.response;
-    const data = cleanAndParseJSON(response.text());
-    return data || { root: word, changed: false };
-  } catch (e) {
-    console.error("Root Error:", e);
-    return { root: word, changed: false };
+    let text = response.text();
+    text = text.replace(/```json/g, "").replace(/```/g, "").trim();
+
+    return JSON.parse(text);
+  } catch (error) {
+    console.error("Word Detail Error:", error);
+    // Hata olursa sistem çökmesin, boş ama güvenli veri dönsün
+    return { 
+      meaning: "Çeviri hatası", 
+      type: "unknown", 
+      v2: "", v3: "", plural: "", 
+      exampleSentence: `Example sentence for ${word}` 
+    };
   }
 };
 
-// --- 3. CÜMLE ANALİZİ ---
-export const fetchSentenceAnalysisFromAI = async (text) => {
+// 3. CÜMLE ANALİZİ (ANA FONKSİYON)
+export const fetchSentenceAnalysisFromAI = async (sentence) => {
   try {
-    const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ 
-        model: "gemini-2.0-flash",
-        generationConfig: { temperature: 0 } 
+    const model = getModel();
+    const prompt = `
+      Analyze the following English sentence: "${sentence}"
+      
+      1. Translate it to Turkish.
+      2. Explain the grammar structure simply in Turkish.
+      3. List the root forms of the important English words in the sentence (verbs, nouns, adjectives).
+
+      Respond ONLY in valid JSON format:
+      {
+        "turkishTranslation": "...",
+        "grammarAnalysis": "...",
+        "rootWords": ["word1", "word2", "word3"]
+      }
+      Do not use markdown formatting.
+    `;
+    
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    let text = response.text();
+    text = text.replace(/```json/g, "").replace(/```/g, "").trim();
+
+    return JSON.parse(text);
+  } catch (error) {
+    console.error("AI Analysis Error:", error);
+    throw new Error("Analiz servisi yanıt vermedi: " + error.message);
+  }
+};
+
+// 4. OCR (RESİMDEN YAZI ÇEKME)
+export const extractTextFromImage = async (imageFile) => {
+  try {
+    const model = getModel();
+    const base64Data = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(imageFile);
+      reader.onload = () => resolve(reader.result.split(',')[1]);
+      reader.onerror = error => reject(error);
     });
 
-    const prompt = `
-      Act as an expert English teacher. Analyze this text: "${text}"
-      Tasks:
-      1. Translate the text to Turkish naturally.
-      2. Analyze the grammar structure in detail in Turkish.
-      3. Extract EVERY single word used in the sentence to a list.
-         - Convert them to their dictionary root form (lemma).
-         - IMPORTANT: Handle possessives correctly. For "sister's", return "sister". DO NOT return "'s" as a word.
-         - Remove proper names (like Alice, London).
-      Return ONLY JSON. No markdown. Structure:
-      {
-        "turkishTranslation": "Doğal Türkçe çeviri",
-        "grammarAnalysis": "Gramer analizi...",
-        "rootWords": ["list", "of", "words"] 
-      }
-    `;
+    const imagePart = {
+      inlineData: {
+        data: base64Data,
+        mimeType: imageFile.type,
+      },
+    };
 
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const data = cleanAndParseJSON(response.text());
-
-    if (data && data.rootWords && Array.isArray(data.rootWords)) {
-        const cleanList = data.rootWords
-            .map(w => {
-                let clean = w.toLowerCase();
-                clean = clean.replace(/'s$/, "");
-                clean = clean.replace(/[^a-z-]/g, "");
-                return clean;
-            })
-            .filter(w => w.length > 1 || w === 'a' || w === 'i');
-        data.rootWords = [...new Set(cleanList)];
-    }
-    return data;
-  } catch (e) {
-    console.error("Sentence Analysis Error:", e);
-    throw e;
-  }
-};
-
-// --- 4. HIZLI ÇEVİRİ ---
-export const translateTextWithAI = async (text) => {
-  try {
-    const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-    const prompt = `Translate this English text to Turkish accurately and naturally. Return ONLY the translation, nothing else: "${text}"`;
-    const result = await model.generateContent(prompt);
+    const prompt = "Extract all the English text from this image. Keep the formatting as close as possible. Only return the text.";
+    const result = await model.generateContent([prompt, imagePart]);
     const response = await result.response;
     return response.text().trim();
-  } catch (e) {
-    console.error("Translation Error:", e);
-    return "Çeviri yapılamadı.";
+  } catch (error) {
+    console.error("AI OCR Error:", error);
+    throw new Error("Resim okunamadı.");
   }
 };
-
-// --- 5. RESİMDEN METİN OKUMA (OCR) ---
-export const extractTextFromImage = async (file) => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = async () => {
-      try {
-        const base64Data = reader.result.split(",")[1];
-        const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-
-        const prompt = "Extract all the text from this image clearly. Do not add any comments, just return the text found.";
-        
-        const result = await model.generateContent([
-          prompt,
-          { inlineData: { data: base64Data, mimeType: file.type } },
-        ]);
-        const response = await result.response;
-        resolve(response.text().trim());
-      } catch (e) {
-        console.error("OCR Error:", e);
-        reject(e);
-      }
-    };
-    reader.readAsDataURL(file);
-  });
-};
-
