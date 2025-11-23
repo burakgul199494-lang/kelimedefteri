@@ -20,8 +20,7 @@ export const translateTextWithAI = async (text, targetLang = "Turkish") => {
   }
 };
 
-// 2. TOPLU KELİME ÇEVİRİSİ (YENİ - API DOSTU)
-// Kelime listesini alır, tek seferde hepsini çevirip JSON döner.
+// 2. TOPLU KELİME ÇEVİRİSİ (API DOSTU - HIZLI)
 export const translateBulkWordsWithAI = async (wordList) => {
   try {
     const wordsString = wordList.join(", ");
@@ -82,7 +81,6 @@ export const fetchSentenceAnalysisFromAI = async (sentence) => {
 // 4. RESİMDEN METİN OKUMA (OCR)
 export const extractTextFromImage = async (imageFile) => {
   try {
-    // File objesini Base64'e çevir
     const base64Data = await new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.readAsDataURL(imageFile);
