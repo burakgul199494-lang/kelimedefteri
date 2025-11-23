@@ -1,8 +1,7 @@
 import React, { useState, useRef } from "react";
-import { ArrowLeft, Camera, Microscope, Loader2, Globe, Brain, BookOpen, Plus, Check, X, Save } from "lucide-react";
+import { ArrowLeft, Camera, Microscope, Loader2, Globe, Brain, BookOpen, Plus, Check, X, Save, ShieldCheck } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useData } from "../context/DataContext";
-// Sadece mevcut servisleri kullanıyoruz, yeni bir şeye gerek yok
 import { fetchSentenceAnalysisFromAI, extractTextFromImage, translateTextWithAI } from "../services/aiService";
 import QuickAddModal from "../components/QuickAddModal";
 
@@ -11,17 +10,28 @@ import ReactCrop, { centerCrop, makeAspectCrop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css'; 
 
 export default function SentenceAnalysis() {
-  const { customWords, dynamicSystemWords, deletedWordIds, addWord } = useData();
+  // DİKKAT: İsimleri senin DataContext.js dosyanla birebir aynı yaptım:
+  const { 
+    user, 
+    customWords, 
+    dynamicSystemWords, 
+    deletedWordIds, 
+    handleSaveNewWord,    // addCustomWord yerine bunu kullanacağız
+    handleSaveSystemWord  // addSystemWord yerine bunu kullanacağız
+  } = useData();
+
   const navigate = useNavigate();
   
+  // ADMIN KONTROLÜ (Senin Emailin)
+  const ADMIN_EMAILS = ["burakgul1994@outlook.com.tr"]; 
+  const isAdmin = user && ADMIN_EMAILS.includes(user.email);
+
   const [analysisText, setAnalysisText] = useState("");
   const [analysisResult, setAnalysisResult] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [ocrLoading, setOcrLoading] = useState(false);
   
-  // Toplu Ekleme Yükleniyor Durumu
   const [bulkLoading, setBulkLoading] = useState(false);
-  // İlerleme Durumu (Örn: 3/10 eklendi)
   const [bulkProgress, setBulkProgress] = useState("");
 
   const [quickAddWord, setQuickAddWord] = useState(null);
@@ -41,12 +51,19 @@ export default function SentenceAnalysis() {
     return false;
   };
 
-  // --- GÜVENLİ & YAVAŞ TOPLU EKLEME ---
+  // --- AKILLI TOPLU EKLEME (Admin/User Ayırımı Yapar) ---
   const handleBulkAdd = async () => {
-    if (!addWord) { alert("Hata: addWord fonksiyonu bulunamadı."); return; }
     if (!analysisResult?.rootWords) return;
 
-    // Sadece sözlükte olmayanları filtrele
+    // FONKSİYON SEÇİMİ (Senin isimlerine göre)
+    const saveFunction = isAdmin ? handleSaveSystemWord : handleSaveNewWord;
+    const targetName = isAdmin ? "SİSTEM" : "Kişisel";
+
+    if (!saveFunction) {
+        alert("Hata: Kaydetme fonksiyonu bulunamadı.");
+        return;
+    }
+
     const unknownWords = analysisResult.rootWords.filter(w => !isWordInRegistry(w));
 
     if (unknownWords.length === 0) {
@@ -54,61 +71,58 @@ export default function SentenceAnalysis() {
       return;
     }
 
-    if (!window.confirm(`${unknownWords.length} kelime sırayla sözlüğe eklenecek. Bu işlem birkaç saniye sürebilir.`)) return;
+    if (!window.confirm(`${unknownWords.length} kelime ${targetName} sözlüğüne eklenecek. Onaylıyor musun?`)) return;
 
     setBulkLoading(true);
     let successCount = 0;
 
     try {
-      // DÖNGÜ: Kelimeleri tek tek dönüyoruz
       for (let i = 0; i < unknownWords.length; i++) {
         const word = unknownWords[i];
-        
-        // Kullanıcıya bilgi ver (Örn: "Adding apple (1/5)...")
         setBulkProgress(`${i + 1} / ${unknownWords.length}`);
 
-        // 1. Çeviriyi al (Var olan fonksiyonu kullanıyoruz)
+        // 1. Çeviri Al
         const translation = await translateTextWithAI(word);
         
-        // 2. Kelime objesini hazırla
+        // 2. Kelime Objesi Oluştur
+        // Senin handleSaveNewWord fonksiyonun bu formatı bekliyor:
         const newWordObj = {
-          id: Date.now().toString() + Math.random().toString(36).substr(2, 5),
           word: word,
-          sentence: analysisText, // O anki analiz cümlesi
           definitions: [
             {
               meaning: translation || "Çeviri Yok",
               type: "unknown",
-              engExplanation: `Added from analysis.` 
+              engExplanation: `Added from sentence analysis.` 
             }
           ],
-          source: "analysis_bulk",
-          createdAt: new Date(),
-          stats: { learned: false, correctCount: 0, wrongCount: 0 }
+          sentence: analysisText,
+          // Diğer alanları (id, source) senin Context fonksiyonun otomatik ekliyor, buraya yazmaya gerek yok.
+          plural: "", v2: "", v3: "", vIng: "", thirdPerson: "" 
         };
 
-        // 3. Veritabanına kaydet
-        await addWord(newWordObj);
-        successCount++;
+        // 3. DOĞRU FONKSİYONLA KAYDET
+        const result = await saveFunction(newWordObj);
+        
+        if (result && result.success) {
+            successCount++;
+        }
 
-        // 4. API ÇÖKMESİN DİYE BEKLE (500ms = Yarım saniye)
-        // Bu "sleep" fonksiyonu hayat kurtarır.
+        // 4. API limitine takılmamak için bekle
         await new Promise(resolve => setTimeout(resolve, 500));
       }
 
-      alert(`${successCount} kelime başarıyla eklendi!`);
-      // Sayfayı yenilemeye gerek yok ama listeyi tazelemek istersen burada yapabilirsin
+      alert(`${successCount} kelime ${targetName} veritabanına başarıyla eklendi!`);
       
     } catch (error) {
       console.error(error);
-      alert("Bir hata oluştu: " + error.message);
+      alert("Hata: " + error.message);
     } finally {
       setBulkLoading(false);
       setBulkProgress("");
     }
   };
 
-  // --- RESİM İŞLEMLERİ ---
+  // --- RESİM İŞLEMLERİ (Aynı) ---
   const handleImageSelect = (e) => {
     if (e.target.files && e.target.files.length > 0) {
       setCrop(undefined); 
@@ -121,10 +135,7 @@ export default function SentenceAnalysis() {
 
   function onImageLoad(e) {
     const { width, height } = e.currentTarget;
-    const cropConfig = centerCrop(
-      makeAspectCrop({ unit: '%', width: 90 }, 16 / 9, width, height),
-      width, height
-    );
+    const cropConfig = centerCrop(makeAspectCrop({ unit: '%', width: 90 }, 16 / 9, width, height), width, height);
     setCrop(cropConfig);
   }
 
@@ -157,7 +168,7 @@ export default function SentenceAnalysis() {
       {quickAddWord && <QuickAddModal word={quickAddWord} onClose={() => setQuickAddWord(null)} />}
       <input type="file" ref={fileInputRef} onChange={handleImageSelect} accept="image/*" className="hidden" />
 
-      {/* --- KIRPMA MODALI (Overlay) --- */}
+      {/* KIRPMA MODALI */}
       {imgSrc && (
         <div className="fixed inset-0 z-50 bg-black/95 flex flex-col items-center justify-center p-4 animate-in fade-in zoom-in duration-200">
           <div className="w-full max-w-xl max-h-[70vh] overflow-auto bg-black border border-slate-700 rounded-lg">
@@ -173,11 +184,14 @@ export default function SentenceAnalysis() {
         </div>
       )}
 
-      {/* --- ANA EKRAN --- */}
+      {/* ANA EKRAN */}
       <div className="w-full max-w-lg space-y-6">
-        <div className="flex items-center gap-3">
-          <button onClick={() => navigate("/")} className="p-2 hover:bg-slate-200 rounded-full bg-white shadow-sm"><ArrowLeft className="w-6 h-6 text-slate-600" /></button>
-          <h2 className="text-2xl font-bold text-slate-800">Cümle Analizi</h2>
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+             <button onClick={() => navigate("/")} className="p-2 hover:bg-slate-200 rounded-full bg-white shadow-sm"><ArrowLeft className="w-6 h-6 text-slate-600" /></button>
+             <h2 className="text-2xl font-bold text-slate-800">Cümle Analizi</h2>
+          </div>
+          {isAdmin && <span className="text-[10px] bg-red-100 text-red-600 px-2 py-1 rounded font-bold flex items-center gap-1"><ShieldCheck className="w-3 h-3"/> ADMIN</span>}
         </div>
 
         <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
@@ -209,12 +223,11 @@ export default function SentenceAnalysis() {
                 <div className="flex justify-between items-center mb-3">
                     <h3 className="text-xs font-bold text-slate-400 uppercase flex items-center gap-2"><BookOpen className="w-4 h-4" /> Kelime Kökleri</h3>
                     
-                    {/* GÜVENLİ TOPLU EKLEME BUTONU */}
                     {analysisResult.rootWords.some(w => !isWordInRegistry(w)) && (
                         <button 
                           onClick={handleBulkAdd} 
                           disabled={bulkLoading}
-                          className="text-[10px] bg-orange-100 text-orange-600 px-3 py-1.5 rounded-full font-bold hover:bg-orange-200 flex items-center gap-1 transition-colors"
+                          className={`text-[10px] px-3 py-1.5 rounded-full font-bold flex items-center gap-1 transition-colors ${isAdmin ? "bg-red-100 text-red-600 hover:bg-red-200" : "bg-orange-100 text-orange-600 hover:bg-orange-200"}`}
                         >
                             {bulkLoading ? (
                                 <span className="flex items-center gap-1">
@@ -222,7 +235,8 @@ export default function SentenceAnalysis() {
                                 </span>
                             ) : (
                                 <span className="flex items-center gap-1">
-                                    <Save className="w-3 h-3"/> Hepsini Ekle
+                                    {isAdmin ? <ShieldCheck className="w-3 h-3"/> : <Save className="w-3 h-3"/>}
+                                    {isAdmin ? "Sisteme Ekle" : "Hepsini Ekle"}
                                 </span>
                             )}
                         </button>
@@ -252,7 +266,7 @@ export default function SentenceAnalysis() {
   );
 }
 
-// --- YARDIMCI FONKSİYON ---
+// --- YARDIMCI ---
 function getCroppedImg(image, crop) {
   const canvas = document.createElement('canvas');
   const scaleX = image.naturalWidth / image.width;
