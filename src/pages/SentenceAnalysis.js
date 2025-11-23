@@ -2,7 +2,8 @@ import React, { useState, useRef } from "react";
 import { ArrowLeft, Camera, Microscope, Loader2, Globe, Brain, BookOpen, Plus, Check, X, Save, ShieldCheck } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useData } from "../context/DataContext";
-import { fetchSentenceAnalysisFromAI, extractTextFromImage, translateTextWithAI } from "../services/aiService";
+// Yeni detay fonksiyonunu import ettik
+import { fetchSentenceAnalysisFromAI, extractTextFromImage, fetchWordDetails } from "../services/aiService";
 import QuickAddModal from "../components/QuickAddModal";
 
 // Manuel Kırpma Kütüphanesi
@@ -10,14 +11,13 @@ import ReactCrop, { centerCrop, makeAspectCrop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css'; 
 
 export default function SentenceAnalysis() {
-  // DİKKAT: İsimleri senin DataContext.js dosyanla birebir aynı yaptım:
   const { 
     user, 
     customWords, 
     dynamicSystemWords, 
     deletedWordIds, 
-    handleSaveNewWord,    // addCustomWord yerine bunu kullanacağız
-    handleSaveSystemWord  // addSystemWord yerine bunu kullanacağız
+    handleSaveNewWord,    // Kullanıcı için ekleme fonksiyonu
+    handleSaveSystemWord  // Admin için ekleme fonksiyonu
   } = useData();
 
   const navigate = useNavigate();
@@ -51,16 +51,16 @@ export default function SentenceAnalysis() {
     return false;
   };
 
-  // --- AKILLI TOPLU EKLEME (Admin/User Ayırımı Yapar) ---
+  // --- GÜVENLİ & DETAYLI TOPLU EKLEME ---
   const handleBulkAdd = async () => {
     if (!analysisResult?.rootWords) return;
 
-    // FONKSİYON SEÇİMİ (Senin isimlerine göre)
+    // Admin mi User mı? Fonksiyonu seçiyoruz
     const saveFunction = isAdmin ? handleSaveSystemWord : handleSaveNewWord;
     const targetName = isAdmin ? "SİSTEM" : "Kişisel";
 
     if (!saveFunction) {
-        alert("Hata: Kaydetme fonksiyonu bulunamadı.");
+        alert("Kaydetme fonksiyonu Context içinde bulunamadı.");
         return;
     }
 
@@ -71,7 +71,7 @@ export default function SentenceAnalysis() {
       return;
     }
 
-    if (!window.confirm(`${unknownWords.length} kelime ${targetName} sözlüğüne eklenecek. Onaylıyor musun?`)) return;
+    if (!window.confirm(`${unknownWords.length} kelime detaylı analiz edilip ${targetName} listesine eklenecek. Biraz zaman alabilir.`)) return;
 
     setBulkLoading(true);
     let successCount = 0;
@@ -81,37 +81,38 @@ export default function SentenceAnalysis() {
         const word = unknownWords[i];
         setBulkProgress(`${i + 1} / ${unknownWords.length}`);
 
-        // 1. Çeviri Al
-        const translation = await translateTextWithAI(word);
+        // 1. DETAYLI ANALİZ İSTEĞİ (V2, V3, Örnek Cümle)
+        const details = await fetchWordDetails(word);
         
         // 2. Kelime Objesi Oluştur
-        // Senin handleSaveNewWord fonksiyonun bu formatı bekliyor:
         const newWordObj = {
           word: word,
+          // AI'dan gelen kısa, temiz örnek cümleyi kullanıyoruz
+          sentence: details.exampleSentence || analysisText, 
           definitions: [
             {
-              meaning: translation || "Çeviri Yok",
-              type: "unknown",
-              engExplanation: `Added from sentence analysis.` 
+              meaning: details.meaning,
+              type: details.type || "unknown",
+              engExplanation: "AI Analysis" 
             }
           ],
-          sentence: analysisText,
-          // Diğer alanları (id, source) senin Context fonksiyonun otomatik ekliyor, buraya yazmaya gerek yok.
-          plural: "", v2: "", v3: "", vIng: "", thirdPerson: "" 
+          // Dil Bilgisi (Boş gelirse boş string)
+          v2: details.v2 || "",
+          v3: details.v3 || "",
+          plural: details.plural || ""
         };
 
-        // 3. DOĞRU FONKSİYONLA KAYDET
-        const result = await saveFunction(newWordObj);
-        
-        if (result && result.success) {
+        // 3. Veritabanına Kaydet
+        const res = await saveFunction(newWordObj);
+        if (res && res.success) {
             successCount++;
         }
 
-        // 4. API limitine takılmamak için bekle
-        await new Promise(resolve => setTimeout(resolve, 500));
+        // 4. BEKLEME (Rate Limit Önlemi - 1 Saniye)
+        await new Promise(resolve => setTimeout(resolve, 1000));
       }
 
-      alert(`${successCount} kelime ${targetName} veritabanına başarıyla eklendi!`);
+      alert(`${successCount} kelime başarıyla eklendi!`);
       
     } catch (error) {
       console.error(error);
@@ -122,7 +123,7 @@ export default function SentenceAnalysis() {
     }
   };
 
-  // --- RESİM İŞLEMLERİ (Aynı) ---
+  // --- RESİM İŞLEMLERİ ---
   const handleImageSelect = (e) => {
     if (e.target.files && e.target.files.length > 0) {
       setCrop(undefined); 
