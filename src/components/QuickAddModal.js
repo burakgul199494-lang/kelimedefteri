@@ -4,21 +4,24 @@ import { useData } from "../context/DataContext";
 import { fetchWordAnalysisFromAI, fetchRootFromAI } from "../services/aiService";
 
 const WORD_TYPES = [
-  { value: "noun", label: "İsim" },
-  { value: "verb", label: "Fiil" },
-  { value: "adjective", label: "Sıfat" },
-  { value: "adverb", label: "Zarf" },
-  { value: "prep", label: "Edat" },
-  { value: "pronoun", label: "Zamir" },
-  { value: "conj", label: "Bağlaç" },
-  { value: "article", label: "Tanımlık" },
-  { value: "other", label: "Diğer" },
+  { value: "noun", label: "İsim" }, { value: "verb", label: "Fiil" }, { value: "adjective", label: "Sıfat" },
+  { value: "adverb", label: "Zarf" }, { value: "prep", label: "Edat" }, { value: "pronoun", label: "Zamir" },
+  { value: "conj", label: "Bağlaç" }, { value: "article", label: "Tanımlık" }, { value: "other", label: "Diğer" },
 ];
 
-const QuickAddModal = ({ word, onClose }) => {
-  const { handleSaveNewWord, handleSaveSystemWord, isAdmin } = useData();
+// YENİ: prefillData prop'u eklendi (Düzenleme için)
+const QuickAddModal = ({ word, prefillData, onClose }) => {
+  const { handleSaveNewWord, handleSaveSystemWord, handleUpdateSystemWord, isAdmin } = useData();
   
-  const initialData = {
+  // Eğer düzenleme verisi geldiyse onu kullan, yoksa boş şablon
+  const initialData = prefillData ? {
+      ...prefillData,
+      definitions: prefillData.definitions.map(d => ({
+          type: d.type || "noun",
+          meaning: d.meaning || "",
+          engExplanation: d.engExplanation || ""
+      }))
+  } : {
     word: word || "",
     plural: "", v2: "", v3: "", vIng: "", thirdPerson: "",
     advLy: "", compEr: "", superEst: "",
@@ -32,7 +35,8 @@ const QuickAddModal = ({ word, onClose }) => {
   const [rootLoading, setRootLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => { if (word) handleAIFill(); }, []);
+  // Sadece yeni kelime ekleniyorsa (ve prefillData yoksa) AI çalışsın
+  useEffect(() => { if (word && !prefillData) handleAIFill(); }, []);
 
   const handleConvertToRoot = async () => {
     if (!formData.word) return;
@@ -60,14 +64,21 @@ const QuickAddModal = ({ word, onClose }) => {
   const handleSave = async () => {
     if (!formData.word || !formData.sentence) { alert("Lütfen temel alanları doldurun."); return; }
     setSaving(true);
+    
     let result;
-    if (isAdmin) result = await handleSaveSystemWord(formData);
-    else result = await handleSaveNewWord(formData);
+    // Eğer prefillData varsa bu bir GÜNCELLEME işlemidir
+    if (prefillData && isAdmin) {
+        result = await handleUpdateSystemWord(prefillData.id, formData);
+    } else if (isAdmin) {
+        result = await handleSaveSystemWord(formData);
+    } else {
+        result = await handleSaveNewWord(formData);
+    }
     
     setSaving(false);
-    if(result && result.success) { alert("Eklendi!"); onClose(); }
+    if(result && result.success) { alert("İşlem Başarılı!"); onClose(); }
     else if(result) alert(result.message);
-    else { alert("Eklendi!"); onClose(); }
+    else { alert("Başarılı!"); onClose(); }
   };
 
   const updateDef = (i, f, v) => { const n = [...formData.definitions]; n[i] = { ...n[i], [f]: v }; setFormData(p => ({ ...p, definitions: n })); };
@@ -79,7 +90,9 @@ const QuickAddModal = ({ word, onClose }) => {
       <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 max-h-[90vh] overflow-y-auto">
         
         <div className="flex justify-between items-center mb-4">
-          <h3 className="font-bold text-lg">Hızlı Kelime Ekle {isAdmin && "(Sistem)"}</h3>
+          <h3 className="font-bold text-lg">
+              {prefillData ? "Kelimeyi Düzenle (Sistem)" : "Hızlı Kelime Ekle"}
+          </h3>
           <button onClick={onClose} className="p-2 bg-slate-100 rounded-full"><X className="w-5 h-5" /></button>
         </div>
         
@@ -136,7 +149,7 @@ const QuickAddModal = ({ word, onClose }) => {
           <textarea value={formData.sentence} onChange={e => setFormData({ ...formData, sentence: e.target.value })} className="w-full p-3 border rounded-xl text-sm" placeholder="Örnek cümle..." rows={3}></textarea>
           
           <button onClick={handleSave} disabled={saving} className="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl flex justify-center gap-2">
-            {saving ? <Loader2 className="animate-spin" /> : <Save className="w-5 h-5" />} Kaydet
+            {saving ? <Loader2 className="animate-spin" /> : <Save className="w-5 h-5" />} {prefillData ? "Güncelle" : "Kaydet"}
           </button>
         </div>
       </div>
