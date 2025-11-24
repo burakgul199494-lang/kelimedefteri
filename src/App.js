@@ -12,7 +12,8 @@ import Quiz from "./pages/Quiz";
 import WordList from "./pages/WordList";
 import AddWord from "./pages/AddWord";
 import AdminDashboard from "./pages/AdminDashboard";
-import WritingGame from "./pages/WritingGame"; // 1. IMPORT EKLENDİ
+import WritingGame from "./pages/WritingGame"; 
+import Pronunciation from "./pages/Pronunciation"; // YENİ EKLENDİ
 
 const PrivateRoute = ({ children }) => {
   const { user, loading } = useData();
@@ -40,11 +41,14 @@ export default function App() {
           <Route path="/" element={<PrivateRoute><Home /></PrivateRoute>} />
           <Route path="/dictionary" element={<PrivateRoute><Dictionary /></PrivateRoute>} />
           <Route path="/analysis" element={<PrivateRoute><SentenceAnalysis /></PrivateRoute>} />
+          
+          {/* Oyunlar ve Araçlar */}
           <Route path="/game" element={<PrivateRoute><Game /></PrivateRoute>} />
           <Route path="/quiz" element={<PrivateRoute><Quiz /></PrivateRoute>} />
-          
-          {/* 2. YENİ ROTA TANIMI BURAYA EKLENDİ: */}
           <Route path="/writing" element={<PrivateRoute><WritingGame /></PrivateRoute>} />
+          
+          {/* YENİ ROTA: Telaffuz Koçu */}
+          <Route path="/pronunciation" element={<PrivateRoute><Pronunciation /></PrivateRoute>} />
           
           {/* Liste ve Ekleme Sayfaları */}
           <Route path="/list/:type" element={<PrivateRoute><WordList /></PrivateRoute>} />
