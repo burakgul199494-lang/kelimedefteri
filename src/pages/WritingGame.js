@@ -5,8 +5,7 @@ import { X, Trophy, Volume2, Languages, Loader2, ArrowRight, AlertCircle, CheckC
 import { translateTextWithAI } from "../services/aiService";
 
 export default function WritingGame() {
-  // learningQueue eklendi
-  const { getAllWords, knownWordIds, learningQueue } = useData();
+  const { getAllWords, knownWordIds, learningQueue, addScore } = useData();
   const navigate = useNavigate();
   const inputRef = useRef(null);
 
@@ -37,29 +36,15 @@ export default function WritingGame() {
     
     const validWords = all.filter(w => w.definitions && w.definitions[0]?.meaning);
     
-    // 1. Öncelik: Bilinmeyen VE (Hiç çalışılmamış VEYA Zamanı gelmiş) kelimeler
-    let pool = validWords.filter(w => {
-        if (knownWordIds.includes(w.id)) return false; // Bilineni geç
-        
+    const pool = validWords.filter(w => {
+        if (knownWordIds.includes(w.id)) return false; 
         const progress = learningQueue.find(q => q.wordId === w.id);
         if (progress) {
             const reviewDate = new Date(progress.nextReview);
-            if (reviewDate > now) return false; // Zamanı gelmemiş (Dinleniyor)
+            if (reviewDate > now) return false; 
         }
-        return true; // Hazır
+        return true; 
     });
-
-    // 2. Eğer yeterli kelime yoksa, Bilinenlerden takviye yap (Opsiyonel)
-    // Eğer hiç soru sormamasını istersen burayı silebilirsin. 
-    // Ama "Yazma testi" biraz pratik olduğu için bilinenleri sormasında sakınca yoktur.
-    // Şimdilik SRS kuralına uyup SADECE bilinmeyen+zamanı gelmişleri alıyorum:
-    
-    /* Eğer havuz çok küçükse yine de oynatmak istersen bu bloğu açabilirsin:
-    if (pool.length < 5) {
-        const knowns = validWords.filter(w => knownWordIds.includes(w.id));
-        pool = [...pool, ...knowns];
-    }
-    */
 
     if (pool.length === 0) {
         alert("Şu an çalışılacak aktif kelime yok. Kelimeler dinlenmede veya hepsi öğrenildi.");
@@ -110,7 +95,13 @@ export default function WritingGame() {
   };
 
   const nextQuestion = () => {
-    if (currentIndex + 1 < questions.length) { setCurrentIndex(p => p + 1); } else { setGameStatus("finished"); }
+    if (currentIndex + 1 < questions.length) { 
+        setCurrentIndex(p => p + 1); 
+    } else { 
+        setGameStatus("finished"); 
+        // Puanı veritabanına gönder
+        addScore(score); 
+    }
   };
 
   if (gameStatus === "finished") {
