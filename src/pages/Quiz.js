@@ -5,7 +5,8 @@ import { X, Trophy, Volume2, Languages, Loader2 } from "lucide-react";
 import { translateTextWithAI } from "../services/aiService";
 
 export default function Quiz() {
-  const { getAllWords, knownWordIds } = useData();
+  // learningQueue eklendi
+  const { getAllWords, knownWordIds, learningQueue } = useData();
   const navigate = useNavigate();
 
   const [questions, setQuestions] = useState([]);
@@ -23,17 +24,36 @@ export default function Quiz() {
 
   const startQuiz = () => {
     const all = getAllWords();
-    const validWords = all.filter(w => w.definitions && w.definitions[0]?.meaning);
-    const unknown = validWords.filter(w => !knownWordIds.includes(w.id));
+    const now = new Date();
 
-    if (unknown.length < 4) {
-      alert(`Quiz için en az 4 öğrenilecek kelime lazım. (Şu an: ${unknown.length})`);
+    // 1. Anlamı olan kelimeleri al
+    const validWords = all.filter(w => w.definitions && w.definitions[0]?.meaning);
+    
+    // 2. FİLTRELEME: Bilinenler VE Dinlenmede Olanlar ÇIKARILACAK
+    const playableWords = validWords.filter(w => {
+        // Zaten bilinenleri at
+        if (knownWordIds.includes(w.id)) return false;
+
+        // SRS Kontrolü: Kuyrukta varsa ve tarihi gelmemişse at
+        const progress = learningQueue.find(q => q.wordId === w.id);
+        if (progress) {
+            const reviewDate = new Date(progress.nextReview);
+            if (reviewDate > now) return false; // Dinlenmede
+        }
+        
+        return true; // Oynanabilir
+    });
+
+    if (playableWords.length < 4) {
+      alert(`Quiz için "çalışılmaya hazır" en az 4 kelime lazım. (Şu an: ${playableWords.length})`);
       navigate("/"); return;
     }
 
-    const pool = [...unknown].sort(() => 0.5 - Math.random()).slice(0, 20);
+    const pool = [...playableWords].sort(() => 0.5 - Math.random()).slice(0, 20);
+    
     const generated = pool.map(target => {
       const correct = target.definitions[0].meaning;
+      // Şıklar için havuzdan (dinlenenler dahil tümünden) rastgele kelime alabiliriz, sorun yok
       const others = validWords.filter(w => w.id !== target.id).sort(()=>0.5-Math.random()).slice(0,3).map(w=>w.definitions[0].meaning);
       return { wordObj: target, correct, options: [...others, correct].sort(()=>0.5-Math.random()) };
     });
@@ -111,16 +131,8 @@ export default function Quiz() {
                 <div className="flex flex-col items-center gap-2">
                     <div className="bg-indigo-50 text-indigo-800 px-4 py-2 rounded-xl border border-indigo-100 flex items-center gap-2">
                         <span className="text-sm italic">"{hint}"</span>
-                        
-                        {/* YENİ EKLENEN OKUMA BUTONU */}
-                        <button onClick={() => speak(hint)} className="p-1 bg-white rounded-full hover:bg-indigo-100 transition-colors" title="Oku">
-                           <Volume2 className="w-3 h-3 text-indigo-500"/>
-                        </button>
-
-                        {/* MEVCUT ÇEVİRİ BUTONU */}
-                        <button onClick={handleTranslateHint} className="p-1 bg-white rounded-full hover:bg-indigo-100 transition-colors" title="Çevir">
-                           {loadingHint ? <Loader2 className="w-3 h-3 animate-spin"/> : <Languages className="w-3 h-3 text-indigo-500"/>}
-                        </button>
+                        <button onClick={() => speak(hint)} className="p-1 bg-white rounded-full hover:bg-indigo-100 transition-colors" title="Oku"><Volume2 className="w-3 h-3 text-indigo-500"/></button>
+                        <button onClick={handleTranslateHint} className="p-1 bg-white rounded-full hover:bg-indigo-100 transition-colors" title="Çevir">{loadingHint ? <Loader2 className="w-3 h-3 animate-spin"/> : <Languages className="w-3 h-3 text-indigo-500"/>}</button>
                     </div>
                     {hintTranslation && <div className="bg-green-50 text-green-700 px-3 py-1 text-xs font-bold rounded">TR: {hintTranslation}</div>}
                 </div>
