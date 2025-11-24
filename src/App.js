@@ -5,6 +5,7 @@ import { DataProvider, useData } from "./context/DataContext";
 // SAYFALAR
 import Auth from "./pages/Auth";
 import Home from "./pages/Home";
+import WritingGame from "./pages/WritingGame"; // <--- BU EKLENDİ
 import Dictionary from "./pages/Dictionary";
 import SentenceAnalysis from "./pages/SentenceAnalysis";
 import Game from "./pages/Game";
