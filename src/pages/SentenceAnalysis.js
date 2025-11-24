@@ -1,13 +1,9 @@
 import React, { useState, useRef } from "react";
-import { ArrowLeft, Camera, Microscope, Loader2, Globe, Brain, BookOpen, Plus, Check, X } from "lucide-react";
+import { ArrowLeft, Camera, Microscope, Loader2, Globe, Brain, BookOpen, Plus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useData } from "../context/DataContext";
 import { fetchSentenceAnalysisFromAI, extractTextFromImage } from "../services/aiService";
 import QuickAddModal from "../components/QuickAddModal";
-
-// YENİ KÜTÜPHANE
-import ReactCrop, { centerCrop, makeAspectCrop } from 'react-image-crop';
-import 'react-image-crop/dist/ReactCrop.css'; 
 
 export default function SentenceAnalysis() {
   const { customWords, dynamicSystemWords, deletedWordIds } = useData();
@@ -20,12 +16,6 @@ export default function SentenceAnalysis() {
   const [quickAddWord, setQuickAddWord] = useState(null);
   const fileInputRef = useRef(null);
 
-  // --- Kırpma State'leri ---
-  const [imgSrc, setImgSrc] = useState(null);
-  const [crop, setCrop] = useState();
-  const [completedCrop, setCompletedCrop] = useState(null);
-  const imgRef = useRef(null);
-
   const isWordInRegistry = (wordToCheck) => {
     if (!wordToCheck) return false;
     const lower = wordToCheck.toLowerCase().trim();
@@ -34,60 +24,18 @@ export default function SentenceAnalysis() {
     return false;
   };
 
-  const handleImageSelect = (e) => {
-    if (e.target.files && e.target.files.length > 0) {
-      setCrop(undefined); // Eski kırpmayı sıfırla
-      const reader = new FileReader();
-      reader.addEventListener("load", () => setImgSrc(reader.result));
-      reader.readAsDataURL(e.target.files[0]);
-      // Inputu temizle
-      if (fileInputRef.current) fileInputRef.current.value = ""; 
-    }
-  };
+  const handleImageSelect = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) { alert("Lütfen geçerli bir resim seçin."); return; }
 
-  // Resim yüklendiğinde otomatik ortada bir seçim kutusu oluştur
-  function onImageLoad(e) {
-    const { width, height } = e.currentTarget;
-    const cropConfig = centerCrop(
-      makeAspectCrop(
-        {
-          unit: '%',
-          width: 90, // Resmin %90'ını kaplayan bir kutu ile başla
-        },
-        16 / 9,
-        width,
-        height
-      ),
-      width,
-      height
-    );
-    setCrop(cropConfig);
-  }
-
-  const handleCropAndAnalyze = async () => {
-    if (!completedCrop || !imgRef.current) {
-        alert("Lütfen bir alan seçin.");
-        return;
-    }
-
+    setOcrLoading(true);
     try {
-      setOcrLoading(true);
-      // 1. Resmi Kırp
-      const blob = await getCroppedImg(imgRef.current, completedCrop);
-      
-      // Modalı kapat
-      setImgSrc(null);
-
-      // 2. OCR Yap
-      const text = await extractTextFromImage(blob);
+      const text = await extractTextFromImage(file);
       if (text) setAnalysisText((prev) => (prev ? prev + "\n" + text : text));
-      else alert("Metin okunamadı.");
-    } catch (e) {
-      console.error(e);
-      alert("Hata oluştu.");
-    } finally {
-      setOcrLoading(false);
-    }
+      else alert("Resimden metin okunamadı.");
+    } catch (error) { console.error(error); alert("Hata oluştu."); } 
+    finally { setOcrLoading(false); if (fileInputRef.current) fileInputRef.current.value = ""; }
   };
 
   const handleAnalyze = async () => {
@@ -106,44 +54,6 @@ export default function SentenceAnalysis() {
       {quickAddWord && <QuickAddModal word={quickAddWord} onClose={() => setQuickAddWord(null)} />}
       <input type="file" ref={fileInputRef} onChange={handleImageSelect} accept="image/*" className="hidden" />
 
-      {/* --- KIRPMA MODALI (Overlay) --- */}
-      {imgSrc && (
-        <div className="fixed inset-0 z-50 bg-black/95 flex flex-col items-center justify-center p-4">
-          <div className="w-full max-w-xl max-h-[70vh] overflow-auto bg-black border border-slate-700 rounded-lg">
-             <ReactCrop 
-                crop={crop} 
-                onChange={(c) => setCrop(c)} 
-                onComplete={(c) => setCompletedCrop(c)}
-             >
-                <img 
-                  ref={imgRef} 
-                  src={imgSrc} 
-                  alt="Crop me" 
-                  onLoad={onImageLoad}
-                  style={{ maxWidth: '100%', maxHeight: '60vh' }} 
-                />
-             </ReactCrop>
-          </div>
-          
-          <div className="flex gap-4 w-full max-w-xs mt-6">
-             <button 
-                onClick={() => setImgSrc(null)} 
-                className="flex-1 py-3 bg-slate-700 text-white rounded-xl font-bold flex items-center justify-center gap-2"
-             >
-               <X className="w-5 h-5"/> İptal
-             </button>
-             <button 
-                onClick={handleCropAndAnalyze} 
-                className="flex-1 py-3 bg-teal-600 text-white rounded-xl font-bold flex items-center justify-center gap-2"
-             >
-               <Check className="w-5 h-5"/> Seç ve Tara
-             </button>
-          </div>
-          <p className="text-slate-400 text-xs mt-4">Köşelerden tutarak alanı belirleyin</p>
-        </div>
-      )}
-
-      {/* --- ANA EKRAN --- */}
       <div className="w-full max-w-lg space-y-6">
         <div className="flex items-center gap-3">
           <button onClick={() => navigate("/")} className="p-2 hover:bg-slate-200 rounded-full bg-white shadow-sm"><ArrowLeft className="w-6 h-6 text-slate-600" /></button>
@@ -196,33 +106,3 @@ export default function SentenceAnalysis() {
     </div>
   );
 }
-
-// --- YARDIMCI FONKSİYON (Canvas Slicing) ---
-function getCroppedImg(image, crop) {
-  const canvas = document.createElement('canvas');
-  const scaleX = image.naturalWidth / image.width;
-  const scaleY = image.naturalHeight / image.height;
-  canvas.width = crop.width;
-  canvas.height = crop.height;
-  const ctx = canvas.getContext('2d');
-
-  ctx.drawImage(
-    image,
-    crop.x * scaleX,
-    crop.y * scaleY,
-    crop.width * scaleX,
-    crop.height * scaleY,
-    0,
-    0,
-    crop.width,
-    crop.height
-  );
-
-  return new Promise((resolve, reject) => {
-    canvas.toBlob(blob => {
-      if (!blob) { reject(new Error('Canvas is empty')); return; }
-      resolve(blob);
-    }, 'image/jpeg', 1); // 1 = %100 kalite
-  });
-}
-
