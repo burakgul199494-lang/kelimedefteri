@@ -81,6 +81,20 @@ export const fetchSentenceAnalysisFromAI = async (text) => {
   } catch (e) { throw e; }
 };
 
+// --- BASİT ÇEVİRİ (YENİ EKLEYECEĞİN) ---
+export const simpleTranslate = async (text) => {
+  try {
+    const prompt = `Bu metni hiçbir ek açıklama yapmadan sadece Türkçeye çevir: "${text}"`;
+    const result = await runAI(prompt);
+    return result;
+  } catch (err) {
+    return "Çeviri hatası";
+  }
+};
+
+
+
+
 export const translateTextWithAI = async (text) => {
   try {
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
