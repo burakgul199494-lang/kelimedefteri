@@ -35,7 +35,7 @@ export default function Home() {
               <span className="text-xs font-bold text-orange-600 mt-1 bg-orange-100 px-2 rounded-full">Seri</span>
             </div>
           </div>
-          <h1 className="text-3xl font-extrabold text-slate-800 tracking-tight">Kelime Defteri 2</h1>
+          <h1 className="text-3xl font-extrabold text-slate-800 tracking-tight">Kelime Defteri</h1>
           <p className="text-slate-500 mt-2 text-sm">Merhaba, <span className="font-medium text-indigo-600">{user?.displayName || user?.email}</span></p>
         </div>
 
