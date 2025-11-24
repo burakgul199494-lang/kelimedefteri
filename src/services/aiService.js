@@ -2,7 +2,6 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const GEMINI_API_KEY = process.env.REACT_APP_GEMINI_API_KEY; 
 
-// --- ORTAK TEMİZLİK FONKSİYONU ---
 const cleanAndParseJSON = (text) => {
   try {
     let cleanText = text.replace(/```json/g, "").replace(/```/g, "").trim();
@@ -18,7 +17,7 @@ const cleanAndParseJSON = (text) => {
   }
 };
 
-// --- 1. KELİME ANALİZİ ---
+// --- 1. KELİME ANALİZİ (ETİKET EKLENDİ) ---
 export const fetchWordAnalysisFromAI = async (word) => {
   try {
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
@@ -29,12 +28,15 @@ export const fetchWordAnalysisFromAI = async (word) => {
       IMPORTANT: 
       1. In the "definitions" array, the "meaning" field MUST be the TURKISH translation.
       2. The "engExplanation" field MUST be a simple English explanation.
+      3. Generate 1 to 3 relevant categories/tags for this word in TURKISH (e.g., "Yiyecek", "Seyahat", "Teknoloji", "Gramer").
+      
       Return ONLY JSON. No markdown.
       Structure:
       {
         "word": "${word}",
         "plural": "", "v2": "", "v3": "", "vIng": "", "thirdPerson": "",
         "advLy": "", "compEr": "", "superEst": "",
+        "tags": ["Etiket1", "Etiket2"], 
         "sentence": "Simple A2 level sentence.",
         "definitions": [
           { "type": "noun/verb/etc", "meaning": "TURKISH TRANSLATION", "engExplanation": "Simple English explanation" }
@@ -73,7 +75,7 @@ export const fetchRootFromAI = async (word) => {
   }
 };
 
-// --- 3. CÜMLE ANALİZİ (GÜNCELLENDİ: FORMAT AYARI YAPILDI) ---
+// --- 3. CÜMLE ANALİZİ ---
 export const fetchSentenceAnalysisFromAI = async (text) => {
   try {
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
@@ -82,7 +84,6 @@ export const fetchSentenceAnalysisFromAI = async (text) => {
         generationConfig: { temperature: 0.2 } 
     });
 
-    // Prompt Güncellemesi: Kelimeleri İngilizce tutması için örnekli anlatım eklendi.
     const prompt = `
       Act as a helpful, friendly English tutor for Turkish students.
       Analyze this text: "${text}"
