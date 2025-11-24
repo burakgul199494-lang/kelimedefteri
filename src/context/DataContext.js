@@ -152,7 +152,7 @@ export const DataProvider = ({ children }) => {
     } catch (e) { console.error(e); }
   };
 
-  const handleUpdateWord = async (originalId, newData) => { /* (Eski kod aynı) */
+  const handleUpdateWord = async (originalId, newData) => {
      try {
        const userRef = doc(db, "artifacts", appId, "users", user.uid, "vocab_game", "progress");
        const isCustom = customWords.find((w) => w.id === originalId);
@@ -220,15 +220,29 @@ export const DataProvider = ({ children }) => {
       } catch(e) { console.error(e); }
   };
 
-  // ADMIN - DUPLICATE KONTROLÜ EKLENDİ
+  // --- ADMIN KISMI (GÜNCELLENDİ) ---
   const handleSaveSystemWord = async (wordData) => {
     try {
-      const exists = dynamicSystemWords.some(w => w.word.toLowerCase() === wordData.word.toLowerCase().trim());
+      const normalizedInput = wordData.word.toLowerCase().trim();
+
+      // 1. Sistemde zaten var mı?
+      const exists = dynamicSystemWords.some(w => w.word.toLowerCase() === normalizedInput);
       if(exists) return { success: false, message: "Bu kelime zaten sistemde var!" };
 
+      // 2. Sistem kelimesini ekle
       const newWord = { ...wordData, source: "system", createdAt: new Date() };
       const docRef = await addDoc(collection(db, "artifacts", appId, "system_words"), newWord);
       setDynamicSystemWords(prev => [...prev, { ...newWord, id: docRef.id }]);
+
+      // 3. KULLANICIDA VARSA ÇÖPE AT (Çakışma Çözümü)
+      // Şu anki kullanıcının listesinde aynı kelime varsa bul ve soft-delete yap.
+      const conflictingCustom = customWords.find(w => w.word.toLowerCase() === normalizedInput);
+      if (conflictingCustom) {
+          const userRef = doc(db, "artifacts", appId, "users", user.uid, "vocab_game", "progress");
+          await setDoc(userRef, { deleted_ids: arrayUnion(conflictingCustom.id) }, { merge: true });
+          setDeletedWordIds(prev => [...prev, conflictingCustom.id]);
+      }
+
       return { success: true };
     } catch (e) { return { success: false, message: e.message }; }
   };
