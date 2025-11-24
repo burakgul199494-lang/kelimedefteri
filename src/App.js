@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react"; // useEffect'i import etmeyi unutma
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { DataProvider, useData } from "./context/DataContext";
 
@@ -20,6 +20,15 @@ const PrivateRoute = ({ children }) => {
 };
 
 export default function App() {
+  
+  // --- TASARIMI GERİ GETİREN KOD ---
+  useEffect(() => {
+    const script = document.createElement("script");
+    script.src = "https://cdn.tailwindcss.com";
+    document.head.appendChild(script);
+  }, []);
+  // ---------------------------------
+
   return (
     <DataProvider>
       <Router>
