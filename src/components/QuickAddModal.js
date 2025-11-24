@@ -14,7 +14,7 @@ const QuickAddModal = ({ word, prefillData, onClose }) => {
   
   const initialData = prefillData ? {
       ...prefillData,
-      tags: prefillData.tags || [], // YENİ: Etiketleri yükle
+      tags: Array.isArray(prefillData.tags) ? prefillData.tags : [],
       definitions: prefillData.definitions.map(d => ({
           type: d.type || "noun",
           meaning: d.meaning || "",
@@ -22,7 +22,7 @@ const QuickAddModal = ({ word, prefillData, onClose }) => {
       }))
   } : {
     word: word || "",
-    tags: [], // YENİ
+    tags: [], 
     plural: "", v2: "", v3: "", vIng: "", thirdPerson: "",
     advLy: "", compEr: "", superEst: "",
     definitions: [{ type: "noun", meaning: "", engExplanation: "" }],
@@ -31,7 +31,7 @@ const QuickAddModal = ({ word, prefillData, onClose }) => {
   };
 
   const [formData, setFormData] = useState(initialData);
-  const [tagInput, setTagInput] = useState(""); // YENİ
+  const [tagInput, setTagInput] = useState(""); 
   const [loadingAI, setLoadingAI] = useState(false);
   const [rootLoading, setRootLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -55,7 +55,10 @@ const QuickAddModal = ({ word, prefillData, onClose }) => {
         const safeDefinitions = Array.isArray(data.definitions)
           ? data.definitions.map(d => ({ type: d.type || "noun", meaning: d.meaning || "", engExplanation: d.engExplanation || "" }))
           : [{ type: "noun", meaning: "", engExplanation: "" }];
-        setFormData(prev => ({ ...prev, ...data, tags: data.tags || [], definitions: safeDefinitions }));
+        
+        const safeTags = Array.isArray(data.tags) ? data.tags : [];
+
+        setFormData(prev => ({ ...prev, ...data, tags: safeTags, definitions: safeDefinitions }));
       }
     } catch (e) { console.error(e); }
     setLoadingAI(false);
@@ -112,14 +115,14 @@ const QuickAddModal = ({ word, prefillData, onClose }) => {
             <button onClick={handleAIFill} disabled={loadingAI} className="bg-purple-600 text-white px-3 rounded-xl">{loadingAI ? <Loader2 className="animate-spin" /> : <Brain />}</button>
           </div>
 
-          {/* YENİ: ETİKETLER */}
           <div>
               <div className="flex gap-2 mb-2">
                   <input value={tagInput} onChange={(e) => setTagInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addTag(e)} className="flex-1 p-2 border border-slate-200 rounded-lg text-sm" placeholder="Etiket (Yiyecek vb.)" />
                   <button onClick={addTag} className="bg-slate-800 text-white px-3 rounded-lg"><Plus className="w-4 h-4"/></button>
               </div>
               <div className="flex flex-wrap gap-2">
-                  {formData.tags?.map((tag, i) => (
+                  {/* GÜVENLİK: Array kontrolü */}
+                  {(Array.isArray(formData.tags) ? formData.tags : []).map((tag, i) => (
                       <span key={i} className="bg-indigo-50 text-indigo-600 px-2 py-1 rounded-lg text-xs font-bold flex items-center gap-1 border border-indigo-100">
                           {tag} <button onClick={() => removeTag(tag)}><X className="w-3 h-3 hover:text-red-500"/></button>
                       </span>
