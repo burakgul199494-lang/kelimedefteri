@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useData } from "../context/DataContext";
 import { fetchWordAnalysisFromAI, fetchRootFromAI } from "../services/aiService";
-import { ArrowLeft, Loader2, Wand2, Brain, Plus, Save, Trash2, AlertCircle } from "lucide-react";
+import { ArrowLeft, Loader2, Wand2, Brain, Plus, Save, Trash2, X, Tag } from "lucide-react";
 
 const WORD_TYPES = [
   { value: "noun", label: "İsim (Noun)" },
@@ -21,14 +21,13 @@ export default function AddWord() {
   const location = useLocation();
   const { handleSaveNewWord, handleUpdateWord } = useData();
 
-  // Düzenleme modu kontrolü
   const editingWord = location.state?.editingWord;
   const isEditMode = !!editingWord;
 
-  // Başlangıç verisi
   const initialData = editingWord
     ? {
         ...editingWord,
+        tags: Array.isArray(editingWord.tags) ? editingWord.tags : [], // GÜVENLİK
         definitions: (editingWord.definitions || []).map((d) => ({
           type: d.type || "noun",
           meaning: d.meaning || "",
@@ -37,6 +36,7 @@ export default function AddWord() {
       }
     : {
         word: "",
+        tags: [], // Varsayılan
         plural: "", v2: "", v3: "", vIng: "", thirdPerson: "",
         advLy: "", compEr: "", superEst: "",
         definitions: [{ type: "noun", meaning: "", engExplanation: "" }],
@@ -44,11 +44,10 @@ export default function AddWord() {
       };
 
   const [formData, setFormData] = useState(initialData);
+  const [tagInput, setTagInput] = useState("");
   const [saving, setSaving] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
   const [rootLoading, setRootLoading] = useState(false);
-
-  // --- FONKSİYONLAR ---
 
   const handleConvertToRoot = async () => {
     if (!formData.word) return;
@@ -82,9 +81,13 @@ export default function AddWord() {
             }))
           : [{ type: "noun", meaning: "", engExplanation: "" }];
 
+        // GÜVENLİK: Tag array mi kontrol et
+        const safeTags = Array.isArray(data.tags) ? data.tags : [];
+
         setFormData((prev) => ({
           ...prev,
           ...data,
+          tags: safeTags,
           definitions: safeDefinitions,
         }));
       } else {
@@ -97,6 +100,18 @@ export default function AddWord() {
     }
   };
 
+  const addTag = (e) => {
+      e.preventDefault();
+      if(tagInput.trim() && !formData.tags.includes(tagInput.trim())) {
+          setFormData(prev => ({ ...prev, tags: [...prev.tags, tagInput.trim()] }));
+          setTagInput("");
+      }
+  };
+  
+  const removeTag = (tag) => {
+      setFormData(prev => ({ ...prev, tags: prev.tags.filter(t => t !== tag) }));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.word || !formData.sentence) {
@@ -107,14 +122,15 @@ export default function AddWord() {
 
     if (isEditMode) {
       await handleUpdateWord(editingWord.id, formData);
-      navigate(-1); // Geldiği sayfaya geri dön
+      navigate(-1); 
     } else {
       const res = await handleSaveNewWord(formData);
       if (res.success) {
         alert("Başarıyla Eklendi!");
-        // Formu temizle
         setFormData({
-          word: "", plural: "", v2: "", v3: "", vIng: "", thirdPerson: "",
+          word: "",
+          tags: [],
+          plural: "", v2: "", v3: "", vIng: "", thirdPerson: "",
           advLy: "", compEr: "", superEst: "",
           definitions: [{ type: "noun", meaning: "", engExplanation: "" }],
           sentence: "",
@@ -126,7 +142,6 @@ export default function AddWord() {
     setSaving(false);
   };
 
-  // Anlam yönetimi
   const addDefinition = () => setFormData((p) => ({ ...p, definitions: [...p.definitions, { type: "noun", meaning: "", engExplanation: "" }] }));
   const removeDefinition = (index) => {
     if (formData.definitions.length > 1) {
@@ -143,7 +158,6 @@ export default function AddWord() {
     <div className="min-h-screen bg-slate-50 p-4 flex items-center justify-center">
       <div className="w-full max-w-md bg-white rounded-2xl shadow-lg p-6 my-8 overflow-y-auto max-h-screen">
         
-        {/* HEADER */}
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-bold text-slate-800">
             {isEditMode ? "Kelimeyi Düzenle" : "Yeni Kelime Ekle"}
@@ -155,17 +169,10 @@ export default function AddWord() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           
-          {/* KELİME & AI BUTONLARI */}
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Kelime</label>
             <div className="flex gap-2">
-              <input
-                value={formData.word}
-                onChange={(e) => setFormData({ ...formData, word: e.target.value })}
-                className="flex-1 p-3 border border-slate-200 rounded-xl font-bold outline-none focus:border-indigo-500"
-                placeholder="Örn: Run"
-                autoFocus
-              />
+              <input value={formData.word} onChange={(e) => setFormData({ ...formData, word: e.target.value })} className="flex-1 p-3 border border-slate-200 rounded-xl font-bold outline-none focus:border-indigo-500" placeholder="Örn: Run" autoFocus />
               <button type="button" onClick={handleConvertToRoot} disabled={rootLoading || !formData.word} className="bg-orange-100 hover:bg-orange-200 text-orange-600 p-3 rounded-xl transition-colors" title="Kök Bul">
                 {rootLoading ? <Loader2 className="animate-spin w-5 h-5" /> : <Wand2 className="w-5 h-5" />}
               </button>
@@ -175,7 +182,29 @@ export default function AddWord() {
             </div>
           </div>
 
-          {/* GRUP 1: FİİL DETAYLARI (GRİ KUTU) */}
+          {/* YENİ ETİKET GİRİŞİ */}
+          <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Etiketler</label>
+              <div className="flex gap-2 mb-2">
+                  <input 
+                    value={tagInput}
+                    onChange={(e) => setTagInput(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && addTag(e)}
+                    className="flex-1 p-2 border border-slate-200 rounded-lg text-sm" 
+                    placeholder="Etiket (Yiyecek vb.)" 
+                  />
+                  <button type="button" onClick={addTag} className="bg-slate-800 text-white px-3 rounded-lg"><Plus className="w-4 h-4"/></button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                  {(Array.isArray(formData.tags) ? formData.tags : []).map((tag, i) => (
+                      <span key={i} className="bg-indigo-50 text-indigo-600 px-2 py-1 rounded-lg text-xs font-bold flex items-center gap-1 border border-indigo-100">
+                          {tag}
+                          <button type="button" onClick={() => removeTag(tag)}><X className="w-3 h-3 hover:text-red-500"/></button>
+                      </span>
+                  ))}
+              </div>
+          </div>
+
           <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
             <div className="text-xs font-bold text-slate-400 mb-2 uppercase tracking-wide">Fiil & İsim Detayları</div>
             <div className="space-y-3">
@@ -206,7 +235,6 @@ export default function AddWord() {
             </div>
           </div>
 
-          {/* GRUP 2: SIFAT DETAYLARI (TURUNCU KUTU) */}
           <div className="bg-orange-50 p-3 rounded-xl border border-orange-100">
             <div className="text-xs font-bold text-orange-400 mb-2 uppercase tracking-wide">Sıfat & Zarf Detayları</div>
             <div className="space-y-3">
@@ -227,7 +255,6 @@ export default function AddWord() {
             </div>
           </div>
 
-          {/* ANLAMLAR BÖLÜMÜ */}
           <div className="space-y-3">
             <div className="flex justify-between items-center">
               <label className="block text-sm font-medium text-slate-700">Anlamlar</label>
@@ -239,21 +266,10 @@ export default function AddWord() {
               <div key={index} className="flex flex-col gap-2 bg-slate-50 p-3 rounded-xl border border-slate-100 shadow-sm">
                 <div className="flex gap-2 items-start">
                   <div className="flex-1 space-y-2">
-                    <select
-                      value={def.type}
-                      onChange={(e) => updateDefinition(index, "type", e.target.value)}
-                      className="w-full p-2 text-sm border border-slate-200 rounded-lg outline-none bg-white"
-                    >
-                      {WORD_TYPES.map((t) => (
-                        <option key={t.value} value={t.value}>{t.label}</option>
-                      ))}
+                    <select value={def.type} onChange={(e) => updateDefinition(index, "type", e.target.value)} className="w-full p-2 text-sm border border-slate-200 rounded-lg outline-none bg-white">
+                      {WORD_TYPES.map((t) => ( <option key={t.value} value={t.value}>{t.label}</option> ))}
                     </select>
-                    <input
-                      value={def.meaning}
-                      onChange={(e) => updateDefinition(index, "meaning", e.target.value)}
-                      className="w-full p-2 text-sm border border-slate-200 rounded-lg outline-none placeholder:text-slate-400"
-                      placeholder="Türkçe anlam..."
-                    />
+                    <input value={def.meaning} onChange={(e) => updateDefinition(index, "meaning", e.target.value)} className="w-full p-2 text-sm border border-slate-200 rounded-lg outline-none placeholder:text-slate-400" placeholder="Türkçe anlam..." />
                   </div>
                   {formData.definitions.length > 1 && (
                     <button type="button" onClick={() => removeDefinition(index)} className="p-2 text-slate-400 hover:text-red-500 mt-1">
@@ -261,37 +277,20 @@ export default function AddWord() {
                     </button>
                   )}
                 </div>
-                <input
-                  value={def.engExplanation}
-                  onChange={(e) => updateDefinition(index, "engExplanation", e.target.value)}
-                  className="w-full p-2 text-sm border border-indigo-100 bg-indigo-50/50 rounded-lg outline-none placeholder:text-slate-400"
-                  placeholder="Bu anlam için İngilizce açıklama (Opsiyonel)..."
-                />
+                <input value={def.engExplanation} onChange={(e) => updateDefinition(index, "engExplanation", e.target.value)} className="w-full p-2 text-sm border border-indigo-100 bg-indigo-50/50 rounded-lg outline-none placeholder:text-slate-400" placeholder="Bu anlam için İngilizce açıklama (Opsiyonel)..." />
               </div>
             ))}
           </div>
 
-          {/* ÖRNEK CÜMLE */}
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Örnek Cümle</label>
-            <textarea
-              value={formData.sentence}
-              onChange={(e) => setFormData({ ...formData, sentence: e.target.value })}
-              className="w-full p-3 border border-slate-200 rounded-xl outline-none h-24 resize-none focus:border-indigo-500 transition-colors"
-              placeholder="Örn: I put my money in the bank."
-            />
+            <textarea value={formData.sentence} onChange={(e) => setFormData({ ...formData, sentence: e.target.value })} className="w-full p-3 border border-slate-200 rounded-xl outline-none h-24 resize-none focus:border-indigo-500 transition-colors" placeholder="Örn: I put my money in the bank." />
           </div>
 
-          {/* KAYDET BUTONU */}
-          <button
-            type="submit"
-            disabled={saving}
-            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-xl shadow-md flex items-center justify-center gap-2 transition-transform active:scale-95"
-          >
+          <button type="submit" disabled={saving} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-xl shadow-md flex items-center justify-center gap-2 transition-transform active:scale-95">
             {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
             {isEditMode ? "Değişiklikleri Kaydet" : "Kelimeyi Kaydet"}
           </button>
-
         </form>
       </div>
     </div>
