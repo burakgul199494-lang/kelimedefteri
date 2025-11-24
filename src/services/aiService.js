@@ -1,5 +1,6 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
+// API KEY
 const GEMINI_API_KEY = process.env.REACT_APP_GEMINI_API_KEY; 
 
 const cleanAndParseJSON = (text) => {
@@ -28,7 +29,7 @@ export const fetchWordAnalysisFromAI = async (word) => {
       IMPORTANT: 
       1. In the "definitions" array, the "meaning" field MUST be the TURKISH translation.
       2. The "engExplanation" field MUST be a simple English explanation.
-      3. Generate 1 to 3 relevant categories/tags for this word in TURKISH.
+      3. Generate 1 to 3 relevant categories/tags for this word in TURKISH (e.g., "Yiyecek", "Seyahat").
       
       Return ONLY JSON. No markdown.
       Structure:
@@ -71,7 +72,7 @@ export const fetchRootFromAI = async (word) => {
   } catch (e) { return { root: word, changed: false }; }
 };
 
-// --- 3. CÜMLE ANALİZİ (GÜNCELLENDİ: GRAMER KONTROLÜ EKLENDİ) ---
+// --- 3. CÜMLE ANALİZİ (GÜNCELLENDİ: TÜRKÇE ZORLAMASI) ---
 export const fetchSentenceAnalysisFromAI = async (text) => {
   try {
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
@@ -81,27 +82,29 @@ export const fetchSentenceAnalysisFromAI = async (text) => {
     });
 
     const prompt = `
-      Act as a strict English grammar teacher for Turkish students.
+      Act as a strict English grammar teacher for TURKISH students.
       Analyze this text: "${text}"
       
       Tasks:
-      1. Check for ANY grammatical errors (pluralization, tense, subject-verb agreement).
+      1. Check for ANY grammatical errors.
       2. Translate to Turkish naturally.
       3. Identify the MAIN tense (Write TURKISH name).
-      4. Explain structure simply in bullet points (Keep English words in single quotes).
+      4. Explain the sentence structure simply in bullet points.
+         - CRITICAL: The explanation MUST be in TURKISH.
+         - CRITICAL: Keep English words in single quotes (e.g., 'Teacher' özne...).
       5. Extract root words.
 
       Return ONLY JSON.
       Structure:
       {
         "correction": {
-            "hasError": true, // Set true if there is a grammar mistake
-            "corrected": "Corrected sentence here (or null if correct)",
-            "explanation": "Explain the error in Turkish (e.g., 'They' çoğul olduğu için 'teacher' kelimesi 'teachers' olmalıydı.)"
+            "hasError": true/false, 
+            "corrected": "Corrected sentence here (or null)",
+            "explanation": "Explain the error in TURKISH"
         },
         "turkishTranslation": "Turkish translation",
-        "detectedTense": "Zaman Adı",
-        "simplePoints": ["Explanation 1", "Explanation 2"],
+        "detectedTense": "Zaman Adı (Türkçe)",
+        "simplePoints": ["Türkçe açıklama 1", "Türkçe açıklama 2"],
         "rootWords": ["word1", "word2"] 
       }
     `;
