@@ -8,6 +8,7 @@ const WordCard = ({ wordObj }) => {
   const [defTranslations, setDefTranslations] = useState({});
   const [loadingDefs, setLoadingDefs] = useState({});
 
+  // Okuma Fonksiyonu
   const speak = (text, e) => {
     if (e) e.stopPropagation();
     const utterance = new SpeechSynthesisUtterance(text);
@@ -16,6 +17,7 @@ const WordCard = ({ wordObj }) => {
     window.speechSynthesis.speak(utterance);
   };
 
+  // Cümle Çevirisi
   const handleTranslateSentence = async (e) => {
     e.stopPropagation();
     if (sentenceTranslation) return;
@@ -25,6 +27,7 @@ const WordCard = ({ wordObj }) => {
     setLoadingSentence(false);
   };
 
+  // Tanım Çevirisi
   const handleTranslateDef = async (index, text, e) => {
     e.stopPropagation();
     if (defTranslations[index]) return;
@@ -45,20 +48,46 @@ const WordCard = ({ wordObj }) => {
     </span>
   );
 
+  // Yardımcı Bileşen: Özellik Satırı (Örn: V2: went [speaker])
+  const FeatureRow = ({ label, value }) => {
+    if (!value) return null;
+    return (
+      <div className="flex items-center justify-between group">
+        <div className="flex items-center gap-1 overflow-hidden">
+          <span className="font-semibold shrink-0">{label}:</span>
+          <span className="truncate">{value}</span>
+        </div>
+        <button 
+          onClick={(e) => speak(value, e)} 
+          className="p-1 text-indigo-300 hover:text-indigo-600 hover:bg-indigo-50 rounded-full transition-colors opacity-60 group-hover:opacity-100"
+          title="Oku"
+        >
+          <Volume2 className="w-3 h-3" />
+        </button>
+      </div>
+    );
+  };
+
   return (
     <div className="relative w-full max-w-sm bg-white rounded-3xl shadow-xl p-6 text-center border border-slate-100 mb-4 mx-auto">
+      
+      {/* Kart Üst Bilgisi */}
       <div className="flex items-center justify-center gap-2 mb-2">
         <span className="text-xs uppercase tracking-widest text-slate-400 font-semibold">Kelime</span>
         {renderSourceBadge(wordObj.source)}
       </div>
+      
+      {/* Ana Kelime ve Ses */}
       <div className="flex items-center justify-center gap-3 mb-4">
         <h2 className="text-4xl font-extrabold text-slate-800 break-words">{wordObj.word}</h2>
-        <button onClick={(e) => speak(wordObj.word, e)} className="p-3 bg-indigo-100 text-indigo-600 rounded-full hover:bg-indigo-200">
+        <button onClick={(e) => speak(wordObj.word, e)} className="p-3 bg-indigo-100 text-indigo-600 rounded-full hover:bg-indigo-200 transition-colors">
           <Volume2 className="w-6 h-6" />
         </button>
       </div>
 
       <div className="space-y-4 text-left">
+        
+        {/* Anlamlar Listesi */}
         {wordObj.definitions.map((def, idx) => (
           <div key={idx} className={`p-3 rounded-xl border ${idx === 0 ? "bg-indigo-50 border-indigo-100" : "bg-slate-50 border-slate-100"}`}>
             <div className="flex items-center gap-2 mb-1">
@@ -71,9 +100,16 @@ const WordCard = ({ wordObj }) => {
               <div className="mt-1 pl-2 border-l-2 border-indigo-200/50 group">
                 <div className="flex items-start justify-between gap-2">
                   <p className={`text-sm italic font-medium ${idx === 0 ? "text-indigo-500" : "text-slate-500"}`}>"{def.engExplanation}"</p>
-                  <button onClick={(e) => handleTranslateDef(idx, def.engExplanation, e)} className="opacity-50 hover:opacity-100 p-1 bg-white rounded-full shadow-sm">
-                    {loadingDefs[idx] ? <Loader2 className="w-3 h-3 animate-spin text-indigo-500" /> : <Languages className="w-3 h-3 text-indigo-500" />}
-                  </button>
+                  <div className="flex gap-1">
+                    {/* İngilizce Açıklama Okuma Butonu */}
+                    <button onClick={(e) => speak(def.engExplanation, e)} className="opacity-50 hover:opacity-100 p-1 bg-white rounded-full shadow-sm">
+                        <Volume2 className="w-3 h-3 text-indigo-500" />
+                    </button>
+                    {/* Çeviri Butonu */}
+                    <button onClick={(e) => handleTranslateDef(idx, def.engExplanation, e)} className="opacity-50 hover:opacity-100 p-1 bg-white rounded-full shadow-sm">
+                      {loadingDefs[idx] ? <Loader2 className="w-3 h-3 animate-spin text-indigo-500" /> : <Languages className="w-3 h-3 text-indigo-500" />}
+                    </button>
+                  </div>
                 </div>
                 {defTranslations[idx] && <div className="mt-1 text-xs text-indigo-800 bg-indigo-100/50 p-1.5 rounded">TR: {defTranslations[idx]}</div>}
               </div>
@@ -81,34 +117,47 @@ const WordCard = ({ wordObj }) => {
           </div>
         ))}
 
-        {/* Dil Bilgisi Detayları */}
+        {/* Dil Bilgisi Detayları (Gri Kutu) */}
         {(wordObj.plural || wordObj.v2 || wordObj.v3 || wordObj.vIng || wordObj.thirdPerson) && (
           <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 text-left space-y-1.5 mt-2">
             <div className="text-[10px] uppercase tracking-wide text-slate-400 font-bold mb-1">Fiil & İsim Çekimleri</div>
-            <div className="grid grid-cols-2 gap-2 text-sm text-slate-700">
-              {wordObj.plural && <div><span className="font-semibold">Plural:</span> {wordObj.plural}</div>}
-              {wordObj.thirdPerson && <div><span className="font-semibold">3rd P:</span> {wordObj.thirdPerson}</div>}
-              {wordObj.v2 && <div><span className="font-semibold">V2:</span> {wordObj.v2}</div>}
-              {wordObj.v3 && <div><span className="font-semibold">V3:</span> {wordObj.v3}</div>}
-              {wordObj.vIng && <div><span className="font-semibold">V-ing:</span> {wordObj.vIng}</div>}
+            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm text-slate-700">
+              <FeatureRow label="Plural" value={wordObj.plural} />
+              <FeatureRow label="3rd P" value={wordObj.thirdPerson} />
+              <FeatureRow label="V2" value={wordObj.v2} />
+              <FeatureRow label="V3" value={wordObj.v3} />
+              <FeatureRow label="V-ing" value={wordObj.vIng} />
             </div>
           </div>
         )}
 
+        {/* Sıfat/Zarf Detayları (Turuncu Kutu) */}
+        {(wordObj.advLy || wordObj.compEr || wordObj.superEst) && (
+            <div className="bg-orange-50 p-3 rounded-xl border border-orange-100 text-left space-y-1.5 mt-2">
+                <div className="text-[10px] uppercase tracking-wide text-orange-400 font-bold mb-1">Sıfat & Zarf Halleri</div>
+                <div className="text-sm text-slate-700 space-y-1">
+                    <FeatureRow label="Zarf" value={wordObj.advLy} />
+                    <FeatureRow label="Comp" value={wordObj.compEr} />
+                    <FeatureRow label="Super" value={wordObj.superEst} />
+                </div>
+            </div>
+        )}
+
+        {/* Örnek Cümle */}
         <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 mt-2">
           <div className="flex items-center justify-between mb-2">
             <div className="text-xs uppercase tracking-wide text-slate-400 font-bold">Örnek Cümle</div>
             <div className="flex gap-2">
-              <button onClick={handleTranslateSentence} className="p-1.5 bg-white text-indigo-500 rounded-full border border-slate-200">
+              <button onClick={handleTranslateSentence} className="p-1.5 bg-white text-indigo-500 rounded-full border border-slate-200 hover:bg-indigo-50 transition-colors">
                 {loadingSentence ? <Loader2 className="w-4 h-4 animate-spin" /> : <Languages className="w-4 h-4" />}
               </button>
-              <button onClick={(e) => speak(wordObj.sentence, e)} className="p-1.5 bg-white text-indigo-500 rounded-full border border-slate-200">
+              <button onClick={(e) => speak(wordObj.sentence, e)} className="p-1.5 bg-white text-indigo-500 rounded-full border border-slate-200 hover:bg-indigo-50 transition-colors">
                 <Volume2 className="w-4 h-4" />
               </button>
             </div>
           </div>
           <p className="text-base text-slate-600 italic">"{wordObj.sentence}"</p>
-          {sentenceTranslation && <div className="mt-2 pt-2 border-t border-slate-200"><p className="text-slate-800 text-sm font-medium">TR: {sentenceTranslation}</p></div>}
+          {sentenceTranslation && <div className="mt-2 pt-2 border-t border-slate-200 animate-in fade-in"><p className="text-slate-800 text-sm font-medium">TR: {sentenceTranslation}</p></div>}
         </div>
       </div>
     </div>
