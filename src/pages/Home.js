@@ -23,13 +23,13 @@ export default function Home() {
     <div className="min-h-screen bg-slate-50 flex flex-col items-center p-6">
       <div className="w-full max-w-md space-y-6 mt-2">
         
-        {/* Üst Bar (Reset & Logout) */}
+        {/* Üst Bar */}
         <div className="flex justify-between items-center w-full px-1">
           <button onClick={handleReset} className="p-2.5 bg-white rounded-xl shadow-sm border border-slate-200 text-slate-400 hover:text-red-500"><RotateCcw size={18} /></button>
           <button onClick={handleLogout} className="p-2.5 bg-white rounded-xl shadow-sm border border-slate-200 text-slate-400 hover:text-red-500"><LogOut size={18} /></button>
         </div>
 
-        {/* Profil Başlık & Streak */}
+        {/* Başlık & Streak */}
         <div className="text-center relative mt-4">
           <div className="flex justify-center mb-4 relative">
             <div className="bg-indigo-600 p-4 rounded-2xl shadow-lg transform rotate-3"><Brain className="w-12 h-12 text-white" /></div>
@@ -57,45 +57,43 @@ export default function Home() {
           </div>
         </div>
 
-        {/* --- MENÜ BUTONLARI --- */}
+        {/* --- MENÜ LİSTESİ --- */}
         <div className="space-y-3 pb-8">
           
-          {/* Admin Butonu (Sadece admine görünür) */}
+          {/* Admin Butonu */}
           {isAdmin && (
              <button onClick={() => navigate("/admin")} className="w-full bg-slate-800 text-white font-bold py-3 px-6 rounded-xl shadow-md flex items-center justify-between mb-3">
                <div className="flex items-center gap-3"><div className="bg-white/20 p-2 rounded-lg"><Shield className="w-5 h-5 text-yellow-400"/></div><div className="text-left"><div className="text-base">Admin Paneli</div></div></div>
              </button>
           )}
 
-          {/* OYUNLAR GRUBU (Yan Yana) */}
-          <div className="grid grid-cols-2 gap-3">
-             {/* Kart Oyunu */}
-             <button onClick={() => navigate("/game")} className="bg-indigo-600 text-white font-bold py-4 px-4 rounded-xl shadow-md flex flex-col items-center gap-2 text-center active:scale-95 transition-transform">
-                <div className="bg-white/20 p-2 rounded-full"><Play className="w-6 h-6" fill="currentColor"/></div>
-                <span className="text-sm">Kart Oyunu</span>
-             </button>
-             
-             {/* YENİ: Yazma Testi */}
-             <button onClick={() => navigate("/writing")} className="bg-purple-600 text-white font-bold py-4 px-4 rounded-xl shadow-md flex flex-col items-center gap-2 text-center active:scale-95 transition-transform">
-                <div className="bg-white/20 p-2 rounded-full"><Edit3 className="w-6 h-6"/></div>
-                <span className="text-sm">Yazma Testi</span>
-             </button>
-          </div>
-
-          {/* Sözlük */}
+          {/* 1. Sözlük */}
           <button onClick={() => navigate("/dictionary")} className="w-full bg-sky-500 text-white font-bold py-4 px-6 rounded-xl shadow-md flex items-center justify-between group active:scale-95 transition-transform">
-             <div className="flex items-center gap-3"><div className="bg-white/20 p-2 rounded-lg"><Book className="w-6 h-6"/></div><div className="text-left"><div className="text-lg">Sözlükte Ara</div></div></div>
+             <div className="flex items-center gap-3"><div className="bg-white/20 p-2 rounded-lg"><Book className="w-6 h-6"/></div><div className="text-left"><div className="text-lg">Sözlük</div><div className="text-xs text-sky-100 font-normal">Kelime ara ve öğren</div></div></div>
           </button>
 
-          {/* Cümle Analizi */}
+          {/* 2. AI Cümle Analizi */}
           <button onClick={() => navigate("/analysis")} className="w-full bg-teal-600 text-white font-bold py-4 px-6 rounded-xl shadow-md flex items-center justify-between group active:scale-95 transition-transform">
              <div className="flex items-center gap-3"><div className="bg-white/20 p-2 rounded-lg"><Microscope className="w-6 h-6"/></div><div className="text-left"><div className="text-lg">AI Cümle Analizi</div><div className="text-xs text-teal-100 font-normal">Gramer ve hata kontrolü</div></div></div>
           </button>
 
-          {/* Quiz */}
+          {/* 3. Flash Kart (Eski Kart Oyunu) */}
+          <button onClick={() => navigate("/game")} className="w-full bg-indigo-600 text-white font-bold py-4 px-6 rounded-xl shadow-md flex items-center justify-between group active:scale-95 transition-transform">
+             <div className="flex items-center gap-3"><div className="bg-white/20 p-2 rounded-lg"><Play className="w-6 h-6" fill="currentColor"/></div><div className="text-left"><div className="text-lg">Flash Kart</div><div className="text-xs text-indigo-100 font-normal">Kartları kaydırarak çalış</div></div></div>
+          </button>
+
+          {/* 4. Yazma Testi */}
+          <button onClick={() => navigate("/writing")} className="w-full bg-purple-600 text-white font-bold py-4 px-6 rounded-xl shadow-md flex items-center justify-between group active:scale-95 transition-transform">
+             <div className="flex items-center gap-3"><div className="bg-white/20 p-2 rounded-lg"><Edit3 className="w-6 h-6"/></div><div className="text-left"><div className="text-lg">Yazma Testi</div><div className="text-xs text-purple-100 font-normal">Yazarak pratik yap</div></div></div>
+          </button>
+
+          {/* 5. Quiz */}
           <button onClick={() => navigate("/quiz")} className="w-full bg-amber-500 text-white font-bold py-4 px-6 rounded-xl shadow-md flex items-center justify-between group active:scale-95 transition-transform">
              <div className="flex items-center gap-3"><div className="bg-white/20 p-2 rounded-lg"><HelpCircle className="w-6 h-6"/></div><div className="text-left"><div className="text-lg">Çoktan Seçmeli</div><div className="text-xs text-amber-100 font-normal">Kelime Testi (Quiz)</div></div></div>
           </button>
+
+          {/* --- AYIRAÇ VE DİĞERLERİ --- */}
+          <div className="h-px bg-slate-200 my-2"></div>
 
           {/* Kelime Ekle */}
           <button onClick={() => navigate("/add-word")} className="w-full bg-white text-slate-700 border-2 border-dashed border-slate-300 font-bold py-4 px-6 rounded-xl flex items-center justify-between group hover:bg-slate-50 active:scale-95 transition-transform">
