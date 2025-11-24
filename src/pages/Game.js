@@ -17,7 +17,6 @@ export default function Game() {
   const [selectedTag, setSelectedTag] = useState(null); // Seçilen kategori
 
   // --- ETİKETLERİ HESAPLA ---
-  // Tüm kelimelerden benzersiz etiketleri bulup alfabetik sıralıyoruz
   const availableTags = useMemo(() => {
     const all = getAllWords();
     const tags = new Set();
@@ -35,7 +34,7 @@ export default function Game() {
     const all = getAllWords();
     const now = new Date();
 
-    // 1. Önce Etikete Göre Filtrele (Eğer tag seçildiyse)
+    // 1. Önce Etikete Göre Filtrele
     let filteredPool = all;
     if (tag) {
         filteredPool = all.filter(w => w.tags && w.tags.includes(tag));
@@ -43,28 +42,17 @@ export default function Game() {
 
     // 2. Sonra SRS (Zamanlama) Kuralına Göre Filtrele
     const playableWords = filteredPool.filter(w => {
-        // Zaten bilinenler hariç
         if (knownWordIds.includes(w.id)) return false;
-
-        // Öğrenme kuyruğunda var mı?
         const progress = learningQueue.find(q => q.wordId === w.id);
-
-        if (!progress) {
-            // Kuyrukta yoksa "Sıfırıncı Seviye"dir, oynanabilir.
-            return true;
-        }
-
-        // Kuyrukta varsa, zamanı gelmiş mi?
+        if (!progress) return true; // Hiç başlanmamışsa
         const reviewDate = new Date(progress.nextReview);
         return reviewDate <= now;
     });
     
     if (playableWords.length === 0) {
-      // Oynanacak kelime yoksa direkt özete git
       setSessionWords([]);
       setGameStage("summary");
     } else {
-      // Rastgele karıştır ve ilk 20 tanesini al
       const shuffled = [...playableWords].sort(() => 0.5 - Math.random());
       setSessionWords(shuffled.slice(0, 20));
       setCurrentIndex(0);
@@ -107,7 +95,7 @@ export default function Game() {
                         <Home className="w-5 h-5 text-slate-600"/>
                     </button>
                     <h2 className="text-xl font-bold text-slate-800">Çalışma Modu</h2>
-                    <div className="w-9"></div> {/* Spacer */}
+                    <div className="w-9"></div>
                 </div>
 
                 <div className="text-center py-4">
@@ -120,11 +108,7 @@ export default function Game() {
 
                 {/* Seçenekler */}
                 <div className="space-y-3 pb-10">
-                    {/* TÜMÜ BUTONU */}
-                    <button 
-                        onClick={() => startSession(null)}
-                        className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white p-4 rounded-2xl shadow-lg flex items-center justify-between group transition-transform active:scale-95"
-                    >
+                    <button onClick={() => startSession(null)} className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white p-4 rounded-2xl shadow-lg flex items-center justify-between group transition-transform active:scale-95">
                         <div className="flex items-center gap-3">
                             <div className="bg-white/20 p-2 rounded-lg"><BookOpen className="w-5 h-5"/></div>
                             <div className="text-left">
@@ -140,19 +124,12 @@ export default function Game() {
                         <div className="relative flex justify-center text-sm"><span className="px-2 bg-slate-50 text-slate-400 font-medium">veya kategori seç</span></div>
                     </div>
 
-                    {/* ETİKET LİSTESİ */}
                     {availableTags.length === 0 ? (
-                        <div className="text-center text-slate-400 py-4 bg-white rounded-xl border border-dashed border-slate-300">
-                            Henüz hiç etiket eklenmemiş.
-                        </div>
+                        <div className="text-center text-slate-400 py-4 bg-white rounded-xl border border-dashed border-slate-300">Henüz hiç etiket eklenmemiş.</div>
                     ) : (
                         <div className="grid grid-cols-2 gap-3">
                             {availableTags.map((tag) => (
-                                <button 
-                                    key={tag} 
-                                    onClick={() => startSession(tag)}
-                                    className="bg-white border border-slate-200 p-4 rounded-xl text-left hover:border-indigo-300 hover:bg-indigo-50 transition-colors shadow-sm flex flex-col gap-2 group"
-                                >
+                                <button key={tag} onClick={() => startSession(tag)} className="bg-white border border-slate-200 p-4 rounded-xl text-left hover:border-indigo-300 hover:bg-indigo-50 transition-colors shadow-sm flex flex-col gap-2 group">
                                     <Tag className="w-5 h-5 text-indigo-400 group-hover:text-indigo-600"/>
                                     <span className="font-bold text-slate-700 group-hover:text-indigo-700 truncate w-full">{tag}</span>
                                 </button>
@@ -169,25 +146,21 @@ export default function Game() {
   if (gameStage === "summary") {
     const all = getAllWords();
     
-    // Seçilen etikete göre toplam havuzu hesapla
     let filteredPool = all;
     if (selectedTag) {
         filteredPool = all.filter(w => w.tags && w.tags.includes(selectedTag));
     }
 
-    // İstatistikler
     const totalKnown = filteredPool.filter(w => knownWordIds.includes(w.id)).length;
     const now = new Date();
     
-    // Bekleyenler (Zamanı gelmemiş olanlar)
     const waitingCount = filteredPool.filter(w => {
         const progress = learningQueue.find(q => q.wordId === w.id);
-        if (!progress) return false; // Hiç başlanmamışsa beklemede değildir
+        if (!progress) return false; 
         const d = new Date(progress.nextReview);
         return d > now && !knownWordIds.includes(w.id);
     }).length;
 
-    // Çalışılabilir (Hiç başlanmamış + Zamanı gelmiş)
     const availableToPlay = filteredPool.length - totalKnown - waitingCount;
 
     return (
@@ -205,17 +178,19 @@ export default function Game() {
 
            <div className="space-y-3 mb-6">
                 {selectedTag && (
-                    <div className="bg-indigo-50 p-2 rounded-lg text-sm font-bold text-indigo-700 mb-2 border border-indigo-100">
-                        Kategori: {selectedTag}
-                    </div>
+                    <div className="bg-indigo-50 p-2 rounded-lg text-sm font-bold text-indigo-700 mb-2 border border-indigo-100">Kategori: {selectedTag}</div>
                 )}
                 <div className="flex justify-between text-sm text-slate-600 bg-slate-50 p-3 rounded-lg"><span>Tamamen Öğrenilen:</span><span className="font-bold text-indigo-600">{totalKnown}</span></div>
                 <div className="flex justify-between text-sm text-slate-600 bg-slate-50 p-3 rounded-lg"><span>Dinlenmede:</span><span className="font-bold text-orange-500 flex items-center gap-1"><Clock className="w-3 h-3"/> {waitingCount}</span></div>
                 <div className="flex justify-between text-sm text-slate-600 bg-slate-50 p-3 rounded-lg"><span>Sırada Bekleyen:</span><span className="font-bold text-green-600">{availableToPlay}</span></div>
            </div>
 
+           {/* BUTONLAR */}
            <button onClick={() => startSession(selectedTag)} disabled={availableToPlay === 0} className="w-full bg-blue-600 disabled:bg-slate-300 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-xl flex items-center justify-center gap-2 mb-3"><RotateCcw className="w-5 h-5"/> {availableToPlay > 0 ? "Devam Et" : "Bu Kategori Bitti"}</button>
            <button onClick={() => setGameStage("selection")} className="w-full bg-white border border-slate-200 text-slate-600 font-bold py-3 px-6 rounded-xl hover:bg-slate-50 flex items-center justify-center gap-2"><Layers className="w-5 h-5"/> Kategori Değiştir</button>
+           
+           {/* YENİ EKLENEN ANA SAYFA BUTONU */}
+           <button onClick={() => navigate("/")} className="w-full mt-3 bg-white border border-slate-200 text-slate-600 font-bold py-3 px-6 rounded-xl hover:bg-slate-50 flex items-center justify-center gap-2"><Home className="w-5 h-5"/> Ana Sayfa</button>
         </div>
       </div>
     );
