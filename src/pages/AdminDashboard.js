@@ -8,9 +8,12 @@ export default function AdminDashboard() {
   const { dynamicSystemWords, handleDeleteSystemWord, isAdmin } = useData();
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
-  const [showModal, setShowModal] = useState(false);
+  
+  // Hangi kelime düzenleniyor? (null ise kapalı)
+  const [editingItem, setEditingItem] = useState(null);
+  // Yeni kelime ekleme modu açık mı?
+  const [isAddingNew, setIsAddingNew] = useState(false);
 
-  // Admin değilse ana sayfaya at
   if (!isAdmin) {
       setTimeout(() => navigate("/"), 0);
       return null;
@@ -22,7 +25,21 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-slate-50 p-4">
-      {showModal && <QuickAddModal onClose={() => setShowModal(false)} />}
+      
+      {/* YENİ EKLEME MODU */}
+      {isAddingNew && (
+          <QuickAddModal 
+            onClose={() => setIsAddingNew(false)} 
+          />
+      )}
+
+      {/* DÜZENLEME MODU */}
+      {editingItem && (
+          <QuickAddModal 
+            prefillData={editingItem} 
+            onClose={() => setEditingItem(null)} 
+          />
+      )}
       
       <div className="max-w-md mx-auto">
          <div className="flex items-center gap-3 mb-6">
@@ -38,7 +55,7 @@ export default function AdminDashboard() {
             </div>
          </div>
 
-         <button onClick={() => setShowModal(true)} className="w-full bg-slate-800 text-white font-bold py-4 rounded-xl shadow-lg flex items-center justify-center gap-2 mb-6">
+         <button onClick={() => setIsAddingNew(true)} className="w-full bg-slate-800 text-white font-bold py-4 rounded-xl shadow-lg flex items-center justify-center gap-2 mb-6">
              <Plus className="w-5 h-5"/> Yeni Sistem Kelimesi Ekle
          </button>
 
@@ -55,8 +72,26 @@ export default function AdminDashboard() {
                              <div className="font-bold text-slate-800">{item.word}</div>
                              <div className="text-xs text-slate-500">{item.definitions[0]?.meaning}</div>
                          </div>
+                         
+                         {/* BUTON GRUBU */}
                          <div className="flex gap-2">
-                             <button onClick={() => handleDeleteSystemWord(item.id)} className="p-2 bg-red-50 text-red-500 rounded-lg hover:bg-red-100"><Trash2 className="w-4 h-4"/></button>
+                             {/* DÜZENLE BUTONU - GERİ GELDİ! */}
+                             <button 
+                                onClick={() => setEditingItem(item)} 
+                                className="p-2 bg-blue-50 text-blue-500 rounded-lg hover:bg-blue-100 transition-colors"
+                                title="Düzenle"
+                             >
+                                 <Edit2 className="w-4 h-4"/>
+                             </button>
+
+                             {/* SİL BUTONU */}
+                             <button 
+                                onClick={() => handleDeleteSystemWord(item.id)} 
+                                className="p-2 bg-red-50 text-red-500 rounded-lg hover:bg-red-100 transition-colors"
+                                title="Sil"
+                             >
+                                 <Trash2 className="w-4 h-4"/>
+                             </button>
                          </div>
                      </div>
                  ))}
