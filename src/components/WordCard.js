@@ -19,20 +19,20 @@ const WordCard = ({ wordObj }) => {
 
   // Cümle Çevirisi
   const handleTranslateSentence = async (e) => {
-    e.stopPropagation();
-    if (sentenceTranslation) return;
-    setLoadingSentence(true);
-    const text = await translateTextWithAI(wordObj.sentence);
-    setSentenceTranslation(text);
-    setLoadingSentence(false);
-  };
+  e.stopPropagation();
+  if (sentenceTranslation) return;
+  setLoadingSentence(true);
+  const text = await simpleTranslate(wordObj.sentence);
+  setSentenceTranslation(text);
+  setLoadingSentence(false);
+};
 
   // Tanım Çevirisi
   const handleTranslateDef = async (index, text, e) => {
     e.stopPropagation();
     if (defTranslations[index]) return;
     setLoadingDefs((prev) => ({ ...prev, [index]: true }));
-    const translated = await translateTextWithAI(text);
+    const translated = await simpleTranslate(text);
     setDefTranslations((prev) => ({ ...prev, [index]: translated }));
     setLoadingDefs((prev) => ({ ...prev, [index]: false }));
   };
