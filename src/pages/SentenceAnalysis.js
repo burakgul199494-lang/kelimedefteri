@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { ArrowLeft, Camera, Microscope, Loader2, Globe, Brain, BookOpen, Plus, Crop, Check, X, Clock, RotateCw, ZoomIn } from "lucide-react";
+import { ArrowLeft, Camera, Microscope, Loader2, Globe, Brain, BookOpen, Plus, Crop, Check, X, Clock, RotateCw, ZoomIn, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useData } from "../context/DataContext";
 import { fetchSentenceAnalysisFromAI, extractTextFromImage } from "../services/aiService";
@@ -8,7 +8,6 @@ import QuickAddModal from "../components/QuickAddModal";
 import ReactCrop, { centerCrop, makeAspectCrop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
 
-// --- MOBİL UYUMLU IOS STİLİ ---
 const customStyles = `
   .ReactCrop { touch-action: none; user-select: none; -webkit-user-select: none; }
   .ReactCrop__crop-selection { border: 2px solid white; box-shadow: 0 0 0 9999em rgba(0, 0, 0, 0.8); }
@@ -24,22 +23,17 @@ async function canvasPreview(image, crop, scale = 1, rotate = 0) {
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('No 2d context');
-
   const scaleX = image.naturalWidth / image.width;
   const scaleY = image.naturalHeight / image.height;
   const pixelRatio = window.devicePixelRatio;
-
   canvas.width = Math.floor(crop.width * scaleX * pixelRatio);
   canvas.height = Math.floor(crop.height * scaleY * pixelRatio);
-
   ctx.scale(pixelRatio, pixelRatio);
   ctx.imageSmoothingQuality = 'high';
-
   const cropX = crop.x * scaleX;
   const cropY = crop.y * scaleY;
   const centerX = image.naturalWidth / 2;
   const centerY = image.naturalHeight / 2;
-
   ctx.save();
   ctx.translate(-cropX, -cropY);
   ctx.translate(centerX, centerY);
@@ -47,12 +41,8 @@ async function canvasPreview(image, crop, scale = 1, rotate = 0) {
   ctx.translate(-centerX, -centerY);
   ctx.drawImage(image, 0, 0, image.naturalWidth, image.naturalHeight, 0, 0, image.naturalWidth, image.naturalHeight);
   ctx.restore();
-  
   return new Promise((resolve) => {
-    canvas.toBlob((blob) => {
-        if (!blob) { console.error('Canvas empty'); return; }
-        resolve(blob);
-    }, 'image/jpeg', 0.95);
+    canvas.toBlob((blob) => { if (!blob) return; resolve(blob); }, 'image/jpeg', 0.95);
   });
 }
 
@@ -165,6 +155,7 @@ export default function SentenceAnalysis() {
           <button onClick={() => navigate("/")} className="p-2 hover:bg-slate-200 rounded-full bg-white shadow-sm"><ArrowLeft className="w-6 h-6 text-slate-600" /></button>
           <h2 className="text-2xl font-bold text-slate-800">Cümle Analizi</h2>
         </div>
+
         <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
           <button onClick={() => fileInputRef.current?.click()} disabled={ocrLoading || isAnalyzing} className="w-full mb-3 bg-slate-100 hover:bg-slate-200 text-slate-600 py-2 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-colors">
             {ocrLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />} Fotoğraf Çek / Yükle
@@ -176,21 +167,73 @@ export default function SentenceAnalysis() {
             </button>
           </div>
         </div>
+
         {analysisResult && (
           <div className="space-y-4 animate-in fade-in slide-in-from-bottom-6 duration-500">
+            
+            {/* --- YENİ: GRAMER KONTROL KUTUSU --- */}
+            {analysisResult.correction?.hasError && (
+                <div className="bg-red-50 p-5 rounded-2xl border border-red-100 shadow-sm">
+                    <h3 className="text-xs font-bold text-red-500 uppercase mb-3 flex items-center gap-2">
+                        <AlertTriangle className="w-4 h-4"/> Gramer Hatası Tespit Edildi
+                    </h3>
+                    <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-red-400 line-through decoration-2 text-lg">
+                            <X className="w-5 h-5 shrink-0"/>
+                            <span>{analysisText}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-green-600 font-bold text-lg">
+                            <CheckCircle2 className="w-5 h-5 shrink-0"/>
+                            <span>{analysisResult.correction.corrected}</span>
+                        </div>
+                        <p className="text-sm text-red-600 mt-2 bg-red-100/50 p-2 rounded-lg">
+                            <span className="font-bold">Neden?</span> {analysisResult.correction.explanation}
+                        </p>
+                    </div>
+                </div>
+            )}
+            {/* ----------------------------------- */}
+
             <div className="bg-indigo-50 p-5 rounded-2xl border border-indigo-100 shadow-sm">
               <h3 className="text-xs font-bold text-indigo-400 uppercase mb-2 flex items-center gap-2"><Globe className="w-4 h-4" /> Türkçe Çeviri</h3>
               <p className="text-lg text-slate-800 font-medium leading-relaxed">{analysisResult.turkishTranslation}</p>
             </div>
             <div className="bg-teal-50 p-5 rounded-2xl border border-teal-100 shadow-sm">
-              <div className="flex items-center justify-between mb-3 border-b border-teal-100 pb-2"><h3 className="text-xs font-bold text-teal-600 uppercase flex items-center gap-2"><Brain className="w-4 h-4" /> Analiz Özeti</h3>{analysisResult.detectedTense && (<span className="bg-teal-100 text-teal-700 px-2 py-1 rounded text-xs font-bold flex items-center gap-1"><Clock className="w-3 h-3"/> {analysisResult.detectedTense}</span>)}</div>
-              <ul className="space-y-2">{analysisResult.simplePoints?.map((point, i) => (<li key={i} className="flex gap-2 text-sm text-slate-700 leading-relaxed"><span className="text-teal-500 font-bold">•</span><span>{point}</span></li>))}</ul>
-              {!analysisResult.simplePoints && analysisResult.grammarAnalysis && (<p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">{analysisResult.grammarAnalysis}</p>)}
+              <div className="flex items-center justify-between mb-3 border-b border-teal-100 pb-2">
+                 <h3 className="text-xs font-bold text-teal-600 uppercase flex items-center gap-2"><Brain className="w-4 h-4" /> Analiz Özeti</h3>
+                 {analysisResult.detectedTense && (
+                    <span className="bg-teal-100 text-teal-700 px-2 py-1 rounded text-xs font-bold flex items-center gap-1">
+                        <Clock className="w-3 h-3"/> {analysisResult.detectedTense}
+                    </span>
+                 )}
+              </div>
+              <ul className="space-y-2">
+                {analysisResult.simplePoints?.map((point, i) => (
+                    <li key={i} className="flex gap-2 text-sm text-slate-700 leading-relaxed">
+                        <span className="text-teal-500 font-bold">•</span>
+                        <span>{point}</span>
+                    </li>
+                ))}
+              </ul>
             </div>
             {analysisResult.rootWords?.length > 0 && (
-              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm"><h3 className="text-xs font-bold text-slate-400 uppercase mb-3 flex items-center gap-2"><BookOpen className="w-4 h-4" /> Kelime Kökleri</h3><div className="flex flex-wrap gap-2">{analysisResult.rootWords.map((word, idx) => { const exists = isWordInRegistry(word); return ( <button key={idx} onClick={() => { if (!exists) setQuickAddWord(word); }} disabled={exists} className={`px-3 py-1.5 rounded-lg font-bold text-sm border transition-all ${exists ? "bg-green-50 text-green-700 border-green-200 cursor-default" : "bg-red-50 text-red-600 border-red-200 hover:bg-red-100 cursor-pointer shadow-sm"}`}> {word} {!exists && <Plus className="w-3 h-3 inline ml-1" />} </button> ); })}</div></div>
+              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                <h3 className="text-xs font-bold text-slate-400 uppercase mb-3 flex items-center gap-2"><BookOpen className="w-4 h-4" /> Kelime Kökleri</h3>
+                <div className="flex flex-wrap gap-2">
+                  {analysisResult.rootWords.map((word, idx) => {
+                    const exists = isWordInRegistry(word);
+                    return (
+                      <button key={idx} onClick={() => { if (!exists) setQuickAddWord(word); }} disabled={exists} className={`px-3 py-1.5 rounded-lg font-bold text-sm border transition-all ${exists ? "bg-green-50 text-green-700 border-green-200 cursor-default" : "bg-red-50 text-red-600 border-red-200 hover:bg-red-100 cursor-pointer shadow-sm"}`}>
+                        {word} {!exists && <Plus className="w-3 h-3 inline ml-1" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             )}
-            <button onClick={() => setQuickAddWord("")} className="w-full bg-white text-slate-700 border-2 border-dashed border-slate-300 font-bold py-4 rounded-xl flex items-center justify-center gap-2 hover:bg-slate-50"><Plus className="w-5 h-5" /> Manuel Kelime Ekle</button>
+            <button onClick={() => setQuickAddWord("")} className="w-full bg-white text-slate-700 border-2 border-dashed border-slate-300 font-bold py-4 rounded-xl flex items-center justify-center gap-2 hover:bg-slate-50">
+               <Plus className="w-5 h-5" /> Manuel Kelime Ekle
+            </button>
           </div>
         )}
       </div>
