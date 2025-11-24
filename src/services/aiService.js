@@ -17,7 +17,7 @@ const cleanAndParseJSON = (text) => {
   }
 };
 
-// --- 1. KELİME ANALİZİ (ETİKET EKLENDİ) ---
+// --- 1. KELİME ANALİZİ ---
 export const fetchWordAnalysisFromAI = async (word) => {
   try {
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
@@ -28,7 +28,7 @@ export const fetchWordAnalysisFromAI = async (word) => {
       IMPORTANT: 
       1. In the "definitions" array, the "meaning" field MUST be the TURKISH translation.
       2. The "engExplanation" field MUST be a simple English explanation.
-      3. Generate 1 to 3 relevant categories/tags for this word in TURKISH (e.g., "Yiyecek", "Seyahat", "Teknoloji", "Gramer").
+      3. Generate 1 to 3 relevant categories/tags for this word in TURKISH.
       
       Return ONLY JSON. No markdown.
       Structure:
@@ -36,10 +36,10 @@ export const fetchWordAnalysisFromAI = async (word) => {
         "word": "${word}",
         "plural": "", "v2": "", "v3": "", "vIng": "", "thirdPerson": "",
         "advLy": "", "compEr": "", "superEst": "",
-        "tags": ["Etiket1", "Etiket2"], 
-        "sentence": "Simple A2 level sentence.",
+        "tags": ["Tag1"], 
+        "sentence": "Simple sentence.",
         "definitions": [
-          { "type": "noun/verb/etc", "meaning": "TURKISH TRANSLATION", "engExplanation": "Simple English explanation" }
+          { "type": "noun", "meaning": "TR", "engExplanation": "EN" }
         ]
       }
     `;
@@ -61,21 +61,17 @@ export const fetchRootFromAI = async (word) => {
 
     const prompt = `
       Find the dictionary root form (lemma) of english word: "${word}".
-      Return ONLY JSON:
-      { "root": "base_form", "original": "${word}", "changed": true/false }
+      Return ONLY JSON: { "root": "base", "original": "${word}", "changed": true/false }
     `;
 
     const result = await model.generateContent(prompt);
     const response = await result.response;
     const data = cleanAndParseJSON(response.text());
     return data || { root: word, changed: false };
-  } catch (e) {
-    console.error("Root Error:", e);
-    return { root: word, changed: false };
-  }
+  } catch (e) { return { root: word, changed: false }; }
 };
 
-// --- 3. CÜMLE ANALİZİ ---
+// --- 3. CÜMLE ANALİZİ (GÜNCELLENDİ: GRAMER KONTROLÜ EKLENDİ) ---
 export const fetchSentenceAnalysisFromAI = async (text) => {
   try {
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
@@ -85,29 +81,27 @@ export const fetchSentenceAnalysisFromAI = async (text) => {
     });
 
     const prompt = `
-      Act as a helpful, friendly English tutor for Turkish students.
+      Act as a strict English grammar teacher for Turkish students.
       Analyze this text: "${text}"
       
       Tasks:
-      1. Translate to Turkish naturally.
-      2. Identify the MAIN tense. Write the TURKISH name (e.g., "Geçmiş Zaman").
-      3. Explain the sentence structure simply in bullet points.
-         - CRITICAL RULE: When explaining a word, keep the English word in single quotes, then explain it in Turkish.
-         - Do NOT translate the subject/verb words themselves when referring to them.
-         - Example Pattern: 'I' cümlenin öznesidir (ben). 'am' yardımcı fiildir. 'pencil' kalem demektir.
-         - Focus on "Who did what?" or grammar roles.
+      1. Check for ANY grammatical errors (pluralization, tense, subject-verb agreement).
+      2. Translate to Turkish naturally.
+      3. Identify the MAIN tense (Write TURKISH name).
+      4. Explain structure simply in bullet points (Keep English words in single quotes).
+      5. Extract root words.
 
-      4. Extract root words (lemmas) excluding common names and basic stopwords.
-
-      Return ONLY JSON. No markdown.
+      Return ONLY JSON.
       Structure:
       {
-        "turkishTranslation": "Turkish translation here",
-        "detectedTense": "Geniş Zaman / Şimdiki Zaman vb.",
-        "simplePoints": [
-            "'Word' -> Türkçe açıklaması...",
-            "'OtherWord' -> Türkçe açıklaması..."
-        ],
+        "correction": {
+            "hasError": true, // Set true if there is a grammar mistake
+            "corrected": "Corrected sentence here (or null if correct)",
+            "explanation": "Explain the error in Turkish (e.g., 'They' çoğul olduğu için 'teacher' kelimesi 'teachers' olmalıydı.)"
+        },
+        "turkishTranslation": "Turkish translation",
+        "detectedTense": "Zaman Adı",
+        "simplePoints": ["Explanation 1", "Explanation 2"],
         "rootWords": ["word1", "word2"] 
       }
     `;
@@ -139,17 +133,14 @@ export const translateTextWithAI = async (text) => {
   try {
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
     const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-    const prompt = `Translate this English text to Turkish accurately and naturally. Return ONLY the translation, nothing else: "${text}"`;
+    const prompt = `Translate this English text to Turkish accurately. Return ONLY translation: "${text}"`;
     const result = await model.generateContent(prompt);
     const response = await result.response;
     return response.text().trim();
-  } catch (e) {
-    console.error("Translation Error:", e);
-    return "Çeviri yapılamadı.";
-  }
+  } catch (e) { return "Çeviri yapılamadı."; }
 };
 
-// --- 5. RESİMDEN METİN OKUMA (OCR) ---
+// --- 5. OCR ---
 export const extractTextFromImage = async (file) => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -158,19 +149,12 @@ export const extractTextFromImage = async (file) => {
         const base64Data = reader.result.split(",")[1];
         const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
         const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-
-        const prompt = "Extract all the text from this image clearly. Do not add any comments, just return the text found.";
-        
         const result = await model.generateContent([
-          prompt,
+          "Extract text clearly. No comments.",
           { inlineData: { data: base64Data, mimeType: file.type } },
         ]);
-        const response = await result.response;
-        resolve(response.text().trim());
-      } catch (e) {
-        console.error("OCR Error:", e);
-        reject(e);
-      }
+        resolve(result.response.text().trim());
+      } catch (e) { reject(e); }
     };
     reader.readAsDataURL(file);
   });
