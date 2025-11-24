@@ -1,16 +1,18 @@
-import React from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useData } from "../context/DataContext";
 import { auth } from "../services/firebase";
 import { 
   RotateCcw, LogOut, Brain, Flame, Play, Book, 
   Microscope, Plus, BookOpen, Check, Trash2, 
-  Shield, Edit3, HelpCircle 
+  Shield, Edit3, HelpCircle, Settings 
 } from "lucide-react";
+import ProfileModal from "../components/ProfileModal"; // YENİ IMPORT
 
 export default function Home() {
   const { user, knownWordIds, getAllWords, streak, resetProfile, isAdmin } = useData();
   const navigate = useNavigate();
+  const [showProfileModal, setShowProfileModal] = useState(false); // Modal State'i
   
   const allWords = getAllWords();
   const progressPercentage = allWords.length > 0 ? (knownWordIds.length / allWords.length) * 100 : 0;
@@ -21,12 +23,25 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center p-6">
+      {/* PROFİL MODALI */}
+      {showProfileModal && <ProfileModal user={user} onClose={() => setShowProfileModal(false)} />}
+
       <div className="w-full max-w-md space-y-6 mt-2">
         
         {/* Üst Bar */}
         <div className="flex justify-between items-center w-full px-1">
-          <button onClick={handleReset} className="p-2.5 bg-white rounded-xl shadow-sm border border-slate-200 text-slate-400 hover:text-red-500"><RotateCcw size={18} /></button>
-          <button onClick={handleLogout} className="p-2.5 bg-white rounded-xl shadow-sm border border-slate-200 text-slate-400 hover:text-red-500"><LogOut size={18} /></button>
+          <div className="flex gap-2">
+             {/* YENİ: PROFİL BUTONU */}
+             <button onClick={() => setShowProfileModal(true)} className="p-2.5 bg-white rounded-xl shadow-sm border border-slate-200 text-slate-600 hover:text-indigo-600">
+                <Settings size={18} />
+             </button>
+             <button onClick={handleReset} className="p-2.5 bg-white rounded-xl shadow-sm border border-slate-200 text-slate-400 hover:text-red-500" title="Sıfırla">
+                <RotateCcw size={18} />
+             </button>
+          </div>
+          <button onClick={handleLogout} className="p-2.5 bg-white rounded-xl shadow-sm border border-slate-200 text-slate-400 hover:text-red-500" title="Çıkış">
+             <LogOut size={18} />
+          </button>
         </div>
 
         {/* Başlık & Streak */}
@@ -41,7 +56,7 @@ export default function Home() {
             </div>
           </div>
           <h1 className="text-3xl font-extrabold text-slate-800 tracking-tight">Kelime Defteri</h1>
-          <p className="text-slate-500 mt-2 text-sm">Merhaba, <span className="font-medium text-indigo-600">{user?.displayName || user?.email}</span></p>
+          <p className="text-slate-500 mt-2 text-sm">Merhaba, <span className="font-bold text-indigo-600">{user?.displayName || user?.email}</span></p>
         </div>
 
         {/* İlerleme Kartı */}
