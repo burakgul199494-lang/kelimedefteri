@@ -77,10 +77,17 @@ export const DataProvider = ({ children }) => {
     } catch (e) { console.error(e); }
   };
 
+  // --- NORMALİZASYON (ÇÖKME ENGELLEYİCİ) ---
   const normalizeWord = (w) => {
     const isDynamic = dynamicSystemWords.some((d) => d.id === w.id);
     const source = w.source || (isDynamic ? "system" : "user");
-    return { ...w, source, definitions: Array.isArray(w.definitions) ? w.definitions.map(def => ({ ...def, engExplanation: def.engExplanation || "" })) : [{ type: "other", meaning: "", engExplanation: "" }] };
+    return { 
+        ...w, 
+        source, 
+        // GÜVENLİK: tags alanı yoksa boş dizi ver
+        tags: Array.isArray(w.tags) ? w.tags : [],
+        definitions: Array.isArray(w.definitions) ? w.definitions.map(def => ({ ...def, engExplanation: def.engExplanation || "" })) : [{ type: "other", meaning: "", engExplanation: "" }] 
+    };
   };
 
   const getAllWords = () => {
@@ -121,7 +128,7 @@ export const DataProvider = ({ children }) => {
     try { await updateDoc(userRef, { learning_queue: newQueue }); setLearningQueue(newQueue); } catch (e) { console.error(e); }
   };
 
-  // CRUD
+  // CRUD - ETİKET DESTEĞİ EKLENDİ
   const handleSaveNewWord = async (wordData) => {
     const normalizedInput = wordData.word.toLowerCase().trim();
     const allWords = getAllWords();
@@ -131,6 +138,7 @@ export const DataProvider = ({ children }) => {
 
     const newWord = {
       id: Date.now(), word: wordData.word.trim(),
+      tags: wordData.tags || [], // Tags eklendi
       plural: wordData.plural||"", v2: wordData.v2||"", v3: wordData.v3||"", vIng: wordData.vIng||"", thirdPerson: wordData.thirdPerson||"",
       advLy: wordData.advLy||"", compEr: wordData.compEr||"", superEst: wordData.superEst||"",
       definitions: wordData.definitions, sentence: wordData.sentence.trim(), source: "user",
@@ -220,22 +228,20 @@ export const DataProvider = ({ children }) => {
       } catch(e) { console.error(e); }
   };
 
-  // --- ADMIN KISMI (GÜNCELLENDİ) ---
+  // ADMIN - KULLANICIDA VARSA SİL KONTROLÜ (ÇAKIŞMA ÇÖZÜMÜ)
   const handleSaveSystemWord = async (wordData) => {
     try {
       const normalizedInput = wordData.word.toLowerCase().trim();
-
-      // 1. Sistemde zaten var mı?
+      
+      // Sistemde var mı?
       const exists = dynamicSystemWords.some(w => w.word.toLowerCase() === normalizedInput);
       if(exists) return { success: false, message: "Bu kelime zaten sistemde var!" };
 
-      // 2. Sistem kelimesini ekle
       const newWord = { ...wordData, source: "system", createdAt: new Date() };
       const docRef = await addDoc(collection(db, "artifacts", appId, "system_words"), newWord);
       setDynamicSystemWords(prev => [...prev, { ...newWord, id: docRef.id }]);
 
-      // 3. KULLANICIDA VARSA ÇÖPE AT (Çakışma Çözümü)
-      // Şu anki kullanıcının listesinde aynı kelime varsa bul ve soft-delete yap.
+      // KULLANICIDA VARSA ÇÖPE AT
       const conflictingCustom = customWords.find(w => w.word.toLowerCase() === normalizedInput);
       if (conflictingCustom) {
           const userRef = doc(db, "artifacts", appId, "users", user.uid, "vocab_game", "progress");
