@@ -1,14 +1,13 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import { useData } from "../context/DataContext";
 import { useNavigate } from "react-router-dom";
-import { X, Trophy, Volume2, Languages, Loader2, HelpCircle, Tag } from "lucide-react";
+import { X, Trophy, Volume2, Languages, Loader2 } from "lucide-react";
 import { translateTextWithAI } from "../services/aiService";
 
 export default function Quiz() {
   const { getAllWords, knownWordIds } = useData();
   const navigate = useNavigate();
 
-  // STATE'LER
   const [questions, setQuestions] = useState([]);
   const [index, setIndex] = useState(0);
   const [score, setScore] = useState(0);
@@ -19,63 +18,27 @@ export default function Quiz() {
   const [hintTranslation, setHintTranslation] = useState(null);
   const [loadingHint, setLoadingHint] = useState(false);
 
-  // KATEGORİ STATE'İ
-  const [isQuizStarted, setIsQuizStarted] = useState(false);
-
-  // Sadece anlamı olan kelimeleri al (Boş kelimeler quiz'i bozar)
-  const allValidUnknownWords = useMemo(() => {
-      return getAllWords()
-        .filter(w => !knownWordIds.includes(w.id)) // Bilinmeyenler
-        .filter(w => w.definitions && w.definitions[0]?.meaning); // Anlamı olanlar
-  }, [getAllWords, knownWordIds]);
-
-  const categories = useMemo(() => {
-      const cats = allValidUnknownWords.map(w => w.category).filter(Boolean);
-      return ["Tümü", ...new Set(cats)].sort();
-  }, [allValidUnknownWords]);
-
+  useEffect(() => { startQuiz(); }, []);
   useEffect(() => { setHintTranslation(null); setLoadingHint(false); }, [index]);
 
-  const startQuizWithCategory = (category) => {
-    let pool = [];
-    if (category === "Tümü") {
-        pool = allValidUnknownWords;
-    } else {
-        pool = allValidUnknownWords.filter(w => w.category === category);
+  const startQuiz = () => {
+    const all = getAllWords();
+    const validWords = all.filter(w => w.definitions && w.definitions[0]?.meaning);
+    const unknown = validWords.filter(w => !knownWordIds.includes(w.id));
+
+    if (unknown.length < 4) {
+      alert(`Quiz için en az 4 öğrenilecek kelime lazım. (Şu an: ${unknown.length})`);
+      navigate("/"); return;
     }
 
-    // Yeterli kelime var mı kontrolü
-    if (pool.length < 4) {
-      alert(`"${category}" kategorisinde quiz yapmak için en az 4 kelime gerekli. (Şu an: ${pool.length})`);
-      return;
-    }
-
-    // Soru Hazırlama
-    const selectedPool = [...pool].sort(() => 0.5 - Math.random()).slice(0, 20);
-    
-    // Şıklar için TÜM kelimelerden (bilinenler dahil) yanlış cevap çekebiliriz ki şıklar zengin olsun
-    const allWordsForDistractors = getAllWords().filter(w => w.definitions && w.definitions[0]?.meaning);
-
-    const generatedQuestions = selectedPool.map(target => {
+    const pool = [...unknown].sort(() => 0.5 - Math.random()).slice(0, 20);
+    const generated = pool.map(target => {
       const correct = target.definitions[0].meaning;
-      const distractors = allWordsForDistractors
-        .filter(w => w.id !== target.id)
-        .sort(()=>0.5-Math.random())
-        .slice(0,3)
-        .map(w=>w.definitions[0].meaning);
-      
-      return { 
-          wordObj: target, 
-          correct, 
-          options: [...distractors, correct].sort(()=>0.5-Math.random()) 
-      };
+      const others = validWords.filter(w => w.id !== target.id).sort(()=>0.5-Math.random()).slice(0,3).map(w=>w.definitions[0].meaning);
+      return { wordObj: target, correct, options: [...others, correct].sort(()=>0.5-Math.random()) };
     });
     
-    setQuestions(generatedQuestions);
-    setIndex(0);
-    setScore(0);
-    setFinished(false);
-    setIsQuizStarted(true);
+    setQuestions(generated); setIndex(0); setScore(0); setFinished(false);
   };
 
   const handleAnswer = (option) => {
@@ -103,48 +66,6 @@ export default function Quiz() {
 
   const speak = (txt) => { const u = new SpeechSynthesisUtterance(txt); u.lang = "en-US"; window.speechSynthesis.speak(u); };
 
-  // --- EKRAN 1: KATEGORİ SEÇİMİ ---
-  if (!isQuizStarted) {
-      return (
-        <div className="min-h-screen bg-slate-50 p-6 flex flex-col items-center">
-            <div className="w-full max-w-md">
-                <div className="flex items-center gap-3 mb-6">
-                    <button onClick={() => navigate("/")} className="p-2 bg-white rounded-full shadow-sm"><X className="w-6 h-6 text-slate-600"/></button>
-                    <h2 className="text-2xl font-bold text-slate-800">Quiz Konusu Seç</h2>
-                </div>
-
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 text-center mb-6">
-                    <HelpCircle className="w-12 h-12 text-amber-500 mx-auto mb-3"/>
-                    <p className="text-slate-600">Test edilebilir <span className="font-bold text-amber-600">{allValidUnknownWords.length}</span> kelime var.</p>
-                    <p className="text-xs text-slate-400 mt-1">*En az 4 kelime olan kategoriler seçilebilir.</p>
-                </div>
-
-                <div className="grid grid-cols-1 gap-3">
-                    {categories.map(cat => {
-                        const count = cat === "Tümü" ? allValidUnknownWords.length : allValidUnknownWords.filter(w => w.category === cat).length;
-                        const isDisabled = count < 4;
-                        return (
-                            <button 
-                                key={cat} 
-                                onClick={() => startQuizWithCategory(cat)}
-                                disabled={isDisabled}
-                                className={`p-4 rounded-xl border shadow-sm flex justify-between items-center transition-all group ${isDisabled ? "bg-slate-100 border-slate-200 opacity-60 cursor-not-allowed" : "bg-white border-slate-200 hover:border-amber-500 hover:bg-amber-50"}`}
-                            >
-                                <div className="flex items-center gap-3">
-                                    <div className={`p-2 rounded-lg ${isDisabled ? "bg-slate-200 text-slate-400" : "bg-amber-100 text-amber-600"}`}><Tag className="w-5 h-5"/></div>
-                                    <span className={`font-bold ${isDisabled ? "text-slate-400" : "text-slate-700 group-hover:text-amber-700"}`}>{cat}</span>
-                                </div>
-                                <span className={`text-xs font-bold px-2 py-1 rounded-full ${isDisabled ? "bg-slate-200 text-slate-400" : "bg-slate-100 text-slate-500"}`}>{count} kelime</span>
-                            </button>
-                        )
-                    })}
-                </div>
-            </div>
-        </div>
-      )
-  }
-
-  // --- EKRAN 3: SONUÇ ---
   if (finished) {
     const max = questions.length * 5;
     return (
@@ -157,14 +78,15 @@ export default function Quiz() {
               <div className="text-5xl font-extrabold text-indigo-600 mt-2">{score}</div>
               <div className="text-xs text-slate-400">/ {max}</div>
            </div>
-           <button onClick={() => setIsQuizStarted(false)} className="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl">Başka Test Yap</button>
-           <button onClick={() => navigate("/")} className="w-full bg-white border font-bold py-3 rounded-xl">Ana Sayfa</button>
+           <button onClick={() => navigate("/")} className="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl">Ana Sayfa</button>
+           <button onClick={startQuiz} className="w-full bg-white border font-bold py-3 rounded-xl">Tekrar Dene</button>
         </div>
       </div>
     );
   }
 
-  // --- EKRAN 2: QUIZ SORUSU ---
+  if (questions.length === 0) return <div className="p-10 text-center">Yükleniyor...</div>;
+
   const current = questions[index];
   const progress = ((index + 1) / questions.length) * 100;
   const hint = current.wordObj.definitions[0].engExplanation;
@@ -173,7 +95,7 @@ export default function Quiz() {
     <div className="min-h-screen bg-slate-50 flex flex-col items-center p-4">
        <div className="w-full max-w-md space-y-6 mt-4">
           <div className="flex justify-between items-center">
-             <button onClick={() => setIsQuizStarted(false)}><X className="w-6 h-6 text-slate-400"/></button>
+             <button onClick={()=>navigate("/")}><X className="w-6 h-6 text-slate-400"/></button>
              <div className="font-bold text-indigo-600">Soru {index+1} / {questions.length}</div>
              <div className="flex items-center gap-1 bg-amber-100 text-amber-600 px-2 py-1 rounded-lg font-bold text-sm"><Trophy className="w-4 h-4"/> {score}</div>
           </div>
