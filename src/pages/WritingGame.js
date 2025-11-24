@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useData } from "../context/DataContext";
 import { useNavigate } from "react-router-dom";
-import { X, Trophy, Volume2, Languages, Loader2, ArrowRight, AlertCircle, CheckCircle2, Eraser } from "lucide-react";
+import { X, Trophy, Volume2, Languages, Loader2, ArrowRight, AlertCircle, CheckCircle2 } from "lucide-react";
 import { translateTextWithAI } from "../services/aiService";
 
 export default function WritingGame() {
@@ -84,7 +84,10 @@ export default function WritingGame() {
 
     if (userWord === correctWord) {
         setFeedback("correct"); speak(currentWord.word);
-        setScore(s => s + (attempts === 0 ? 10 : 5));
+        // --- PUANLAMA GÜNCELLEMESİ ---
+        // İlk hak (attempts 0): 5 Puan
+        // İkinci hak (attempts 1): 2 Puan
+        setScore(s => s + (attempts === 0 ? 5 : 2));
     } else {
         if (attempts === 0) {
             setFeedback("wrong"); setAttempts(1); inputRef.current?.select();
@@ -99,13 +102,13 @@ export default function WritingGame() {
         setCurrentIndex(p => p + 1); 
     } else { 
         setGameStatus("finished"); 
-        // Puanı veritabanına gönder
         addScore(score); 
     }
   };
 
   if (gameStatus === "finished") {
-    const maxScore = questions.length * 10;
+    // Maksimum puanı da güncelledik (20 soru * 5 puan = 100)
+    const maxScore = questions.length * 5;
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
         <div className="bg-white p-8 rounded-3xl shadow-xl max-w-sm w-full text-center space-y-6">
