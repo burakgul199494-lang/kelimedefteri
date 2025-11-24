@@ -23,19 +23,13 @@ export const DataProvider = ({ children }) => {
   const [learningQueue, setLearningQueue] = useState([]);
   const [leaderboardData, setLeaderboardData] = useState([]);
 
-  // --- YARDIMCI: HAFTA ANAHTARI OLUŞTURUCU ---
-  // Her haftanın Pazartesi gününün tarihini "YYYY-MM-DD" formatında döndürür.
-  // Pazartesi gelince bu anahtar değişeceği için sistem yeni bir listeye geçer.
+  // --- YARDIMCI: HAFTA ANAHTARI ---
   const getCurrentWeekKey = () => {
     const d = new Date();
-    const day = d.getDay(); // Pazar: 0, Pzt: 1, ...
-    
-    // Eğer gün Pazar (0) ise, bir önceki haftanın Pazartesi'sine gitmek için -6 yaparız.
-    // Diğer günler için: (Gün - 1) kadar geri gideriz.
+    const day = d.getDay(); 
     const diff = d.getDate() - day + (day === 0 ? -6 : 1); 
-    
     const monday = new Date(d.setDate(diff));
-    return monday.toISOString().slice(0, 10); // Örn: "2025-11-24"
+    return monday.toISOString().slice(0, 10);
   };
 
   useEffect(() => {
@@ -58,50 +52,31 @@ export const DataProvider = ({ children }) => {
     }
   }, [user]);
 
-  // --- GÜNCELLENDİ: HAFTALIK LİDERLİK DİNLEME ---
   const subscribeToLeaderboard = () => {
-      const weekKey = getCurrentWeekKey(); // Bu haftanın kimliği (Örn: 2025-11-24)
-      
-      // Veri yolu: artifacts -> appId -> weekly_scores -> [HAFTA_ID] -> users
-      const q = query(
-          collection(db, "artifacts", appId, "weekly_scores", weekKey, "users"), 
-          orderBy("score", "desc"), 
-          limit(50)
-      );
-
+      const weekKey = getCurrentWeekKey(); 
+      const q = query(collection(db, "artifacts", appId, "weekly_scores", weekKey, "users"), orderBy("score", "desc"), limit(50));
       const unsubscribe = onSnapshot(q, (snapshot) => {
           const leaders = [];
-          snapshot.forEach((doc) => {
-              leaders.push({ ...doc.data(), id: doc.id });
-          });
+          snapshot.forEach((doc) => { leaders.push({ ...doc.data(), id: doc.id }); });
           setLeaderboardData(leaders);
       });
       return unsubscribe;
   };
 
-  // --- GÜNCELLENDİ: PUAN EKLEME (HAFTALIK) ---
   const addScore = async (points) => {
       if (!user || points <= 0) return;
       try {
-          const weekKey = getCurrentWeekKey(); // Bu haftanın kimliği
-          
-          // Puanı genel havuza değil, O HAFTANIN klasörüne yazıyoruz
+          const weekKey = getCurrentWeekKey();
           const leaderboardRef = doc(db, "artifacts", appId, "weekly_scores", weekKey, "users", user.uid);
-          
           await setDoc(leaderboardRef, {
               displayName: user.displayName || user.email.split('@')[0],
               photoURL: user.photoURL || "",
               score: increment(points), 
               lastUpdated: new Date()
           }, { merge: true });
-          
-          console.log(`${points} puan eklendi! (Hafta: ${weekKey})`);
-      } catch (e) {
-          console.error("Puan ekleme hatası:", e);
-      }
+      } catch (e) { console.error("Puan hatası:", e); }
   };
 
-  // ... (Aşağıdaki tüm fonksiyonlar AYNI kalacak) ...
   const fetchUserData = async () => {
     setLoading(true);
     try {
@@ -141,8 +116,10 @@ export const DataProvider = ({ children }) => {
     } catch (e) { console.error(e); }
   };
 
+  // --- KELİME FİLTRELEME VE NORMALİZASYON (DÜZELTİLDİ) ---
   const normalizeWord = (w) => {
-    const isDynamic = dynamicSystemWords.some((d) => d.id === w.id);
+    // ID kontrolü için string'e çevirerek karşılaştırıyoruz
+    const isDynamic = dynamicSystemWords.some((d) => String(d.id) === String(w.id));
     const source = w.source || (isDynamic ? "system" : "user");
     return { 
         ...w, source, 
@@ -152,21 +129,30 @@ export const DataProvider = ({ children }) => {
   };
 
   const getAllWords = () => {
-    const system = dynamicSystemWords.filter(w => !deletedWordIds.includes(w.id));
-    const custom = customWords.filter(w => !deletedWordIds.includes(w.id));
+    // ÖNEMLİ DÜZELTME: deletedWordIds içindeki ID'ler ile kelime ID'lerini string'e çevirip karşılaştırıyoruz.
+    // Bu sayede 123 (Number) ile "123" (String) eşleşir ve kelime gizlenir.
+    const deletedSet = new Set(deletedWordIds.map(String));
+
+    const system = dynamicSystemWords.filter(w => !deletedSet.has(String(w.id)));
+    const custom = customWords.filter(w => !deletedSet.has(String(w.id)));
+    
     return [...system, ...custom].map(normalizeWord);
   };
   
   const getDeletedWords = () => {
-    const systemDeleted = dynamicSystemWords.filter((w) => deletedWordIds.includes(w.id)).map(normalizeWord);
-    const customDeleted = customWords.filter((w) => deletedWordIds.includes(w.id)).map(normalizeWord);
+    const deletedSet = new Set(deletedWordIds.map(String));
+
+    const systemDeleted = dynamicSystemWords.filter((w) => deletedSet.has(String(w.id))).map(normalizeWord);
+    const customDeleted = customWords.filter((w) => deletedSet.has(String(w.id))).map(normalizeWord);
+    
     return [...systemDeleted, ...customDeleted].sort((a, b) => a.word.localeCompare(b.word));
   };
+  // -------------------------------------------------------
 
   const handleSmartLearn = async (wordId, action) => {
     const userRef = doc(db, "artifacts", appId, "users", user.uid, "vocab_game", "progress");
-    const currentProgress = learningQueue.find(q => q.wordId === wordId) || { wordId, level: 0 };
-    let newQueue = [...learningQueue.filter(q => q.wordId !== wordId)];
+    const currentProgress = learningQueue.find(q => String(q.wordId) === String(wordId)) || { wordId, level: 0 };
+    let newQueue = [...learningQueue.filter(q => String(q.wordId) !== String(wordId))];
 
     if (action === "know") {
         let nextLevel = (currentProgress.level || 0) + 1;
@@ -188,6 +174,7 @@ export const DataProvider = ({ children }) => {
     try { await updateDoc(userRef, { learning_queue: newQueue }); setLearningQueue(newQueue); } catch (e) { console.error(e); }
   };
 
+  // CRUD
   const handleSaveNewWord = async (wordData) => {
     const normalizedInput = wordData.word.toLowerCase().trim();
     const allWords = getAllWords();
@@ -213,21 +200,29 @@ export const DataProvider = ({ children }) => {
   const handleDeleteWord = async (wordId) => {
     try {
       const userRef = doc(db, "artifacts", appId, "users", user.uid, "vocab_game", "progress");
-      const newQueue = learningQueue.filter(q => q.wordId !== wordId);
-      await setDoc(userRef, { deleted_ids: arrayUnion(wordId), known_ids: arrayRemove(wordId), learning_queue: newQueue }, { merge: true });
-      setDeletedWordIds(prev => [...prev, wordId]); setKnownWordIds(prev => prev.filter(id => id !== wordId)); setLearningQueue(newQueue);
+      const newQueue = learningQueue.filter(q => String(q.wordId) !== String(wordId));
+      
+      await setDoc(userRef, { 
+          deleted_ids: arrayUnion(wordId), 
+          known_ids: arrayRemove(wordId), 
+          learning_queue: newQueue 
+      }, { merge: true });
+      
+      setDeletedWordIds(prev => [...prev, wordId]); 
+      setKnownWordIds(prev => prev.filter(id => String(id) !== String(wordId))); 
+      setLearningQueue(newQueue);
     } catch (e) { console.error(e); }
   };
 
   const handleUpdateWord = async (originalId, newData) => {
      try {
        const userRef = doc(db, "artifacts", appId, "users", user.uid, "vocab_game", "progress");
-       const isCustom = customWords.find((w) => w.id === originalId);
+       const isCustom = customWords.find((w) => String(w.id) === String(originalId));
        const isKnown = knownWordIds.includes(originalId);
        if (isCustom) {
          const updatedWord = { ...isCustom, ...newData, source: "user" };
          await updateDoc(userRef, { custom_words: arrayRemove(isCustom) }); await updateDoc(userRef, { custom_words: arrayUnion(updatedWord) });
-         setCustomWords((prev) => prev.map((w) => (w.id === originalId ? updatedWord : w)));
+         setCustomWords((prev) => prev.map((w) => (String(w.id) === String(originalId) ? updatedWord : w)));
        } else {
          await setDoc(userRef, { deleted_ids: arrayUnion(originalId) }, { merge: true });
          const newCustomWord = { ...newData, id: Date.now(), source: "user" };
@@ -235,7 +230,7 @@ export const DataProvider = ({ children }) => {
          setDeletedWordIds((prev) => [...prev, originalId]); setCustomWords((prev) => [...prev, newCustomWord]);
          if (isKnown) {
            await updateDoc(userRef, { known_ids: arrayRemove(originalId) }); await updateDoc(userRef, { known_ids: arrayUnion(newCustomWord.id) });
-           setKnownWordIds((prev) => prev.filter(id => id !== originalId).concat(newCustomWord.id));
+           setKnownWordIds((prev) => prev.filter(id => String(id) !== String(originalId)).concat(newCustomWord.id));
          }
        }
      } catch (e) { console.error(e); }
@@ -244,7 +239,7 @@ export const DataProvider = ({ children }) => {
   const addToKnown = async (wordId) => {
      try {
         const userRef = doc(db, "artifacts", appId, "users", user.uid, "vocab_game", "progress");
-        const newQueue = learningQueue.filter(q => q.wordId !== wordId);
+        const newQueue = learningQueue.filter(q => String(q.wordId) !== String(wordId));
         await updateDoc(userRef, { known_ids: arrayUnion(wordId), learning_queue: newQueue });
         setKnownWordIds(prev => [...prev, wordId]); setLearningQueue(newQueue);
      } catch(e) { console.error(e); }
@@ -254,7 +249,7 @@ export const DataProvider = ({ children }) => {
     try {
       const userRef = doc(db, "artifacts", appId, "users", user.uid, "vocab_game", "progress");
       await updateDoc(userRef, { known_ids: arrayRemove(wordId) });
-      setKnownWordIds((prev) => prev.filter((id) => id !== wordId));
+      setKnownWordIds((prev) => prev.filter((id) => String(id) !== String(wordId)));
     } catch (e) { console.error(e); }
   };
 
@@ -264,7 +259,7 @@ export const DataProvider = ({ children }) => {
      try {
        const userRef = doc(db, "artifacts", appId, "users", user.uid, "vocab_game", "progress");
        await updateDoc(userRef, { deleted_ids: arrayRemove(wordObj.id) });
-       setDeletedWordIds((prev) => prev.filter((id) => id !== wordObj.id));
+       setDeletedWordIds((prev) => prev.filter((id) => String(id) !== String(wordObj.id)));
      } catch(e) { console.error(e); }
   };
 
@@ -272,9 +267,9 @@ export const DataProvider = ({ children }) => {
      if (wordObj.source !== "user") return;
      try {
        const userRef = doc(db, "artifacts", appId, "users", user.uid, "vocab_game", "progress");
-       const newQueue = learningQueue.filter(q => q.wordId !== wordObj.id);
+       const newQueue = learningQueue.filter(q => String(q.wordId) !== String(wordObj.id));
        await updateDoc(userRef, { custom_words: arrayRemove(wordObj), deleted_ids: arrayRemove(wordObj.id), learning_queue: newQueue });
-       setCustomWords(prev => prev.filter(w => w.id !== wordObj.id)); setDeletedWordIds(prev => prev.filter(id => id !== wordObj.id)); setLearningQueue(newQueue);
+       setCustomWords(prev => prev.filter(w => String(w.id) !== String(wordObj.id))); setDeletedWordIds(prev => prev.filter(id => String(id) !== String(wordObj.id))); setLearningQueue(newQueue);
      } catch(e) { console.error(e); }
   };
 
@@ -312,7 +307,7 @@ export const DataProvider = ({ children }) => {
       if(!window.confirm("Silmek istediğine emin misin?")) return;
       try {
           await deleteDoc(doc(db, "artifacts", appId, "system_words", wordId));
-          setDynamicSystemWords(prev => prev.filter(w => w.id !== wordId));
+          setDynamicSystemWords(prev => prev.filter(w => String(w.id) !== String(wordId)));
       } catch(e) { console.error(e); }
   };
 
@@ -320,7 +315,7 @@ export const DataProvider = ({ children }) => {
       try {
           const docRef = doc(db, "artifacts", appId, "system_words", id);
           await updateDoc(docRef, { ...wordData, updatedAt: new Date() });
-          setDynamicSystemWords(prev => prev.map(w => w.id === id ? { ...w, ...wordData } : w));
+          setDynamicSystemWords(prev => prev.map(w => String(w.id) === String(id) ? { ...w, ...wordData } : w));
           return { success: true };
       } catch(e) { return { success: false, message: e.message }; }
   };
