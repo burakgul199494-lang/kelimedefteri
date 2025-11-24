@@ -5,8 +5,7 @@ import { X, Trophy, Volume2, Languages, Loader2 } from "lucide-react";
 import { translateTextWithAI } from "../services/aiService";
 
 export default function Quiz() {
-  // learningQueue eklendi
-  const { getAllWords, knownWordIds, learningQueue } = useData();
+  const { getAllWords, knownWordIds, learningQueue, addScore } = useData();
   const navigate = useNavigate();
 
   const [questions, setQuestions] = useState([]);
@@ -26,22 +25,16 @@ export default function Quiz() {
     const all = getAllWords();
     const now = new Date();
 
-    // 1. Anlamı olan kelimeleri al
     const validWords = all.filter(w => w.definitions && w.definitions[0]?.meaning);
     
-    // 2. FİLTRELEME: Bilinenler VE Dinlenmede Olanlar ÇIKARILACAK
     const playableWords = validWords.filter(w => {
-        // Zaten bilinenleri at
         if (knownWordIds.includes(w.id)) return false;
-
-        // SRS Kontrolü: Kuyrukta varsa ve tarihi gelmemişse at
         const progress = learningQueue.find(q => q.wordId === w.id);
         if (progress) {
             const reviewDate = new Date(progress.nextReview);
-            if (reviewDate > now) return false; // Dinlenmede
+            if (reviewDate > now) return false; 
         }
-        
-        return true; // Oynanabilir
+        return true; 
     });
 
     if (playableWords.length < 4) {
@@ -53,7 +46,6 @@ export default function Quiz() {
     
     const generated = pool.map(target => {
       const correct = target.definitions[0].meaning;
-      // Şıklar için havuzdan (dinlenenler dahil tümünden) rastgele kelime alabiliriz, sorun yok
       const others = validWords.filter(w => w.id !== target.id).sort(()=>0.5-Math.random()).slice(0,3).map(w=>w.definitions[0].meaning);
       return { wordObj: target, correct, options: [...others, correct].sort(()=>0.5-Math.random()) };
     });
@@ -71,6 +63,9 @@ export default function Quiz() {
         setIndex(i => i + 1); setSelected(null); setIsAnswered(false);
       } else {
         setFinished(true);
+        // Son sorunun puanını da ekleyerek gönder
+        const finalPoints = score + (option === questions[index].correct ? 5 : 0);
+        addScore(finalPoints); 
       }
     }, 1000);
   };
