@@ -81,10 +81,10 @@ export default function WordList() {
                return (
                  <div key={item.id} className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex flex-col gap-2">
                    <div className="flex justify-between items-start">
-                     <div className="flex-1 min-w-0"> {/* min-w-0 taşmayı engeller */}
+                     <div className="flex-1 min-w-0">
                        
                        {/* Başlık ve Rozet */}
-                       <div className="flex items-center gap-2 mb-1 flex-wrap">
+                       <div className="flex items-center gap-2 mb-2 flex-wrap">
                          <span className="text-lg font-bold text-slate-800">{item.word}</span>
                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${item.source==="system"?"bg-blue-100 text-blue-600":"bg-orange-100 text-orange-600"}`}>
                            {item.source==="system"?"Sistem":"Kullanıcı"}
@@ -104,26 +104,58 @@ export default function WordList() {
                           </div>
                        ))}
 
-                       {/* --- EKLENEN KISIM: FİİL VE İSİM ÇEKİMLERİ (GRİ KUTU) --- */}
+                       {/* --- DÜZELTİLEN KISIM: GRİ KUTU (TAG SİSTEMİ) --- */}
                        {(item.plural || item.v2 || item.v3 || item.vIng || item.thirdPerson) && (
                           <div className="mt-2 text-xs text-slate-600 bg-slate-50 p-2 rounded-lg border border-slate-100">
-                            <div className="flex flex-wrap gap-x-3 gap-y-1">
-                                {item.plural && <div><span className="font-bold text-slate-400">Pl:</span> {item.plural}</div>}
-                                {item.thirdPerson && <div><span className="font-bold text-slate-400">3rd:</span> {item.thirdPerson}</div>}
-                                {item.v2 && <div><span className="font-bold text-slate-400">V2:</span> {item.v2}</div>}
-                                {item.v3 && <div><span className="font-bold text-slate-400">V3:</span> {item.v3}</div>}
-                                {item.vIng && <div><span className="font-bold text-slate-400">Ing:</span> {item.vIng}</div>}
+                            <div className="flex flex-wrap gap-2">
+                                {item.plural && (
+                                  <div className="bg-white px-1.5 py-0.5 rounded border border-slate-200 whitespace-nowrap">
+                                    <span className="font-bold text-slate-400">Pl:</span> {item.plural}
+                                  </div>
+                                )}
+                                {item.thirdPerson && (
+                                  <div className="bg-white px-1.5 py-0.5 rounded border border-slate-200 whitespace-nowrap">
+                                    <span className="font-bold text-slate-400">3rd:</span> {item.thirdPerson}
+                                  </div>
+                                )}
+                                {item.v2 && (
+                                  <div className="bg-white px-1.5 py-0.5 rounded border border-slate-200 whitespace-nowrap">
+                                    <span className="font-bold text-slate-400">V2:</span> {item.v2}
+                                  </div>
+                                )}
+                                {item.v3 && (
+                                  <div className="bg-white px-1.5 py-0.5 rounded border border-slate-200 whitespace-nowrap">
+                                    <span className="font-bold text-slate-400">V3:</span> {item.v3}
+                                  </div>
+                                )}
+                                {item.vIng && (
+                                  <div className="bg-white px-1.5 py-0.5 rounded border border-slate-200 whitespace-nowrap">
+                                    <span className="font-bold text-slate-400">Ing:</span> {item.vIng}
+                                  </div>
+                                )}
                             </div>
                           </div>
                        )}
 
-                       {/* --- EKLENEN KISIM: SIFAT/ZARF ÇEKİMLERİ (TURUNCU KUTU) --- */}
+                       {/* --- DÜZELTİLEN KISIM: TURUNCU KUTU (TAG SİSTEMİ) --- */}
                        {(item.advLy || item.compEr || item.superEst) && (
                           <div className="mt-1 text-xs text-slate-600 bg-orange-50 p-2 rounded-lg border border-orange-100">
-                            <div className="flex flex-wrap gap-x-3 gap-y-1">
-                                {item.advLy && <div><span className="font-bold text-orange-400">Ly:</span> {item.advLy}</div>}
-                                {item.compEr && <div><span className="font-bold text-orange-400">Comp:</span> {item.compEr}</div>}
-                                {item.superEst && <div><span className="font-bold text-orange-400">Super:</span> {item.superEst}</div>}
+                            <div className="flex flex-wrap gap-2">
+                                {item.advLy && (
+                                  <div className="bg-white px-1.5 py-0.5 rounded border border-orange-200 whitespace-nowrap">
+                                    <span className="font-bold text-orange-400">Ly:</span> {item.advLy}
+                                  </div>
+                                )}
+                                {item.compEr && (
+                                  <div className="bg-white px-1.5 py-0.5 rounded border border-orange-200 whitespace-nowrap">
+                                    <span className="font-bold text-orange-400">Comp:</span> {item.compEr}
+                                  </div>
+                                )}
+                                {item.superEst && (
+                                  <div className="bg-white px-1.5 py-0.5 rounded border border-orange-200 whitespace-nowrap">
+                                    <span className="font-bold text-orange-400">Super:</span> {item.superEst}
+                                  </div>
+                                )}
                             </div>
                           </div>
                        )}
