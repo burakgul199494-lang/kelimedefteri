@@ -5,35 +5,51 @@ import { auth } from "../services/firebase";
 import { 
   RotateCcw, LogOut, Brain, Flame, Play, Book, 
   Microscope, Plus, BookOpen, Check, Trash2, 
-  Shield, Edit, HelpCircle, Settings // Edit3 yerine Edit kullandık (Garanti olsun)
+  Shield, Edit, HelpCircle, Settings, Trophy, Star // Star ve Trophy EKLENDİ
 } from "lucide-react";
 import ProfileModal from "../components/ProfileModal"; 
+import LeaderboardModal from "../components/LeaderboardModal"; // BU IMPORT ŞART
 
 export default function Home() {
-  const { user, knownWordIds, getAllWords, streak, resetProfile, isAdmin } = useData();
+  // leaderboardData'yı da çekiyoruz ki puanı hesaplayalım
+  const { user, knownWordIds, getAllWords, streak, resetProfile, isAdmin, leaderboardData } = useData();
   const navigate = useNavigate();
+  
   const [showProfileModal, setShowProfileModal] = useState(false); 
+  const [showLeaderboard, setShowLeaderboard] = useState(false); // Liderlik Modalı State'i
   
   const allWords = getAllWords();
   const progressPercentage = allWords.length > 0 ? (knownWordIds.length / allWords.length) * 100 : 0;
   const remainingCount = allWords.length - knownWordIds.length;
+
+  // Kullanıcının güncel puanını bul
+  const myScore = leaderboardData.find(u => u.id === user?.uid)?.score || 0;
 
   const handleLogout = async () => { await auth.signOut(); navigate("/login"); };
   const handleReset = async () => { if(window.confirm("Emin misin? Tüm ilerleme silinecek.")) await resetProfile(); };
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center p-6">
-      {/* PROFİL MODALI */}
+      
+      {/* --- MODALLAR --- */}
       {showProfileModal && <ProfileModal user={user} onClose={() => setShowProfileModal(false)} />}
+      {showLeaderboard && <LeaderboardModal onClose={() => setShowLeaderboard(false)} />}
 
       <div className="w-full max-w-md space-y-6 mt-2">
         
         {/* Üst Bar */}
         <div className="flex justify-between items-center w-full px-1">
           <div className="flex gap-2">
+             {/* Profil Ayarları */}
              <button onClick={() => setShowProfileModal(true)} className="p-2.5 bg-white rounded-xl shadow-sm border border-slate-200 text-slate-600 hover:text-indigo-600">
                 <Settings size={18} />
              </button>
+             
+             {/* YENİ: LİDERLİK TABLOSU BUTONU */}
+             <button onClick={() => setShowLeaderboard(true)} className="p-2.5 bg-white rounded-xl shadow-sm border border-slate-200 text-slate-600 hover:text-yellow-500">
+                <Trophy size={18} />
+             </button>
+
              <button onClick={handleReset} className="p-2.5 bg-white rounded-xl shadow-sm border border-slate-200 text-slate-400 hover:text-red-500" title="Sıfırla">
                 <RotateCcw size={18} />
              </button>
@@ -43,15 +59,30 @@ export default function Home() {
           </button>
         </div>
 
-        {/* Başlık & Streak */}
+        {/* Başlık & İstatistikler */}
         <div className="text-center relative mt-4">
           <div className="flex justify-center mb-4 relative">
             <div className="bg-indigo-600 p-4 rounded-2xl shadow-lg transform rotate-3"><Brain className="w-12 h-12 text-white" /></div>
-            <div className="absolute -right-6 -top-2 flex flex-col items-center">
-              <div className="flex items-center gap-1 bg-orange-500 text-white px-3 py-1.5 rounded-full shadow-lg border-2 border-white">
-                <Flame className="w-4 h-4 fill-white" /><span className="font-bold text-sm">{streak}</span>
+            
+            {/* SAĞ ÜST: SERİ VE PUAN GÖSTERGESİ */}
+            <div className="absolute -right-4 -top-4 flex flex-col items-end gap-2">
+              
+              {/* Seri (Streak) */}
+              <div className="flex flex-col items-center">
+                  <div className="flex items-center gap-1 bg-orange-500 text-white px-3 py-1 rounded-full shadow-lg border-2 border-white min-w-[60px] justify-center">
+                    <Flame className="w-3 h-3 fill-white" /><span className="font-bold text-xs">{streak}</span>
+                  </div>
+                  <span className="text-[10px] font-bold text-orange-600 bg-orange-100 px-1.5 rounded mt-0.5">Seri</span>
               </div>
-              <span className="text-xs font-bold text-orange-600 mt-1 bg-orange-100 px-2 rounded-full">Seri</span>
+
+              {/* YENİ: Puan (Score) */}
+              <div className="flex flex-col items-center">
+                  <div className="flex items-center gap-1 bg-yellow-400 text-yellow-900 px-3 py-1 rounded-full shadow-lg border-2 border-white min-w-[60px] justify-center">
+                    <Star className="w-3 h-3 fill-yellow-900" /><span className="font-bold text-xs">{myScore}</span>
+                  </div>
+                  <span className="text-[10px] font-bold text-yellow-600 bg-yellow-100 px-1.5 rounded mt-0.5">Puan</span>
+              </div>
+
             </div>
           </div>
           <h1 className="text-3xl font-extrabold text-slate-800 tracking-tight">Kelime Defteri</h1>
