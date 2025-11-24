@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import { 
   doc, getDoc, setDoc, updateDoc, arrayUnion, arrayRemove, 
-  collection, getDocs, deleteDoc, addDoc 
+  collection, getDocs, deleteDoc, addDoc, increment, onSnapshot, query, orderBy, limit
 } from "firebase/firestore";
 import { auth, db, appId, ADMIN_EMAILS } from "../services/firebase";
 
@@ -21,6 +21,22 @@ export const DataProvider = ({ children }) => {
   const [dynamicSystemWords, setDynamicSystemWords] = useState([]);
   const [streak, setStreak] = useState(0);
   const [learningQueue, setLearningQueue] = useState([]);
+  const [leaderboardData, setLeaderboardData] = useState([]);
+
+  // --- YARDIMCI: HAFTA ANAHTARI OLUŞTURUCU ---
+  // Her haftanın Pazartesi gününün tarihini "YYYY-MM-DD" formatında döndürür.
+  // Pazartesi gelince bu anahtar değişeceği için sistem yeni bir listeye geçer.
+  const getCurrentWeekKey = () => {
+    const d = new Date();
+    const day = d.getDay(); // Pazar: 0, Pzt: 1, ...
+    
+    // Eğer gün Pazar (0) ise, bir önceki haftanın Pazartesi'sine gitmek için -6 yaparız.
+    // Diğer günler için: (Gün - 1) kadar geri gideriz.
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1); 
+    
+    const monday = new Date(d.setDate(diff));
+    return monday.toISOString().slice(0, 10); // Örn: "2025-11-24"
+  };
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -35,9 +51,57 @@ export const DataProvider = ({ children }) => {
   }, []);
 
   useEffect(() => {
-    if (user) { fetchUserData(); fetchDynamicSystemWords(); }
+    if (user) { 
+        fetchUserData(); 
+        fetchDynamicSystemWords(); 
+        subscribeToLeaderboard(); 
+    }
   }, [user]);
 
+  // --- GÜNCELLENDİ: HAFTALIK LİDERLİK DİNLEME ---
+  const subscribeToLeaderboard = () => {
+      const weekKey = getCurrentWeekKey(); // Bu haftanın kimliği (Örn: 2025-11-24)
+      
+      // Veri yolu: artifacts -> appId -> weekly_scores -> [HAFTA_ID] -> users
+      const q = query(
+          collection(db, "artifacts", appId, "weekly_scores", weekKey, "users"), 
+          orderBy("score", "desc"), 
+          limit(50)
+      );
+
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+          const leaders = [];
+          snapshot.forEach((doc) => {
+              leaders.push({ ...doc.data(), id: doc.id });
+          });
+          setLeaderboardData(leaders);
+      });
+      return unsubscribe;
+  };
+
+  // --- GÜNCELLENDİ: PUAN EKLEME (HAFTALIK) ---
+  const addScore = async (points) => {
+      if (!user || points <= 0) return;
+      try {
+          const weekKey = getCurrentWeekKey(); // Bu haftanın kimliği
+          
+          // Puanı genel havuza değil, O HAFTANIN klasörüne yazıyoruz
+          const leaderboardRef = doc(db, "artifacts", appId, "weekly_scores", weekKey, "users", user.uid);
+          
+          await setDoc(leaderboardRef, {
+              displayName: user.displayName || user.email.split('@')[0],
+              photoURL: user.photoURL || "",
+              score: increment(points), 
+              lastUpdated: new Date()
+          }, { merge: true });
+          
+          console.log(`${points} puan eklendi! (Hafta: ${weekKey})`);
+      } catch (e) {
+          console.error("Puan ekleme hatası:", e);
+      }
+  };
+
+  // ... (Aşağıdaki tüm fonksiyonlar AYNI kalacak) ...
   const fetchUserData = async () => {
     setLoading(true);
     try {
@@ -77,14 +141,11 @@ export const DataProvider = ({ children }) => {
     } catch (e) { console.error(e); }
   };
 
-  // --- NORMALİZASYON (ÇÖKME ENGELLEYİCİ) ---
   const normalizeWord = (w) => {
     const isDynamic = dynamicSystemWords.some((d) => d.id === w.id);
     const source = w.source || (isDynamic ? "system" : "user");
     return { 
-        ...w, 
-        source, 
-        // GÜVENLİK: tags alanı yoksa boş dizi ver
+        ...w, source, 
         tags: Array.isArray(w.tags) ? w.tags : [],
         definitions: Array.isArray(w.definitions) ? w.definitions.map(def => ({ ...def, engExplanation: def.engExplanation || "" })) : [{ type: "other", meaning: "", engExplanation: "" }] 
     };
@@ -102,7 +163,6 @@ export const DataProvider = ({ children }) => {
     return [...systemDeleted, ...customDeleted].sort((a, b) => a.word.localeCompare(b.word));
   };
 
-  // SRS
   const handleSmartLearn = async (wordId, action) => {
     const userRef = doc(db, "artifacts", appId, "users", user.uid, "vocab_game", "progress");
     const currentProgress = learningQueue.find(q => q.wordId === wordId) || { wordId, level: 0 };
@@ -128,7 +188,6 @@ export const DataProvider = ({ children }) => {
     try { await updateDoc(userRef, { learning_queue: newQueue }); setLearningQueue(newQueue); } catch (e) { console.error(e); }
   };
 
-  // CRUD - ETİKET DESTEĞİ EKLENDİ
   const handleSaveNewWord = async (wordData) => {
     const normalizedInput = wordData.word.toLowerCase().trim();
     const allWords = getAllWords();
@@ -138,7 +197,7 @@ export const DataProvider = ({ children }) => {
 
     const newWord = {
       id: Date.now(), word: wordData.word.trim(),
-      tags: wordData.tags || [], // Tags eklendi
+      tags: wordData.tags || [],
       plural: wordData.plural||"", v2: wordData.v2||"", v3: wordData.v3||"", vIng: wordData.vIng||"", thirdPerson: wordData.thirdPerson||"",
       advLy: wordData.advLy||"", compEr: wordData.compEr||"", superEst: wordData.superEst||"",
       definitions: wordData.definitions, sentence: wordData.sentence.trim(), source: "user",
@@ -228,12 +287,10 @@ export const DataProvider = ({ children }) => {
       } catch(e) { console.error(e); }
   };
 
-  // ADMIN - KULLANICIDA VARSA SİL KONTROLÜ (ÇAKIŞMA ÇÖZÜMÜ)
+  // ADMIN
   const handleSaveSystemWord = async (wordData) => {
     try {
       const normalizedInput = wordData.word.toLowerCase().trim();
-      
-      // Sistemde var mı?
       const exists = dynamicSystemWords.some(w => w.word.toLowerCase() === normalizedInput);
       if(exists) return { success: false, message: "Bu kelime zaten sistemde var!" };
 
@@ -241,14 +298,12 @@ export const DataProvider = ({ children }) => {
       const docRef = await addDoc(collection(db, "artifacts", appId, "system_words"), newWord);
       setDynamicSystemWords(prev => [...prev, { ...newWord, id: docRef.id }]);
 
-      // KULLANICIDA VARSA ÇÖPE AT
       const conflictingCustom = customWords.find(w => w.word.toLowerCase() === normalizedInput);
       if (conflictingCustom) {
           const userRef = doc(db, "artifacts", appId, "users", user.uid, "vocab_game", "progress");
           await setDoc(userRef, { deleted_ids: arrayUnion(conflictingCustom.id) }, { merge: true });
           setDeletedWordIds(prev => [...prev, conflictingCustom.id]);
       }
-
       return { success: true };
     } catch (e) { return { success: false, message: e.message }; }
   };
@@ -273,12 +328,12 @@ export const DataProvider = ({ children }) => {
   return (
     <DataContext.Provider value={{
       user, isAdmin, loading,
-      knownWordIds, customWords, dynamicSystemWords, deletedWordIds, streak, learningQueue,
+      knownWordIds, customWords, dynamicSystemWords, deletedWordIds, streak, learningQueue, leaderboardData,
       getAllWords, getDeletedWords,
       handleSaveNewWord, handleDeleteWord, handleUpdateWord,
       addToKnown, removeFromKnown, restoreWord, permanentlyDeleteWord, resetProfile,
       handleSaveSystemWord, handleDeleteSystemWord, handleUpdateSystemWord,
-      handleSmartLearn
+      handleSmartLearn, addScore
     }}>
       {children}
     </DataContext.Provider>
