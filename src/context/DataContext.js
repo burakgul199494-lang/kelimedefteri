@@ -22,7 +22,6 @@ export const DataProvider = ({ children }) => {
   const [dynamicSystemWords, setDynamicSystemWords] = useState([]);
   const [streak, setStreak] = useState(0);
 
-  // Öğrenme Kuyruğu (SRS)
   const [learningQueue, setLearningQueue] = useState([]);
 
   // --- AUTH VE DATA FETCHING ---
@@ -64,7 +63,6 @@ export const DataProvider = ({ children }) => {
         setDeletedWordIds(data.deleted_ids || []);
         setLearningQueue(data.learning_queue || []);
 
-        // Streak Mantığı
         const todayStr = new Date().toISOString().split("T")[0];
         const lastVisit = data.last_visit_date;
         let currentStreak = data.streak || 0;
@@ -104,7 +102,6 @@ export const DataProvider = ({ children }) => {
     }
   };
 
-  // --- KELİME NORMALİZASYONU ---
   const normalizeWord = (w) => {
     const isDynamic = dynamicSystemWords.some((d) => d.id === w.id);
     const source = w.source || (isDynamic ? "system" : "user");
@@ -117,21 +114,19 @@ export const DataProvider = ({ children }) => {
     };
   };
 
-  // Aktif (Silinmemiş) Tüm Kelimeler
   const getAllWords = () => {
     const system = dynamicSystemWords.filter(w => !deletedWordIds.includes(w.id));
     const custom = customWords.filter(w => !deletedWordIds.includes(w.id));
     return [...system, ...custom].map(normalizeWord);
   };
   
-  // Silinmiş Kelimeler
   const getDeletedWords = () => {
     const systemDeleted = dynamicSystemWords.filter((w) => deletedWordIds.includes(w.id)).map(normalizeWord);
     const customDeleted = customWords.filter((w) => deletedWordIds.includes(w.id)).map(normalizeWord);
     return [...systemDeleted, ...customDeleted].sort((a, b) => a.word.localeCompare(b.word));
   };
 
-  // --- SRS (AKILLI ÖĞRENME) ---
+  // --- SRS ---
   const handleSmartLearn = async (wordId, action) => {
     const userRef = doc(db, "artifacts", appId, "users", user.uid, "vocab_game", "progress");
     const currentProgress = learningQueue.find(q => q.wordId === wordId) || { wordId, level: 0 };
@@ -164,25 +159,19 @@ export const DataProvider = ({ children }) => {
     } catch (e) { console.error("SRS error:", e); }
   };
 
-  // --- CRUD İŞLEMLERİ ---
+  // --- CRUD ---
 
-  // 1. Yeni Kelime Ekle (GÜÇLENDİRİLMİŞ KONTROL)
   const handleSaveNewWord = async (wordData) => {
     const normalizedInput = wordData.word.toLowerCase().trim();
-
-    // A) Önce AKTİF kelimelerde ara
     const allWords = getAllWords();
     if (allWords.some(w => w.word.toLowerCase() === normalizedInput)) {
         return { success: false, message: "Bu kelime zaten listenizde mevcut!" };
     }
-
-    // B) Sonra SİLİNENLERDE ara (Çöp kutusunda varsa uyarsın)
     const deletedList = getDeletedWords();
     if (deletedList.some(w => w.word.toLowerCase() === normalizedInput)) {
-        return { success: false, message: "Bu kelime Çöp Kutusunda mevcut! Lütfen 'Silinen Kelimeler' listesinden geri yükleyin." };
+        return { success: false, message: "Bu kelime Çöp Kutusunda mevcut! Lütfen geri yükleyin." };
     }
 
-    // C) Sorun yoksa ekle
     const newWord = {
       id: Date.now(),
       word: wordData.word.trim(),
@@ -206,7 +195,6 @@ export const DataProvider = ({ children }) => {
     }
   };
 
-  // 2. Kelime Sil
   const handleDeleteWord = async (wordId) => {
     try {
       const userRef = doc(db, "artifacts", appId, "users", user.uid, "vocab_game", "progress");
@@ -222,7 +210,6 @@ export const DataProvider = ({ children }) => {
     } catch (e) { console.error("Silme hatası:", e); }
   };
 
-  // 3. Kelime Güncelle
   const handleUpdateWord = async (originalId, newData) => {
      try {
        const userRef = doc(db, "artifacts", appId, "users", user.uid, "vocab_game", "progress");
@@ -238,7 +225,6 @@ export const DataProvider = ({ children }) => {
          await setDoc(userRef, { deleted_ids: arrayUnion(originalId) }, { merge: true });
          const newCustomWord = { ...newData, id: Date.now(), source: "user" };
          await setDoc(userRef, { custom_words: arrayUnion(newCustomWord) }, { merge: true });
-         
          setDeletedWordIds((prev) => [...prev, originalId]);
          setCustomWords((prev) => [...prev, newCustomWord]);
          
@@ -251,7 +237,6 @@ export const DataProvider = ({ children }) => {
      } catch (e) { console.error("Güncelleme hatası", e); }
   };
 
-  // 4. Öğrenildi İşaretle
   const addToKnown = async (wordId) => {
      try {
         const userRef = doc(db, "artifacts", appId, "users", user.uid, "vocab_game", "progress");
@@ -270,7 +255,6 @@ export const DataProvider = ({ children }) => {
     } catch (e) { console.error(e); }
   };
 
-  // 5. Geri Yükle ve Tamamen Sil
   const restoreWord = async (wordObj) => {
      const allWords = getAllWords();
      if (allWords.some(w => w.word.toLowerCase() === wordObj.word.toLowerCase())) {
@@ -309,9 +293,15 @@ export const DataProvider = ({ children }) => {
       } catch(e) { console.error(e); }
   };
 
-  // --- ADMIN ---
+  // --- ADMIN (GÜNCELLENDİ: ÇİFT KONTROL EKLENDİ) ---
   const handleSaveSystemWord = async (wordData) => {
     try {
+      // KONTROL: Bu kelime zaten sistemde var mı?
+      const exists = dynamicSystemWords.some(w => w.word.toLowerCase() === wordData.word.toLowerCase().trim());
+      if(exists) {
+          return { success: false, message: "Bu kelime zaten sistemde mevcut!" };
+      }
+
       const newWord = { ...wordData, source: "system", createdAt: new Date() };
       const docRef = await addDoc(collection(db, "artifacts", appId, "system_words"), newWord);
       setDynamicSystemWords(prev => [...prev, { ...newWord, id: docRef.id }]);
