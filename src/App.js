@@ -1,11 +1,10 @@
-import React, { useEffect } from "react"; // useEffect'i import etmeyi unutma
+import React, { useEffect } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { DataProvider, useData } from "./context/DataContext";
 
 // SAYFALAR
 import Auth from "./pages/Auth";
 import Home from "./pages/Home";
-import WritingGame from "./pages/WritingGame"; // <--- BU EKLENDİ
 import Dictionary from "./pages/Dictionary";
 import SentenceAnalysis from "./pages/SentenceAnalysis";
 import Game from "./pages/Game";
@@ -13,6 +12,7 @@ import Quiz from "./pages/Quiz";
 import WordList from "./pages/WordList";
 import AddWord from "./pages/AddWord";
 import AdminDashboard from "./pages/AdminDashboard";
+import WritingGame from "./pages/WritingGame"; // 1. IMPORT EKLENDİ
 
 const PrivateRoute = ({ children }) => {
   const { user, loading } = useData();
@@ -42,6 +42,9 @@ export default function App() {
           <Route path="/analysis" element={<PrivateRoute><SentenceAnalysis /></PrivateRoute>} />
           <Route path="/game" element={<PrivateRoute><Game /></PrivateRoute>} />
           <Route path="/quiz" element={<PrivateRoute><Quiz /></PrivateRoute>} />
+          
+          {/* 2. YENİ ROTA TANIMI BURAYA EKLENDİ: */}
+          <Route path="/writing" element={<PrivateRoute><WritingGame /></PrivateRoute>} />
           
           {/* Liste ve Ekleme Sayfaları */}
           <Route path="/list/:type" element={<PrivateRoute><WordList /></PrivateRoute>} />
