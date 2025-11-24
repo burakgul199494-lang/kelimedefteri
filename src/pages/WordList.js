@@ -45,7 +45,17 @@ export default function WordList() {
     window.speechSynthesis.speak(u);
   };
 
-  const getShortType = (t) => ({noun:"n.", verb:"v.", adjective:"adj.", adverb:"adv."}[t] || t);
+  // Tür kısaltmaları (Eğer uzun gelirse bile kutu esneyecek)
+  const getShortType = (t) => ({
+    noun: "noun", 
+    verb: "verb", 
+    adjective: "adj", 
+    adverb: "adv", 
+    conjunction: "conj", // Uzun isimler için kısaltma
+    prep: "prep",
+    pronoun: "pron",
+    article: "art"
+  }[t] || t);
 
   return (
     <div className="min-h-screen bg-slate-50 p-4">
@@ -81,11 +91,11 @@ export default function WordList() {
                return (
                  <div key={item.id} className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex flex-col gap-2">
                    <div className="flex justify-between items-start">
-                     <div className="flex-1 min-w-0">
+                     <div className="flex-1 min-w-0 pr-2">
                        
                        {/* Başlık ve Rozet */}
                        <div className="flex items-center gap-2 mb-2 flex-wrap">
-                         <span className="text-lg font-bold text-slate-800">{item.word}</span>
+                         <span className="text-lg font-bold text-slate-800 leading-none">{item.word}</span>
                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${item.source==="system"?"bg-blue-100 text-blue-600":"bg-orange-100 text-orange-600"}`}>
                            {item.source==="system"?"Sistem":"Kullanıcı"}
                          </span>
@@ -96,73 +106,50 @@ export default function WordList() {
                          )}
                        </div>
                        
-                       {/* Anlamlar */}
-                       {item.definitions.map((def, idx) => (
-                          <div key={idx} className="flex gap-2 items-baseline text-sm text-slate-700 mb-1">
-                             <span className="text-[10px] font-bold text-slate-400 uppercase w-8 text-right shrink-0 bg-slate-100 px-1 rounded">{getShortType(def.type)}</span>
-                             <span className="font-medium">{def.meaning}</span>
-                          </div>
-                       ))}
+                       {/* --- ANLAMLAR KISMI (DÜZELTİLDİ) --- */}
+                       {/* Flex-wrap ekledik ve items-start yaptık. Sabit genişliği kaldırdık. */}
+                       <div className="space-y-1.5">
+                         {item.definitions.map((def, idx) => (
+                            <div key={idx} className="flex items-start gap-2 text-sm text-slate-700">
+                               {/* Tür Etiketi: Artık sabit genişlik yok, içeriğe göre uzar */}
+                               <span className="text-[10px] font-bold text-slate-500 uppercase bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 whitespace-nowrap shrink-0 mt-0.5">
+                                  {getShortType(def.type)}
+                               </span>
+                               {/* Anlam: Flex-1 ile kalan alanı kaplar */}
+                               <span className="font-medium leading-tight mt-0.5 break-words">
+                                  {def.meaning}
+                               </span>
+                            </div>
+                         ))}
+                       </div>
 
-                       {/* --- DÜZELTİLEN KISIM: GRİ KUTU (TAG SİSTEMİ) --- */}
+                       {/* GRİ KUTU (Fiil Çekimleri) */}
                        {(item.plural || item.v2 || item.v3 || item.vIng || item.thirdPerson) && (
-                          <div className="mt-2 text-xs text-slate-600 bg-slate-50 p-2 rounded-lg border border-slate-100">
+                          <div className="mt-3 text-xs text-slate-600 bg-slate-50 p-2 rounded-lg border border-slate-100">
                             <div className="flex flex-wrap gap-2">
-                                {item.plural && (
-                                  <div className="bg-white px-1.5 py-0.5 rounded border border-slate-200 whitespace-nowrap">
-                                    <span className="font-bold text-slate-400">Pl:</span> {item.plural}
-                                  </div>
-                                )}
-                                {item.thirdPerson && (
-                                  <div className="bg-white px-1.5 py-0.5 rounded border border-slate-200 whitespace-nowrap">
-                                    <span className="font-bold text-slate-400">3rd:</span> {item.thirdPerson}
-                                  </div>
-                                )}
-                                {item.v2 && (
-                                  <div className="bg-white px-1.5 py-0.5 rounded border border-slate-200 whitespace-nowrap">
-                                    <span className="font-bold text-slate-400">V2:</span> {item.v2}
-                                  </div>
-                                )}
-                                {item.v3 && (
-                                  <div className="bg-white px-1.5 py-0.5 rounded border border-slate-200 whitespace-nowrap">
-                                    <span className="font-bold text-slate-400">V3:</span> {item.v3}
-                                  </div>
-                                )}
-                                {item.vIng && (
-                                  <div className="bg-white px-1.5 py-0.5 rounded border border-slate-200 whitespace-nowrap">
-                                    <span className="font-bold text-slate-400">Ing:</span> {item.vIng}
-                                  </div>
-                                )}
+                                {item.plural && <div className="bg-white px-1.5 py-0.5 rounded border border-slate-200 whitespace-nowrap"><span className="font-bold text-slate-400">Pl:</span> {item.plural}</div>}
+                                {item.thirdPerson && <div className="bg-white px-1.5 py-0.5 rounded border border-slate-200 whitespace-nowrap"><span className="font-bold text-slate-400">3rd:</span> {item.thirdPerson}</div>}
+                                {item.v2 && <div className="bg-white px-1.5 py-0.5 rounded border border-slate-200 whitespace-nowrap"><span className="font-bold text-slate-400">V2:</span> {item.v2}</div>}
+                                {item.v3 && <div className="bg-white px-1.5 py-0.5 rounded border border-slate-200 whitespace-nowrap"><span className="font-bold text-slate-400">V3:</span> {item.v3}</div>}
+                                {item.vIng && <div className="bg-white px-1.5 py-0.5 rounded border border-slate-200 whitespace-nowrap"><span className="font-bold text-slate-400">Ing:</span> {item.vIng}</div>}
                             </div>
                           </div>
                        )}
 
-                       {/* --- DÜZELTİLEN KISIM: TURUNCU KUTU (TAG SİSTEMİ) --- */}
+                       {/* TURUNCU KUTU (Sıfat Çekimleri) */}
                        {(item.advLy || item.compEr || item.superEst) && (
-                          <div className="mt-1 text-xs text-slate-600 bg-orange-50 p-2 rounded-lg border border-orange-100">
+                          <div className="mt-2 text-xs text-slate-600 bg-orange-50 p-2 rounded-lg border border-orange-100">
                             <div className="flex flex-wrap gap-2">
-                                {item.advLy && (
-                                  <div className="bg-white px-1.5 py-0.5 rounded border border-orange-200 whitespace-nowrap">
-                                    <span className="font-bold text-orange-400">Ly:</span> {item.advLy}
-                                  </div>
-                                )}
-                                {item.compEr && (
-                                  <div className="bg-white px-1.5 py-0.5 rounded border border-orange-200 whitespace-nowrap">
-                                    <span className="font-bold text-orange-400">Comp:</span> {item.compEr}
-                                  </div>
-                                )}
-                                {item.superEst && (
-                                  <div className="bg-white px-1.5 py-0.5 rounded border border-orange-200 whitespace-nowrap">
-                                    <span className="font-bold text-orange-400">Super:</span> {item.superEst}
-                                  </div>
-                                )}
+                                {item.advLy && <div className="bg-white px-1.5 py-0.5 rounded border border-orange-200 whitespace-nowrap"><span className="font-bold text-orange-400">Ly:</span> {item.advLy}</div>}
+                                {item.compEr && <div className="bg-white px-1.5 py-0.5 rounded border border-orange-200 whitespace-nowrap"><span className="font-bold text-orange-400">Comp:</span> {item.compEr}</div>}
+                                {item.superEst && <div className="bg-white px-1.5 py-0.5 rounded border border-orange-200 whitespace-nowrap"><span className="font-bold text-orange-400">Super:</span> {item.superEst}</div>}
                             </div>
                           </div>
                        )}
                        
                        {/* Örnek Cümle */}
                        {!isTrash && (
-                         <div className="mt-2 pt-2 border-t border-slate-50 flex gap-2 items-start group">
+                         <div className="mt-3 pt-2 border-t border-slate-50 flex gap-2 items-start group">
                            <button onClick={(e)=>speak(item.sentence, e)} className="shrink-0 p-1 text-slate-300 hover:text-indigo-500 transition-colors">
                              <Volume2 className="w-3.5 h-3.5"/>
                            </button>
@@ -172,7 +159,7 @@ export default function WordList() {
                      </div>
 
                      {/* Sağ Taraf Butonları */}
-                     <div className="flex flex-col gap-1 ml-2">
+                     <div className="flex flex-col gap-1 ml-1">
                        {isTrash ? (
                          <div className="flex flex-col gap-2">
                            <button onClick={() => restoreWord(item)} className="px-2 py-1 bg-green-100 text-green-600 rounded-lg text-[10px] font-bold whitespace-nowrap">Geri Yükle</button>
