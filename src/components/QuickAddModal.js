@@ -4,9 +4,15 @@ import { useData } from "../context/DataContext";
 import { fetchWordAnalysisFromAI, fetchRootFromAI } from "../services/aiService";
 
 const WORD_TYPES = [
-  { value: "noun", label: "İsim" }, { value: "verb", label: "Fiil" }, { value: "adjective", label: "Sıfat" },
-  { value: "adverb", label: "Zarf" }, { value: "prep", label: "Edat" }, { value: "pronoun", label: "Zamir" },
-  { value: "conj", label: "Bağlaç" }, { value: "article", label: "Tanımlık" }, { value: "other", label: "Diğer" },
+  { value: "noun", label: "İsim" },
+  { value: "verb", label: "Fiil" },
+  { value: "adjective", label: "Sıfat" },
+  { value: "adverb", label: "Zarf" },
+  { value: "prep", label: "Edat" },
+  { value: "pronoun", label: "Zamir" },
+  { value: "conj", label: "Bağlaç" },
+  { value: "article", label: "Tanımlık" },
+  { value: "other", label: "Diğer" },
 ];
 
 const QuickAddModal = ({ word, onClose }) => {
@@ -65,14 +71,18 @@ const QuickAddModal = ({ word, onClose }) => {
   };
 
   const updateDef = (i, f, v) => { const n = [...formData.definitions]; n[i] = { ...n[i], [f]: v }; setFormData(p => ({ ...p, definitions: n })); };
-  
+  const addDef = () => setFormData(p => ({ ...p, definitions: [...p.definitions, { type: "noun", meaning: "", engExplanation: "" }] }));
+  const removeDef = (i) => { if(formData.definitions.length > 1) setFormData(p => ({...p, definitions: p.definitions.filter((_, idx) => idx !== i)})); };
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
       <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 max-h-[90vh] overflow-y-auto">
+        
         <div className="flex justify-between items-center mb-4">
           <h3 className="font-bold text-lg">Hızlı Kelime Ekle {isAdmin && "(Sistem)"}</h3>
           <button onClick={onClose} className="p-2 bg-slate-100 rounded-full"><X className="w-5 h-5" /></button>
         </div>
+        
         <div className="space-y-4">
           <div className="flex gap-2">
             <input value={formData.word} onChange={e => setFormData({ ...formData, word: e.target.value })} className="flex-1 p-3 border rounded-xl font-bold" placeholder="Kelime" />
@@ -80,29 +90,47 @@ const QuickAddModal = ({ word, onClose }) => {
             <button onClick={handleAIFill} disabled={loadingAI} className="bg-purple-600 text-white px-3 rounded-xl">{loadingAI ? <Loader2 className="animate-spin" /> : <Brain />}</button>
           </div>
           
-          {/* Basitleştirilmiş Fiil/Sıfat Alanları (Yer kaplamaması için accordion yapılabilir ama şimdilik açık) */}
-          <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 text-xs space-y-2">
-             <div className="font-bold text-slate-400">EKSTRA FORMLAR (Opsiyonel)</div>
-             <div className="grid grid-cols-2 gap-2">
-                <input placeholder="Plural" value={formData.plural} onChange={e=>setFormData({...formData, plural:e.target.value})} className="p-1 border rounded"/>
-                <input placeholder="V2 (Past)" value={formData.v2} onChange={e=>setFormData({...formData, v2:e.target.value})} className="p-1 border rounded"/>
-                <input placeholder="V3" value={formData.v3} onChange={e=>setFormData({...formData, v3:e.target.value})} className="p-1 border rounded"/>
-                <input placeholder="V-ing" value={formData.vIng} onChange={e=>setFormData({...formData, vIng:e.target.value})} className="p-1 border rounded"/>
+          {/* GRİ KUTU - FİİL DETAYLARI */}
+          <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+             <div className="text-xs font-bold text-slate-400 mb-2 uppercase tracking-wide">Fiil & İsim Detayları</div>
+             <div className="space-y-3">
+                <div><label className="block text-xs text-slate-500 mb-1">Çoğul</label><input value={formData.plural} onChange={e=>setFormData({...formData, plural:e.target.value})} className="w-full p-2 border rounded text-sm"/></div>
+                <div className="grid grid-cols-2 gap-2">
+                    <div><label className="block text-xs text-slate-500 mb-1">3. Tekil</label><input value={formData.thirdPerson} onChange={e=>setFormData({...formData, thirdPerson:e.target.value})} className="w-full p-2 border rounded text-sm"/></div>
+                    <div><label className="block text-xs text-slate-500 mb-1">V-ing</label><input value={formData.vIng} onChange={e=>setFormData({...formData, vIng:e.target.value})} className="w-full p-2 border rounded text-sm"/></div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                    <div><label className="block text-xs text-slate-500 mb-1">V2 (Past)</label><input value={formData.v2} onChange={e=>setFormData({...formData, v2:e.target.value})} className="w-full p-2 border rounded text-sm"/></div>
+                    <div><label className="block text-xs text-slate-500 mb-1">V3</label><input value={formData.v3} onChange={e=>setFormData({...formData, v3:e.target.value})} className="w-full p-2 border rounded text-sm"/></div>
+                </div>
+             </div>
+          </div>
+
+          {/* TURUNCU KUTU - SIFAT DETAYLARI */}
+          <div className="bg-orange-50 p-3 rounded-xl border border-orange-100">
+             <div className="text-xs font-bold text-orange-400 mb-2 uppercase tracking-wide">Sıfat & Zarf Detayları</div>
+             <div className="space-y-3">
+                <div><label className="block text-xs text-orange-700/70 mb-1">Zarf (-ly)</label><input value={formData.advLy} onChange={e=>setFormData({...formData, advLy:e.target.value})} className="w-full p-2 border rounded text-sm"/></div>
+                <div className="grid grid-cols-2 gap-2">
+                    <div><label className="block text-xs text-orange-700/70 mb-1">Comp (-er)</label><input value={formData.compEr} onChange={e=>setFormData({...formData, compEr:e.target.value})} className="w-full p-2 border rounded text-sm"/></div>
+                    <div><label className="block text-xs text-orange-700/70 mb-1">Super (-est)</label><input value={formData.superEst} onChange={e=>setFormData({...formData, superEst:e.target.value})} className="w-full p-2 border rounded text-sm"/></div>
+                </div>
              </div>
           </div>
 
           <div className="space-y-2">
             <label className="block text-sm font-medium">Anlamlar</label>
             {formData.definitions.map((def, i) => (
-              <div key={i} className="bg-slate-50 p-2 rounded border">
-                <div className="flex gap-2 mb-2">
-                   <select value={def.type} onChange={e => updateDef(i, "type", e.target.value)} className="p-1 border rounded text-sm bg-white">{WORD_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}</select>
+              <div key={i} className="bg-slate-50 p-2 rounded border flex flex-col gap-2">
+                <div className="flex gap-2">
+                   <select value={def.type} onChange={e => updateDef(i, "type", e.target.value)} className="p-1 border rounded text-sm bg-white w-20">{WORD_TYPES.map(t => <option key={t.value} value={t.value}>{t.label.split(' ')[0]}</option>)}</select>
                    <input value={def.meaning} onChange={e => updateDef(i, "meaning", e.target.value)} className="flex-1 p-1 border rounded text-sm" placeholder="Türkçe anlam" />
+                   {formData.definitions.length > 1 && <button onClick={() => removeDef(i)} className="text-slate-400 hover:text-red-500"><Trash2 className="w-4 h-4"/></button>}
                 </div>
                 <input value={def.engExplanation} onChange={e => updateDef(i, "engExplanation", e.target.value)} className="w-full p-1 border rounded text-sm bg-indigo-50" placeholder="İngilizce Açıklama" />
               </div>
             ))}
-            <button onClick={() => setFormData(p => ({ ...p, definitions: [...p.definitions, { type: "noun", meaning: "", engExplanation: "" }] }))} className="text-sm text-indigo-600 flex items-center gap-1 font-bold"><Plus className="w-4 h-4"/> Anlam Ekle</button>
+            <button onClick={addDef} className="text-sm text-indigo-600 flex items-center gap-1 font-bold"><Plus className="w-4 h-4"/> Anlam Ekle</button>
           </div>
 
           <textarea value={formData.sentence} onChange={e => setFormData({ ...formData, sentence: e.target.value })} className="w-full p-3 border rounded-xl text-sm" placeholder="Örnek cümle..." rows={3}></textarea>
