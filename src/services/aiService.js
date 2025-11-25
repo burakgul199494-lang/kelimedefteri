@@ -4,15 +4,8 @@ const GEMINI_API_KEY = process.env.REACT_APP_GEMINI_API_KEY;
 
 // --- GRAMER TÜRÜ EŞLEŞTİRME HARİTASI ---
 const TYPE_MAP = {
-  noun: "İsim",
-  verb: "Fiil",
-  adjective: "Sıfat",
-  adverb: "Zarf",
-  prep: "Edat",
-  pronoun: "Zamir",
-  conj: "Bağlaç",
-  article: "Tanımlık",
-  other: "Diğer"
+  noun: "İsim", verb: "Fiil", adjective: "Sıfat", adverb: "Zarf", prep: "Edat",
+  pronoun: "Zamir", conj: "Bağlaç", article: "Tanımlık", other: "Diğer"
 };
 
 const cleanAndParseJSON = (text) => {
@@ -68,15 +61,13 @@ export const fetchWordAnalysisFromAI = async (word) => {
     const response = await result.response;
     const data = cleanAndParseJSON(response.text());
 
-    // --- OTOMATİK ETİKETLEME ---
-    // Gelen tanımların "type" (noun, verb...) değerlerine bakıp Türkçe etiketleri oluşturuyoruz.
     if (data && data.definitions && Array.isArray(data.definitions)) {
         const tagsSet = new Set();
         data.definitions.forEach(def => {
             const trTag = TYPE_MAP[def.type] || "Diğer";
             tagsSet.add(trTag);
         });
-        data.tags = Array.from(tagsSet); // ["İsim", "Fiil"] gibi
+        data.tags = Array.from(tagsSet); 
     } else {
         data.tags = ["Diğer"];
     }
@@ -88,7 +79,7 @@ export const fetchWordAnalysisFromAI = async (word) => {
   }
 };
 
-// --- 2. KÖK BULMA (Aynen Kaldı) ---
+// --- 2. KÖK BULMA ---
 export const fetchRootFromAI = async (word) => {
   try {
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
@@ -101,7 +92,7 @@ export const fetchRootFromAI = async (word) => {
   } catch (e) { return { root: word, changed: false }; }
 };
 
-// --- 3. CÜMLE ANALİZİ (Aynen Kaldı) ---
+// --- 3. CÜMLE ANALİZİ ---
 export const fetchSentenceAnalysisFromAI = async (text) => {
   try {
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
@@ -112,18 +103,35 @@ export const fetchSentenceAnalysisFromAI = async (text) => {
   } catch (e) { throw e; }
 };
 
-// --- 4. HIZLI ÇEVİRİ (Aynen Kaldı) ---
+// --- 4. HIZLI ÇEVİRİ (DÜZELTİLDİ) ---
 export const translateTextWithAI = async (text) => {
   try {
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-    const prompt = `Translate to Turkish: "${text}"`;
+    // DÜZELTME: 'temperature: 0' yaparak yaratıcılığı öldürdük.
+    const model = genAI.getGenerativeModel({ 
+        model: "gemini-2.0-flash",
+        generationConfig: { temperature: 0 } 
+    });
+    
+    // DÜZELTME: Prompt çok daha sert ve net yazıldı.
+    const prompt = `
+      Task: Translate the following English text to Turkish.
+      Input: "${text}"
+      
+      Constraints:
+      1. Return ONLY the Turkish translation.
+      2. Do NOT add explanations, notes, or bullet points.
+      3. Do NOT start with "Translation:" or similar labels.
+      4. Just give the raw translated text.
+    `;
+    
     const result = await model.generateContent(prompt);
-    return result.response.text().trim();
+    const response = await result.response;
+    return response.text().trim();
   } catch (e) { return "Çeviri yapılamadı."; }
 };
 
-// --- 5. OCR (Aynen Kaldı) ---
+// --- 5. OCR ---
 export const extractTextFromImage = async (file) => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
