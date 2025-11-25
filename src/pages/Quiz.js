@@ -20,7 +20,6 @@ export default function Quiz() {
 
   useEffect(() => { startQuiz(); }, []);
 
-  // SORU DEĞİŞTİĞİNDE STATE'LERİ ZORLA SIFIRLA
   useEffect(() => { 
       setHintTranslation(null); 
       setLoadingHint(false);
@@ -60,16 +59,20 @@ export default function Quiz() {
     setQuestions(generated); setIndex(0); setScore(0); setFinished(false);
   };
 
-  const handleAnswer = (option) => {
+  const handleAnswer = (option, e) => {
+    // 1. MOBİL ODAKLANMA SORUNU İÇİN EKSTRA GÜVENLİK
+    // Tıklanan butonun odaklanmasını (focus) manuel olarak kaldırıyoruz.
+    if(e && e.target) {
+        e.target.blur();
+    }
+
     if (isAnswered) return;
     setIsAnswered(true); setSelected(option);
     if (option === questions[index].correct) setScore(s => s + 5);
     
     setTimeout(() => {
       if (index + 1 < questions.length) {
-        setIndex(i => i + 1);
-        // State sıfırlama işlemi yukarıdaki useEffect[index] içinde de yapılıyor,
-        // ama geçişin pürüzsüz olması için burada da tetikliyoruz.
+        setIndex(i => i + 1); 
       } else {
         setFinished(true);
         const finalPoints = score + (option === questions[index].correct ? 5 : 0);
@@ -159,10 +162,22 @@ export default function Quiz() {
                   else if (opt === selected) cls += "bg-red-100 border-red-500 text-red-700";
                   else cls += "opacity-50";
                } else {
-                  cls += "bg-white border-slate-200 hover:border-indigo-300 hover:bg-indigo-50";
+                  cls += "bg-white border-slate-200 hover:border-indigo-300 hover:bg-indigo-50 active:bg-indigo-50"; // active eklendi
                }
-               // DÜZELTME BURADA: key={opt} yaptık. key={i} olunca eski butonları tutuyordu.
-               return <button key={opt} onClick={()=>handleAnswer(opt)} disabled={isAnswered} className={cls}>{opt}</button>
+               
+               // ÇÖZÜM BURADA: key değerine 'index' (Soru numarası) ekledik.
+               // Böylece soru değişince React bu butonu tamamen silip yenisini yaratacak.
+               // Eski 'focus' durumu da çöpe gidecek.
+               return (
+                   <button 
+                        key={`${index}-${i}`} 
+                        onClick={(e)=>handleAnswer(opt, e)} 
+                        disabled={isAnswered} 
+                        className={cls}
+                   >
+                        {opt}
+                   </button>
+               );
             })}
           </div>
 
