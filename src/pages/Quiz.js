@@ -15,11 +15,15 @@ export default function Quiz() {
   const [isAnswered, setIsAnswered] = useState(false);
   const [finished, setFinished] = useState(false);
   
+  // YENİ: SORU GEÇİŞ STATE'İ (Sorunu çözen anahtar)
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  
   const [hintTranslation, setHintTranslation] = useState(null);
   const [loadingHint, setLoadingHint] = useState(false);
 
   useEffect(() => { startQuiz(); }, []);
 
+  // Soru değiştiğinde temizlik yap
   useEffect(() => { 
       setHintTranslation(null); 
       setLoadingHint(false);
@@ -60,11 +64,8 @@ export default function Quiz() {
   };
 
   const handleAnswer = (option, e) => {
-    // 1. MOBİL ODAKLANMA SORUNU İÇİN EKSTRA GÜVENLİK
-    // Tıklanan butonun odaklanmasını (focus) manuel olarak kaldırıyoruz.
-    if(e && e.target) {
-        e.target.blur();
-    }
+    // Manuel focus temizleme (Ekstra güvenlik)
+    if(e && e.target) e.target.blur();
 
     if (isAnswered) return;
     setIsAnswered(true); setSelected(option);
@@ -72,7 +73,15 @@ export default function Quiz() {
     
     setTimeout(() => {
       if (index + 1 < questions.length) {
-        setIndex(i => i + 1); 
+        // 1. Önce geçiş modunu aç (Butonları yok et)
+        setIsTransitioning(true);
+        
+        // 2. Kısa bir süre sonra yeni soruyu getir
+        setTimeout(() => {
+            setIndex(i => i + 1);
+            setIsTransitioning(false); // Butonları geri getir
+        }, 100); // 100ms'lik bir "göz kırpma" süresi DOM'u sıfırlar
+        
       } else {
         setFinished(true);
         const finalPoints = score + (option === questions[index].correct ? 5 : 0);
@@ -82,9 +91,7 @@ export default function Quiz() {
   };
 
   const handleQuitEarly = () => {
-      if (score > 0) {
-          addScore(score); 
-      }
+      if (score > 0) addScore(score);
       setFinished(true); 
   };
 
@@ -100,8 +107,7 @@ export default function Quiz() {
   const speak = (txt) => { 
     if(!txt) return;
     const u = new SpeechSynthesisUtterance(txt); 
-    u.lang = "en-US"; 
-    window.speechSynthesis.speak(u); 
+    u.lang = "en-US"; window.speechSynthesis.speak(u); 
   };
 
   if (finished) {
@@ -139,47 +145,52 @@ export default function Quiz() {
           </div>
           <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden"><div className="bg-indigo-500 h-full transition-all duration-500" style={{width:`${progress}%`}}></div></div>
           
-          <div className="bg-white p-8 rounded-3xl shadow-lg border border-slate-100 text-center space-y-6 mt-6 animate-in fade-in zoom-in duration-300">
-             {hint && (
-                <div className="flex flex-col items-center gap-2">
-                    <div className="bg-indigo-50 text-indigo-800 px-4 py-2 rounded-xl border border-indigo-100 flex items-center gap-2">
-                        <span className="text-sm italic">"{hint}"</span>
-                        <button onClick={() => speak(hint)} className="p-1 bg-white rounded-full hover:bg-indigo-100 transition-colors" title="Oku"><Volume2 className="w-3 h-3 text-indigo-500"/></button>
-                        <button onClick={handleTranslateHint} className="p-1 bg-white rounded-full hover:bg-indigo-100 transition-colors" title="Çevir">{loadingHint ? <Loader2 className="w-3 h-3 animate-spin"/> : <Languages className="w-3 h-3 text-indigo-500"/>}</button>
-                    </div>
-                    {hintTranslation && <div className="bg-green-50 text-green-700 px-3 py-1 text-xs font-bold rounded">TR: {hintTranslation}</div>}
+          {/* GEÇİŞ EKRANI KONTROLÜ */}
+          {isTransitioning ? (
+              <div className="h-64 flex items-center justify-center">
+                  <Loader2 className="w-10 h-10 text-indigo-600 animate-spin"/>
+              </div>
+          ) : (
+              <>
+                <div className="bg-white p-8 rounded-3xl shadow-lg border border-slate-100 text-center space-y-6 mt-6 animate-in fade-in zoom-in duration-300">
+                    {hint && (
+                        <div className="flex flex-col items-center gap-2">
+                            <div className="bg-indigo-50 text-indigo-800 px-4 py-2 rounded-xl border border-indigo-100 flex items-center gap-2">
+                                <span className="text-sm italic">"{hint}"</span>
+                                <button onClick={() => speak(hint)} className="p-1 bg-white rounded-full hover:bg-indigo-100 transition-colors" title="Oku"><Volume2 className="w-3 h-3 text-indigo-500"/></button>
+                                <button onClick={handleTranslateHint} className="p-1 bg-white rounded-full hover:bg-indigo-100 transition-colors" title="Çevir">{loadingHint ? <Loader2 className="w-3 h-3 animate-spin"/> : <Languages className="w-3 h-3 text-indigo-500"/>}</button>
+                            </div>
+                            {hintTranslation && <div className="bg-green-50 text-green-700 px-3 py-1 text-xs font-bold rounded">TR: {hintTranslation}</div>}
+                        </div>
+                    )}
+                    <h2 className="text-4xl font-extrabold text-slate-800">{current.wordObj.word}</h2>
+                    <button onClick={()=>speak(current.wordObj.word)} className="mx-auto p-2 bg-slate-50 rounded-full text-indigo-500 hover:bg-indigo-100 transition-colors"><Volume2 className="w-6 h-6"/></button>
                 </div>
-             )}
-             <h2 className="text-4xl font-extrabold text-slate-800">{current.wordObj.word}</h2>
-             <button onClick={()=>speak(current.wordObj.word)} className="mx-auto p-2 bg-slate-50 rounded-full text-indigo-500 hover:bg-indigo-100 transition-colors"><Volume2 className="w-6 h-6"/></button>
-          </div>
 
-          <div className="space-y-3 mt-6">
-            {current.options.map((opt, i) => {
-               let cls = "w-full p-4 rounded-xl text-left font-medium border-2 transition-all shadow-sm ";
-               if (isAnswered) {
-                  if (opt === current.correct) cls += "bg-green-100 border-green-500 text-green-700";
-                  else if (opt === selected) cls += "bg-red-100 border-red-500 text-red-700";
-                  else cls += "opacity-50";
-               } else {
-                  cls += "bg-white border-slate-200 hover:border-indigo-300 hover:bg-indigo-50 active:bg-indigo-50"; // active eklendi
-               }
-               
-               // ÇÖZÜM BURADA: key değerine 'index' (Soru numarası) ekledik.
-               // Böylece soru değişince React bu butonu tamamen silip yenisini yaratacak.
-               // Eski 'focus' durumu da çöpe gidecek.
-               return (
-                   <button 
-                        key={`${index}-${i}`} 
-                        onClick={(e)=>handleAnswer(opt, e)} 
-                        disabled={isAnswered} 
-                        className={cls}
-                   >
-                        {opt}
-                   </button>
-               );
-            })}
-          </div>
+                <div className="space-y-3 mt-6">
+                    {current.options.map((opt, i) => {
+                        let cls = "w-full p-4 rounded-xl text-left font-medium border-2 transition-all shadow-sm ";
+                        if (isAnswered) {
+                            if (opt === current.correct) cls += "bg-green-100 border-green-500 text-green-700";
+                            else if (opt === selected) cls += "bg-red-100 border-red-500 text-red-700";
+                            else cls += "opacity-50";
+                        } else {
+                            cls += "bg-white border-slate-200 hover:border-indigo-300 hover:bg-indigo-50 active:bg-indigo-50";
+                        }
+                        return (
+                            <button 
+                                    key={`${index}-${i}`} // Unique key
+                                    onClick={(e)=>handleAnswer(opt, e)} 
+                                    disabled={isAnswered} 
+                                    className={cls}
+                            >
+                                    {opt}
+                            </button>
+                        );
+                    })}
+                </div>
+              </>
+          )}
 
           <button onClick={handleQuitEarly} className="w-full mt-6 flex items-center justify-center gap-2 text-slate-400 hover:text-red-500 transition-colors text-sm font-medium mx-auto">
             <Target className="w-4 h-4"/> Bitir (Puanı Al ve Çık)
