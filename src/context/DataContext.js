@@ -38,7 +38,9 @@ export const DataProvider = ({ children }) => {
       if (currentUser && ADMIN_EMAILS.includes(currentUser.email)) setIsAdmin(true);
       else setIsAdmin(false);
       if (!currentUser) {
-        setLoading(false); setKnownWordIds([]); setCustomWords([]); setDeletedWordIds([]); setDynamicSystemWords([]); setLearningQueue([]); setStreak(0);
+        setLoading(false); 
+        setKnownWordIds([]); setCustomWords([]); setDeletedWordIds([]); 
+        setDynamicSystemWords([]); setLearningQueue([]); setStreak(0);
       }
     });
     return () => unsubscribe();
@@ -46,12 +48,100 @@ export const DataProvider = ({ children }) => {
 
   useEffect(() => {
     if (user) { 
-        fetchUserData(); 
-        fetchUserWordsSubcollection(); 
-        fetchDynamicSystemWords(); 
+        fetchAppData(); // Tek ve Merkezi Yükleme Fonksiyonu
         subscribeToLeaderboard(); 
     }
   }, [user]);
+
+  // --- MERKEZİ VERİ YÜKLEME VE ÇAKIŞMA ÇÖZÜMÜ ---
+  const fetchAppData = async () => {
+    if (!user) return;
+    setLoading(true);
+    try {
+        // 1. SİSTEM KELİMELERİNİ ÇEK
+        const systemSnapshot = await getDocs(collection(db, "artifacts", appId, "system_words"));
+        const systemWords = [];
+        const systemWordsMap = new Set(); // Hızlı kontrol için Set kullanıyoruz
+        systemSnapshot.forEach((doc) => {
+            const data = doc.data();
+            systemWords.push({ ...data, id: doc.id, source: "system" });
+            if(data.word) systemWordsMap.add(data.word.toLowerCase().trim());
+        });
+        setDynamicSystemWords(systemWords);
+
+        // 2. KULLANICI KELİMELERİNİ (SUBCOLLECTION) ÇEK
+        const wordsRef = collection(db, "artifacts", appId, "users", user.uid, "words");
+        const wordsSnapshot = await getDocs(wordsRef);
+        const userWords = [];
+        wordsSnapshot.forEach(doc => {
+            userWords.push({ ...doc.data(), id: doc.id, source: "user" });
+        });
+        setCustomWords(userWords);
+
+        // 3. KULLANICI PROFİLİNİ ÇEK
+        const userRef = doc(db, "artifacts", appId, "users", user.uid, "vocab_game", "progress");
+        const docSnap = await getDoc(userRef);
+        
+        let currentDeletedIds = [];
+        let currentKnownIds = [];
+        let currentQueue = [];
+        let currentStreak = 0;
+
+        if (docSnap.exists()) {
+            const data = docSnap.data();
+            currentDeletedIds = data.deleted_ids || [];
+            currentKnownIds = data.known_ids || [];
+            currentQueue = data.learning_queue || [];
+            currentStreak = data.streak || 0;
+            
+            // Streak Güncelleme
+            const todayStr = new Date().toISOString().split("T")[0];
+            const lastVisit = data.last_visit_date;
+            if (lastVisit !== todayStr) {
+                const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
+                const yesterdayStr = yesterday.toISOString().split("T")[0];
+                if (lastVisit === yesterdayStr) currentStreak += 1; else currentStreak = 1;
+                await setDoc(userRef, { last_visit_date: todayStr, streak: currentStreak }, { merge: true });
+            }
+        } else {
+            // Yeni kullanıcı
+            const todayStr = new Date().toISOString().split("T")[0];
+            await setDoc(userRef, { last_visit_date: todayStr, streak: 1 }, { merge: true });
+            currentStreak = 1;
+        }
+
+        // --- 4. KRİTİK HAMLE: ÇAKIŞMA KONTROLÜ (CONFLICT CHECK) ---
+        // Kullanıcının kelimelerinden, sistemde de olanları bul ve silinenlere at.
+        let newDeletedIds = [...currentDeletedIds];
+        let hasChanges = false;
+
+        userWords.forEach(uWord => {
+            // Eğer bu kelime Sistem Kelimeleri içinde varsa VE henüz silinenlerde değilse
+            if (systemWordsMap.has(uWord.word.toLowerCase().trim()) && !currentDeletedIds.includes(String(uWord.id))) {
+                newDeletedIds.push(String(uWord.id));
+                hasChanges = true;
+                console.log(`Çakışma bulundu: ${uWord.word}. Kullanıcı versiyonu silinenlere atıldı.`);
+            }
+        });
+
+        if (hasChanges) {
+            // Veritabanını güncelle
+            await updateDoc(userRef, { deleted_ids: newDeletedIds });
+            currentDeletedIds = newDeletedIds;
+        }
+
+        // State'leri Güncelle
+        setKnownWordIds(currentKnownIds);
+        setDeletedWordIds(currentDeletedIds);
+        setLearningQueue(currentQueue);
+        setStreak(currentStreak);
+
+    } catch (e) {
+        console.error("Veri yükleme hatası:", e);
+    } finally {
+        setLoading(false);
+    }
+  };
 
   const subscribeToLeaderboard = () => {
       const weekKey = getCurrentWeekKey(); 
@@ -76,56 +166,6 @@ export const DataProvider = ({ children }) => {
               lastUpdated: new Date()
           }, { merge: true });
       } catch (e) { console.error("Puan hatası:", e); }
-  };
-
-  const fetchUserData = async () => {
-    setLoading(true);
-    try {
-      const userRef = doc(db, "artifacts", appId, "users", user.uid, "vocab_game", "progress");
-      const docSnap = await getDoc(userRef);
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        setKnownWordIds(data.known_ids || []);
-        setDeletedWordIds(data.deleted_ids || []);
-        setLearningQueue(data.learning_queue || []);
-        
-        const todayStr = new Date().toISOString().split("T")[0];
-        const lastVisit = data.last_visit_date;
-        let currentStreak = data.streak || 0;
-        if (lastVisit !== todayStr) {
-          const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
-          const yesterdayStr = yesterday.toISOString().split("T")[0];
-          if (lastVisit === yesterdayStr) currentStreak += 1; else currentStreak = 1;
-          await setDoc(userRef, { last_visit_date: todayStr, streak: currentStreak }, { merge: true });
-        }
-        setStreak(currentStreak);
-      } else {
-        const todayStr = new Date().toISOString().split("T")[0];
-        await setDoc(userRef, { last_visit_date: todayStr, streak: 1 }, { merge: true });
-        setStreak(1);
-      }
-    } catch (error) { console.error(error); } finally { setLoading(false); }
-  };
-
-  const fetchUserWordsSubcollection = async () => {
-      try {
-          const wordsRef = collection(db, "artifacts", appId, "users", user.uid, "words");
-          const snapshot = await getDocs(wordsRef);
-          const words = [];
-          snapshot.forEach(doc => {
-              words.push({ ...doc.data(), id: doc.id, source: "user" });
-          });
-          setCustomWords(words);
-      } catch (e) { console.error(e); }
-  };
-
-  const fetchDynamicSystemWords = async () => {
-    try {
-      const querySnapshot = await getDocs(collection(db, "artifacts", appId, "system_words"));
-      const words = [];
-      querySnapshot.forEach((doc) => words.push({ ...doc.data(), id: doc.id, source: "system" }));
-      setDynamicSystemWords(words);
-    } catch (e) { console.error(e); }
   };
 
   const normalizeWord = (w) => {
@@ -276,16 +316,12 @@ export const DataProvider = ({ children }) => {
      } catch(e) { console.error(e); }
   };
 
-  // --- GÜNCELLENEN SIFIRLAMA FONKSİYONU ---
   const resetProfile = async () => {
       try {
         const userRef = doc(db, "artifacts", appId, "users", user.uid, "vocab_game", "progress");
         const today = new Date().toISOString().split("T")[0];
-        
-        // 1. Profil Metadatasını Sıfırla
         await setDoc(userRef, { known_ids:[], deleted_ids:[], learning_queue: [], streak:1, last_visit_date: today });
         
-        // 2. Tüm kelimeleri Subcollection'dan sil
         const batch = writeBatch(db);
         customWords.forEach(word => {
             const ref = doc(db, "artifacts", appId, "users", user.uid, "words", String(word.id));
@@ -293,14 +329,11 @@ export const DataProvider = ({ children }) => {
         });
         await batch.commit();
 
-        // 3. YENİ: BU HAFTANIN LİDERLİK PUANINI SİL (Sıfırdan başlangıç)
         const weekKey = getCurrentWeekKey();
         const leaderboardRef = doc(db, "artifacts", appId, "weekly_scores", weekKey, "users", user.uid);
         await deleteDoc(leaderboardRef);
 
-        // State'leri Temizle
         setKnownWordIds([]); setCustomWords([]); setDeletedWordIds([]); setLearningQueue([]); setStreak(1);
-        
       } catch(e) { console.error(e); }
   };
 
@@ -315,6 +348,7 @@ export const DataProvider = ({ children }) => {
       const docRef = await addDoc(collection(db, "artifacts", appId, "system_words"), newWord);
       setDynamicSystemWords(prev => [...prev, { ...newWord, id: docRef.id }]);
 
+      // Admin kendi eklediği kelimeyi anında silsin
       const conflictingCustom = customWords.find(w => w.word.toLowerCase() === normalizedInput);
       if (conflictingCustom) {
           const userRef = doc(db, "artifacts", appId, "users", user.uid, "vocab_game", "progress");
