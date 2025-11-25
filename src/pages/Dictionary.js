@@ -1,20 +1,23 @@
 import React, { useState, useEffect } from "react";
 import { useData } from "../context/DataContext";
-import WordCard from "../components/WordCard";
+import WordCard from "../components/WordCard"; // WordCard Kullanımı
 import { ArrowLeft, Search, X, BookOpen, AlertCircle, ArrowDownCircle, Plus } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom"; // useLocation eklendi
 
 export default function Dictionary() {
   const { getAllWords } = useData();
   const navigate = useNavigate();
+  const location = useLocation(); // Lokasyonu (Gelen veriyi) yakala
   
-  const [term, setTerm] = useState("");
+  // BAŞLANGIÇ AYARI: Eğer ekleme sayfasından geldiyse, o kelimeyi al. Yoksa boş.
+  const [term, setTerm] = useState(location.state?.addedWord || "");
+  
   const [results, setResults] = useState([]);
   const [debouncedTerm, setDebouncedTerm] = useState(term);
-  
-  // Sayfalama State'i
   const [visibleCount, setVisibleCount] = useState(50);
   const PER_PAGE = 50;
+
+  // ... (Geri kalan tüm kodlar ve mantık aynı) ...
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -43,16 +46,19 @@ export default function Dictionary() {
         if (item.thirdPerson?.toLowerCase().includes(cleanTerm)) return true;
         return false;
     }).sort((a, b) => {
-        // Sıralama: Tam eşleşme en üste
         const aWord = a.word.toLowerCase();
         const bWord = b.word.toLowerCase();
         if (aWord === cleanTerm && bWord !== cleanTerm) return -1;
         if (bWord === cleanTerm && aWord !== cleanTerm) return 1;
+        const aStarts = aWord.startsWith(cleanTerm);
+        const bStarts = bWord.startsWith(cleanTerm);
+        if (aStarts && !bStarts) return -1;
+        if (bStarts && !aStarts) return 1;
         return aWord.localeCompare(bWord);
     });
 
     setResults(filtered);
-    setVisibleCount(PER_PAGE); 
+    setVisibleCount(PER_PAGE);
 
   }, [debouncedTerm, getAllWords]);
 
@@ -65,10 +71,9 @@ export default function Dictionary() {
     setVisibleCount(prev => prev + PER_PAGE);
   };
 
-  // --- KRİTİK KONTROL: ARANAN KELİME SONUÇLARDA VAR MI? ---
+  // Tam eşleşme kontrolü
   const cleanSearch = debouncedTerm.toLowerCase().trim();
   const exactMatchExists = results.some(r => r.word.toLowerCase() === cleanSearch);
-  // -------------------------------------------------------
 
   const displayedResults = results.slice(0, visibleCount);
 
@@ -76,7 +81,6 @@ export default function Dictionary() {
     <div className="min-h-screen bg-slate-50 p-6 flex flex-col items-center">
       <div className="w-full max-w-md space-y-6">
         
-        {/* Üst Bar */}
         <div className="sticky top-0 bg-slate-50 py-2 z-20 flex items-center gap-3 mb-2">
           <button onClick={() => navigate("/")} className="p-2 hover:bg-slate-200 rounded-full transition-colors bg-white shadow-sm">
             <ArrowLeft className="w-6 h-6 text-slate-600" />
@@ -84,7 +88,6 @@ export default function Dictionary() {
           <h2 className="text-2xl font-bold text-slate-800">Sözlük</h2>
         </div>
 
-        {/* Arama Kutusu */}
         <div className="relative group z-10">
           <Search className="absolute left-4 top-4 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
           <input
@@ -102,11 +105,8 @@ export default function Dictionary() {
           )}
         </div>
 
-        {/* Sonuçlar */}
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10">
             
-            {/* --- YENİ: EĞER TAM EŞLEŞME YOKSA EKLE BUTONUNU GÖSTER --- */}
-            {/* Arama var ama tam eşleşme yoksa, sonuçlar olsa bile bu butonu göster */}
             {debouncedTerm && !exactMatchExists && (
                 <button 
                     onClick={() => navigate("/add-word", { state: { initialWord: debouncedTerm } })}
@@ -116,9 +116,7 @@ export default function Dictionary() {
                     "{debouncedTerm}" Kelimesini Ekle
                 </button>
             )}
-            {/* --------------------------------------------------------- */}
 
-            {/* Hiç sonuç yoksa uyarı (Yukarıdaki buton zaten çıkacak ama ekstra bilgi) */}
             {debouncedTerm && results.length === 0 && (
                 <div className="text-center text-slate-400 mt-4">
                     <AlertCircle className="w-8 h-8 mx-auto mb-2 opacity-50"/>
@@ -126,7 +124,6 @@ export default function Dictionary() {
                 </div>
             )}
 
-            {/* Sonuç Listesi */}
             {displayedResults.length > 0 && (
                 <>
                     <div className="text-center text-sm font-bold text-slate-400 uppercase tracking-wider">
@@ -154,11 +151,10 @@ export default function Dictionary() {
             {!debouncedTerm && (
                 <div className="text-center text-slate-400 mt-10 opacity-50">
                     <BookOpen className="w-20 h-20 mx-auto mb-4 stroke-1" />
-                    <p>Aramak istediğin kelimeyi yaz.</p>
+                    <p>Aramak istediğin kelimeyi veya anlamını yaz.</p>
                 </div>
             )}
         </div>
-
       </div>
     </div>
   );
