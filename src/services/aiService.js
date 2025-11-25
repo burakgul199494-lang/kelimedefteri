@@ -32,15 +32,16 @@ export const fetchWordAnalysisFromAI = async (word) => {
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
     const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
-    // Prompt'u "Öneri" moduna çektik, "Zorlama" modundan çıkardık.
     const prompt = `
       Analyze the English word: "${word}".
       Return ONLY a valid JSON object.
       
-      Rules:
-      1. "definitions": Translate meaning to TURKISH. Explanation must be simple ENGLISH.
-      2. "tags": Suggest 1-3 relevant categories in Turkish (e.g. Yiyecek, Teknoloji).
-      3. Fill grammatical forms (v2, v3, plural etc.) if applicable. If not, leave empty string.
+      TAGGING RULES (CRITICAL):
+      1. Select 1-3 tags from this EXACT list: ${JSON.stringify(ALLOWED_TAGS)}.
+      2. IF the word is a VERB (action), you MUST include "Fiiller".
+      3. IF the word is an ADJECTIVE (descriptive), you MUST include "Sıfatlar".
+      4. IF it fits a category (like 'apple' -> 'Yiyecek & İçecek'), pick that category.
+      5. Only use "Diğer" if absolutely NO other tag fits.
       
       JSON Structure:
       {
@@ -65,23 +66,29 @@ export const fetchWordAnalysisFromAI = async (word) => {
     const response = await result.response;
     const data = cleanAndParseJSON(response.text());
 
-    // --- KOD TARAFI DÜZELTME (ETİKET FİLTRESİ) ---
-    // AI ne gönderirse göndersin, biz burada filtreliyoruz.
+    // --- JAVASCRIPT İLE TEMİZLİK VE DÜZELTME ---
     if (data && data.tags && Array.isArray(data.tags)) {
-        const filteredTags = data.tags
-            .map(t => {
-                // AI bazen "Food" der, biz "Yiyecek & İçecek" ile eşleştirebiliriz veya direkt listeye bakarız.
-                // Basit yöntem: Listede var mı bak, yoksa 'Diğer' yap.
-                // Biraz esneklik için "includes" kullanıyoruz.
-                const found = ALLOWED_TAGS.find(allowed => allowed.toLowerCase().includes(t.toLowerCase()) || t.toLowerCase().includes(allowed.toLowerCase()));
-                return found ? found : "Diğer";
-            });
         
-        // Tekrarları ve "Diğer" fazlalığını temizle
-        data.tags = [...new Set(filteredTags)]; 
+        // 1. Eşleştirme: Gelen etiket bizim listemizde var mı?
+        let validTags = data.tags.map(t => {
+            // Tam eşleşme veya içerme kontrolü
+            const match = ALLOWED_TAGS.find(allowed => 
+                allowed.toLowerCase() === t.toLowerCase() || 
+                allowed.toLowerCase().includes(t.toLowerCase())
+            );
+            return match ? match : "Diğer";
+        });
+
+        // 2. "Diğer" Temizliği:
+        // Eğer listede "Diğer" dışında geçerli bir etiket varsa, "Diğer"i sil.
+        // Örn: ["Yiyecek", "Diğer"] -> ["Yiyecek"]
+        const realTags = validTags.filter(t => t !== "Diğer");
         
-        // Eğer hepsi "Diğer" olduysa sadece bir tane bırak
-        if (data.tags.every(t => t === "Diğer")) data.tags = ["Diğer"];
+        if (realTags.length > 0) {
+            data.tags = [...new Set(realTags)]; // Sadece geçerlileri al
+        } else {
+            data.tags = ["Diğer"]; // Hiçbiri uymadıysa mecbur "Diğer"
+        }
     }
     // ---------------------------------------------
 
@@ -120,13 +127,16 @@ export const fetchSentenceAnalysisFromAI = async (text) => {
     });
 
     const prompt = `
-      Analyze this English text for a Turkish student: "${text}"
+      Act as a strict English grammar teacher for TURKISH students.
+      Analyze this text: "${text}"
       
       Tasks:
-      1. Check grammar errors.
-      2. Translate to Turkish.
-      3. Identify Tense (In Turkish).
-      4. Explain structure simply in Turkish (bullet points). Keep English words in single quotes.
+      1. Check for ANY grammatical errors.
+      2. Translate to Turkish naturally.
+      3. Identify the MAIN tense (Write TURKISH name).
+      4. Explain the sentence structure simply in bullet points.
+         - CRITICAL: The explanation MUST be in TURKISH.
+         - CRITICAL: Keep English words in single quotes.
       5. Extract root words.
 
       Return JSON ONLY:
@@ -137,28 +147,15 @@ export const fetchSentenceAnalysisFromAI = async (text) => {
             "explanation": "Error explanation in Turkish"
         },
         "turkishTranslation": "Turkish translation",
-        "detectedTense": "Tense Name (TR)",
-        "simplePoints": ["Explanation 1", "Explanation 2"],
+        "detectedTense": "Zaman Adı (Türkçe)",
+        "simplePoints": ["Türkçe açıklama 1", "Türkçe açıklama 2"],
         "rootWords": ["word1", "word2"] 
       }
     `;
 
     const result = await model.generateContent(prompt);
     const response = await result.response;
-    const data = cleanAndParseJSON(response.text());
-
-    if (data && data.rootWords && Array.isArray(data.rootWords)) {
-        const cleanList = data.rootWords
-            .map(w => {
-                let clean = w.toLowerCase();
-                clean = clean.replace(/'s$/, "");
-                clean = clean.replace(/[^a-z-]/g, "");
-                return clean;
-            })
-            .filter(w => w.length > 1 || w === 'a' || w === 'i');
-        data.rootWords = [...new Set(cleanList)];
-    }
-    return data;
+    return cleanAndParseJSON(response.text());
   } catch (e) {
     console.error("Sentence Analysis Error:", e);
     throw e;
@@ -170,7 +167,7 @@ export const translateTextWithAI = async (text) => {
   try {
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
     const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-    const prompt = `Translate this English text to Turkish. Return ONLY the translation: "${text}"`;
+    const prompt = `Translate this English text to Turkish accurately. Return ONLY translation: "${text}"`;
     const result = await model.generateContent(prompt);
     const response = await result.response;
     return response.text().trim();
