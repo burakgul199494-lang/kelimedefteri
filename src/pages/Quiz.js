@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useData } from "../context/DataContext";
 import { useNavigate } from "react-router-dom";
-import { X, Trophy, Volume2, Languages, Loader2, Target } from "lucide-react"; // Target EKLENDİ
+import { X, Trophy, Volume2, Languages, Loader2, Target } from "lucide-react";
 import { translateTextWithAI } from "../services/aiService";
 
 export default function Quiz() {
@@ -19,7 +19,14 @@ export default function Quiz() {
   const [loadingHint, setLoadingHint] = useState(false);
 
   useEffect(() => { startQuiz(); }, []);
-  useEffect(() => { setHintTranslation(null); setLoadingHint(false); }, [index]);
+
+  // SORU DEĞİŞTİĞİNDE STATE'LERİ ZORLA SIFIRLA
+  useEffect(() => { 
+      setHintTranslation(null); 
+      setLoadingHint(false);
+      setSelected(null);
+      setIsAnswered(false);
+  }, [index]);
 
   const startQuiz = () => {
     const all = getAllWords();
@@ -60,7 +67,9 @@ export default function Quiz() {
     
     setTimeout(() => {
       if (index + 1 < questions.length) {
-        setIndex(i => i + 1); setSelected(null); setIsAnswered(false);
+        setIndex(i => i + 1);
+        // State sıfırlama işlemi yukarıdaki useEffect[index] içinde de yapılıyor,
+        // ama geçişin pürüzsüz olması için burada da tetikliyoruz.
       } else {
         setFinished(true);
         const finalPoints = score + (option === questions[index].correct ? 5 : 0);
@@ -69,12 +78,11 @@ export default function Quiz() {
     }, 1000);
   };
 
-  // --- YENİ: ERKEN BİTİRME FONKSİYONU ---
   const handleQuitEarly = () => {
       if (score > 0) {
-          addScore(score); // Mevcut puanı kaydet
+          addScore(score); 
       }
-      setFinished(true); // Bitiş ekranına at
+      setFinished(true); 
   };
 
   const handleTranslateHint = async () => {
@@ -153,11 +161,11 @@ export default function Quiz() {
                } else {
                   cls += "bg-white border-slate-200 hover:border-indigo-300 hover:bg-indigo-50";
                }
-               return <button key={i} onClick={()=>handleAnswer(opt)} disabled={isAnswered} className={cls}>{opt}</button>
+               // DÜZELTME BURADA: key={opt} yaptık. key={i} olunca eski butonları tutuyordu.
+               return <button key={opt} onClick={()=>handleAnswer(opt)} disabled={isAnswered} className={cls}>{opt}</button>
             })}
           </div>
 
-          {/* YENİ: BİTİR BUTONU */}
           <button onClick={handleQuitEarly} className="w-full mt-6 flex items-center justify-center gap-2 text-slate-400 hover:text-red-500 transition-colors text-sm font-medium mx-auto">
             <Target className="w-4 h-4"/> Bitir (Puanı Al ve Çık)
           </button>
