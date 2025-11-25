@@ -87,7 +87,7 @@ export default function Auth() {
           <div className="bg-indigo-600 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 rotate-3 shadow-lg">
             <Brain className="text-white w-8 h-8" />
           </div>
-          <h1 className="text-2xl font-bold text-slate-800">Kelime Atölyesi</h1>
+          <h1 className="text-2xl font-bold text-slate-800">Kelime Defteri</h1>
           <p className="text-slate-500 text-sm">
             {view === "login" && "Kelimelerini kaybetme."}
             {view === "register" && "Aramıza katıl."}
