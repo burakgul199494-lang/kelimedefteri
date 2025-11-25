@@ -13,11 +13,10 @@ const WORD_TYPES = [
 export default function AddWord() {
   const navigate = useNavigate();
   const location = useLocation();
-  // isAdmin verisini çekiyoruz
   const { handleSaveNewWord, handleUpdateWord, handleSaveSystemWord, isAdmin } = useData();
 
   const editingWord = location.state?.editingWord;
-  const initialWord = location.state?.initialWord; // Sözlükten gelen kelime
+  const initialWord = location.state?.initialWord; 
   const isEditMode = !!editingWord;
 
   const initialData = editingWord
@@ -27,9 +26,12 @@ export default function AddWord() {
         definitions: (editingWord.definitions || []).map((d) => ({ type: d.type || "noun", meaning: d.meaning || "", engExplanation: d.engExplanation || "" })),
       }
     : {
-        word: initialWord || "", // Eğer sözlükten geldiyse buraya yaz
-        tags: [], plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
-        definitions: [{ type: "noun", meaning: "", engExplanation: "" }], sentence: "",
+        word: initialWord || "", 
+        tags: [],
+        plural: "", v2: "", v3: "", vIng: "", thirdPerson: "",
+        advLy: "", compEr: "", superEst: "",
+        definitions: [{ type: "noun", meaning: "", engExplanation: "" }],
+        sentence: "",
       };
 
   const [formData, setFormData] = useState(initialData);
@@ -38,11 +40,9 @@ export default function AddWord() {
   const [aiLoading, setAiLoading] = useState(false);
   const [rootLoading, setRootLoading] = useState(false);
 
-  // --- OTO-PİLOT: SÖZLÜKTEN GELİNCE ÇALIŞIR ---
   useEffect(() => {
     const autoRun = async () => {
         if (initialWord && !isEditMode) {
-            // 1. Kök Bul
             setRootLoading(true);
             let searchWord = initialWord;
             try {
@@ -54,13 +54,16 @@ export default function AddWord() {
             } catch(e) { console.error(e); }
             setRootLoading(false);
 
-            // 2. Analiz Et ve Doldur
             setAiLoading(true);
             try {
                 const data = await fetchWordAnalysisFromAI(searchWord);
                 if (data) {
-                    const safeDefinitions = Array.isArray(data.definitions) ? data.definitions.map(d => ({ type: d.type || "noun", meaning: d.meaning || "", engExplanation: d.engExplanation || "" })) : [{ type: "noun", meaning: "", engExplanation: "" }];
+                    const safeDefinitions = Array.isArray(data.definitions) 
+                        ? data.definitions.map(d => ({ type: d.type || "noun", meaning: d.meaning || "", engExplanation: d.engExplanation || "" })) 
+                        : [{ type: "noun", meaning: "", engExplanation: "" }];
+                    
                     const safeTags = Array.isArray(data.tags) ? data.tags : [];
+                    
                     setFormData(prev => ({ ...prev, ...data, tags: safeTags, definitions: safeDefinitions }));
                 }
             } catch(e) { console.error(e); }
@@ -69,14 +72,15 @@ export default function AddWord() {
     };
     autoRun();
   }, [initialWord, isEditMode]);
-  // --------------------------------------------
 
   const handleConvertToRoot = async () => {
     if (!formData.word) return;
     setRootLoading(true);
     try {
       const result = await fetchRootFromAI(formData.word);
-      if (result && result.changed) { setFormData((prev) => ({ ...prev, word: result.root })); }
+      if (result && result.changed) {
+        setFormData((prev) => ({ ...prev, word: result.root }));
+      }
     } catch (e) { console.error(e); } finally { setRootLoading(false); }
   };
 
@@ -86,7 +90,9 @@ export default function AddWord() {
     try {
       const data = await fetchWordAnalysisFromAI(formData.word);
       if (data) {
-        const safeDefinitions = Array.isArray(data.definitions) ? data.definitions.map((d) => ({ type: d.type || "noun", meaning: d.meaning || "", engExplanation: d.engExplanation || "" })) : [{ type: "noun", meaning: "", engExplanation: "" }];
+        const safeDefinitions = Array.isArray(data.definitions)
+          ? data.definitions.map((d) => ({ type: d.type || "noun", meaning: d.meaning || "", engExplanation: d.engExplanation || "" }))
+          : [{ type: "noun", meaning: "", engExplanation: "" }];
         const safeTags = Array.isArray(data.tags) ? data.tags : [];
         setFormData((prev) => ({ ...prev, ...data, tags: safeTags, definitions: safeDefinitions }));
       } else { alert("Yapay zeka verisi alınamadı."); }
@@ -105,24 +111,21 @@ export default function AddWord() {
       await handleUpdateWord(editingWord.id, formData);
       navigate(-1); 
     } else {
-      // YENİ: ADMIN KONTROLÜ
       if (isAdmin) {
-          // Admin ise SİSTEM KELİMESİ olarak kaydet
           const res = await handleSaveSystemWord(formData);
-          if(res.success) { alert("Sistem Kelimesi Olarak Eklendi!"); handleResetForm(); }
-          else alert(res.message);
+          if(res.success) { 
+              alert("Sistem Kelimesi Olarak Eklendi!"); 
+              navigate(-1); // YENİ: BAŞARILI OLUNCA GERİ DÖN
+          } else { alert(res.message); }
       } else {
-          // Normal kullanıcı ise KİŞİSEL KELİME olarak kaydet
           const res = await handleSaveNewWord(formData);
-          if (res.success) { alert("Başarıyla Eklendi!"); handleResetForm(); } 
-          else alert(res.message);
+          if (res.success) { 
+              alert("Başarıyla Eklendi!"); 
+              navigate(-1); // YENİ: BAŞARILI OLUNCA GERİ DÖN
+          } else { alert(res.message); }
       }
     }
     setSaving(false);
-  };
-
-  const handleResetForm = () => {
-      setFormData({ word: "", tags: [], plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "", definitions: [{ type: "noun", meaning: "", engExplanation: "" }], sentence: "" });
   };
 
   const addDefinition = () => setFormData((p) => ({ ...p, definitions: [...p.definitions, { type: "noun", meaning: "", engExplanation: "" }] }));
@@ -147,12 +150,8 @@ export default function AddWord() {
             <label className="block text-sm font-medium text-slate-700 mb-1">Kelime</label>
             <div className="flex gap-2">
               <input value={formData.word} onChange={(e) => setFormData({ ...formData, word: e.target.value })} className="flex-1 p-3 border border-slate-200 rounded-xl font-bold outline-none focus:border-indigo-500" placeholder="Örn: Run" autoFocus />
-              <button type="button" onClick={handleConvertToRoot} disabled={rootLoading || !formData.word} className="bg-orange-100 hover:bg-orange-200 text-orange-600 p-3 rounded-xl transition-colors" title="Kök Bul">
-                {rootLoading ? <Loader2 className="animate-spin w-5 h-5" /> : <Wand2 className="w-5 h-5" />}
-              </button>
-              <button type="button" onClick={handleAIFill} disabled={aiLoading || !formData.word} className="bg-purple-600 hover:bg-purple-700 text-white px-3 rounded-xl transition-colors" title="AI Doldur">
-                {aiLoading ? <Loader2 className="animate-spin w-5 h-5" /> : <Brain className="w-5 h-5" />}
-              </button>
+              <button type="button" onClick={handleConvertToRoot} disabled={rootLoading || !formData.word} className="bg-orange-100 hover:bg-orange-200 text-orange-600 p-3 rounded-xl transition-colors" title="Kök Bul">{rootLoading ? <Loader2 className="animate-spin w-5 h-5" /> : <Wand2 className="w-5 h-5" />}</button>
+              <button type="button" onClick={handleAIFill} disabled={aiLoading || !formData.word} className="bg-purple-600 hover:bg-purple-700 text-white px-3 rounded-xl transition-colors" title="AI Doldur">{aiLoading ? <Loader2 className="animate-spin w-5 h-5" /> : <Brain className="w-5 h-5" />}</button>
             </div>
           </div>
 
