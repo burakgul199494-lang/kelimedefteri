@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useData } from "../context/DataContext";
 import { useNavigate } from "react-router-dom";
-import { X, Trophy, Volume2, Languages, Loader2, ArrowRight, AlertCircle, CheckCircle2, Target } from "lucide-react"; // Target EKLENDİ
+import { X, Trophy, Volume2, Languages, Loader2, ArrowRight, AlertCircle, CheckCircle2, Target, HelpCircle } from "lucide-react";
 import { translateTextWithAI } from "../services/aiService";
 
 export default function WritingGame() {
@@ -47,7 +47,7 @@ export default function WritingGame() {
     });
 
     if (pool.length === 0) {
-        alert("Şu an çalışılacak aktif kelime yok. Kelimeler dinlenmede veya hepsi öğrenildi.");
+        alert("Şu an çalışılacak aktif kelime yok.");
         navigate("/");
         return;
     }
@@ -73,26 +73,36 @@ export default function WritingGame() {
     setLoadingHint(false);
   };
 
-  // --- YENİ: ERKEN BİTİRME FONKSİYONU ---
+  // --- YENİ: PES ET / CEVABI GÖSTER ---
+  const handleGiveUp = () => {
+      setFeedback("revealed"); // Cevabı aç moduna geç
+      setUserInput(currentWord.word); // Doğrusunu kutuya yaz
+      // Puan ekleme YOK (0 puan)
+  };
+
   const handleQuitEarly = () => {
-      if (score > 0) {
-          addScore(score); // Mevcut puanı kaydet
-      }
-      setGameStatus("finished"); // Bitiş ekranına at
+      if (score > 0) addScore(score);
+      setGameStatus("finished");
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (feedback === "correct" || feedback === "revealed") { nextQuestion(); return; }
+    
+    // Eğer zaten cevap açıldıysa "Sıradaki" işlevi görsün
+    if (feedback === "correct" || feedback === "revealed") { 
+        nextQuestion(); 
+        return; 
+    }
+
+    // Boşsa işlem yapma
+    if (!userInput.trim()) return;
 
     const correctWord = currentWord.word.toLowerCase().trim();
     const userWord = userInput.toLowerCase().trim();
 
-    if (!userWord) return;
-
     if (userWord === correctWord) {
         setFeedback("correct"); speak(currentWord.word);
-        setScore(s => s + (attempts === 0 ? 5 : 2)); // 5 veya 2 Puan
+        setScore(s => s + (attempts === 0 ? 5 : 2));
     } else {
         if (attempts === 0) {
             setFeedback("wrong"); setAttempts(1); inputRef.current?.select();
@@ -133,6 +143,7 @@ export default function WritingGame() {
   if (gameStatus === "loading") return <div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin text-purple-600"/></div>;
 
   const progress = ((currentIndex + 1) / questions.length) * 100;
+  const isRoundOver = feedback === "correct" || feedback === "revealed"; // Tur bitti mi?
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center p-4">
@@ -154,17 +165,53 @@ export default function WritingGame() {
                     {hintTranslation && <div className="mt-2 pt-2 border-t border-slate-200 text-indigo-700 font-medium text-xs">TR: {hintTranslation}</div>}
                 </div>
              )}
+             
              <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="relative">
-                    <input ref={inputRef} type="text" value={userInput} onChange={(e) => setUserInput(e.target.value)} disabled={feedback === "correct" || feedback === "revealed"} className={`w-full p-4 text-center text-xl font-bold border-2 rounded-2xl outline-none transition-colors ${feedback === "correct" ? "border-green-500 bg-green-50 text-green-700" : feedback === "wrong" ? "border-red-300 bg-red-50 text-red-700" : feedback === "revealed" ? "border-red-500 bg-red-100 text-red-800" : "border-slate-200 focus:border-purple-500 focus:bg-purple-50"}`} placeholder="İngilizcesini yaz..." autoComplete="off" autoCorrect="off" spellCheck="false"/>
+                    <input 
+                        ref={inputRef} 
+                        type="text" 
+                        value={userInput} 
+                        onChange={(e) => setUserInput(e.target.value)} 
+                        disabled={isRoundOver} 
+                        className={`w-full p-4 text-center text-xl font-bold border-2 rounded-2xl outline-none transition-colors ${feedback === "correct" ? "border-green-500 bg-green-50 text-green-700" : feedback === "wrong" ? "border-red-300 bg-red-50 text-red-700" : feedback === "revealed" ? "border-red-500 bg-red-100 text-red-800" : "border-slate-200 focus:border-purple-500 focus:bg-purple-50"}`} 
+                        placeholder="İngilizcesini yaz..." 
+                        autoComplete="off" autoCorrect="off" spellCheck="false"
+                    />
                     <div className="absolute right-4 top-4">{feedback === "correct" && <CheckCircle2 className="w-6 h-6 text-green-500"/>}{feedback === "wrong" && <AlertCircle className="w-6 h-6 text-red-500"/>}{feedback === "revealed" && <X className="w-6 h-6 text-red-600"/>}</div>
                 </div>
-                <div className="h-6 text-sm font-bold">{feedback === "wrong" && <span className="text-red-500 flex items-center justify-center gap-1"><AlertCircle className="w-3 h-3"/> Yanlış! 1 hakkın kaldı.</span>}{feedback === "revealed" && <span className="text-red-600">Maalesef bilemedin. Doğru cevap buydu.</span>}{feedback === "correct" && <span className="text-green-600">Tebrikler! Doğru cevap.</span>}</div>
-                <button type="submit" className={`w-full py-4 rounded-2xl font-bold text-lg shadow-lg flex items-center justify-center gap-2 transition-transform active:scale-95 ${feedback === "correct" || feedback === "revealed" ? "bg-slate-800 text-white hover:bg-slate-900" : "bg-purple-600 text-white hover:bg-purple-700"}`}>{feedback === "correct" || feedback === "revealed" ? (<>Sıradaki <ArrowRight className="w-5 h-5"/></>) : ("Kontrol Et")}</button>
+                
+                <div className="h-6 text-sm font-bold">
+                    {feedback === "wrong" && <span className="text-red-500 flex items-center justify-center gap-1"><AlertCircle className="w-3 h-3"/> Yanlış! 1 hakkın kaldı.</span>}
+                    {feedback === "revealed" && <span className="text-red-600">Maalesef bilemedin. Doğru cevap buydu.</span>}
+                    {feedback === "correct" && <span className="text-green-600">Tebrikler! Doğru cevap.</span>}
+                </div>
+
+                {/* AKSİYON BUTONLARI */}
+                <div className="flex gap-3">
+                    {/* Bilmiyorum Butonu (Sadece cevap verilmemişse göster) */}
+                    {!isRoundOver && (
+                        <button 
+                            type="button" 
+                            onClick={handleGiveUp} 
+                            className="flex-1 py-4 bg-slate-100 text-slate-500 hover:bg-slate-200 rounded-2xl font-bold transition-colors flex items-center justify-center gap-2"
+                        >
+                            <HelpCircle className="w-5 h-5"/> Bilmiyorum
+                        </button>
+                    )}
+
+                    {/* Kontrol Et / Sıradaki Butonu */}
+                    <button 
+                        type="submit" 
+                        disabled={!isRoundOver && !userInput.trim()} // Cevap verilmediyse ve input boşsa pasif
+                        className={`flex-[2] py-4 rounded-2xl font-bold text-lg shadow-lg flex items-center justify-center gap-2 transition-transform active:scale-95 ${isRoundOver ? "bg-slate-800 text-white hover:bg-slate-900" : "bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"}`}
+                    >
+                        {isRoundOver ? (<>Sıradaki <ArrowRight className="w-5 h-5"/></>) : ("Kontrol Et")}
+                    </button>
+                </div>
              </form>
           </div>
 
-          {/* YENİ: BİTİR BUTONU */}
           <button onClick={handleQuitEarly} className="w-full mt-6 flex items-center justify-center gap-2 text-slate-400 hover:text-red-500 transition-colors text-sm font-medium mx-auto">
             <Target className="w-4 h-4"/> Bitir (Puanı Al ve Çık)
           </button>
