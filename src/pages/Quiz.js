@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useData } from "../context/DataContext";
 import { useNavigate } from "react-router-dom";
-import { X, Trophy, Volume2, Languages, Loader2 } from "lucide-react";
+import { X, Trophy, Volume2, Languages, Loader2, Target } from "lucide-react"; // Target EKLENDİ
 import { translateTextWithAI } from "../services/aiService";
 
 export default function Quiz() {
@@ -63,11 +63,18 @@ export default function Quiz() {
         setIndex(i => i + 1); setSelected(null); setIsAnswered(false);
       } else {
         setFinished(true);
-        // Son sorunun puanını da ekleyerek gönder
         const finalPoints = score + (option === questions[index].correct ? 5 : 0);
         addScore(finalPoints); 
       }
     }, 1000);
+  };
+
+  // --- YENİ: ERKEN BİTİRME FONKSİYONU ---
+  const handleQuitEarly = () => {
+      if (score > 0) {
+          addScore(score); // Mevcut puanı kaydet
+      }
+      setFinished(true); // Bitiş ekranına at
   };
 
   const handleTranslateHint = async () => {
@@ -149,6 +156,12 @@ export default function Quiz() {
                return <button key={i} onClick={()=>handleAnswer(opt)} disabled={isAnswered} className={cls}>{opt}</button>
             })}
           </div>
+
+          {/* YENİ: BİTİR BUTONU */}
+          <button onClick={handleQuitEarly} className="w-full mt-6 flex items-center justify-center gap-2 text-slate-400 hover:text-red-500 transition-colors text-sm font-medium mx-auto">
+            <Target className="w-4 h-4"/> Bitir (Puanı Al ve Çık)
+          </button>
+
        </div>
     </div>
   );
