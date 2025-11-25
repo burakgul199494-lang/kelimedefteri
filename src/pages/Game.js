@@ -17,6 +17,8 @@ export default function Game() {
   const [selectedTag, setSelectedTag] = useState(null);
   const [includeResting, setIncludeResting] = useState(false);
 
+  const POINTS_PER_CARD = 5; // Kart başına puan
+
   // --- ETİKETLERİ HESAPLA ---
   const tagStats = useMemo(() => {
     const all = getAllWords();
@@ -83,6 +85,7 @@ export default function Game() {
     }
   };
 
+  // --- KART KAYDIRMA MANTIĞI ---
   const handleSwipe = async (dir) => {
     if (currentIndex >= sessionWords.length) return;
     setSwipeDirection(dir);
@@ -100,12 +103,29 @@ export default function Game() {
       if (currentIndex + 1 < sessionWords.length) {
         setCurrentIndex(p => p + 1); setSwipeDirection(null);
       } else {
+        // OYUN TAMAMLANDI (Tüm kartlar bitti)
         setGameStage("summary"); setSwipeDirection(null);
-        addScore(100); // BÖLÜM BİTİNCE 100 PUAN
+        
+        // Puan Hesapla: Toplam Kelime * 5
+        const totalPoints = sessionWords.length * POINTS_PER_CARD;
+        if (totalPoints > 0) addScore(totalPoints);
       }
     }, 300);
   };
 
+  // --- ERKEN PES ETME (KAYDET VE ÇIK) ---
+  const handleQuitEarly = () => {
+      // O ana kadar geçilen kart sayısı * 5 Puan
+      // currentIndex: Şu anki kartın indeksi. (Örn: 5. karttaysak index 4'tür, yani 4 kart bitmiştir)
+      const pointsEarned = currentIndex * POINTS_PER_CARD;
+      
+      if (pointsEarned > 0) {
+          addScore(pointsEarned);
+      }
+      setGameStage("summary");
+  };
+
+  // --- ARAYÜZ ---
   if (gameStage === "selection") {
       return (
         <div className="min-h-screen bg-slate-50 p-6 flex flex-col items-center">
@@ -151,6 +171,7 @@ export default function Game() {
   }
 
   if (gameStage === "summary") {
+    // Özet Ekranı Mantığı (Aynı Kalıyor)
     const all = getAllWords();
     let filteredPool = all;
     if (selectedTag) filteredPool = all.filter(w => w.tags && w.tags.includes(selectedTag));
@@ -187,7 +208,7 @@ export default function Game() {
       <div className="bg-white shadow-sm p-4 z-10">
         <div className="max-w-md mx-auto">
           <div className="flex justify-between items-center mb-2">
-            <button onClick={() => setGameStage("summary")} className="text-slate-400 hover:text-slate-700"><X className="w-6 h-6"/></button>
+            <button onClick={handleQuitEarly} className="text-slate-400 hover:text-slate-700"><X className="w-6 h-6"/></button>
             <div className="flex items-center gap-2">
                 {selectedTag && <span className="text-[10px] bg-indigo-50 text-indigo-600 px-2 py-1 rounded-full font-bold border border-indigo-100">{selectedTag}</span>}
                 <span className="text-xs font-semibold bg-slate-100 text-slate-600 px-2 py-1 rounded-full">{currentIndex + 1} / {sessionWords.length}</span>
@@ -208,7 +229,7 @@ export default function Game() {
           <button onClick={() => handleSwipe("left")} disabled={!!swipeDirection} className="flex-1 bg-white border-2 border-orange-100 hover:bg-orange-50 text-orange-500 font-bold py-4 rounded-2xl shadow-sm flex flex-col items-center gap-1"><X className="w-6 h-6"/><span>Bilmiyorum</span></button>
           <button onClick={() => handleSwipe("right")} disabled={!!swipeDirection} className="flex-1 bg-white border-2 border-green-100 hover:bg-green-50 text-green-600 font-bold py-4 rounded-2xl shadow-sm flex flex-col items-center gap-1"><Check className="w-6 h-6"/><span>Biliyorum</span></button>
         </div>
-        <button onClick={() => setGameStage("summary")} className="mt-6 flex items-center justify-center gap-2 text-slate-400 hover:text-red-500 transition-colors text-sm font-medium mx-auto"><Target className="w-4 h-4"/> Bitir</button>
+        <button onClick={handleQuitEarly} className="mt-6 flex items-center justify-center gap-2 text-slate-400 hover:text-red-500 transition-colors text-sm font-medium mx-auto"><Target className="w-4 h-4"/> Bitir</button>
       </div>
     </div>
   );
