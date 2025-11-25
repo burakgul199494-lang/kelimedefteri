@@ -3,31 +3,16 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 const GEMINI_API_KEY = process.env.REACT_APP_GEMINI_API_KEY; 
 
 // --- SABİT ETİKET LİSTESİ ---
-// Yapay zeka SADECE bunlardan seçim yapacak.
 const PREDEFINED_TAGS = [
-  "Gündelik Yaşam",
-  "İş Hayatı",
-  "Eğitim",
-  "Seyahat",
-  "Yiyecek & İçecek",
-  "Hayvanlar",
-  "Doğa & Çevre",
-  "Sağlık",
-  "Teknoloji",
-  "Duygular",
-  "Spor",
-  "Sanat & Eğlence",
-  "Kıyafet & Moda",
-  "Ev & Aile",
-  "Zaman",
-  "Ulaşım",
-  "Sıfatlar",
-  "Fiiller",
-  "Diğer"
+  "Gündelik Yaşam", "İş Hayatı", "Eğitim", "Seyahat", "Yiyecek & İçecek",
+  "Hayvanlar", "Doğa & Çevre", "Sağlık", "Teknoloji", "Duygular",
+  "Spor", "Sanat & Eğlence", "Kıyafet & Moda", "Ev & Aile",
+  "Zaman", "Ulaşım", "Sıfatlar", "Fiiller", "Diğer"
 ];
 
 const cleanAndParseJSON = (text) => {
   try {
+    // Markdown temizliği (```json ... ```)
     let cleanText = text.replace(/```json/g, "").replace(/```/g, "").trim();
     const firstBrace = cleanText.indexOf("{");
     const lastBrace = cleanText.lastIndexOf("}");
@@ -37,37 +22,41 @@ const cleanAndParseJSON = (text) => {
     return JSON.parse(cleanText);
   } catch (e) {
     console.error("JSON Parse Hatası:", e);
+    console.log("Gelen Hatalı Veri:", text); // Hata ayıklama için
     return null; 
   }
 };
 
-// --- 1. KELİME ANALİZİ (SABİT ETİKETLİ) ---
+// --- 1. KELİME ANALİZİ (Fiil Çekimleri ve Kök Sorunu Çözüldü) ---
 export const fetchWordAnalysisFromAI = async (word) => {
   try {
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
     const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
     const prompt = `
-      You are a dictionary app helper. Analyze the English word: "${word}".
+      Analyze the English word: "${word}".
+      Return ONLY a valid JSON object. Do not write any introductory text.
       
-      IMPORTANT TASKS:
-      1. "definitions": Translate to Turkish (meaning) and give a simple English explanation.
-      2. "tags": Select 1 or 2 relevant categories for this word ONLY from this list: 
-         ${JSON.stringify(PREDEFINED_TAGS)}
-         - Do NOT invent new tags.
-         - If nothing fits perfectly, use "Diğer".
-         - If it is a verb, you can use "Fiiller".
+      Rules:
+      1. "definitions": Translate meaning to TURKISH. Explanation must be simple ENGLISH.
+      2. "tags": Select max 3 relevant tags from this list: ${JSON.stringify(PREDEFINED_TAGS)}.
+      3. Fill grammatical forms (v2, v3, plural etc.) if applicable. If not, leave empty string.
       
-      Return ONLY JSON. No markdown.
-      Structure:
+      JSON Structure:
       {
         "word": "${word}",
-        "plural": "", "v2": "", "v3": "", "vIng": "", "thirdPerson": "",
-        "advLy": "", "compEr": "", "superEst": "",
-        "tags": ["TagFromList"], 
-        "sentence": "Simple A2 level sentence.",
+        "plural": "plural form or empty",
+        "v2": "past form or empty",
+        "v3": "past participle or empty",
+        "vIng": "gerund or empty",
+        "thirdPerson": "he/she form or empty",
+        "advLy": "adverb form or empty",
+        "compEr": "comparative or empty",
+        "superEst": "superlative or empty",
+        "tags": ["Tag1", "Tag2"], 
+        "sentence": "A simple example sentence (A2 level).",
         "definitions": [
-          { "type": "noun/verb/etc", "meaning": "TR", "engExplanation": "EN" }
+          { "type": "noun/verb/adj", "meaning": "TURKISH MEANING", "engExplanation": "Simple definition in English" }
         ]
       }
     `;
@@ -88,8 +77,8 @@ export const fetchRootFromAI = async (word) => {
     const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
     const prompt = `
-      Find the dictionary root form (lemma) of english word: "${word}".
-      Return ONLY JSON: { "root": "base", "original": "${word}", "changed": true/false }
+      Find the lemma (dictionary root) of: "${word}".
+      Return JSON ONLY: { "root": "base_form", "original": "${word}", "changed": true/false }
     `;
 
     const result = await model.generateContent(prompt);
@@ -99,7 +88,7 @@ export const fetchRootFromAI = async (word) => {
   } catch (e) { return { root: word, changed: false }; }
 };
 
-// --- 3. CÜMLE ANALİZİ ---
+// --- 3. CÜMLE ANALİZİ (Gramer Kontrollü) ---
 export const fetchSentenceAnalysisFromAI = async (text) => {
   try {
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
@@ -109,29 +98,25 @@ export const fetchSentenceAnalysisFromAI = async (text) => {
     });
 
     const prompt = `
-      Act as a strict English grammar teacher for TURKISH students.
-      Analyze this text: "${text}"
+      Analyze this English text for a Turkish student: "${text}"
       
       Tasks:
-      1. Check for ANY grammatical errors.
-      2. Translate to Turkish naturally.
-      3. Identify the MAIN tense (Write TURKISH name).
-      4. Explain the sentence structure simply in bullet points.
-         - CRITICAL: The explanation MUST be in TURKISH.
-         - CRITICAL: Keep English words in single quotes.
+      1. Check grammar errors.
+      2. Translate to Turkish.
+      3. Identify Tense (In Turkish).
+      4. Explain structure simply in Turkish (bullet points). Keep English words in single quotes.
       5. Extract root words.
 
-      Return ONLY JSON.
-      Structure:
+      Return JSON ONLY:
       {
         "correction": {
-            "hasError": true/false, 
-            "corrected": "Corrected sentence here (or null)",
-            "explanation": "Explain the error in TURKISH"
+            "hasError": boolean, 
+            "corrected": "Corrected sentence or null",
+            "explanation": "Error explanation in Turkish"
         },
         "turkishTranslation": "Turkish translation",
-        "detectedTense": "Zaman Adı (Türkçe)",
-        "simplePoints": ["Türkçe açıklama 1", "Türkçe açıklama 2"],
+        "detectedTense": "Tense Name (TR)",
+        "simplePoints": ["Explanation 1", "Explanation 2"],
         "rootWords": ["word1", "word2"] 
       }
     `;
@@ -163,14 +148,14 @@ export const translateTextWithAI = async (text) => {
   try {
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
     const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-    const prompt = `Translate this English text to Turkish accurately. Return ONLY translation: "${text}"`;
+    const prompt = `Translate this English text to Turkish. Return ONLY the translation: "${text}"`;
     const result = await model.generateContent(prompt);
     const response = await result.response;
     return response.text().trim();
   } catch (e) { return "Çeviri yapılamadı."; }
 };
 
-// --- 5. OCR ---
+// --- 5. OCR (Resimden Yazı) ---
 export const extractTextFromImage = async (file) => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -180,7 +165,7 @@ export const extractTextFromImage = async (file) => {
         const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
         const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
         const result = await model.generateContent([
-          "Extract text clearly. No comments.",
+          "Extract all text from image. No comments.",
           { inlineData: { data: base64Data, mimeType: file.type } },
         ]);
         resolve(result.response.text().trim());
