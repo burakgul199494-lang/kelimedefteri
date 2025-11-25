@@ -10,7 +10,7 @@ const PREDEFINED_TAGS = [
   "Zaman", "Ulaşım", "Sıfatlar", "Fiiller", "Diğer"
 ];
 
-// --- GÜVENLİK AYARLARI (Engellemeyi Önlemek İçin) ---
+// --- GÜVENLİK AYARLARI (Maksimum İzin - Engeli Kaldırmak İçin) ---
 const safetySettings = [
   { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
   { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
@@ -18,8 +18,13 @@ const safetySettings = [
   { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
 ];
 
+// --- MODEL LİSTESİ (Sırayla denenecekler) ---
+// 2.0 Flash öncelikli, hata verirse 1.5 Flash, o da olmazsa 1.5 Pro
+const MODEL_FALLBACKS = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"];
+
 const cleanAndParseJSON = (text) => {
   try {
+    if (!text) return null;
     let cleanText = text.replace(/```json/g, "").replace(/```/g, "").trim();
     const firstBrace = cleanText.indexOf("{");
     const lastBrace = cleanText.lastIndexOf("}");
@@ -33,19 +38,48 @@ const cleanAndParseJSON = (text) => {
   }
 };
 
-// --- 1. KELİME ANALİZİ (Gemini 2.0) ---
-export const fetchWordAnalysisFromAI = async (word) => {
-  try {
+// --- YENİ: SAĞLAM İSTEK ATMA FONKSİYONU ---
+async function generateContentWithFallback(prompt, isJson = true, temperature = 0.7) {
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-    // 2.0 Flash modeline geri döndük
-    const model = genAI.getGenerativeModel({ 
-        model: "gemini-2.0-flash", 
-        safetySettings 
-    });
 
+    for (const modelName of MODEL_FALLBACKS) {
+        try {
+            const model = genAI.getGenerativeModel({ 
+                model: modelName, 
+                safetySettings, // Güvenlik ayarlarını her modele uygula
+                generationConfig: { temperature: temperature }
+            });
+
+            const result = await model.generateContent(prompt);
+            const response = await result.response;
+            
+            // BLOKAJ KONTROLÜ: Eğer güvenlik nedeniyle engellendiyse text() fonksiyonu hata fırlatır.
+            // Biz bunu try-catch ile yakalayıp bir sonraki modele geçiş bileti yapacağız.
+            const text = response.text(); 
+
+            if (isJson) {
+                const json = cleanAndParseJSON(text);
+                if (!json) throw new Error("JSON parse failed or empty response");
+                return json;
+            }
+
+            return text.trim();
+
+        } catch (error) {
+            console.warn(`⚠️ Model ${modelName} engellendi veya hata verdi. Yedek modele geçiliyor... (${error.message})`);
+            // Bu catch bloğu sayesinde döngü kırılmaz, bir sonraki modele geçer.
+        }
+    }
+    
+    console.error("❌ Tüm yapay zeka modelleri başarısız oldu.");
+    return null;
+}
+
+// --- 1. KELİME ANALİZİ ---
+export const fetchWordAnalysisFromAI = async (word) => {
     const prompt = `
       Analyze the English word: "${word}".
-      Return ONLY a valid JSON object. Do not write any introductory text.
+      Return ONLY a valid JSON object.
       
       Rules:
       1. "definitions": Translate meaning to TURKISH. Explanation must be simple ENGLISH.
@@ -63,7 +97,7 @@ export const fetchWordAnalysisFromAI = async (word) => {
         "advLy": "adverb form or empty",
         "compEr": "comparative or empty",
         "superEst": "superlative or empty",
-        "tags": ["Tag1", "Tag2"], 
+        "tags": ["Tag1"], 
         "sentence": "A simple example sentence (A2 level).",
         "definitions": [
           { "type": "noun/verb/adj", "meaning": "TURKISH MEANING", "engExplanation": "Simple definition in English" }
@@ -71,43 +105,22 @@ export const fetchWordAnalysisFromAI = async (word) => {
       }
     `;
 
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    return cleanAndParseJSON(response.text());
-  } catch (e) {
-    console.error("Word Analysis Error:", e);
-    return null;
-  }
+    return await generateContentWithFallback(prompt, true);
 };
 
 // --- 2. KÖK BULMA ---
 export const fetchRootFromAI = async (word) => {
-  try {
-    const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash", safetySettings });
-
     const prompt = `
-      Find the lemma (dictionary root) of: "${word}".
-      Return JSON ONLY: { "root": "base_form", "original": "${word}", "changed": true/false }
+      Task: Find the dictionary root (lemma) of the English word "${word}".
+      Return ONLY JSON format: { "root": "base_form", "original": "${word}", "changed": true_or_false }
     `;
-
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const data = cleanAndParseJSON(response.text());
+    
+    const data = await generateContentWithFallback(prompt, true, 0); // Temperature 0 (Robot Modu)
     return data || { root: word, changed: false };
-  } catch (e) { return { root: word, changed: false }; }
 };
 
 // --- 3. CÜMLE ANALİZİ ---
 export const fetchSentenceAnalysisFromAI = async (text) => {
-  try {
-    const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ 
-        model: "gemini-2.0-flash",
-        safetySettings,
-        generationConfig: { temperature: 0.2 } 
-    });
-
     const prompt = `
       Analyze this English text for a Turkish student: "${text}"
       
@@ -132,38 +145,14 @@ export const fetchSentenceAnalysisFromAI = async (text) => {
       }
     `;
 
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const data = cleanAndParseJSON(response.text());
-
-    if (data && data.rootWords && Array.isArray(data.rootWords)) {
-        const cleanList = data.rootWords
-            .map(w => {
-                let clean = w.toLowerCase();
-                clean = clean.replace(/'s$/, "");
-                clean = clean.replace(/[^a-z-]/g, "");
-                return clean;
-            })
-            .filter(w => w.length > 1 || w === 'a' || w === 'i');
-        data.rootWords = [...new Set(cleanList)];
-    }
-    return data;
-  } catch (e) {
-    console.error("Sentence Analysis Error:", e);
-    throw e;
-  }
+    return await generateContentWithFallback(prompt, true, 0.2);
 };
 
 // --- 4. HIZLI ÇEVİRİ ---
 export const translateTextWithAI = async (text) => {
-  try {
-    const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash", safetySettings });
     const prompt = `Translate this English text to Turkish. Return ONLY the translation: "${text}"`;
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    return response.text().trim();
-  } catch (e) { return "Çeviri yapılamadı."; }
+    const res = await generateContentWithFallback(prompt, false);
+    return res || "Çeviri yapılamadı.";
 };
 
 // --- 5. OCR ---
@@ -174,13 +163,18 @@ export const extractTextFromImage = async (file) => {
       try {
         const base64Data = reader.result.split(",")[1];
         const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash", safetySettings });
+        // OCR için 1.5 Flash daha iyi çalışıyor, onu öncelikli tutuyoruz.
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash", safetySettings });
+        
         const result = await model.generateContent([
           "Extract all text from image. No comments.",
           { inlineData: { data: base64Data, mimeType: file.type } },
         ]);
         resolve(result.response.text().trim());
-      } catch (e) { reject(e); }
+      } catch (e) { 
+          console.error("OCR Hatası:", e);
+          resolve(""); 
+      }
     };
     reader.readAsDataURL(file);
   });
