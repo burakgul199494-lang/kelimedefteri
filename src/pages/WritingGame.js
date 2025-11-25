@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useData } from "../context/DataContext";
 import { useNavigate } from "react-router-dom";
-import { X, Trophy, Volume2, Languages, Loader2, ArrowRight, AlertCircle, CheckCircle2 } from "lucide-react";
+import { X, Trophy, Volume2, Languages, Loader2, ArrowRight, AlertCircle, CheckCircle2, Target } from "lucide-react"; // Target EKLENDİ
 import { translateTextWithAI } from "../services/aiService";
 
 export default function WritingGame() {
@@ -73,6 +73,14 @@ export default function WritingGame() {
     setLoadingHint(false);
   };
 
+  // --- YENİ: ERKEN BİTİRME FONKSİYONU ---
+  const handleQuitEarly = () => {
+      if (score > 0) {
+          addScore(score); // Mevcut puanı kaydet
+      }
+      setGameStatus("finished"); // Bitiş ekranına at
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     if (feedback === "correct" || feedback === "revealed") { nextQuestion(); return; }
@@ -84,10 +92,7 @@ export default function WritingGame() {
 
     if (userWord === correctWord) {
         setFeedback("correct"); speak(currentWord.word);
-        // --- PUANLAMA GÜNCELLEMESİ ---
-        // İlk hak (attempts 0): 5 Puan
-        // İkinci hak (attempts 1): 2 Puan
-        setScore(s => s + (attempts === 0 ? 5 : 2));
+        setScore(s => s + (attempts === 0 ? 5 : 2)); // 5 veya 2 Puan
     } else {
         if (attempts === 0) {
             setFeedback("wrong"); setAttempts(1); inputRef.current?.select();
@@ -107,7 +112,6 @@ export default function WritingGame() {
   };
 
   if (gameStatus === "finished") {
-    // Maksimum puanı da güncelledik (20 soru * 5 puan = 100)
     const maxScore = questions.length * 5;
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
@@ -159,6 +163,12 @@ export default function WritingGame() {
                 <button type="submit" className={`w-full py-4 rounded-2xl font-bold text-lg shadow-lg flex items-center justify-center gap-2 transition-transform active:scale-95 ${feedback === "correct" || feedback === "revealed" ? "bg-slate-800 text-white hover:bg-slate-900" : "bg-purple-600 text-white hover:bg-purple-700"}`}>{feedback === "correct" || feedback === "revealed" ? (<>Sıradaki <ArrowRight className="w-5 h-5"/></>) : ("Kontrol Et")}</button>
              </form>
           </div>
+
+          {/* YENİ: BİTİR BUTONU */}
+          <button onClick={handleQuitEarly} className="w-full mt-6 flex items-center justify-center gap-2 text-slate-400 hover:text-red-500 transition-colors text-sm font-medium mx-auto">
+            <Target className="w-4 h-4"/> Bitir (Puanı Al ve Çık)
+          </button>
+
        </div>
     </div>
   );
