@@ -3,7 +3,6 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 // API KEY
 const GEMINI_API_KEY = process.env.REACT_APP_GEMINI_API_KEY; 
 
-// --- ORTAK JSON TEMİZLEME FONKSİYONU ---
 const cleanAndParseJSON = (text) => {
   try {
     let cleanText = text.replace(/```json/g, "").replace(/```/g, "").trim();
@@ -70,9 +69,7 @@ export const fetchRootFromAI = async (word) => {
     const response = await result.response;
     const data = cleanAndParseJSON(response.text());
     return data || { root: word, changed: false };
-  } catch (e) { 
-      return { root: word, changed: false }; 
-  }
+  } catch (e) { return { root: word, changed: false }; }
 };
 
 // --- 3. CÜMLE ANALİZİ (GÜNCELLENDİ: TÜRKÇE ZORLAMASI) ---
@@ -143,9 +140,7 @@ export const translateTextWithAI = async (text) => {
     const result = await model.generateContent(prompt);
     const response = await result.response;
     return response.text().trim();
-  } catch (e) { 
-      return "Çeviri yapılamadı."; 
-  }
+  } catch (e) { return "Çeviri yapılamadı."; }
 };
 
 // --- 5. OCR ---
@@ -167,3 +162,4 @@ export const extractTextFromImage = async (file) => {
     reader.readAsDataURL(file);
   });
 };
+
