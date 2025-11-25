@@ -10,14 +10,13 @@ const PREDEFINED_TAGS = [
   "Zaman", "Ulaşım", "Sıfatlar", "Fiiller", "Diğer"
 ];
 
-// --- JSON TEMİZLEME VE PARSE ---
+// --- GÜVENLİ JSON PARSE ---
 const cleanAndParseJSON = (text) => {
   try {
     if (!text) return null;
     // Markdown temizliği
     let cleanText = text.replace(/```json/g, "").replace(/```/g, "").trim();
     
-    // En dıştaki süslü parantezleri bul
     const firstBrace = cleanText.indexOf("{");
     const lastBrace = cleanText.lastIndexOf("}");
     
@@ -25,31 +24,33 @@ const cleanAndParseJSON = (text) => {
       cleanText = cleanText.substring(firstBrace, lastBrace + 1);
     }
 
-    // Bazı durumlarda AI tırnakları kaçırmayı unutursa diye basit düzeltme (Opsiyonel)
     return JSON.parse(cleanText);
   } catch (e) {
     console.error("JSON Parse Hatası:", e);
-    console.log("Hatalı Gelen Metin:", text); // Konsola hatalı metni basar ki görelim
     return null; 
   }
 };
 
-// --- 1. KELİME ANALİZİ ---
+// --- 1. KELİME ANALİZİ (V2-V3 ZORLAMASI EKLENDİ) ---
 export const fetchWordAnalysisFromAI = async (word) => {
   try {
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
     const model = genAI.getGenerativeModel({ 
         model: "gemini-2.0-flash",
-        generationConfig: { responseMimeType: "application/json" } // JSON ZORLAMASI
+        generationConfig: { responseMimeType: "application/json" }
     });
 
     const prompt = `
-      Analyze the English word: "${word}".
+      Act as a comprehensive dictionary. Analyze the English word: "${word}".
       
-      Rules:
+      CRITICAL RULES:
       1. "definitions": Meaning MUST be TURKISH. Explanation MUST be simple ENGLISH.
       2. "tags": Select max 3 tags from: ${JSON.stringify(PREDEFINED_TAGS)}.
-      3. Fill grammar forms (v2, v3 etc).
+      3. GRAMMAR FORMS (Fill these carefully):
+         - IF VERB: You MUST provide v2 (past), v3 (participle), vIng (gerund), thirdPerson.
+         - IF NOUN: You MUST provide plural.
+         - IF ADJECTIVE: You MUST provide advLy, compEr, superEst.
+         - If a form does not exist, use empty string "".
       
       Return JSON Structure:
       {
@@ -63,7 +64,7 @@ export const fetchWordAnalysisFromAI = async (word) => {
     `;
 
     const result = await model.generateContent(prompt);
-    return JSON.parse(result.response.text()); // Direkt Parse (MimeType sayesinde)
+    return cleanAndParseJSON(result.response.text());
   } catch (e) {
     console.error("Word Analysis Error:", e);
     return null;
@@ -82,20 +83,19 @@ export const fetchRootFromAI = async (word) => {
     const prompt = `Find the lemma of "${word}". Return JSON: { "root": "base", "original": "${word}", "changed": true/false }`;
 
     const result = await model.generateContent(prompt);
-    return JSON.parse(result.response.text());
+    return cleanAndParseJSON(result.response.text());
   } catch (e) { return { root: word, changed: false }; }
 };
 
-// --- 3. CÜMLE ANALİZİ (GÜNCELLENDİ: UZUN CÜMLE FİKSİ) ---
+// --- 3. CÜMLE ANALİZİ (UZUN CÜMLE GARANTİSİ) ---
 export const fetchSentenceAnalysisFromAI = async (text) => {
   try {
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
     const model = genAI.getGenerativeModel({ 
         model: "gemini-2.0-flash",
-        // BU AYAR ÇOK ÖNEMLİ: Yapay zekayı JSON formatında çıktı vermeye zorlar.
         generationConfig: { 
             responseMimeType: "application/json",
-            temperature: 0.1 // Düşük sıcaklık = Daha kararlı yapı
+            temperature: 0.1
         } 
     });
 
@@ -103,13 +103,13 @@ export const fetchSentenceAnalysisFromAI = async (text) => {
       Analyze this English text for a Turkish student: "${text}"
       
       Tasks:
-      1. Check grammar errors strictly.
+      1. Check grammar errors.
       2. Translate to Turkish.
       3. Identify Tense.
       4. Explain structure in Turkish (bullet points).
       5. Extract root words.
 
-      JSON Structure:
+      Return JSON Structure:
       {
         "correction": {
             "hasError": false, 
@@ -124,11 +124,12 @@ export const fetchSentenceAnalysisFromAI = async (text) => {
     `;
 
     const result = await model.generateContent(prompt);
-    const rawText = result.response.text();
-    const data = JSON.parse(rawText); // Temizlemeye gerek yok, direkt parse et.
+    const data = cleanAndParseJSON(result.response.text());
 
-    // Root Words Temizliği (Eski koddan korundu)
-    if (data && data.rootWords && Array.isArray(data.rootWords)) {
+    // Veri boş geldiyse (Hata durumu)
+    if (!data) throw new Error("AI returned empty data");
+
+    if (data.rootWords && Array.isArray(data.rootWords)) {
         const cleanList = data.rootWords
             .map(w => {
                 let clean = w.toLowerCase();
@@ -150,8 +151,17 @@ export const fetchSentenceAnalysisFromAI = async (text) => {
 export const translateTextWithAI = async (text) => {
   try {
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-    const prompt = `Translate this English text to Turkish. Return ONLY the translation string: "${text}"`;
+    const model = genAI.getGenerativeModel({ 
+        model: "gemini-2.0-flash",
+        generationConfig: { temperature: 0 } 
+    });
+    
+    const prompt = `
+      Task: Translate the following English text to Turkish.
+      Input: "${text}"
+      Constraints: Return ONLY the Turkish translation string. No JSON, no notes.
+    `;
+    
     const result = await model.generateContent(prompt);
     return result.response.text().trim();
   } catch (e) { return "Çeviri yapılamadı."; }
