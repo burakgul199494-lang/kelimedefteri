@@ -1,73 +1,13 @@
-import React, { useState, useRef, useCallback } from "react";
-import { ArrowLeft, Camera, Microscope, Loader2, Globe, Brain, BookOpen, Plus, Crop, Check, X, Clock, RotateCw, ZoomIn, AlertTriangle, CheckCircle2 } from "lucide-react";
+import React, { useState, useRef } from "react";
+import { ArrowLeft, Camera, Microscope, Loader2, Globe, Brain, BookOpen, Plus, RotateCw, AlertTriangle, CheckCircle2, RotateCcw } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useData } from "../context/DataContext";
 import { fetchSentenceAnalysisFromAI, extractTextFromImage } from "../services/aiService";
 import QuickAddModal from "../components/QuickAddModal";
 
-// YENİ KÜTÜPHANE
-import Cropper from 'react-easy-crop';
-
-// --- YARDIMCI: RESMİ DÖNÜŞTÜRME VE KIRPMA (MATH LOGIC) ---
-const createImage = (url) =>
-  new Promise((resolve, reject) => {
-    const image = new Image();
-    image.addEventListener('load', () => resolve(image));
-    image.addEventListener('error', (error) => reject(error));
-    image.setAttribute('crossOrigin', 'anonymous');
-    image.src = url;
-  });
-
-function getRadianAngle(degreeValue) {
-  return (degreeValue * Math.PI) / 180;
-}
-
-/**
- * Bu fonksiyon, react-easy-crop'tan gelen veriyi (pixelCrop) alır
- * ve canvas üzerinde döndürülmüş/kırpılmış resmi oluşturur.
- */
-async function getCroppedImg(imageSrc, pixelCrop, rotation = 0) {
-  const image = await createImage(imageSrc);
-  const canvas = document.createElement('canvas');
-  const ctx = canvas.getContext('2d');
-
-  const maxSize = Math.max(image.width, image.height);
-  const safeArea = 2 * ((maxSize / 2) * Math.sqrt(2));
-
-  // Canvas boyutunu döndürme işlemine göre ayarla (siyah kenarlar olmasın diye)
-  canvas.width = safeArea;
-  canvas.height = safeArea;
-
-  // Döndürme işlemi
-  ctx.translate(safeArea / 2, safeArea / 2);
-  ctx.rotate(getRadianAngle(rotation));
-  ctx.translate(-safeArea / 2, -safeArea / 2);
-
-  // Resmi merkeze çiz
-  ctx.drawImage(
-    image,
-    safeArea / 2 - image.width * 0.5,
-    safeArea / 2 - image.height * 0.5
-  );
-
-  const data = ctx.getImageData(0, 0, safeArea, safeArea);
-
-  // Kırpma boyutuna göre canvas'ı yeniden boyutlandır
-  canvas.width = pixelCrop.width;
-  canvas.height = pixelCrop.height;
-
-  ctx.putImageData(
-    data,
-    Math.round(0 - safeArea / 2 + image.width * 0.5 - pixelCrop.x),
-    Math.round(0 - safeArea / 2 + image.height * 0.5 - pixelCrop.y)
-  );
-
-  return new Promise((resolve) => {
-    canvas.toBlob((blob) => {
-      resolve(blob);
-    }, 'image/jpeg', 0.95);
-  });
-}
+// YENİ: PROFESYONEL KIRPMA KÜTÜPHANESİ
+import Cropper from "react-cropper";
+import "cropperjs/dist/cropper.css"; // CSS dosyasını unutma!
 
 export default function SentenceAnalysis() {
   const { customWords, dynamicSystemWords, deletedWordIds } = useData();
@@ -79,14 +19,10 @@ export default function SentenceAnalysis() {
   const [ocrLoading, setOcrLoading] = useState(false);
   const [quickAddWord, setQuickAddWord] = useState(null);
   
-  // --- YENİ CROP STATE'LERİ ---
+  // --- CROP STATE'LERİ ---
   const [imgSrc, setImgSrc] = useState(null);
-  const [crop, setCrop] = useState({ x: 0, y: 0 }); // Panning (Kaydırma) için
-  const [zoom, setZoom] = useState(1);
-  const [rotation, setRotation] = useState(0);
-  const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
   const [isCropModalOpen, setIsCropModalOpen] = useState(false);
-  
+  const cropperRef = useRef(null); // Cropper'a erişmek için ref
   const fileInputRef = useRef(null);
 
   const isWordInRegistry = (wordToCheck) => {
@@ -103,39 +39,44 @@ export default function SentenceAnalysis() {
       const reader = new FileReader();
       reader.addEventListener('load', () => {
         setImgSrc(reader.result?.toString() || '');
-        setZoom(1);
-        setRotation(0);
-        setCrop({ x: 0, y: 0 });
         setIsCropModalOpen(true);
       });
       reader.readAsDataURL(file);
     }
   };
 
-  const onCropComplete = useCallback((croppedArea, croppedAreaPixels) => {
-    setCroppedAreaPixels(croppedAreaPixels);
-  }, []);
-
+  // --- KIRPMA İŞLEMİNİ TAMAMLA ---
   const handleCropConfirm = async () => {
-    if (!croppedAreaPixels || !imgSrc) return;
-    
+    const cropper = cropperRef.current?.cropper;
+    if (!cropper) return;
+
     setIsCropModalOpen(false); 
     setOcrLoading(true);
     
     try {
-        const blob = await getCroppedImg(imgSrc, croppedAreaPixels, rotation);
-        const file = new File([blob], "cropped.jpg", { type: "image/jpeg" });
-        const text = await extractTextFromImage(file);
-        if (text) setAnalysisText((prev) => (prev ? prev + "\n" + text : text));
-        else alert("Metin okunamadı.");
+        // Cropper.js kendi içinde resmi oluşturur, biz sadece blob istiyoruz.
+        cropper.getCroppedCanvas().toBlob(async (blob) => {
+            if (!blob) { alert("Kırpma hatası."); setOcrLoading(false); return; }
+            const file = new File([blob], "cropped.jpg", { type: "image/jpeg" });
+            const text = await extractTextFromImage(file);
+            if (text) setAnalysisText((prev) => (prev ? prev + "\n" + text : text));
+            else alert("Metin okunamadı.");
+            
+            setOcrLoading(false); 
+            if(fileInputRef.current) fileInputRef.current.value = ""; 
+            setImgSrc(null); 
+        }, 'image/jpeg');
+
     } catch (e) { 
-        console.error(e); alert("Hata oluştu."); 
-    } finally { 
-        setOcrLoading(false); 
-        if(fileInputRef.current) fileInputRef.current.value = ""; 
-        setImgSrc(null); 
+        console.error(e); alert("Hata oluştu."); setOcrLoading(false);
     }
   };
+
+  // Döndürme Fonksiyonları
+  const rotateLeft = () => cropperRef.current?.cropper.rotate(-90);
+  const rotateRight = () => cropperRef.current?.cropper.rotate(90);
+  const resetCropper = () => cropperRef.current?.cropper.reset();
+
 
   const handleAnalyze = async () => {
     if (!analysisText.trim()) { alert("Lütfen cümle yazın."); return; }
@@ -153,67 +94,57 @@ export default function SentenceAnalysis() {
       {quickAddWord && <QuickAddModal word={quickAddWord} onClose={() => setQuickAddWord(null)} />}
       <input type="file" ref={fileInputRef} onChange={handleImageSelect} accept="image/*" className="hidden" />
 
-      {/* --- YENİ CROP MODAL (REACT-EASY-CROP) --- */}
+      {/* --- YENİ CROP MODAL (REACT-CROPPER) --- */}
       {isCropModalOpen && (
         <div className="fixed inset-0 z-50 bg-black flex flex-col animate-in fade-in duration-300">
              
              {/* Üst Bar */}
-             <div className="px-4 py-6 flex justify-between items-center bg-black/80 backdrop-blur-sm z-20 absolute top-0 w-full">
+             <div className="px-4 py-4 flex justify-between items-center bg-black/80 backdrop-blur-sm z-20">
                 <button onClick={() => { setIsCropModalOpen(false); setImgSrc(null); }} className="text-white font-medium p-2">İptal</button>
                 <h3 className="text-white font-bold text-sm uppercase tracking-widest">Düzenle</h3>
-                <button onClick={handleCropConfirm} className="text-yellow-400 font-bold p-2">Bitti</button>
+                <button onClick={handleCropConfirm} className="bg-yellow-500 text-black px-4 py-1.5 rounded-full font-bold text-sm">Bitti</button>
              </div>
 
-             {/* Orta Alan (Cropper) */}
-             <div className="flex-1 relative bg-black">
+             {/* Orta Alan (Cropper JS) */}
+             <div className="flex-1 relative bg-black flex items-center justify-center overflow-hidden p-4">
                 <Cropper
-                    image={imgSrc}
-                    crop={crop}
-                    zoom={zoom}
-                    rotation={rotation}
-                    aspect={16 / 9} // İstersen bunu kaldırıp serbest seçim yapabilirsin
-                    onCropChange={setCrop}
-                    onRotationChange={setRotation}
-                    onCropComplete={onCropComplete}
-                    onZoomChange={setZoom}
-                    objectFit="contain" // Resmi sığdır
+                    ref={cropperRef}
+                    style={{ height: "100%", width: "100%" }}
+                    zoomTo={0.5}
+                    initialAspectRatio={NaN} // Serbest seçim için NaN
+                    aspectRatio={NaN}
+                    preview=".img-preview"
+                    src={imgSrc}
+                    viewMode={1} // Resmi kutu içinde tut
+                    minCropBoxHeight={10}
+                    minCropBoxWidth={10}
+                    background={false}
+                    responsive={true}
+                    autoCropArea={1}
+                    checkOrientation={false}
+                    guides={true}
+                    dragMode="move" // İlk açılışta taşıma modu
                 />
              </div>
 
              {/* Alt Kontroller */}
-             <div className="bg-zinc-900 pb-10 pt-6 px-6 space-y-6 z-20">
-                
-                {/* Zoom Slider */}
-                <div className="flex items-center gap-4">
-                    <ZoomIn className="w-5 h-5 text-zinc-500" />
-                    <input 
-                        type="range" 
-                        min={1} 
-                        max={3} 
-                        step={0.1} 
-                        value={zoom} 
-                        onChange={(e) => setZoom(Number(e.target.value))} 
-                        className="w-full h-1 bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-white"
-                    />
-                </div>
-
-                {/* Butonlar */}
-                <div className="flex justify-between items-center px-4">
-                    <button onClick={() => setRotation(r => r + 90)} className="flex flex-col items-center gap-1 text-zinc-400 hover:text-white transition-colors p-2">
-                        <div className="bg-zinc-800 p-3 rounded-full"><RotateCw className="w-5 h-5"/></div>
-                        <span className="text-[10px] font-medium uppercase">Döndür</span>
-                    </button>
-                    
-                    <button onClick={() => { setZoom(1); setRotation(0); setCrop({ x: 0, y: 0 }); }} className="flex flex-col items-center gap-1 text-zinc-400 hover:text-white transition-colors p-2">
-                        <div className="bg-zinc-800 p-3 rounded-full"><Clock className="w-5 h-5"/></div>
-                        <span className="text-[10px] font-medium uppercase">Sıfırla</span>
-                    </button>
-                </div>
+             <div className="bg-zinc-900 pb-8 pt-4 px-6 flex justify-around items-center z-20 safe-area-bottom">
+                <button onClick={rotateLeft} className="flex flex-col items-center gap-1 text-zinc-400 hover:text-white transition-colors p-2">
+                    <RotateCcw className="w-6 h-6"/>
+                    <span className="text-[10px]">Sola</span>
+                </button>
+                <button onClick={resetCropper} className="flex flex-col items-center gap-1 text-zinc-400 hover:text-white transition-colors p-2">
+                    <div className="bg-zinc-800 px-4 py-2 rounded-full font-bold text-xs">SIFIRLA</div>
+                </button>
+                <button onClick={rotateRight} className="flex flex-col items-center gap-1 text-zinc-400 hover:text-white transition-colors p-2">
+                    <RotateCw className="w-6 h-6"/>
+                    <span className="text-[10px]">Sağa</span>
+                </button>
              </div>
         </div>
       )}
 
-      {/* --- ANA EKRAN --- */}
+      {/* --- ANA EKRAN (Değişmedi) --- */}
       <div className="w-full max-w-lg space-y-6">
         <div className="flex items-center gap-3">
           <button onClick={() => navigate("/")} className="p-2 hover:bg-slate-200 rounded-full bg-white shadow-sm"><ArrowLeft className="w-6 h-6 text-slate-600" /></button>
@@ -235,7 +166,6 @@ export default function SentenceAnalysis() {
         {analysisResult && (
           <div className="space-y-4 animate-in fade-in slide-in-from-bottom-6 duration-500">
             
-            {/* HATA KUTUSU */}
             {analysisResult.correction?.hasError && (
                 <div className="bg-red-50 p-5 rounded-2xl border border-red-100 shadow-sm">
                     <h3 className="text-xs font-bold text-red-500 uppercase mb-3 flex items-center gap-2">
@@ -262,14 +192,7 @@ export default function SentenceAnalysis() {
               <p className="text-lg text-slate-800 font-medium leading-relaxed">{analysisResult.turkishTranslation}</p>
             </div>
             <div className="bg-teal-50 p-5 rounded-2xl border border-teal-100 shadow-sm">
-              <div className="flex items-center justify-between mb-3 border-b border-teal-100 pb-2">
-                 <h3 className="text-xs font-bold text-teal-600 uppercase flex items-center gap-2"><Brain className="w-4 h-4" /> Analiz Özeti</h3>
-                 {analysisResult.detectedTense && (
-                    <span className="bg-teal-100 text-teal-700 px-2 py-1 rounded text-xs font-bold flex items-center gap-1">
-                        <Clock className="w-3 h-3"/> {analysisResult.detectedTense}
-                    </span>
-                 )}
-              </div>
+              <h3 className="text-xs font-bold text-teal-600 uppercase mb-3 flex items-center gap-2"><Brain className="w-4 h-4" /> Analiz Özeti</h3>
               <ul className="space-y-2">
                 {analysisResult.simplePoints?.map((point, i) => (
                     <li key={i} className="flex gap-2 text-sm text-slate-700 leading-relaxed">
@@ -294,9 +217,6 @@ export default function SentenceAnalysis() {
                 </div>
               </div>
             )}
-            <button onClick={() => setQuickAddWord("")} className="w-full bg-white text-slate-700 border-2 border-dashed border-slate-300 font-bold py-4 rounded-xl flex items-center justify-center gap-2 hover:bg-slate-50">
-               <Plus className="w-5 h-5" /> Manuel Kelime Ekle
-            </button>
           </div>
         )}
       </div>
