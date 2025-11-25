@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from "react";
+import React, { useState, useRef } from "react";
 import {
   ArrowLeft,
   Camera,
@@ -8,7 +8,6 @@ import {
   Brain,
   BookOpen,
   Plus,
-  Check,
   X,
   Clock,
   RotateCw,
@@ -29,77 +28,9 @@ import {
 
 import QuickAddModal from "../components/QuickAddModal";
 
-// iOS tarzı Cropper
-import Cropper from "react-easy-crop";
-
-
-// --- iOS CROP HELPER ---
-const createImage = (url) =>
-  new Promise((resolve, reject) => {
-    const image = new Image();
-    image.onload = () => resolve(image);
-    image.onerror = (e) => reject(e);
-    image.crossOrigin = "anonymous";
-    image.src = url;
-  });
-
-const degToRad = (deg) => (deg * Math.PI) / 180;
-
-function getRotatedSize(width, height, rotationRad) {
-  return {
-    width:
-      Math.abs(Math.cos(rotationRad) * width) +
-      Math.abs(Math.sin(rotationRad) * height),
-    height:
-      Math.abs(Math.sin(rotationRad) * width) +
-      Math.abs(Math.cos(rotationRad) * height)
-  };
-}
-
-async function getCroppedImg(src, pixelCrop, rotation = 0) {
-  const image = await createImage(src);
-  const rotRad = degToRad(rotation);
-
-  const { width: bBoxWidth, height: bBoxHeight } = getRotatedSize(
-    image.width,
-    image.height,
-    rotRad
-  );
-
-  const tempCanvas = document.createElement("canvas");
-  const tctx = tempCanvas.getContext("2d");
-  tempCanvas.width = bBoxWidth;
-  tempCanvas.height = bBoxHeight;
-
-  tctx.translate(bBoxWidth / 2, bBoxHeight / 2);
-  tctx.rotate(rotRad);
-  tctx.drawImage(image, -image.width / 2, -image.height / 2);
-
-  const canvas = document.createElement("canvas");
-  const ctx = canvas.getContext("2d");
-  canvas.width = pixelCrop.width;
-  canvas.height = pixelCrop.height;
-
-  ctx.drawImage(
-    tempCanvas,
-    pixelCrop.x,
-    pixelCrop.y,
-    pixelCrop.width,
-    pixelCrop.height,
-    0,
-    0,
-    pixelCrop.width,
-    pixelCrop.height
-  );
-
-  return new Promise((resolve) => {
-    canvas.toBlob((blob) => resolve(blob), "image/jpeg", 0.95);
-  });
-}
-
-
-
-
+// 🚀 YENİ: iOS tarzı profesyonel cropper
+import Cropper from "react-cropper";
+import "cropperjs/dist/cropper.css";
 
 export default function SentenceAnalysis() {
   const { customWords, dynamicSystemWords, deletedWordIds } = useData();
@@ -108,23 +39,15 @@ export default function SentenceAnalysis() {
   const [analysisText, setAnalysisText] = useState("");
   const [analysisResult, setAnalysisResult] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+
   const [ocrLoading, setOcrLoading] = useState(false);
   const [quickAddWord, setQuickAddWord] = useState(null);
 
   const [imgSrc, setImgSrc] = useState("");
   const [isCropModalOpen, setIsCropModalOpen] = useState(false);
 
-  // crop states
-  const [crop, setCrop] = useState({ x: 0, y: 0 });
-  const [zoom, setZoom] = useState(1);
-  const [rotation, setRotation] = useState(0);
-  const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
-
+  const cropperRef = useRef(null);
   const fileInputRef = useRef(null);
-
-  const onCropComplete = useCallback((croppedArea, croppedAreaPixels) => {
-    setCroppedAreaPixels(croppedAreaPixels);
-  }, []);
 
   // Kelime sözlükte var mı kontrolü
   const isWordInRegistry = (wordToCheck) => {
@@ -148,57 +71,52 @@ export default function SentenceAnalysis() {
     return false;
   };
 
-
-
-  // resim seçme
+  // Fotoğraf seçme
   const handleImageSelect = (e) => {
-    if (e.target.files && e.target.files.length > 0) {
-      const file = e.target.files[0];
-      const reader = new FileReader();
-      reader.onload = () => {
-        setImgSrc(reader.result.toString());
-        setIsCropModalOpen(true);
-      };
-      reader.readAsDataURL(file);
-    }
+    if (!e.target.files?.length) return;
+
+    const file = e.target.files[0];
+    const reader = new FileReader();
+    reader.onload = () => {
+      setImgSrc(reader.result.toString());
+      setIsCropModalOpen(true);
+    };
+    reader.readAsDataURL(file);
   };
 
-  // kırpma onaylama
+  // Kırpma Onaylama
   const handleCropConfirm = async () => {
-    if (!croppedAreaPixels) {
-      alert("Lütfen alan seçin.");
-      return;
-    }
-
-    setIsCropModalOpen(false);
-    setOcrLoading(true);
-
     try {
-      const blob = await getCroppedImg(imgSrc, croppedAreaPixels, rotation);
-      const file = new File([blob], "cropped.jpg", { type: "image/jpeg" });
+      const cropper = cropperRef.current?.cropper;
+
+      const canvas = cropper.getCroppedCanvas({
+        imageSmoothingEnabled: true,
+        imageSmoothingQuality: "high"
+      });
+
+      const blob = await new Promise((resolve) =>
+        canvas.toBlob(resolve, "image/jpeg", 0.95)
+      );
+
+      const file = new File([blob], "crop.jpg", { type: "image/jpeg" });
+
+      setIsCropModalOpen(false);
+      setOcrLoading(true);
 
       const text = await extractTextFromImage(file);
 
       if (text) {
         setAnalysisText((prev) => (prev ? prev + "\n" + text : text));
-      } else {
-        alert("Metin okunamadı.");
       }
-    } catch (e) {
-      console.error(e);
-      alert("Hata oluştu.");
+    } catch (err) {
+      console.error(err);
+      alert("Kırpma sırasında hata oluştu.");
     } finally {
       setOcrLoading(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
       setImgSrc("");
-      setCroppedAreaPixels(null);
-      setCrop({ x: 0, y: 0 });
-      setZoom(1);
-      setRotation(0);
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
-
-
 
   // ANALİZ
   const handleAnalyze = async () => {
@@ -220,17 +138,15 @@ export default function SentenceAnalysis() {
     }
   };
 
-
-
-
-
   return (
     <div className="min-h-screen bg-slate-50 p-6 flex flex-col items-center relative">
 
+      {/* QUICK ADD MODAL */}
       {quickAddWord && (
         <QuickAddModal word={quickAddWord} onClose={() => setQuickAddWord(null)} />
       )}
 
+      {/* HIDDEN INPUT */}
       <input
         type="file"
         ref={fileInputRef}
@@ -239,13 +155,14 @@ export default function SentenceAnalysis() {
         className="hidden"
       />
 
-
-
-      {/* --- CROP MODAL --- */}
+      {/* ===========================================================
+          🚀🚀🚀   YENİ iOS TARZI CROP MODAL   🚀🚀🚀
+          =========================================================== */}
       {isCropModalOpen && (
         <div className="fixed inset-0 z-50 bg-black flex flex-col">
+
           {/* ÜST BAR */}
-          <div className="px-4 py-6 flex justify-between items-center bg-black/80 backdrop-blur-sm absolute top-0 w-full z-20">
+          <div className="px-4 py-6 flex justify-between items-center bg-black/70 backdrop-blur-md absolute top-0 w-full z-20">
             <button
               onClick={() => {
                 setIsCropModalOpen(false);
@@ -268,79 +185,45 @@ export default function SentenceAnalysis() {
             </button>
           </div>
 
-          {/* GÖRSEL */}
-          <div className="flex-1 flex items-center justify-center relative bg-black overflow-hidden">
-            {imgSrc && (
-              <Cropper
-                image={imgSrc}
-                crop={crop}
-                zoom={zoom}
-                rotation={rotation}
-                onCropChange={setCrop}
-                onZoomChange={setZoom}
-                onRotationChange={setRotation}
-                onCropComplete={onCropComplete}
-                zoomWithScroll={true}
-                restrictPosition={false}
-                showGrid={true}
-              />
-            )}
-          </div>
+          {/* CROP ALANI */}
+          <div className="flex-1 flex items-center justify-center overflow-hidden bg-black">
+            <Cropper
+              src={imgSrc}
+              ref={cropperRef}
+              style={{ height: "100%", width: "100%" }}
+              viewMode={1}
+              dragMode="move"
+              background={false}
+              responsive={true}
+              autoCropArea={0.8}
 
-          {/* ALT BAR */}
-          <div className="bg-zinc-900 pb-10 pt-6 px-6 space-y-6">
-            {/* ZOOM */}
-            <div className="flex items-center gap-4">
-              <ZoomIn className="w-5 h-5 text-zinc-500" />
-              <input
-                type="range"
-                min={1}
-                max={3}
-                step={0.1}
-                value={zoom}
-                onChange={(e) => setZoom(Number(e.target.value))}
-                className="w-full h-1 bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-white"
-              />
-            </div>
+              movable={true}
+              zoomable={true}
+              zoomOnTouch={true}
+              zoomOnWheel={true}
 
-            {/* BUTONLAR */}
-            <div className="flex justify-between items-center px-4">
-              <button
-                onClick={() => setRotation((p) => (p + 90) % 360)}
-                className="flex flex-col items-center gap-1 text-zinc-400 hover:text-white"
-              >
-                <div className="bg-zinc-800 p-3 rounded-full">
-                  <RotateCw className="w-5 h-5" />
-                </div>
-                <span className="text-[10px] uppercase">Döndür</span>
-              </button>
+              cropBoxMovable={true}
+              cropBoxResizable={true}
 
-              <button
-                onClick={() => {
-                  setZoom(1);
-                  setRotation(0);
-                  setCrop({ x: 0, y: 0 });
-                }}
-                className="flex flex-col items-center gap-1 text-zinc-400 hover:text-white"
-              >
-                <div className="bg-zinc-800 p-3 rounded-full">
-                  <Clock className="w-5 h-5" />
-                </div>
-                <span className="text-[10px] uppercase">Sıfırla</span>
-              </button>
-            </div>
+              minCropBoxWidth={50}
+              minCropBoxHeight={50}
+
+              guides={true}
+            />
           </div>
         </div>
       )}
 
+      {/* =========================================================== */}
 
 
 
 
 
-      {/* ---- SAYFA ---- */}
+      {/* --------------------------------- PAGE --------------------------------- */}
       <div className="w-full max-w-lg space-y-6">
 
+        {/* BACK + TITLE */}
         <div className="flex items-center gap-3">
           <button
             onClick={() => navigate("/")}
@@ -362,7 +245,11 @@ export default function SentenceAnalysis() {
             disabled={ocrLoading || isAnalyzing}
             className="w-full mb-3 bg-slate-100 hover:bg-slate-200 text-slate-600 py-2 rounded-xl text-sm font-bold flex items-center justify-center gap-2"
           >
-            {ocrLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
+            {ocrLoading ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Camera className="w-4 h-4" />
+            )}
             Fotoğraf Çek / Yükle
           </button>
 
@@ -388,13 +275,11 @@ export default function SentenceAnalysis() {
 
 
 
-
-
-        {/* ANALİZ SONUÇLARI */}
+        {/* --- ANALİZ SONUÇLARI --- */}
         {analysisResult && (
           <div className="space-y-6">
 
-            {/* --- GRAMMAR HATASI --- */}
+            {/* --- Hata Tespiti --- */}
             {analysisResult.correction?.hasError && (
               <div className="bg-red-50 p-5 rounded-2xl border border-red-200 shadow-sm">
                 <h3 className="text-xs font-bold text-red-600 uppercase mb-3 flex items-center gap-2">
@@ -420,11 +305,7 @@ export default function SentenceAnalysis() {
               </div>
             )}
 
-
-
-
-
-            {/* --- TÜRKÇE ÇEVİRİ --- */}
+            {/* --- Çeviri --- */}
             <div className="bg-indigo-50 p-5 rounded-2xl border border-indigo-200 shadow-sm">
               <h3 className="text-xs font-bold text-indigo-500 uppercase mb-2 flex items-center gap-2">
                 <Globe className="w-4 h-4" />
@@ -435,10 +316,7 @@ export default function SentenceAnalysis() {
               </p>
             </div>
 
-
-
-
-            {/* --- ANALİZ ÖZETİ --- */}
+            {/* --- Özet --- */}
             <div className="bg-teal-50 p-5 rounded-2xl border border-teal-200 shadow-sm">
               <div className="flex items-center justify-between mb-3 pb-2 border-b border-teal-200">
                 <h3 className="text-xs font-bold text-teal-600 uppercase flex items-center gap-2">
@@ -463,10 +341,7 @@ export default function SentenceAnalysis() {
               </ul>
             </div>
 
-
-
-
-            {/* --- USAGE ANALİZİ --- */}
+            {/* --- Yanlış Kullanım --- */}
             {analysisResult.usage?.hasMistake && (
               <div className="bg-orange-50 p-5 rounded-2xl border border-orange-200 shadow-sm">
                 <h3 className="text-xs font-bold text-orange-600 uppercase mb-3 flex items-center gap-2">
@@ -488,10 +363,7 @@ export default function SentenceAnalysis() {
               </div>
             )}
 
-
-
-
-            {/* --- CÜMLE YAPISI (SVO) --- */}
+            {/* --- Cümle Yapısı (SVO) --- */}
             {(analysisResult.structure.subject ||
               analysisResult.structure.verb ||
               analysisResult.structure.object) && (
@@ -530,10 +402,7 @@ export default function SentenceAnalysis() {
               </div>
             )}
 
-
-
-
-            {/* --- STİL ANALİZİ --- */}
+            {/* --- Stil Analizi --- */}
             {analysisResult.style?.hasIssue && (
               <div className="bg-purple-50 p-5 rounded-2xl border border-purple-200 shadow-sm">
                 <h3 className="text-xs font-bold text-purple-600 uppercase mb-3 flex items-center gap-2">
@@ -551,10 +420,7 @@ export default function SentenceAnalysis() {
               </div>
             )}
 
-
-
-
-            {/* --- KÖK KELİMELER (MEVCUT SİSTEMİN) --- */}
+            {/* --- Kök Kelimeler (Sözlük entegrasyonu bozulmadı) --- */}
             {analysisResult.rootWords?.length > 0 && (
               <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
                 <h3 className="text-xs font-bold text-slate-400 uppercase mb-3 flex items-center gap-2">
@@ -578,9 +444,7 @@ export default function SentenceAnalysis() {
                         }`}
                       >
                         {word}
-                        {!exists && (
-                          <Plus className="w-3 h-3 inline ml-1" />
-                        )}
+                        {!exists && <Plus className="w-3 h-3 inline ml-1" />}
                       </button>
                     );
                   })}
@@ -588,7 +452,7 @@ export default function SentenceAnalysis() {
               </div>
             )}
 
-            {/* --- MANUEL EKLE --- */}
+            {/* --- Manuel Ekle --- */}
             <button
               onClick={() => setQuickAddWord("")}
               className="w-full bg-white text-slate-700 border-2 border-dashed border-slate-300 font-bold py-4 rounded-xl flex items-center justify-center gap-2 hover:bg-slate-50"
