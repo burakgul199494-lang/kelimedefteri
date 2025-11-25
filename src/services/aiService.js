@@ -108,87 +108,69 @@ export const fetchRootFromAI = async (word) => {
 export const fetchSentenceAnalysisFromAI = async (text) => {
   try {
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({
-        model: "gemini-2.0-flash",
-        safetySettings,
-        generationConfig: { temperature: 0.0 } // TAM KARARLILIK
+    const model = genAI.getGenerativeModel({ 
+      model: "gemini-2.0-flash", 
+      safetySettings,
+      generationConfig: { temperature: 0.1 }
     });
 
     const prompt = `
-Act as an English teacher.
-Analyze the following full text EXACTLY as given:
+Act as a professional English teacher.
 
+IMPORTANT RULE:
+Always analyze the ORIGINAL ENGLISH sentence.
+Do NOT analyze the Turkish translation. The translation is ONLY for the user.
+
+Here is the original English text:
 "${text}"
 
-You MUST follow these steps:
+Your tasks:
 
-1) Translate the FULL text into Turkish.
-2) Detect grammar errors. If any, provide corrected version and explain the mistake in Turkish. If no error: hasError=false.
-3) Identify the tense of the main clause (Turkish).
-4) Provide simple bullet-point explanation of the sentence structure (Turkish).
-5) MOST IMPORTANT STEP:
-   - Extract EVERY SINGLE UNIQUE WORD from the text.
-   - Normalize each word (remove punctuation at start/end ONLY).
-   - Convert each word to its lemma/root form (strict).
-   - DO NOT SKIP ANY WORD.
-   - DO NOT SUMMARIZE OR GROUP WORDS.
-   - RETURN THE COMPLETE LIST.
+1) Translate the FULL text to Turkish.
+2) Detect grammar errors IN THE ORIGINAL ENGLISH SENTENCE.
+3) Provide the corrected English version.
+4) Explain the grammar error in Turkish (kısa ve net).
+5) Identify the tense used in the ORIGINAL English (only say it in Turkish).
+6) Provide a clear structural explanation (Türkçe maddeler halinde).
+7) Extract the ROOT words from the ORIGINAL English (sadece kökler).
 
-Return ONLY valid JSON with this structure:
-
+Return ONLY this JSON:
 {
   "correction": {
     "hasError": boolean,
-    "corrected": "string or null",
-    "explanation": "string or null"
+    "corrected": "Corrected English sentence",
+    "explanation": "Explanation in Turkish"
   },
-  "turkishTranslation": "string",
-  "detectedTense": "string",
-  "simplePoints": ["string", "string"],
-  "rootWords": ["word1", "word2", "word3"]
+  "turkishTranslation": "Full Turkish translation",
+  "detectedTense": "Zaman (TR)",
+  "simplePoints": ["Madde 1", "Madde 2"],
+  "rootWords": ["word1", "word2"]
 }
-    `;
+`;
 
     const result = await model.generateContent(prompt);
-    const rawData = cleanAndParseJSON(result.response.text());
+    const raw = cleanAndParseJSON(result.response.text());
 
     const safeData = {
       correction: {
-        hasError: rawData?.correction?.hasError || false,
-        corrected: rawData?.correction?.corrected || null,
-        explanation: rawData?.correction?.explanation || null
+        hasError: raw?.correction?.hasError || false,
+        corrected: raw?.correction?.corrected || null,
+        explanation: raw?.correction?.explanation || null
       },
-      turkishTranslation: rawData?.turkishTranslation || "Çeviri alınamadı.",
-      detectedTense: rawData?.detectedTense || "Belirsiz",
-      simplePoints: Array.isArray(rawData?.simplePoints) ? rawData.simplePoints : [],
-      rootWords: []
+      turkishTranslation: raw?.turkishTranslation || "",
+      detectedTense: raw?.detectedTense || "Belirsiz",
+      simplePoints: Array.isArray(raw?.simplePoints) ? raw.simplePoints : [],
+      rootWords: Array.isArray(raw?.rootWords) ? [...new Set(raw.rootWords)] : []
     };
-
-    // --- ROOT KELİME TEMİZLİĞİ (GÜÇLENDİRİLMİŞ) ---
-    if (rawData?.rootWords && Array.isArray(rawData.rootWords)) {
-      const cleaned = rawData.rootWords
-        .map(w => {
-          let clean = w.toLowerCase();
-
-          // İç yapıyı bozmadan sadece baş/son karakterleri temizle
-          clean = clean.replace(/^[^a-z']+|[^a-z']+$/g, "");
-
-          // Boşları at
-          return clean.trim();
-        })
-        .filter(w => w.length > 0);
-
-      // Tekrar kaldır
-      safeData.rootWords = [...new Set(cleaned)];
-    }
 
     return safeData;
 
   } catch (e) {
     console.error("Analiz Hatası:", e);
     return {
-      turkishTranslation: "Hata oluştu.",
       correction: { hasError: false },
+      turkishTranslation: "Hata oluştu.",
+      detectedTense: "Belirsiz",
       simplePoints: [],
       rootWords: []
     };
