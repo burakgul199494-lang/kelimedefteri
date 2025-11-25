@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from "@google/generative-ai";
 
 const GEMINI_API_KEY = process.env.REACT_APP_GEMINI_API_KEY; 
 
@@ -10,9 +10,16 @@ const PREDEFINED_TAGS = [
   "Zaman", "Ulaşım", "Sıfatlar", "Fiiller", "Diğer"
 ];
 
+// --- GÜVENLİK AYARLARI (Engellemeyi Önlemek İçin) ---
+const safetySettings = [
+  { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
+  { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
+  { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_NONE },
+  { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
+];
+
 const cleanAndParseJSON = (text) => {
   try {
-    // Markdown temizliği (```json ... ```)
     let cleanText = text.replace(/```json/g, "").replace(/```/g, "").trim();
     const firstBrace = cleanText.indexOf("{");
     const lastBrace = cleanText.lastIndexOf("}");
@@ -22,16 +29,19 @@ const cleanAndParseJSON = (text) => {
     return JSON.parse(cleanText);
   } catch (e) {
     console.error("JSON Parse Hatası:", e);
-    console.log("Gelen Hatalı Veri:", text); // Hata ayıklama için
     return null; 
   }
 };
 
-// --- 1. KELİME ANALİZİ (Fiil Çekimleri ve Kök Sorunu Çözüldü) ---
+// --- 1. KELİME ANALİZİ (Gemini 2.0) ---
 export const fetchWordAnalysisFromAI = async (word) => {
   try {
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    // 2.0 Flash modeline geri döndük
+    const model = genAI.getGenerativeModel({ 
+        model: "gemini-2.0-flash", 
+        safetySettings 
+    });
 
     const prompt = `
       Analyze the English word: "${word}".
@@ -39,7 +49,7 @@ export const fetchWordAnalysisFromAI = async (word) => {
       
       Rules:
       1. "definitions": Translate meaning to TURKISH. Explanation must be simple ENGLISH.
-      2. "tags": Select max 3 relevant tags from this list: ${JSON.stringify(PREDEFINED_TAGS)}.
+      2. "tags": Select max 3 relevant tags from this list: ${JSON.stringify(PREDEFINED_TAGS)}. If none fit, use "Diğer".
       3. Fill grammatical forms (v2, v3, plural etc.) if applicable. If not, leave empty string.
       
       JSON Structure:
@@ -74,7 +84,7 @@ export const fetchWordAnalysisFromAI = async (word) => {
 export const fetchRootFromAI = async (word) => {
   try {
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash", safetySettings });
 
     const prompt = `
       Find the lemma (dictionary root) of: "${word}".
@@ -88,12 +98,13 @@ export const fetchRootFromAI = async (word) => {
   } catch (e) { return { root: word, changed: false }; }
 };
 
-// --- 3. CÜMLE ANALİZİ (Gramer Kontrollü) ---
+// --- 3. CÜMLE ANALİZİ ---
 export const fetchSentenceAnalysisFromAI = async (text) => {
   try {
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
     const model = genAI.getGenerativeModel({ 
         model: "gemini-2.0-flash",
+        safetySettings,
         generationConfig: { temperature: 0.2 } 
     });
 
@@ -147,7 +158,7 @@ export const fetchSentenceAnalysisFromAI = async (text) => {
 export const translateTextWithAI = async (text) => {
   try {
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash", safetySettings });
     const prompt = `Translate this English text to Turkish. Return ONLY the translation: "${text}"`;
     const result = await model.generateContent(prompt);
     const response = await result.response;
@@ -155,7 +166,7 @@ export const translateTextWithAI = async (text) => {
   } catch (e) { return "Çeviri yapılamadı."; }
 };
 
-// --- 5. OCR (Resimden Yazı) ---
+// --- 5. OCR ---
 export const extractTextFromImage = async (file) => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -163,7 +174,7 @@ export const extractTextFromImage = async (file) => {
       try {
         const base64Data = reader.result.split(",")[1];
         const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash", safetySettings });
         const result = await model.generateContent([
           "Extract all text from image. No comments.",
           { inlineData: { data: base64Data, mimeType: file.type } },
