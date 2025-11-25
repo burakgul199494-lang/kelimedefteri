@@ -73,11 +73,9 @@ export default function WritingGame() {
     setLoadingHint(false);
   };
 
-  // --- YENİ: PES ET / CEVABI GÖSTER ---
   const handleGiveUp = () => {
-      setFeedback("revealed"); // Cevabı aç moduna geç
-      setUserInput(currentWord.word); // Doğrusunu kutuya yaz
-      // Puan ekleme YOK (0 puan)
+      setFeedback("revealed"); 
+      setUserInput(currentWord.word); 
   };
 
   const handleQuitEarly = () => {
@@ -88,26 +86,40 @@ export default function WritingGame() {
   const handleSubmit = (e) => {
     e.preventDefault();
     
-    // Eğer zaten cevap açıldıysa "Sıradaki" işlevi görsün
     if (feedback === "correct" || feedback === "revealed") { 
         nextQuestion(); 
         return; 
     }
 
-    // Boşsa işlem yapma
     if (!userInput.trim()) return;
 
-    const correctWord = currentWord.word.toLowerCase().trim();
-    const userWord = userInput.toLowerCase().trim();
+    const correctWord = currentWord.word.trim(); // Orijinal hali (Büyük/küçük harf koru)
+    const userWordLower = userInput.toLowerCase().trim();
+    const correctWordLower = correctWord.toLowerCase();
 
-    if (userWord === correctWord) {
-        setFeedback("correct"); speak(currentWord.word);
+    if (userWordLower === correctWordLower) {
+        // DOĞRU
+        setFeedback("correct"); 
+        speak(currentWord.word);
+        setUserInput(correctWord); // Ekranda düzgün hali görünsün (büyük/küçük harf)
         setScore(s => s + (attempts === 0 ? 5 : 2));
     } else {
+        // YANLIŞ
         if (attempts === 0) {
-            setFeedback("wrong"); setAttempts(1); inputRef.current?.select();
+            // İLK HATA: İPUCU VER
+            setFeedback("wrong"); 
+            setAttempts(1); 
+            
+            // --- YENİ ÖZELLİK: İLK HARFİ YAZDIR ---
+            const firstChar = correctWord.charAt(0); // İlk harfi al (Örn: 'A')
+            setUserInput(firstChar); // Inputa yaz
+            inputRef.current?.focus(); // Odaklan ki devamını yazsın
+            // --------------------------------------
+
         } else {
-            setFeedback("revealed"); setUserInput(currentWord.word);
+            // İKİNCİ HATA: PES
+            setFeedback("revealed"); 
+            setUserInput(currentWord.word);
         }
     }
   };
@@ -143,7 +155,7 @@ export default function WritingGame() {
   if (gameStatus === "loading") return <div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin text-purple-600"/></div>;
 
   const progress = ((currentIndex + 1) / questions.length) * 100;
-  const isRoundOver = feedback === "correct" || feedback === "revealed"; // Tur bitti mi?
+  const isRoundOver = feedback === "correct" || feedback === "revealed"; 
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center p-4">
@@ -182,30 +194,20 @@ export default function WritingGame() {
                 </div>
                 
                 <div className="h-6 text-sm font-bold">
-                    {feedback === "wrong" && <span className="text-red-500 flex items-center justify-center gap-1"><AlertCircle className="w-3 h-3"/> Yanlış! 1 hakkın kaldı.</span>}
+                    {/* YENİ: HATA MESAJINDA İPUCU BİLGİSİ */}
+                    {feedback === "wrong" && <span className="text-red-500 flex items-center justify-center gap-1"><AlertCircle className="w-3 h-3"/> İlk harfi senin için yazdım!</span>}
+                    
                     {feedback === "revealed" && <span className="text-red-600">Maalesef bilemedin. Doğru cevap buydu.</span>}
                     {feedback === "correct" && <span className="text-green-600">Tebrikler! Doğru cevap.</span>}
                 </div>
 
-                {/* AKSİYON BUTONLARI */}
                 <div className="flex gap-3">
-                    {/* Bilmiyorum Butonu (Sadece cevap verilmemişse göster) */}
                     {!isRoundOver && (
-                        <button 
-                            type="button" 
-                            onClick={handleGiveUp} 
-                            className="flex-1 py-4 bg-slate-100 text-slate-500 hover:bg-slate-200 rounded-2xl font-bold transition-colors flex items-center justify-center gap-2"
-                        >
+                        <button type="button" onClick={handleGiveUp} className="flex-1 py-4 bg-slate-100 text-slate-500 hover:bg-slate-200 rounded-2xl font-bold transition-colors flex items-center justify-center gap-2">
                             <HelpCircle className="w-5 h-5"/> Bilmiyorum
                         </button>
                     )}
-
-                    {/* Kontrol Et / Sıradaki Butonu */}
-                    <button 
-                        type="submit" 
-                        disabled={!isRoundOver && !userInput.trim()} // Cevap verilmediyse ve input boşsa pasif
-                        className={`flex-[2] py-4 rounded-2xl font-bold text-lg shadow-lg flex items-center justify-center gap-2 transition-transform active:scale-95 ${isRoundOver ? "bg-slate-800 text-white hover:bg-slate-900" : "bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"}`}
-                    >
+                    <button type="submit" disabled={!isRoundOver && !userInput.trim()} className={`flex-[2] py-4 rounded-2xl font-bold text-lg shadow-lg flex items-center justify-center gap-2 transition-transform active:scale-95 ${isRoundOver ? "bg-slate-800 text-white hover:bg-slate-900" : "bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"}`}>
                         {isRoundOver ? (<>Sıradaki <ArrowRight className="w-5 h-5"/></>) : ("Kontrol Et")}
                     </button>
                 </div>
