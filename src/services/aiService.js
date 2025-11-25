@@ -108,45 +108,54 @@ export const fetchRootFromAI = async (word) => {
 export const fetchSentenceAnalysisFromAI = async (text) => {
   try {
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ 
-      model: "gemini-2.0-flash", 
+    const model = genAI.getGenerativeModel({
+      model: "gemini-2.0-flash",
       safetySettings,
       generationConfig: { temperature: 0.1 }
     });
 
     const prompt = `
-Act as a professional English teacher.
+You are an expert English teacher and grammar specialist.
 
-IMPORTANT RULE:
-Always analyze the ORIGINAL ENGLISH sentence.
-Do NOT analyze the Turkish translation. The translation is ONLY for the user.
+IMPORTANT RULES (STRICT MODE):
+- Always analyze the ORIGINAL ENGLISH TEXT (never the Turkish translation).
+- Only mark hasError = true if the sentence has a REAL grammar mistake.
+- Do NOT mark stylistic improvements as errors.
+- When correcting, change ONLY what is necessary. Minimal correction rule.
+- Keep the meaning identical (no rephrasing, no adding/removing words).
+- Explanation MUST be in Turkish, short (1–2 sentence), simple and clear.
 
-Here is the original English text:
+Here is the ORIGINAL English text:
 "${text}"
 
-Your tasks:
+TASKS:
+1) Translate the FULL text into Turkish. (Only a translation)
+2) Check for grammar errors in the ORIGINAL English sentence.
+3) If there is a grammar error:
+     - hasError = true
+     - corrected = minimally corrected English sentence
+     - explanation = short Turkish explanation (max 2 sentence)
+4) If the English sentence is correct:
+     - hasError = false
+     - corrected = null
+     - explanation = null
+5) Identify the tense used in the ORIGINAL English sentence (output in Turkish only).
+6) Provide a short structural explanation (Türkçe maddeler halinde).
+7) Extract root/base forms of all English words (only English roots, lowercase).
 
-1) Translate the FULL text to Turkish.
-2) Detect grammar errors IN THE ORIGINAL ENGLISH SENTENCE.
-3) Provide the corrected English version.
-4) Explain the grammar error in Turkish (kısa ve net).
-5) Identify the tense used in the ORIGINAL English (only say it in Turkish).
-6) Provide a clear structural explanation (Türkçe maddeler halinde).
-7) Extract the ROOT words from the ORIGINAL English (sadece kökler).
-
-Return ONLY this JSON:
+RETURN ONLY THIS JSON EXACTLY:
 {
   "correction": {
     "hasError": boolean,
-    "corrected": "Corrected English sentence",
-    "explanation": "Explanation in Turkish"
+    "corrected": "Corrected English sentence or null",
+    "explanation": "Turkish explanation or null"
   },
   "turkishTranslation": "Full Turkish translation",
   "detectedTense": "Zaman (TR)",
   "simplePoints": ["Madde 1", "Madde 2"],
   "rootWords": ["word1", "word2"]
 }
-`;
+    `;
 
     const result = await model.generateContent(prompt);
     const raw = cleanAndParseJSON(result.response.text());
@@ -160,11 +169,13 @@ Return ONLY this JSON:
       turkishTranslation: raw?.turkishTranslation || "",
       detectedTense: raw?.detectedTense || "Belirsiz",
       simplePoints: Array.isArray(raw?.simplePoints) ? raw.simplePoints : [],
-      rootWords: Array.isArray(raw?.rootWords) ? [...new Set(raw.rootWords)] : []
+      rootWords:
+        Array.isArray(raw?.rootWords)
+          ? [...new Set(raw.rootWords.map(w => w.toLowerCase()))]
+          : []
     };
 
     return safeData;
-
   } catch (e) {
     console.error("Analiz Hatası:", e);
     return {
@@ -176,6 +187,7 @@ Return ONLY this JSON:
     };
   }
 };
+
 
 
 // --- 4. HIZLI ÇEVİRİ ---
