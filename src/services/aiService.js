@@ -2,6 +2,9 @@ import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from "@google/ge
 
 const GEMINI_API_KEY = process.env.REACT_APP_GEMINI_API_KEY;
 
+// ----------------------------------------
+// Safety Settings
+// ----------------------------------------
 const safetySettings = [
   { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
   { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
@@ -9,9 +12,9 @@ const safetySettings = [
   { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
 ];
 
-// -----------------------------
-// JSON Temizleme
-// -----------------------------
+// ----------------------------------------
+// JSON CLEANER
+// ----------------------------------------
 const cleanAndParseJSON = (text) => {
   if (!text) return null;
   try {
@@ -21,21 +24,22 @@ const cleanAndParseJSON = (text) => {
     if (start !== -1 && end !== -1) clean = clean.substring(start, end + 1);
     return JSON.parse(clean);
   } catch (e) {
-    console.error("JSON Parse Error:", e);
+    console.error("JSON Parse Error:", e, text);
     return null;
   }
 };
 
-// -----------------------------
-// YENİ GELİŞMİŞ CÜMLE ANALİZİ
-// -----------------------------
+// ----------------------------------------
+// ADVANCED SENTENCE ANALYSIS
+// ----------------------------------------
 export const fetchSentenceAnalysisFromAI = async (text) => {
   try {
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+
     const model = genAI.getGenerativeModel({
       model: "gemini-2.0-flash",
       safetySettings,
-      generationConfig: { temperature: 0.2 },
+      generationConfig: { temperature: 0.2 }
     });
 
     const prompt = `
@@ -81,13 +85,13 @@ export const fetchSentenceAnalysisFromAI = async (text) => {
     `;
 
     const result = await model.generateContent(prompt);
-    const raw = cleanAndParseJSON(result.response.text()) || {};
+    const raw = cleanAndParseJSON(result?.response?.text?.() || "") || {};
 
-    // Kök kelime temizleme
+    // ROOT cleaning
     let cleanedRoots = [];
     if (Array.isArray(raw.rootWords)) {
       cleanedRoots = raw.rootWords
-        .map((w) => w?.toLowerCase()?.trim() ?? "")
+        .map((w) => w?.toLowerCase()?.trim() || "")
         .map((w) => w.replace(/'s$/, "").replace(/[^a-z-]/g, ""))
         .filter((w) => w.length > 1);
     }
@@ -144,43 +148,100 @@ export const fetchSentenceAnalysisFromAI = async (text) => {
 };
 
 // ----------------------------------------
-// HIZLI ÇEVİRİ
+// QUICK TRANSLATE
 // ----------------------------------------
 export const translateTextWithAI = async (text) => {
   try {
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash", safetySettings });
+
+    const model = genAI.getGenerativeModel({
+      model: "gemini-2.0-flash",
+      safetySettings
+    });
+
     const prompt = `Translate to Turkish. Return ONLY the Turkish translation: "${text}"`;
-    const result = await model.generateContent(prompt);
-    return result.response.text().trim();
+
+    const res = await model.generateContent(prompt);
+
+    return res?.response?.text?.().trim() || "Çeviri alınamadı.";
   } catch {
     return "Çeviri yapılamadı.";
   }
 };
 
 // ----------------------------------------
-// OCR
+// OCR FROM IMAGE
 // ----------------------------------------
 export const extractTextFromImage = async (file) => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
+
     reader.onloadend = async () => {
       try {
         const base64 = reader.result.split(",")[1];
+
         const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash", safetySettings });
+        const model = genAI.getGenerativeModel({
+          model: "gemini-2.0-flash",
+          safetySettings
+        });
 
         const res = await model.generateContent([
           "Extract all text. ONLY raw text.",
-          { inlineData: { data: base64, mimeType: file.type } },
+          { inlineData: { data: base64, mimeType: file.type } }
         ]);
 
-        resolve(res.response.text().trim());
+        resolve(res?.response?.text?.().trim() || "");
       } catch (e) {
+        console.error("OCR Error:", e);
         reject(e);
       }
     };
 
     reader.readAsDataURL(file);
   });
+};
+
+// ----------------------------------------
+// WORD ROOT FINDER (fetchRootFromAI)
+// ----------------------------------------
+export const fetchRootFromAI = async (word) => {
+  try {
+    const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+
+    const model = genAI.getGenerativeModel({
+      model: "gemini-2.0-flash",
+      safetySettings
+    });
+
+    const prompt = `
+      Find the root (lemma) of the English word: "${word}".
+      Return ONLY JSON:
+
+      {
+        "root": "base form",
+        "original": "${word}",
+        "changed": boolean
+      }
+    `;
+
+    const result = await model.generateContent(prompt);
+
+    const raw = cleanAndParseJSON(result?.response?.text?.() || "");
+
+    return (
+      raw || {
+        root: word,
+        original: word,
+        changed: false,
+      }
+    );
+  } catch (e) {
+    console.error("fetchRootFromAI Error:", e);
+    return {
+      root: word,
+      original: word,
+      changed: false,
+    };
+  }
 };
