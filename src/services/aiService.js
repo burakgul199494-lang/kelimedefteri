@@ -1,7 +1,30 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-// API KEY
 const GEMINI_API_KEY = process.env.REACT_APP_GEMINI_API_KEY; 
+
+// --- SABİT ETİKET LİSTESİ ---
+// Yapay zeka SADECE bunlardan seçim yapacak.
+const PREDEFINED_TAGS = [
+  "Gündelik Yaşam",
+  "İş Hayatı",
+  "Eğitim",
+  "Seyahat",
+  "Yiyecek & İçecek",
+  "Hayvanlar",
+  "Doğa & Çevre",
+  "Sağlık",
+  "Teknoloji",
+  "Duygular",
+  "Spor",
+  "Sanat & Eğlence",
+  "Kıyafet & Moda",
+  "Ev & Aile",
+  "Zaman",
+  "Ulaşım",
+  "Sıfatlar",
+  "Fiiller",
+  "Diğer"
+];
 
 const cleanAndParseJSON = (text) => {
   try {
@@ -18,7 +41,7 @@ const cleanAndParseJSON = (text) => {
   }
 };
 
-// --- 1. KELİME ANALİZİ ---
+// --- 1. KELİME ANALİZİ (SABİT ETİKETLİ) ---
 export const fetchWordAnalysisFromAI = async (word) => {
   try {
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
@@ -26,10 +49,14 @@ export const fetchWordAnalysisFromAI = async (word) => {
 
     const prompt = `
       You are a dictionary app helper. Analyze the English word: "${word}".
-      IMPORTANT: 
-      1. In the "definitions" array, the "meaning" field MUST be the TURKISH translation.
-      2. The "engExplanation" field MUST be a simple English explanation.
-      3. Generate 1 to 3 relevant categories/tags for this word in TURKISH (e.g., "Yiyecek", "Seyahat").
+      
+      IMPORTANT TASKS:
+      1. "definitions": Translate to Turkish (meaning) and give a simple English explanation.
+      2. "tags": Select 1 or 2 relevant categories for this word ONLY from this list: 
+         ${JSON.stringify(PREDEFINED_TAGS)}
+         - Do NOT invent new tags.
+         - If nothing fits perfectly, use "Diğer".
+         - If it is a verb, you can use "Fiiller".
       
       Return ONLY JSON. No markdown.
       Structure:
@@ -37,10 +64,10 @@ export const fetchWordAnalysisFromAI = async (word) => {
         "word": "${word}",
         "plural": "", "v2": "", "v3": "", "vIng": "", "thirdPerson": "",
         "advLy": "", "compEr": "", "superEst": "",
-        "tags": ["Tag1"], 
-        "sentence": "Simple sentence.",
+        "tags": ["TagFromList"], 
+        "sentence": "Simple A2 level sentence.",
         "definitions": [
-          { "type": "noun", "meaning": "TR", "engExplanation": "EN" }
+          { "type": "noun/verb/etc", "meaning": "TR", "engExplanation": "EN" }
         ]
       }
     `;
@@ -72,7 +99,7 @@ export const fetchRootFromAI = async (word) => {
   } catch (e) { return { root: word, changed: false }; }
 };
 
-// --- 3. CÜMLE ANALİZİ (GÜNCELLENDİ: TÜRKÇE ZORLAMASI) ---
+// --- 3. CÜMLE ANALİZİ ---
 export const fetchSentenceAnalysisFromAI = async (text) => {
   try {
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
@@ -91,7 +118,7 @@ export const fetchSentenceAnalysisFromAI = async (text) => {
       3. Identify the MAIN tense (Write TURKISH name).
       4. Explain the sentence structure simply in bullet points.
          - CRITICAL: The explanation MUST be in TURKISH.
-         - CRITICAL: Keep English words in single quotes (e.g., 'Teacher' özne...).
+         - CRITICAL: Keep English words in single quotes.
       5. Extract root words.
 
       Return ONLY JSON.
