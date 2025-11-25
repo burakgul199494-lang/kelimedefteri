@@ -61,6 +61,7 @@ export const fetchWordAnalysisFromAI = async (word) => {
     const response = await result.response;
     const data = cleanAndParseJSON(response.text());
 
+    // Otomatik Etiketleme Mantığı
     if (data && data.definitions && Array.isArray(data.definitions)) {
         const tagsSet = new Set();
         data.definitions.forEach(def => {
@@ -92,28 +93,77 @@ export const fetchRootFromAI = async (word) => {
   } catch (e) { return { root: word, changed: false }; }
 };
 
-// --- 3. CÜMLE ANALİZİ ---
+// --- 3. CÜMLE ANALİZİ (DÜZELTİLDİ: EKSİK KODLAR GERİ GELDİ) ---
 export const fetchSentenceAnalysisFromAI = async (text) => {
   try {
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash", generationConfig: { temperature: 0.2 } });
-    const prompt = `Analyze English text for Turkish student: "${text}". Tasks: 1.Check grammar. 2.Translate. 3.Identify Tense. 4.Explain structure (TR). 5.Extract roots. Return JSON.`;
+    const model = genAI.getGenerativeModel({ 
+        model: "gemini-2.0-flash",
+        generationConfig: { temperature: 0.2 } 
+    });
+
+    const prompt = `
+      Act as a strict English grammar teacher for TURKISH students.
+      Analyze this text: "${text}"
+      
+      Tasks:
+      1. Check for ANY grammatical errors.
+      2. Translate to Turkish naturally.
+      3. Identify the MAIN tense (Write TURKISH name).
+      4. Explain the sentence structure simply in bullet points.
+         - CRITICAL: The explanation MUST be in TURKISH.
+         - CRITICAL: Keep English words in single quotes.
+      5. Extract root words.
+
+      Return ONLY JSON.
+      Structure:
+      {
+        "correction": {
+            "hasError": true/false, 
+            "corrected": "Corrected sentence here (or null)",
+            "explanation": "Explain the error in TURKISH"
+        },
+        "turkishTranslation": "Turkish translation",
+        "detectedTense": "Zaman Adı (Türkçe)",
+        "simplePoints": ["Türkçe açıklama 1", "Türkçe açıklama 2"],
+        "rootWords": ["word1", "word2"] 
+      }
+    `;
+
     const result = await model.generateContent(prompt);
-    return cleanAndParseJSON(result.response.text());
-  } catch (e) { throw e; }
+    const response = await result.response;
+    const data = cleanAndParseJSON(response.text());
+
+    // --- GERİ GELEN KOD BLOKU (Kök kelimeleri temizleyip listeleme) ---
+    if (data && data.rootWords && Array.isArray(data.rootWords)) {
+        const cleanList = data.rootWords
+            .map(w => {
+                let clean = w.toLowerCase();
+                clean = clean.replace(/'s$/, "");
+                clean = clean.replace(/[^a-z-]/g, "");
+                return clean;
+            })
+            .filter(w => w.length > 1 || w === 'a' || w === 'i');
+        data.rootWords = [...new Set(cleanList)];
+    }
+    // ------------------------------------------------------------------
+    
+    return data;
+  } catch (e) {
+    console.error("Sentence Analysis Error:", e);
+    throw e;
+  }
 };
 
-// --- 4. HIZLI ÇEVİRİ (DÜZELTİLDİ) ---
+// --- 4. HIZLI ÇEVİRİ ---
 export const translateTextWithAI = async (text) => {
   try {
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-    // DÜZELTME: 'temperature: 0' yaparak yaratıcılığı öldürdük.
     const model = genAI.getGenerativeModel({ 
         model: "gemini-2.0-flash",
         generationConfig: { temperature: 0 } 
     });
     
-    // DÜZELTME: Prompt çok daha sert ve net yazıldı.
     const prompt = `
       Task: Translate the following English text to Turkish.
       Input: "${text}"
@@ -121,8 +171,7 @@ export const translateTextWithAI = async (text) => {
       Constraints:
       1. Return ONLY the Turkish translation.
       2. Do NOT add explanations, notes, or bullet points.
-      3. Do NOT start with "Translation:" or similar labels.
-      4. Just give the raw translated text.
+      3. Just give the raw translated text.
     `;
     
     const result = await model.generateContent(prompt);
@@ -140,7 +189,10 @@ export const extractTextFromImage = async (file) => {
         const base64Data = reader.result.split(",")[1];
         const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
         const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-        const result = await model.generateContent(["Extract text.", { inlineData: { data: base64Data, mimeType: file.type } }]);
+        const result = await model.generateContent([
+          "Extract text clearly. No comments.",
+          { inlineData: { data: base64Data, mimeType: file.type } },
+        ]);
         resolve(result.response.text().trim());
       } catch (e) { reject(e); }
     };
