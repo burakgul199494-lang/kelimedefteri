@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from "@google/generative-ai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const GEMINI_API_KEY = process.env.REACT_APP_GEMINI_API_KEY; 
 
@@ -10,18 +10,7 @@ const PREDEFINED_TAGS = [
   "Zaman", "Ulaşım", "Sıfatlar", "Fiiller", "Diğer"
 ];
 
-// --- GÜVENLİK AYARLARI (Maksimum İzin - Engeli Kaldırmak İçin) ---
-const safetySettings = [
-  { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
-  { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
-  { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_NONE },
-  { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
-];
-
-// --- MODEL LİSTESİ (Sırayla denenecekler) ---
-// 2.0 Flash öncelikli, hata verirse 1.5 Flash, o da olmazsa 1.5 Pro
-const MODEL_FALLBACKS = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"];
-
+// --- JSON TEMİZLEME ---
 const cleanAndParseJSON = (text) => {
   try {
     if (!text) return null;
@@ -38,45 +27,17 @@ const cleanAndParseJSON = (text) => {
   }
 };
 
-// --- YENİ: SAĞLAM İSTEK ATMA FONKSİYONU ---
-async function generateContentWithFallback(prompt, isJson = true, temperature = 0.7) {
+// --- GENEL AI FONKSİYONU (Tek Model, Tek Ayar) ---
+const getGenAIModel = () => {
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-
-    for (const modelName of MODEL_FALLBACKS) {
-        try {
-            const model = genAI.getGenerativeModel({ 
-                model: modelName, 
-                safetySettings, // Güvenlik ayarlarını her modele uygula
-                generationConfig: { temperature: temperature }
-            });
-
-            const result = await model.generateContent(prompt);
-            const response = await result.response;
-            
-            // BLOKAJ KONTROLÜ: Eğer güvenlik nedeniyle engellendiyse text() fonksiyonu hata fırlatır.
-            // Biz bunu try-catch ile yakalayıp bir sonraki modele geçiş bileti yapacağız.
-            const text = response.text(); 
-
-            if (isJson) {
-                const json = cleanAndParseJSON(text);
-                if (!json) throw new Error("JSON parse failed or empty response");
-                return json;
-            }
-
-            return text.trim();
-
-        } catch (error) {
-            console.warn(`⚠️ Model ${modelName} engellendi veya hata verdi. Yedek modele geçiliyor... (${error.message})`);
-            // Bu catch bloğu sayesinde döngü kırılmaz, bir sonraki modele geçer.
-        }
-    }
-    
-    console.error("❌ Tüm yapay zeka modelleri başarısız oldu.");
-    return null;
-}
+    // En kararlı model: gemini-1.5-flash
+    return genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+};
 
 // --- 1. KELİME ANALİZİ ---
 export const fetchWordAnalysisFromAI = async (word) => {
+  try {
+    const model = getGenAIModel();
     const prompt = `
       Analyze the English word: "${word}".
       Return ONLY a valid JSON object.
@@ -89,38 +50,54 @@ export const fetchWordAnalysisFromAI = async (word) => {
       JSON Structure:
       {
         "word": "${word}",
-        "plural": "plural form or empty",
-        "v2": "past form or empty",
-        "v3": "past participle or empty",
-        "vIng": "gerund or empty",
-        "thirdPerson": "he/she form or empty",
-        "advLy": "adverb form or empty",
-        "compEr": "comparative or empty",
-        "superEst": "superlative or empty",
+        "plural": "", "v2": "", "v3": "", "vIng": "", "thirdPerson": "",
+        "advLy": "", "compEr": "", "superEst": "",
         "tags": ["Tag1"], 
-        "sentence": "A simple example sentence (A2 level).",
+        "sentence": "Simple A2 level sentence.",
         "definitions": [
-          { "type": "noun/verb/adj", "meaning": "TURKISH MEANING", "engExplanation": "Simple definition in English" }
+          { "type": "noun", "meaning": "TR", "engExplanation": "EN" }
         ]
       }
     `;
 
-    return await generateContentWithFallback(prompt, true);
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    return cleanAndParseJSON(response.text());
+  } catch (e) {
+    console.error("Word Analysis Error:", e);
+    return null;
+  }
 };
 
 // --- 2. KÖK BULMA ---
 export const fetchRootFromAI = async (word) => {
+  try {
+    const model = getGenAIModel();
     const prompt = `
-      Task: Find the dictionary root (lemma) of the English word "${word}".
-      Return ONLY JSON format: { "root": "base_form", "original": "${word}", "changed": true_or_false }
+      Find the dictionary root form (lemma) of english word: "${word}".
+      Return ONLY JSON: { "root": "base_form", "original": "${word}", "changed": true/false }
     `;
-    
-    const data = await generateContentWithFallback(prompt, true, 0); // Temperature 0 (Robot Modu)
+
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const data = cleanAndParseJSON(response.text());
     return data || { root: word, changed: false };
+  } catch (e) { 
+      console.error("Root Error:", e);
+      return { root: word, changed: false }; 
+  }
 };
 
 // --- 3. CÜMLE ANALİZİ ---
 export const fetchSentenceAnalysisFromAI = async (text) => {
+  try {
+    const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+    // Cümle analizi için sıcaklığı (temperature) biraz düşürelim ki saçmalamasın
+    const model = genAI.getGenerativeModel({ 
+        model: "gemini-1.5-flash",
+        generationConfig: { temperature: 0.2 } 
+    });
+
     const prompt = `
       Analyze this English text for a Turkish student: "${text}"
       
@@ -145,14 +122,27 @@ export const fetchSentenceAnalysisFromAI = async (text) => {
       }
     `;
 
-    return await generateContentWithFallback(prompt, true, 0.2);
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    return cleanAndParseJSON(response.text());
+  } catch (e) {
+    console.error("Sentence Analysis Error:", e);
+    throw e;
+  }
 };
 
 // --- 4. HIZLI ÇEVİRİ ---
 export const translateTextWithAI = async (text) => {
+  try {
+    const model = getGenAIModel();
     const prompt = `Translate this English text to Turkish. Return ONLY the translation: "${text}"`;
-    const res = await generateContentWithFallback(prompt, false);
-    return res || "Çeviri yapılamadı.";
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    return response.text().trim();
+  } catch (e) { 
+      console.error("Translation Error:", e);
+      return "Çeviri yapılamadı."; 
+  }
 };
 
 // --- 5. OCR ---
@@ -162,18 +152,15 @@ export const extractTextFromImage = async (file) => {
     reader.onloadend = async () => {
       try {
         const base64Data = reader.result.split(",")[1];
-        const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-        // OCR için 1.5 Flash daha iyi çalışıyor, onu öncelikli tutuyoruz.
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash", safetySettings });
-        
+        const model = getGenAIModel();
         const result = await model.generateContent([
           "Extract all text from image. No comments.",
           { inlineData: { data: base64Data, mimeType: file.type } },
         ]);
         resolve(result.response.text().trim());
       } catch (e) { 
-          console.error("OCR Hatası:", e);
-          resolve(""); 
+          console.error("OCR Error:", e);
+          reject(e); 
       }
     };
     reader.readAsDataURL(file);
