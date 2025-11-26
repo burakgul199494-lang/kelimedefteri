@@ -1,0 +1,218 @@
+import React, { useState, useEffect, useRef } from "react";
+import { useData } from "../context/DataContext";
+import { useNavigate } from "react-router-dom";
+import { X, Trophy, Loader2, ArrowRight, AlertCircle, CheckCircle2, Target, HelpCircle, Quote } from "lucide-react";
+
+export default function GapFillingGame() {
+  const { getAllWords, knownWordIds, learningQueue, addScore } = useData();
+  const navigate = useNavigate();
+  const inputRef = useRef(null);
+
+  // State'ler
+  const [questions, setQuestions] = useState([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [score, setScore] = useState(0);
+  const [gameStatus, setGameStatus] = useState("loading"); 
+  
+  const [userInput, setUserInput] = useState("");
+  const [attempts, setAttempts] = useState(0); 
+  const [feedback, setFeedback] = useState(null); // null, 'correct', 'wrong', 'revealed'
+
+  useEffect(() => { startGame(); }, []);
+
+  // Her yeni soruda temizlik yap
+  useEffect(() => {
+    if (gameStatus === "playing") {
+      setUserInput(""); 
+      setAttempts(0); 
+      setFeedback(null);
+      setTimeout(() => inputRef.current?.focus(), 100);
+    }
+  }, [currentIndex, gameStatus]);
+
+  const startGame = () => {
+    const all = getAllWords();
+    const now = new Date();
+    
+    // Sadece örnek cümlesi olan ve cümle içinde kelimenin geçtiği kartları al
+    const validWords = all.filter(w => 
+        w.sentence && 
+        w.word &&
+        w.sentence.toLowerCase().includes(w.word.toLowerCase())
+    );
+    
+    // SRS ve Bilinmeme Filtresi
+    const pool = validWords.filter(w => {
+        if (knownWordIds.includes(w.id)) return false; 
+        const progress = learningQueue.find(q => q.wordId === w.id);
+        if (progress) {
+            const reviewDate = new Date(progress.nextReview);
+            if (reviewDate > now) return false; 
+        }
+        return true; 
+    });
+
+    if (pool.length === 0) {
+        alert("Bu mod için uygun kelime bulunamadı (Cümle içeren aktif kelime yok).");
+        navigate("/");
+        return;
+    }
+
+    const selected = pool.sort(() => 0.5 - Math.random()).slice(0, 20);
+    setQuestions(selected); 
+    setCurrentIndex(0); 
+    setScore(0); 
+    setGameStatus("playing");
+  };
+
+  const currentWord = questions[currentIndex];
+
+  // Cümleyi Sansürle (Kelimeyi gizle)
+  const getMaskedSentence = () => {
+      if (!currentWord) return "";
+      const regex = new RegExp(currentWord.word, "gi"); // Büyük küçük harf duyarsız
+      return currentWord.sentence.replace(regex, "________");
+  };
+
+  const handleGiveUp = () => {
+      setFeedback("revealed"); 
+      setUserInput(currentWord.word); 
+  };
+
+  const handleQuitEarly = () => {
+      if (score > 0) addScore(score);
+      setGameStatus("finished");
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (feedback === "correct" || feedback === "revealed") { nextQuestion(); return; }
+
+    if (!userInput.trim()) return;
+
+    const correctWord = currentWord.word.trim(); 
+    const userWordLower = userInput.toLowerCase().trim();
+    const correctWordLower = correctWord.toLowerCase();
+
+    if (userWordLower === correctWordLower) {
+        // DOĞRU
+        setFeedback("correct"); 
+        setUserInput(correctWord); // Doğru formatı göster
+        setScore(s => s + (attempts === 0 ? 5 : 2));
+    } else {
+        // YANLIŞ
+        if (attempts === 0) {
+            // İlk Hata: İpucu Ver (Baş harf)
+            setFeedback("wrong"); 
+            setAttempts(1); 
+            const firstChar = correctWord.charAt(0);
+            setUserInput(firstChar); 
+            inputRef.current?.focus();
+        } else {
+            // İkinci Hata: Pes
+            setFeedback("revealed"); 
+            setUserInput(currentWord.word);
+        }
+    }
+  };
+
+  const nextQuestion = () => {
+    if (currentIndex + 1 < questions.length) { 
+        setCurrentIndex(p => p + 1); 
+    } else { 
+        setGameStatus("finished"); 
+        addScore(score); 
+    }
+  };
+
+  if (gameStatus === "finished") {
+    const maxScore = questions.length * 5;
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
+        <div className="bg-white p-8 rounded-3xl shadow-xl max-w-sm w-full text-center space-y-6">
+           <div className="bg-blue-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto"><Trophy className="w-10 h-10 text-blue-600"/></div>
+           <h2 className="text-2xl font-bold text-slate-800">Boşluk Doldurma Bitti!</h2>
+           <div className="py-6 bg-slate-50 rounded-2xl border border-slate-100">
+              <div className="text-sm text-slate-400 font-bold uppercase">Toplam Puan</div>
+              <div className="text-5xl font-extrabold text-blue-600 mt-2">{score}</div>
+              <div className="text-xs text-slate-400 font-bold">Maksimum: {maxScore}</div>
+           </div>
+           <button onClick={() => navigate("/")} className="w-full bg-white border-2 border-slate-200 text-slate-600 font-bold py-3 rounded-xl hover:bg-slate-50">Ana Sayfa</button>
+           <button onClick={startGame} className="w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-200">Tekrar Dene</button>
+        </div>
+      </div>
+    );
+  }
+
+  if (gameStatus === "loading") return <div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin text-blue-600"/></div>;
+
+  const progress = ((currentIndex + 1) / questions.length) * 100;
+  const isRoundOver = feedback === "correct" || feedback === "revealed"; 
+
+  return (
+    <div className="min-h-screen bg-slate-50 flex flex-col items-center p-4">
+       <div className="w-full max-w-md space-y-6 mt-4">
+          
+          {/* Üst Bar */}
+          <div className="flex justify-between items-center">
+             <button onClick={()=>navigate("/")} className="p-2 bg-white rounded-full hover:bg-slate-100 shadow-sm"><X className="w-5 h-5 text-slate-400"/></button>
+             <div className="font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-full border border-blue-100">{currentIndex+1} / {questions.length}</div>
+             <div className="flex items-center gap-1 bg-amber-100 text-amber-700 px-3 py-1 rounded-full font-bold text-sm border border-amber-200"><Trophy className="w-4 h-4"/> {score}</div>
+          </div>
+          <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden"><div className="bg-blue-500 h-full transition-all duration-500" style={{width:`${progress}%`}}></div></div>
+          
+          <div className="bg-white p-6 rounded-3xl shadow-xl border border-slate-100 text-center space-y-8 animate-in fade-in zoom-in duration-300 relative overflow-hidden">
+             <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-400 to-cyan-400"></div>
+             
+             {/* Soru Alanı (Cümle) */}
+             <div className="space-y-4">
+                 <div className="flex justify-center">
+                    <div className="bg-blue-50 p-3 rounded-full"><Quote className="w-6 h-6 text-blue-400"/></div>
+                 </div>
+                 <h2 className="text-xl font-medium text-slate-700 leading-relaxed">
+                     {getMaskedSentence()}
+                 </h2>
+                 <div className="text-sm font-bold text-slate-400 uppercase tracking-wider">Boşluğa ne gelmeli?</div>
+             </div>
+
+             <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="relative">
+                    <input 
+                        ref={inputRef} 
+                        type="text" 
+                        value={userInput} 
+                        onChange={(e) => setUserInput(e.target.value)} 
+                        disabled={isRoundOver} 
+                        className={`w-full p-4 text-center text-xl font-bold border-2 rounded-2xl outline-none transition-colors ${feedback === "correct" ? "border-green-500 bg-green-50 text-green-700" : feedback === "wrong" ? "border-red-300 bg-red-50 text-red-700" : feedback === "revealed" ? "border-red-500 bg-red-100 text-red-800" : "border-slate-200 focus:border-blue-500 focus:bg-blue-50"}`} 
+                        placeholder="Kelimeyi yaz..." 
+                        autoComplete="off" autoCorrect="off" spellCheck="false"
+                    />
+                    <div className="absolute right-4 top-4">{feedback === "correct" && <CheckCircle2 className="w-6 h-6 text-green-500"/>}{feedback === "wrong" && <AlertCircle className="w-6 h-6 text-red-500"/>}{feedback === "revealed" && <X className="w-6 h-6 text-red-600"/>}</div>
+                </div>
+                
+                <div className="h-6 text-sm font-bold">
+                    {feedback === "wrong" && <span className="text-red-500 flex items-center justify-center gap-1"><AlertCircle className="w-3 h-3"/> Yanlış! Baş harfi ipucu olarak yazdım.</span>}
+                    {feedback === "revealed" && <span className="text-red-600">Cevap: {currentWord.word}</span>}
+                    {feedback === "correct" && <span className="text-green-600">Doğru!</span>}
+                </div>
+
+                <div className="flex gap-3">
+                    {!isRoundOver && (
+                        <button type="button" onClick={handleGiveUp} className="flex-1 py-4 bg-slate-100 text-slate-500 hover:bg-slate-200 rounded-2xl font-bold transition-colors flex items-center justify-center gap-2">
+                            <HelpCircle className="w-5 h-5"/> Bilmiyorum
+                        </button>
+                    )}
+                    <button type="submit" disabled={!isRoundOver && !userInput.trim()} className={`flex-[2] py-4 rounded-2xl font-bold text-lg shadow-lg flex items-center justify-center gap-2 transition-transform active:scale-95 ${isRoundOver ? "bg-slate-800 text-white hover:bg-slate-900" : "bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"}`}>
+                        {isRoundOver ? (<>Sıradaki <ArrowRight className="w-5 h-5"/></>) : ("Kontrol Et")}
+                    </button>
+                </div>
+             </form>
+          </div>
+
+          <button onClick={handleQuitEarly} className="w-full mt-6 flex items-center justify-center gap-2 text-slate-400 hover:text-red-500 transition-colors text-sm font-medium mx-auto">
+            <Target className="w-4 h-4"/> Bitir (Puanı Al ve Çık)
+          </button>
+       </div>
+    </div>
+  );
+}
