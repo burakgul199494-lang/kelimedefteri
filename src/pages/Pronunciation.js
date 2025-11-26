@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+
 import {
   ArrowLeft,
   Mic,
@@ -9,183 +10,117 @@ import {
   Trophy,
   AlertCircle,
   StopCircle,
-  ZoomIn,
-  RotateCw,
-  Clock
+  Camera,
+  Check,
+  X,
+  RotateCw
 } from "lucide-react";
 
-import Cropper from "react-easy-crop";
 import { extractTextFromImage } from "../services/aiService";
 
-// --------------------------------------
-// CROP HELPERS
-// --------------------------------------
-const createImage = (url) =>
-  new Promise((resolve, reject) => {
-    const image = new Image();
-    image.onload = () => resolve(image);
-    image.onerror = (e) => reject(e);
-    image.crossOrigin = "anonymous";
-    image.src = url;
-  });
+// --- iOS CROP ---
+import { Cropper } from "react-cropper";
+import "cropperjs/dist/cropper.css";
 
-const degToRad = (deg) => (deg * Math.PI) / 180;
-
-function getRotatedSize(width, height, rotationRad) {
-  return {
-    width:
-      Math.abs(Math.cos(rotationRad) * width) +
-      Math.abs(Math.sin(rotationRad) * height),
-    height:
-      Math.abs(Math.sin(rotationRad) * width) +
-      Math.abs(Math.cos(rotationRad) * height)
-  };
-}
-
-async function getCroppedImg(src, pixelCrop, rotation = 0) {
-  const image = await createImage(src);
-  const rotRad = degToRad(rotation);
-
-  const { width: bBoxWidth, height: bBoxHeight } = getRotatedSize(
-    image.width,
-    image.height,
-    rotRad
-  );
-
-  const tempCanvas = document.createElement("canvas");
-  const tctx = tempCanvas.getContext("2d");
-  tempCanvas.width = bBoxWidth;
-  tempCanvas.height = bBoxHeight;
-
-  tctx.translate(bBoxWidth / 2, bBoxHeight / 2);
-  tctx.rotate(rotRad);
-  tctx.drawImage(image, -image.width / 2, -image.height / 2);
-
-  const canvas = document.createElement("canvas");
-  const ctx = canvas.getContext("2d");
-  canvas.width = pixelCrop.width;
-  canvas.height = pixelCrop.height;
-
-  ctx.drawImage(
-    tempCanvas,
-    pixelCrop.x,
-    pixelCrop.y,
-    pixelCrop.width,
-    pixelCrop.height,
-    0,
-    0,
-    pixelCrop.width,
-    pixelCrop.height
-  );
-
-  return new Promise((resolve) => {
-    canvas.toBlob((blob) => resolve(blob), "image/jpeg", 0.95);
-  });
-}
-
-// --------------------------------------
-// MAIN COMPONENT
-// --------------------------------------
 export default function Pronunciation() {
   const navigate = useNavigate();
 
-  const [text, setText] = useState("");
+  // --- STATE ---
+  const [text, setText] = useState(""); // okunacak cümle
   const [spokenText, setSpokenText] = useState("");
   const [isListening, setIsListening] = useState(false);
   const [score, setScore] = useState(null);
   const [feedback, setFeedback] = useState(null);
   const [isSpeaking, setIsSpeaking] = useState(false);
 
-  // ---- CROP STATES ----
+  // --- OCR + Crop states ---
   const [imgSrc, setImgSrc] = useState("");
-  const [isCropModalOpen, setIsCropModalOpen] = useState(false);
-  const [crop, setCrop] = useState({ x: 0, y: 0 });
-  const [zoom, setZoom] = useState(1);
-  const [rotation, setRotation] = useState(0);
-  const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
+  const [isCropOpen, setIsCropOpen] = useState(false);
+  const cropperRef = useRef(null);
   const fileInputRef = useRef(null);
 
-  const onCropComplete = useCallback((croppedArea, croppedAreaPixels) => {
-    setCroppedAreaPixels(croppedAreaPixels);
-  }, []);
-
-  // ---- MICROPHONE ----
   const recognitionRef = useRef(null);
 
+  // --- Sayfadan çıkınca konuşmayı durdur ---
   useEffect(() => {
     return () => {
       window.speechSynthesis.cancel();
     };
   }, []);
 
+  // --- SpeechRecognition Kurulumu ---
   useEffect(() => {
-    const SpeechRecognition =
-      window.SpeechRecognition || window.webkitSpeechRecognition;
-
-    if (SpeechRecognition) {
-      recognitionRef.current = new SpeechRecognition();
-      recognitionRef.current.continuous = false;
-      recognitionRef.current.lang = "en-US";
-      recognitionRef.current.interimResults = false;
-
-      recognitionRef.current.onresult = (event) => {
-        const transcript = event.results[0][0].transcript;
-        setSpokenText(transcript);
-        calculateScore(text, transcript);
-        setIsListening(false);
-      };
-
-      recognitionRef.current.onerror = () => {
-        setIsListening(false);
-        setFeedback({ type: "error", msg: "Mikrofon hatası" });
-      };
-
-      recognitionRef.current.onend = () => setIsListening(false);
-    } else {
-      setFeedback({ type: "error", msg: "Tarayıcı desteklemiyor" });
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) {
+      setFeedback({ type: "error", msg: "Tarayıcı mikrofonu desteklemiyor." });
+      return;
     }
+
+    recognitionRef.current = new SR();
+    recognitionRef.current.lang = "en-US";
+    recognitionRef.current.interimResults = false;
+    recognitionRef.current.continuous = false;
+
+    recognitionRef.current.onresult = (e) => {
+      const transcript = e.results[0][0].transcript;
+      setSpokenText(transcript);
+      calculateScore(text, transcript);
+      setIsListening(false);
+    };
+
+    recognitionRef.current.onerror = () => {
+      setFeedback({ type: "error", msg: "Anlaşılamadı." });
+      setIsListening(false);
+    };
+
+    recognitionRef.current.onend = () => setIsListening(false);
   }, [text]);
 
-  // ---- OCR IMAGE SELECT ----
-  const handleImageSelect = (e) => {
+  // --- OCR için resim seç ---
+  const handleSelectImage = (e) => {
     if (!e.target.files?.length) return;
 
     const file = e.target.files[0];
     const reader = new FileReader();
+
     reader.onload = () => {
       setImgSrc(reader.result.toString());
-      setIsCropModalOpen(true);
+      setIsCropOpen(true);
     };
+
     reader.readAsDataURL(file);
   };
 
-  // ---- OCR CROP CONFIRM ----
+  // --- OCR CROP ONAY ---
   const handleCropConfirm = async () => {
-    if (!croppedAreaPixels) return alert("Alan seçmelisin!");
-
     try {
-      const blob = await getCroppedImg(imgSrc, croppedAreaPixels, rotation);
-      const file = new File([blob], "crop.jpg", { type: "image/jpeg" });
+      const cropper = cropperRef.current.cropper;
 
-      const ocrText = await extractTextFromImage(file);
+      const croppedCanvas = cropper.getCroppedCanvas({
+        width: 1200,
+        height: 1200,
+        fillColor: "#fff"
+      });
 
-      if (ocrText) {
-        setText(ocrText);
-      } else {
-        alert("Metin okunamadı.");
-      }
-    } catch {
-      alert("OCR sırasında hata oluştu.");
+      croppedCanvas.toBlob(async (blob) => {
+        const file = new File([blob], "cropped.jpg", { type: "image/jpeg" });
+
+        const rawText = await extractTextFromImage(file);
+
+        if (rawText) setText(rawText);
+        else alert("Metin okunamadı.");
+
+        setIsCropOpen(false);
+        setImgSrc("");
+        fileInputRef.current.value = "";
+      });
+    } catch (e) {
+      console.error(e);
+      alert("Kırpma hatası.");
     }
-
-    setIsCropModalOpen(false);
-    setImgSrc("");
-    setZoom(1);
-    setRotation(0);
-    setCrop({ x: 0, y: 0 });
   };
 
-  // ---- TEXT-TO-SPEECH ----
+  // --- Sesli Okuma ---
   const handleSpeak = () => {
     if (!text) return;
 
@@ -194,6 +129,7 @@ export default function Pronunciation() {
     const u = new SpeechSynthesisUtterance(text);
     u.lang = "en-US";
     u.rate = 0.9;
+
     u.onstart = () => setIsSpeaking(true);
     u.onend = () => setIsSpeaking(false);
 
@@ -205,247 +141,211 @@ export default function Pronunciation() {
     setIsSpeaking(false);
   };
 
-  // ---- MIC ----
+  // --- Mikrofon ---
   const toggleMic = () => {
     if (!text) {
-      alert("Önce bir cümle gir.");
+      alert("Lütfen cümle yazın veya fotoğraftan alın.");
       return;
     }
 
     window.speechSynthesis.cancel();
-    setIsSpeaking(false);
 
     if (isListening) {
-      recognitionRef.current?.stop();
+      recognitionRef.current.stop();
       setIsListening(false);
     } else {
       setSpokenText("");
       setScore(null);
       setFeedback(null);
-      recognitionRef.current?.start();
+
+      recognitionRef.current.start();
       setIsListening(true);
     }
   };
 
-  // ---- SCORE ----
+  // --- PUANLAMA ---
   const calculateScore = (target, spoken) => {
-    const cleanT = target.toLowerCase().replace(/[.,?!]/g, "").split(/\s+/);
-    const cleanS = spoken.toLowerCase().replace(/[.,?!]/g, "").split(/\s+/);
+    const tWords = target.toLowerCase().replace(/[.,?!]/g, "").split(/\s+/);
+    const sWords = spoken.toLowerCase().replace(/[.,?!]/g, "").split(/\s+/);
 
-    let m = 0;
-    cleanT.forEach((w) => {
-      if (cleanS.includes(w)) m++;
+    let match = 0;
+    tWords.forEach((w) => {
+      if (sWords.includes(w)) match++;
     });
 
-    let s = Math.round((m / cleanT.length) * 100);
-    if (s > 100) s = 100;
+    let sc = Math.round((match / tWords.length) * 100);
 
-    setScore(s);
+    if (sc > 100) sc = 100;
 
-    if (s === 100) setFeedback({ msg: "Mükemmel! 🎉" });
-    else if (s >= 70) setFeedback({ msg: "Gayet iyi! 👍" });
-    else if (s >= 40) setFeedback({ msg: "Fena değil 🤔" });
-    else setFeedback({ msg: "Tekrar dene 😕" });
+    setScore(sc);
+
+    if (sc === 100) setFeedback({ type: "success", msg: "Mükemmel! 🎉" });
+    else if (sc >= 70) setFeedback({ type: "success", msg: "Gayet iyi! 👍" });
+    else if (sc >= 40) setFeedback({ type: "warning", msg: "Fena değil 🤔" });
+    else setFeedback({ type: "error", msg: "Tekrar dene 😕" });
   };
 
-  // --------------------------------------
-  // RENDER
-  // --------------------------------------
   return (
     <div className="min-h-screen bg-slate-50 p-6 flex flex-col items-center">
       <div className="w-full max-w-md space-y-6">
 
-        {/* BACK */}
+        {/* ÜST BAR */}
         <div className="flex items-center gap-3">
           <button
             onClick={() => navigate("/")}
-            className="p-2 bg-white rounded-full shadow-sm"
+            className="p-2 hover:bg-slate-200 rounded-full bg-white shadow-sm"
           >
             <ArrowLeft className="w-6 h-6 text-slate-600" />
           </button>
           <h2 className="text-2xl font-bold text-slate-800">Telaffuz Koçu</h2>
         </div>
 
-        {/* OCR BUTTON */}
+        {/* FOTO YÜKLE */}
+        <button
+          onClick={() => fileInputRef.current.click()}
+          className="w-full bg-slate-100 hover:bg-slate-200 py-3 rounded-xl flex items-center justify-center gap-2 font-bold text-slate-600"
+        >
+          <Camera className="w-5 h-5" />
+          Fotoğraftan Metin Al
+        </button>
+
         <input
           type="file"
           ref={fileInputRef}
-          className="hidden"
-          onChange={handleImageSelect}
           accept="image/*"
+          onChange={handleSelectImage}
+          className="hidden"
         />
 
-        <button
-          onClick={() => fileInputRef.current?.click()}
-          className="w-full bg-slate-100 py-3 rounded-xl font-bold text-slate-700 hover:bg-slate-200"
-        >
-          📸 Fotoğraf Çek / Yükle
-        </button>
+        {/* CROP MODAL */}
+        {isCropOpen && (
+          <div className="fixed inset-0 bg-black/90 z-50 flex flex-col">
+            <div className="flex justify-between items-center text-white px-4 py-4">
+              <button onClick={() => setIsCropOpen(false)}>İptal</button>
+              <span className="text-sm font-bold">Kırp</span>
+              <button onClick={handleCropConfirm} className="text-yellow-300">
+                Bitti
+              </button>
+            </div>
 
-        {/* TEXT BOX */}
-        <div className="bg-white p-6 rounded-3xl shadow border">
-          <label className="block text-sm font-bold text-slate-500 mb-2">
-            Okunacak Cümle
-          </label>
-          <textarea
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            className="w-full p-4 border rounded-2xl text-lg h-32 resize-none"
-            placeholder="Buraya İngilizce bir cümle yaz..."
-          />
-        </div>
+            <div className="flex-1">
+              <Cropper
+                src={imgSrc}
+                ref={cropperRef}
+                style={{ height: "100%", width: "100%" }}
+                zoomTo={0.5}
+                initialAspectRatio={NaN}
+                guides={true}
+                movable={true}
+                scalable={true}
+                zoomable={true}
+                responsive={true}
+                autoCropArea={0.8}
+                viewMode={1}
+              />
+            </div>
 
-        {/* SPEAK BUTTONS */}
-        <div className="flex gap-2">
-          {isSpeaking ? (
-            <button
-              onClick={handleStopSpeak}
-              className="w-full py-3 bg-red-100 text-red-600 rounded-xl font-bold"
-            >
-              <StopCircle className="w-5 h-5 inline mr-1" />
-              Durdur
-            </button>
-          ) : (
-            <button
-              onClick={handleSpeak}
-              className="w-full py-3 bg-indigo-100 text-indigo-700 rounded-xl font-bold"
-            >
-              <Volume2 className="w-5 h-5 inline mr-1" />
-              Dinle
-            </button>
-          )}
-        </div>
+            <div className="bg-zinc-900 text-white text-center py-4">
+              <button
+                onClick={() =>
+                  cropperRef.current.cropper.rotate(90)
+                }
+                className="text-white flex items-center justify-center gap-2 mx-auto"
+              >
+                <RotateCw /> Döndür
+              </button>
+            </div>
+          </div>
+        )}
 
-        {/* MIC */}
+        {/* CÜMLE GİRİŞ */}
+        <textarea
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          className="w-full p-4 border-2 border-indigo-100 rounded-2xl text-lg font-medium text-slate-700 focus:border-indigo-500 h-32 resize-none"
+          placeholder="Oku veya fotoğraftan al..."
+        />
+
+        {/* OKUMA BUTONU */}
+        {isSpeaking ? (
+          <button
+            onClick={handleStopSpeak}
+            className="w-full py-3 bg-red-50 text-red-600 rounded-xl font-bold flex items-center justify-center gap-2"
+          >
+            <StopCircle /> Durdur
+          </button>
+        ) : (
+          <button
+            onClick={handleSpeak}
+            className="w-full py-3 bg-indigo-50 text-indigo-600 rounded-xl font-bold flex items-center justify-center gap-2"
+          >
+            <Volume2 /> Dinle
+          </button>
+        )}
+
+        {/* MİKROFON */}
         <div className="flex flex-col items-center py-6">
           <button
             onClick={toggleMic}
-            className={`w-20 h-20 rounded-full text-white shadow-xl ${
+            className={`w-20 h-20 rounded-full flex items-center justify-center text-white shadow-xl ${
               isListening ? "bg-red-500 animate-pulse" : "bg-indigo-600"
             }`}
           >
-            {isListening ? (
-              <Square className="w-8 h-8 mx-auto" />
-            ) : (
-              <Mic className="w-10 h-10 mx-auto" />
-            )}
+            {isListening ? <Square className="w-8 h-8" /> : <Mic className="w-10 h-10" />}
           </button>
-          <p className="mt-3 text-sm text-slate-600">
-            {isListening ? "Dinliyorum..." : "Başlamak için bas"}
+
+          <p className="mt-4 text-sm text-slate-500">
+            {isListening ? "Dinliyorum..." : "Bas ve konuş"}
           </p>
         </div>
 
-        {/* RESULT */}
+        {/* SONUÇ */}
         {(spokenText || score !== null) && (
-          <div className="bg-white p-6 rounded-3xl shadow border">
-            <p className="text-sm text-slate-400 font-bold uppercase mb-1">
-              Algılanan:
-            </p>
-            <p className="text-lg italic mb-4">"{spokenText}"</p>
+          <div className="bg-white p-6 rounded-3xl border border-slate-200">
+            <div className="text-center mb-4">
+              <div className="text-xs text-slate-400 uppercase font-bold">Algılanan Ses</div>
+              <p className="text-lg italic text-slate-800">"{spokenText}"</p>
+            </div>
 
-            {score !== null && (
-              <div
-                className={`p-4 rounded-xl border-2 ${
-                  score >= 70
-                    ? "bg-green-50 border-green-200 text-green-800"
-                    : score >= 40
-                    ? "bg-orange-50 border-orange-200 text-orange-800"
-                    : "bg-red-50 border-red-200 text-red-800"
-                }`}
-              >
-                <div className="text-2xl font-bold">%{score}</div>
-                <div className="text-sm opacity-80">{feedback?.msg}</div>
+            {/* PUAN */}
+            <div
+              className={`p-4 rounded-2xl border-2 flex items-center justify-between ${
+                score >= 70
+                  ? "bg-green-50 border-green-200 text-green-800"
+                  : score >= 40
+                  ? "bg-orange-50 border-orange-200 text-orange-800"
+                  : "bg-red-50 border-red-200 text-red-800"
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                {score >= 70 ? (
+                  <Trophy className="w-8 h-8" />
+                ) : (
+                  <AlertCircle className="w-8 h-8" />
+                )}
+                <div>
+                  <div className="font-bold text-2xl">%{score}</div>
+                  <div className="text-xs font-bold opacity-70">Doğruluk</div>
+                </div>
               </div>
-            )}
+              <div className="text-sm font-bold max-w-[120px] text-right">
+                {feedback?.msg}
+              </div>
+            </div>
 
             <button
               onClick={() => {
                 setSpokenText("");
                 setScore(null);
               }}
-              className="w-full mt-4 text-slate-500 text-sm font-bold"
+              className="w-full mt-4 text-sm font-bold text-slate-500 flex items-center justify-center gap-2"
             >
-              <RefreshCw className="w-4 h-4 inline mr-1" />
-              Temizle
+              <RefreshCw className="w-4 h-4" />
+              Sonucu Temizle
             </button>
           </div>
         )}
       </div>
-
-      {/* CROP MODAL */}
-      {isCropModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black flex flex-col">
-          {/* TOP BAR */}
-          <div className="px-4 py-6 flex justify-between items-center bg-black/70 absolute top-0 w-full z-20">
-            <button
-              onClick={() => setIsCropModalOpen(false)}
-              className="text-white"
-            >
-              İptal
-            </button>
-            <h3 className="text-white font-bold text-sm">Kırp</h3>
-            <button
-              onClick={handleCropConfirm}
-              className="text-yellow-400 font-bold"
-            >
-              Bitti
-            </button>
-          </div>
-
-          {/* CROP AREA */}
-          <div className="flex-1 flex items-center justify-center bg-black">
-            <Cropper
-              image={imgSrc}
-              crop={crop}
-              zoom={zoom}
-              rotation={rotation}
-              onCropChange={setCrop}
-              onZoomChange={setZoom}
-              onRotationChange={setRotation}
-              onCropComplete={onCropComplete}
-              showGrid={true}
-            />
-          </div>
-
-          {/* BOTTOM BAR */}
-          <div className="bg-zinc-900 px-6 pt-6 pb-10 space-y-6">
-            <div className="flex items-center gap-4">
-              <ZoomIn className="w-5 h-5 text-zinc-400" />
-              <input
-                type="range"
-                min={1}
-                max={3}
-                step={0.1}
-                value={zoom}
-                onChange={(e) => setZoom(Number(e.target.value))}
-                className="w-full"
-              />
-            </div>
-
-            <div className="flex justify-between">
-              <button
-                onClick={() => setRotation((r) => (r + 90) % 360)}
-                className="flex flex-col items-center text-zinc-300"
-              >
-                <RotateCw />
-                <span className="text-xs mt-1">Döndür</span>
-              </button>
-
-              <button
-                onClick={() => {
-                  setZoom(1);
-                  setRotation(0);
-                  setCrop({ x: 0, y: 0 });
-                }}
-                className="flex flex-col items-center text-zinc-300"
-              >
-                <Clock />
-                <span className="text-xs mt-1">Sıfırla</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
