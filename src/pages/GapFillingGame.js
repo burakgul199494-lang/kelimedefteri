@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useData } from "../context/DataContext";
 import { useNavigate } from "react-router-dom";
-import { X, Trophy, Loader2, ArrowRight, AlertCircle, CheckCircle2, Target, HelpCircle, Quote } from "lucide-react";
+import { X, Trophy, Loader2, ArrowRight, AlertCircle, CheckCircle2, Target, HelpCircle, Quote, Volume2, Languages } from "lucide-react"; // Volume2 ve Languages EKLENDİ
+import { translateTextWithAI } from "../services/aiService"; // Çeviri servisi eklendi
 
 export default function GapFillingGame() {
   const { getAllWords, knownWordIds, learningQueue, addScore } = useData();
   const navigate = useNavigate();
   const inputRef = useRef(null);
 
-  // State'ler
   const [questions, setQuestions] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [score, setScore] = useState(0);
@@ -16,16 +16,22 @@ export default function GapFillingGame() {
   
   const [userInput, setUserInput] = useState("");
   const [attempts, setAttempts] = useState(0); 
-  const [feedback, setFeedback] = useState(null); // null, 'correct', 'wrong', 'revealed'
+  const [feedback, setFeedback] = useState(null); 
+
+  // --- YENİ STATE'LER (Çeviri İçin) ---
+  const [hintTranslation, setHintTranslation] = useState(null);
+  const [loadingHint, setLoadingHint] = useState(false);
 
   useEffect(() => { startGame(); }, []);
 
-  // Her yeni soruda temizlik yap
   useEffect(() => {
     if (gameStatus === "playing") {
       setUserInput(""); 
       setAttempts(0); 
       setFeedback(null);
+      // Yeni soruda çeviriyi temizle
+      setHintTranslation(null); 
+      setLoadingHint(false);
       setTimeout(() => inputRef.current?.focus(), 100);
     }
   }, [currentIndex, gameStatus]);
@@ -34,14 +40,12 @@ export default function GapFillingGame() {
     const all = getAllWords();
     const now = new Date();
     
-    // Sadece örnek cümlesi olan ve cümle içinde kelimenin geçtiği kartları al
     const validWords = all.filter(w => 
         w.sentence && 
         w.word &&
         w.sentence.toLowerCase().includes(w.word.toLowerCase())
     );
     
-    // SRS ve Bilinmeme Filtresi
     const pool = validWords.filter(w => {
         if (knownWordIds.includes(w.id)) return false; 
         const progress = learningQueue.find(q => q.wordId === w.id);
@@ -53,7 +57,7 @@ export default function GapFillingGame() {
     });
 
     if (pool.length === 0) {
-        alert("Bu mod için uygun kelime bulunamadı (Cümle içeren aktif kelime yok).");
+        alert("Bu mod için uygun kelime bulunamadı.");
         navigate("/");
         return;
     }
@@ -66,13 +70,31 @@ export default function GapFillingGame() {
   };
 
   const currentWord = questions[currentIndex];
+  // İngilizce Açıklamayı Al
+  const englishDefinition = currentWord?.definitions[0]?.engExplanation;
 
-  // Cümleyi Sansürle (Kelimeyi gizle)
   const getMaskedSentence = () => {
       if (!currentWord) return "";
-      const regex = new RegExp(currentWord.word, "gi"); // Büyük küçük harf duyarsız
+      const regex = new RegExp(currentWord.word, "gi");
       return currentWord.sentence.replace(regex, "________");
   };
+
+  // --- YENİ AKSİYONLAR ---
+  const speak = (text) => {
+    if (!text) return;
+    const u = new SpeechSynthesisUtterance(text); 
+    u.lang = "en-US"; 
+    window.speechSynthesis.speak(u);
+  };
+
+  const handleTranslateHint = async () => {
+    if (!englishDefinition || hintTranslation) return;
+    setLoadingHint(true);
+    const res = await translateTextWithAI(englishDefinition);
+    setHintTranslation(res);
+    setLoadingHint(false);
+  };
+  // -----------------------
 
   const handleGiveUp = () => {
       setFeedback("revealed"); 
@@ -95,21 +117,17 @@ export default function GapFillingGame() {
     const correctWordLower = correctWord.toLowerCase();
 
     if (userWordLower === correctWordLower) {
-        // DOĞRU
         setFeedback("correct"); 
-        setUserInput(correctWord); // Doğru formatı göster
+        setUserInput(correctWord); 
         setScore(s => s + (attempts === 0 ? 5 : 2));
     } else {
-        // YANLIŞ
         if (attempts === 0) {
-            // İlk Hata: İpucu Ver (Baş harf)
             setFeedback("wrong"); 
             setAttempts(1); 
             const firstChar = correctWord.charAt(0);
             setUserInput(firstChar); 
             inputRef.current?.focus();
         } else {
-            // İkinci Hata: Pes
             setFeedback("revealed"); 
             setUserInput(currentWord.word);
         }
@@ -161,7 +179,7 @@ export default function GapFillingGame() {
           </div>
           <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden"><div className="bg-blue-500 h-full transition-all duration-500" style={{width:`${progress}%`}}></div></div>
           
-          <div className="bg-white p-6 rounded-3xl shadow-xl border border-slate-100 text-center space-y-8 animate-in fade-in zoom-in duration-300 relative overflow-hidden">
+          <div className="bg-white p-6 rounded-3xl shadow-xl border border-slate-100 text-center space-y-6 animate-in fade-in zoom-in duration-300 relative overflow-hidden">
              <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-400 to-cyan-400"></div>
              
              {/* Soru Alanı (Cümle) */}
@@ -174,6 +192,26 @@ export default function GapFillingGame() {
                  </h2>
                  <div className="text-sm font-bold text-slate-400 uppercase tracking-wider">Boşluğa ne gelmeli?</div>
              </div>
+
+             {/* --- YENİ: İPUCU KUTUSU (TANIM) --- */}
+             {englishDefinition && (
+                <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 text-sm text-slate-600">
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                        <span className="text-xs font-bold text-slate-400 uppercase">Tanım (İpucu)</span>
+                        <div className="flex gap-1">
+                            <button onClick={() => speak(englishDefinition)} className="p-1 bg-white border rounded-lg hover:bg-blue-50 text-blue-600">
+                                <Volume2 className="w-3 h-3"/>
+                            </button>
+                            <button onClick={handleTranslateHint} className="p-1 bg-white border rounded-lg hover:bg-indigo-50 text-indigo-600">
+                                {loadingHint ? <Loader2 className="w-3 h-3 animate-spin"/> : <Languages className="w-3 h-3"/>}
+                            </button>
+                        </div>
+                    </div>
+                    <p className="italic">"{englishDefinition}"</p>
+                    {hintTranslation && <div className="mt-2 pt-2 border-t border-slate-200 text-indigo-700 font-medium text-xs">TR: {hintTranslation}</div>}
+                </div>
+             )}
+             {/* ---------------------------------- */}
 
              <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="relative">
