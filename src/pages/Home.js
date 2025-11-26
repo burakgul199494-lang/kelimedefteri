@@ -5,7 +5,7 @@ import { auth } from "../services/firebase";
 import { 
   RotateCcw, LogOut, Brain, Flame, Play, Book, 
   Microscope, Plus, BookOpen, Check, Trash2, 
-  Shield, Edit, HelpCircle, Settings, Trophy, Star, Mic, Quote // Quote EKLENDİ
+  Shield, Edit, HelpCircle, Settings, Trophy, Star, Mic, Quote 
 } from "lucide-react";
 import ProfileModal from "../components/ProfileModal"; 
 import LeaderboardModal from "../components/LeaderboardModal";
@@ -109,14 +109,22 @@ export default function Home() {
              <div className="flex items-center gap-3"><div className="bg-white/20 p-2 rounded-lg"><Microscope className="w-6 h-6"/></div><div className="text-left"><div className="text-lg">AI Cümle Analizi</div><div className="text-xs text-teal-100 font-normal">Gramer ve hata kontrolü</div></div></div>
           </button>
 
-          {/* OYUNLAR GRUBU */}
+          {/* --- OYUNLAR BÖLÜMÜ --- */}
+          
+          {/* 3. Flash Kart (EN ÜSTTE TEK BAŞINA) */}
+          <button onClick={() => navigate("/game")} className="w-full bg-indigo-600 text-white font-bold py-5 px-6 rounded-2xl shadow-lg flex items-center justify-between group active:scale-95 transition-transform mb-2">
+             <div className="flex items-center gap-4">
+                 <div className="bg-white/20 p-3 rounded-xl"><Play className="w-8 h-8" fill="currentColor"/></div>
+                 <div className="text-left">
+                     <div className="text-xl">Flash Kart</div>
+                     <div className="text-xs text-indigo-200 font-normal">Klasik öğrenme modu</div>
+                 </div>
+             </div>
+             <Play className="w-6 h-6 opacity-60 group-hover:translate-x-1 transition-transform"/>
+          </button>
+
+          {/* DİĞER OYUNLAR (2x2 Grid) */}
           <div className="grid grid-cols-2 gap-3">
-             {/* 3. Flash Kart */}
-             <button onClick={() => navigate("/game")} className="bg-indigo-600 text-white font-bold py-4 px-4 rounded-xl shadow-md flex flex-col items-center gap-2 text-center active:scale-95 transition-transform">
-                <div className="bg-white/20 p-2 rounded-full"><Play className="w-6 h-6" fill="currentColor"/></div>
-                <span className="text-sm">Flash Kart</span>
-             </button>
-             
              {/* 4. Yazma Testi */}
              <button onClick={() => navigate("/writing")} className="bg-purple-600 text-white font-bold py-4 px-4 rounded-xl shadow-md flex flex-col items-center gap-2 text-center active:scale-95 transition-transform">
                 <div className="bg-white/20 p-2 rounded-full"><Edit className="w-6 h-6"/></div>
@@ -135,10 +143,10 @@ export default function Home() {
                 <span className="text-sm">Telaffuz</span>
              </button>
 
-             {/* 7. Boşluk Doldurma (Geniş Buton) */}
-             <button onClick={() => navigate("/gap-filling")} className="col-span-2 bg-cyan-600 text-white font-bold py-4 px-4 rounded-xl shadow-md flex items-center justify-center gap-3 active:scale-95 transition-transform">
+             {/* 7. Boşluk Doldurma */}
+             <button onClick={() => navigate("/gap-filling")} className="bg-cyan-600 text-white font-bold py-4 px-4 rounded-xl shadow-md flex flex-col items-center gap-2 text-center active:scale-95 transition-transform">
                 <div className="bg-white/20 p-2 rounded-full"><Quote className="w-6 h-6"/></div>
-                <span className="text-sm">Boşluk Doldurma (Cümle Tamamlama)</span>
+                <span className="text-sm">Boşluk Doldurma</span>
              </button>
           </div>
 
