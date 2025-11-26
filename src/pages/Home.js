@@ -5,29 +5,24 @@ import { auth } from "../services/firebase";
 import { 
   RotateCcw, LogOut, Brain, Flame, Play, Book, 
   Microscope, Plus, BookOpen, Check, Trash2, 
-  Shield, Edit, HelpCircle, Settings, Trophy, Star, Mic 
+  Shield, Edit, HelpCircle, Settings, Trophy, Star, Mic, Quote // Quote EKLENDİ
 } from "lucide-react";
 import ProfileModal from "../components/ProfileModal"; 
 import LeaderboardModal from "../components/LeaderboardModal";
 
 export default function Home() {
-  // Verileri context'ten çekiyoruz
   const { user, knownWordIds, getAllWords, streak, resetProfile, isAdmin, leaderboardData } = useData();
   const navigate = useNavigate();
   
-  // Modal kontrol state'leri
   const [showProfileModal, setShowProfileModal] = useState(false); 
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   
-  // İstatistik Hesaplamaları
   const allWords = getAllWords();
   const progressPercentage = allWords.length > 0 ? (knownWordIds.length / allWords.length) * 100 : 0;
   const remainingCount = allWords.length - knownWordIds.length;
 
-  // Kullanıcının güncel puanını bul
   const myScore = leaderboardData.find(u => u.id === user?.uid)?.score || 0;
 
-  // Çıkış ve Sıfırlama İşlemleri
   const handleLogout = async () => { await auth.signOut(); navigate("/login"); };
   const handleReset = async () => { if(window.confirm("Emin misin? Tüm ilerleme silinecek.")) await resetProfile(); };
 
@@ -40,54 +35,41 @@ export default function Home() {
 
       <div className="w-full max-w-md space-y-6 mt-2">
         
-        {/* Üst Bar (Ayarlar, Liderlik, Reset, Çıkış) */}
+        {/* Üst Bar */}
         <div className="flex justify-between items-center w-full px-1">
           <div className="flex gap-2">
-             {/* Profil Ayarları */}
              <button onClick={() => setShowProfileModal(true)} className="p-2.5 bg-white rounded-xl shadow-sm border border-slate-200 text-slate-600 hover:text-indigo-600">
                 <Settings size={18} />
              </button>
-             
-             {/* Liderlik Tablosu */}
              <button onClick={() => setShowLeaderboard(true)} className="p-2.5 bg-white rounded-xl shadow-sm border border-slate-200 text-slate-600 hover:text-yellow-500">
                 <Trophy size={18} />
              </button>
-
-             {/* Sıfırlama */}
              <button onClick={handleReset} className="p-2.5 bg-white rounded-xl shadow-sm border border-slate-200 text-slate-400 hover:text-red-500" title="Sıfırla">
                 <RotateCcw size={18} />
              </button>
           </div>
-          {/* Çıkış */}
           <button onClick={handleLogout} className="p-2.5 bg-white rounded-xl shadow-sm border border-slate-200 text-slate-400 hover:text-red-500" title="Çıkış">
              <LogOut size={18} />
           </button>
         </div>
 
-        {/* Başlık & İstatistikler (Puan ve Seri) */}
+        {/* Başlık & İstatistikler */}
         <div className="text-center relative mt-4">
           <div className="flex justify-center mb-4 relative">
             <div className="bg-indigo-600 p-4 rounded-2xl shadow-lg transform rotate-3"><Brain className="w-12 h-12 text-white" /></div>
-            
-            {/* SAĞ ÜST: SERİ VE PUAN GÖSTERGESİ */}
             <div className="absolute -right-4 -top-4 flex flex-col items-end gap-2">
-              
-              {/* Seri (Streak) */}
               <div className="flex flex-col items-center">
                   <div className="flex items-center gap-1 bg-orange-500 text-white px-3 py-1 rounded-full shadow-lg border-2 border-white min-w-[60px] justify-center">
                     <Flame className="w-3 h-3 fill-white" /><span className="font-bold text-xs">{streak}</span>
                   </div>
                   <span className="text-[10px] font-bold text-orange-600 bg-orange-100 px-1.5 rounded mt-0.5">Seri</span>
               </div>
-
-              {/* Puan (Score) */}
               <div className="flex flex-col items-center">
                   <div className="flex items-center gap-1 bg-yellow-400 text-yellow-900 px-3 py-1 rounded-full shadow-lg border-2 border-white min-w-[60px] justify-center">
                     <Star className="w-3 h-3 fill-yellow-900" /><span className="font-bold text-xs">{myScore}</span>
                   </div>
                   <span className="text-[10px] font-bold text-yellow-600 bg-yellow-100 px-1.5 rounded mt-0.5">Puan</span>
               </div>
-
             </div>
           </div>
           <h1 className="text-3xl font-extrabold text-slate-800 tracking-tight">Kelime Defteri</h1>
@@ -110,14 +92,14 @@ export default function Home() {
         {/* --- MENÜ LİSTESİ --- */}
         <div className="space-y-3 pb-8">
           
-          {/* Admin Butonu (Sadece yetkiliye görünür) */}
+          {/* Admin Butonu */}
           {isAdmin && (
              <button onClick={() => navigate("/admin")} className="w-full bg-slate-800 text-white font-bold py-3 px-6 rounded-xl shadow-md flex items-center justify-between mb-3">
                <div className="flex items-center gap-3"><div className="bg-white/20 p-2 rounded-lg"><Shield className="w-5 h-5 text-yellow-400"/></div><div className="text-left"><div className="text-base">Admin Paneli</div></div></div>
              </button>
           )}
 
-          {/* 1. Sözlük (En Üstte) */}
+          {/* 1. Sözlük */}
           <button onClick={() => navigate("/dictionary")} className="w-full bg-sky-500 text-white font-bold py-4 px-6 rounded-xl shadow-md flex items-center justify-between group active:scale-95 transition-transform">
              <div className="flex items-center gap-3"><div className="bg-white/20 p-2 rounded-lg"><Book className="w-6 h-6"/></div><div className="text-left"><div className="text-lg">Sözlük</div><div className="text-xs text-sky-100 font-normal">Kelime ara ve öğren</div></div></div>
           </button>
@@ -127,7 +109,7 @@ export default function Home() {
              <div className="flex items-center gap-3"><div className="bg-white/20 p-2 rounded-lg"><Microscope className="w-6 h-6"/></div><div className="text-left"><div className="text-lg">AI Cümle Analizi</div><div className="text-xs text-teal-100 font-normal">Gramer ve hata kontrolü</div></div></div>
           </button>
 
-          {/* OYUNLAR GRUBU (2x2 Grid) */}
+          {/* OYUNLAR GRUBU */}
           <div className="grid grid-cols-2 gap-3">
              {/* 3. Flash Kart */}
              <button onClick={() => navigate("/game")} className="bg-indigo-600 text-white font-bold py-4 px-4 rounded-xl shadow-md flex flex-col items-center gap-2 text-center active:scale-95 transition-transform">
@@ -151,6 +133,12 @@ export default function Home() {
              <button onClick={() => navigate("/pronunciation")} className="bg-rose-500 text-white font-bold py-4 px-4 rounded-xl shadow-md flex flex-col items-center gap-2 text-center active:scale-95 transition-transform">
                 <div className="bg-white/20 p-2 rounded-full"><Mic className="w-6 h-6"/></div>
                 <span className="text-sm">Telaffuz</span>
+             </button>
+
+             {/* 7. Boşluk Doldurma (Geniş Buton) */}
+             <button onClick={() => navigate("/gap-filling")} className="col-span-2 bg-cyan-600 text-white font-bold py-4 px-4 rounded-xl shadow-md flex items-center justify-center gap-3 active:scale-95 transition-transform">
+                <div className="bg-white/20 p-2 rounded-full"><Quote className="w-6 h-6"/></div>
+                <span className="text-sm">Boşluk Doldurma (Cümle Tamamlama)</span>
              </button>
           </div>
 
