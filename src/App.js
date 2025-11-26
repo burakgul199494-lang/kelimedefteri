@@ -14,6 +14,7 @@ import AddWord from "./pages/AddWord";
 import AdminDashboard from "./pages/AdminDashboard";
 import WritingGame from "./pages/WritingGame"; 
 import Pronunciation from "./pages/Pronunciation"; // YENİ EKLENDİ
+import GapFillingGame from "./pages/GapFillingGame"; // <--- IMPORT ET
 
 const PrivateRoute = ({ children }) => {
   const { user, loading } = useData();
@@ -56,6 +57,9 @@ export default function App() {
           
           {/* Admin */}
           <Route path="/admin" element={<PrivateRoute><AdminDashboard /></PrivateRoute>} />
+
+            {/* YENİ ROTA */}
+          <Route path="/gap-filling" element={<PrivateRoute><GapFillingGame /></PrivateRoute>} />
 
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
