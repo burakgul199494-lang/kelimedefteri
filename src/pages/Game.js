@@ -1,236 +1,128 @@
-import React, { useState, useEffect, useMemo } from "react";
-import { useData } from "../context/DataContext";
-import WordCard from "../components/WordCard";
-import { useNavigate } from "react-router-dom";
-import { X, RotateCcw, Home, Target, Check, Trophy, BookOpen, Clock, Tag, Play, Layers, AlertCircle } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Volume2, Languages, Loader2, Tag, Image as ImageIcon } from "lucide-react";
+import { translateTextWithAI } from "../services/aiService";
+import { fetchImageForWord } from "../services/imageService";
 
-export default function Game() {
-  const { getAllWords, knownWordIds, handleSmartLearn, learningQueue, addScore } = useData();
-  const navigate = useNavigate();
+const WordCard = ({ wordObj }) => {
+  const [sentenceTranslation, setSentenceTranslation] = useState(null);
+  const [loadingSentence, setLoadingSentence] = useState(false);
+  const [defTranslations, setDefTranslations] = useState({});
+  const [loadingDefs, setLoadingDefs] = useState({});
   
-  // --- STATE'LER ---
-  const [gameStage, setGameStage] = useState("selection");
-  const [sessionWords, setSessionWords] = useState([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [swipeDirection, setSwipeDirection] = useState(null);
-  const [stats, setStats] = useState({ learned: 0, review: 0 });
-  const [selectedTag, setSelectedTag] = useState(null);
-  const [includeResting, setIncludeResting] = useState(false);
+  // Resim State'leri
+  const [imageUrl, setImageUrl] = useState(null);
+  const [loadingImage, setLoadingImage] = useState(false);
 
-  const POINTS_PER_CARD = 5; // Kart başına puan
+  // --- YENİ: KELİME DEĞİŞİNCE HER ŞEYİ SIFIRLA ---
+  useEffect(() => {
+      setSentenceTranslation(null); // Cümle çevirisini sil
+      setDefTranslations({});       // Anlam çevirilerini sil
+      setLoadingSentence(false);
+      setLoadingDefs({});
+      setImageUrl(null);            // Eski resmi sil (yeni gelene kadar boş kalsın)
+  }, [wordObj]); // wordObj değiştiği an bu blok çalışır
+  // -----------------------------------------------
 
-  // --- ETİKETLERİ HESAPLA ---
-  const tagStats = useMemo(() => {
-    const all = getAllWords();
-    const statsMap = {}; 
-    const now = new Date();
-
-    all.forEach(w => {
-        if (!knownWordIds.includes(w.id)) {
-            let isReady = true;
-            const progress = learningQueue.find(q => q.wordId === w.id);
-            if (progress) {
-                const reviewDate = new Date(progress.nextReview);
-                if (reviewDate > now) isReady = false; 
-            }
-
-            if (Array.isArray(w.tags)) {
-                w.tags.forEach(t => {
-                    if (t) {
-                        if (!statsMap[t]) statsMap[t] = { ready: 0, resting: 0 };
-                        if (isReady) statsMap[t].ready++;
-                        else statsMap[t].resting++;
-                    }
-                });
-            }
+  // Resim Getirme
+  useEffect(() => {
+    const loadImage = async () => {
+        setLoadingImage(true);
+        //setImageUrl(null); // Yukarıdaki genel sıfırlama bunu zaten yapıyor
+        const imgData = await fetchImageForWord(wordObj.word);
+        if (imgData) {
+            setImageUrl(imgData);
         }
-    });
+        setLoadingImage(false);
+    };
+    loadImage();
+  }, [wordObj.word]);
 
-    return Object.entries(statsMap)
-        .map(([tag, counts]) => ({ tag, ...counts }))
-        .sort((a, b) => a.tag.localeCompare(b.tag, 'tr'));
-
-  }, [getAllWords, knownWordIds, learningQueue]);
-
-  // --- OYUNU BAŞLAT ---
-  const startSession = (tag = null, forceIncludeResting = false) => {
-    setSelectedTag(tag);
-    const all = getAllWords();
-    const now = new Date();
-
-    let filteredPool = all;
-    if (tag) {
-        filteredPool = all.filter(w => w.tags && w.tags.includes(tag));
-    }
-
-    const playableWords = filteredPool.filter(w => {
-        if (knownWordIds.includes(w.id)) return false;
-        if (forceIncludeResting) return true;
-
-        const progress = learningQueue.find(q => q.wordId === w.id);
-        if (!progress) return true; 
-        
-        const reviewDate = new Date(progress.nextReview);
-        return reviewDate <= now;
-    });
-    
-    if (playableWords.length === 0) {
-      alert("Bu kategoride çalışılacak aktif kelime kalmadı! (Hepsi dinlenmede veya öğrenildi)");
-    } else {
-      const shuffled = [...playableWords].sort(() => 0.5 - Math.random());
-      setSessionWords(shuffled.slice(0, 20));
-      setCurrentIndex(0);
-      setStats({ learned: 0, review: 0 });
-      setGameStage("playing");
-    }
+  const speak = (text, e) => {
+    if (e) e.stopPropagation();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = "en-US"; utterance.rate = 0.9; window.speechSynthesis.speak(utterance);
   };
 
-  // --- KART KAYDIRMA MANTIĞI ---
-  const handleSwipe = async (dir) => {
-    if (currentIndex >= sessionWords.length) return;
-    setSwipeDirection(dir);
-    const currentWord = sessionWords[currentIndex];
-
-    setTimeout(async () => {
-      if (dir === "right") {
-        await handleSmartLearn(currentWord.id, "know");
-        setStats(p => ({ ...p, learned: p.learned + 1 }));
-      } else {
-        await handleSmartLearn(currentWord.id, "dont_know");
-        setStats(p => ({ ...p, review: p.review + 1 }));
-      }
-
-      if (currentIndex + 1 < sessionWords.length) {
-        setCurrentIndex(p => p + 1); setSwipeDirection(null);
-      } else {
-        // OYUN TAMAMLANDI (Tüm kartlar bitti)
-        setGameStage("summary"); setSwipeDirection(null);
-        
-        // Puan Hesapla: Toplam Kelime * 5
-        const totalPoints = sessionWords.length * POINTS_PER_CARD;
-        if (totalPoints > 0) addScore(totalPoints);
-      }
-    }, 300);
+  const handleTranslateSentence = async (e) => {
+    e.stopPropagation(); if (sentenceTranslation) return; setLoadingSentence(true);
+    const text = await translateTextWithAI(wordObj.sentence); setSentenceTranslation(text); setLoadingSentence(false);
   };
 
-  // --- ERKEN PES ETME (KAYDET VE ÇIK) ---
-  const handleQuitEarly = () => {
-      // O ana kadar geçilen kart sayısı * 5 Puan
-      // currentIndex: Şu anki kartın indeksi. (Örn: 5. karttaysak index 4'tür, yani 4 kart bitmiştir)
-      const pointsEarned = currentIndex * POINTS_PER_CARD;
-      
-      if (pointsEarned > 0) {
-          addScore(pointsEarned);
-      }
-      setGameStage("summary");
+  const handleTranslateDef = async (index, text, e) => {
+    e.stopPropagation(); if (defTranslations[index]) return; setLoadingDefs((prev) => ({ ...prev, [index]: true }));
+    const translated = await translateTextWithAI(text); setDefTranslations((prev) => ({ ...prev, [index]: translated })); setLoadingDefs((prev) => ({ ...prev, [index]: false }));
   };
 
-  // --- ARAYÜZ ---
-  if (gameStage === "selection") {
-      return (
-        <div className="min-h-screen bg-slate-50 p-6 flex flex-col items-center">
-            <div className="w-full max-w-md space-y-6">
-                <div className="flex items-center justify-between">
-                    <button onClick={() => navigate("/")} className="p-2 bg-white rounded-full shadow-sm hover:bg-slate-100"><Home className="w-5 h-5 text-slate-600"/></button>
-                    <h2 className="text-xl font-bold text-slate-800">Çalışma Modu</h2>
-                    <div className="w-9"></div>
-                </div>
-                <div className="text-center py-4">
-                    <div className="bg-indigo-100 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-3 text-indigo-600"><Layers className="w-8 h-8"/></div>
-                    <h1 className="text-2xl font-bold text-slate-800">Hangi bağlamda çalışacaksın?</h1>
-                    <p className="text-slate-500 text-sm mt-1">Turuncu sayılar dinlenmedeki kelimelerdir.</p>
-                </div>
-                <div className="space-y-4 pb-10">
-                    <div className="bg-white p-4 rounded-2xl shadow-md border border-slate-200">
-                        <button onClick={() => startSession(null, includeResting)} className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white p-4 rounded-xl shadow-sm flex items-center justify-between group transition-transform active:scale-95 mb-3">
-                            <div className="flex items-center gap-3"><div className="bg-white/20 p-2 rounded-lg"><BookOpen className="w-5 h-5"/></div><div className="text-left"><div className="font-bold text-lg">TÜMÜ</div><div className="text-xs text-indigo-100 opacity-80">Karışık Çalış</div></div></div><Play className="w-6 h-6 opacity-80 group-hover:translate-x-1 transition-transform"/>
-                        </button>
-                        <div onClick={() => setIncludeResting(!includeResting)} className="flex items-center gap-3 cursor-pointer p-2 hover:bg-slate-50 rounded-lg transition-colors">
-                            <div className={`w-5 h-5 rounded border flex items-center justify-center ${includeResting ? "bg-orange-500 border-orange-500 text-white" : "border-slate-300"}`}>{includeResting && <Check className="w-3 h-3"/>}</div>
-                            <span className="text-sm text-slate-600 font-medium">Dinlenmedeki kelimeleri de sor</span>
-                        </div>
-                    </div>
-                    <div className="relative py-2"><div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-200"></div></div><div className="relative flex justify-center text-sm"><span className="px-2 bg-slate-50 text-slate-400 font-medium">Kategoriler</span></div></div>
-                    {tagStats.length === 0 ? (<div className="text-center text-slate-400 py-4 bg-white rounded-xl border border-dashed border-slate-300">Aktif kategori bulunamadı.</div>) : (
-                        <div className="grid grid-cols-1 gap-3">
-                            {tagStats.map(({ tag, ready, resting }) => {
-                                const isOnlyResting = ready === 0 && resting > 0;
-                                return (
-                                    <button key={tag} onClick={() => startSession(tag, isOnlyResting)} className="bg-white border border-slate-200 p-4 rounded-xl flex items-center justify-between hover:border-indigo-300 hover:bg-indigo-50 transition-all shadow-sm group active:scale-95">
-                                        <div className="flex items-center gap-3"><div className={`p-2 rounded-lg ${isOnlyResting ? "bg-orange-100 text-orange-600" : "bg-indigo-100 text-indigo-600"}`}><Tag className="w-5 h-5"/></div><div className="text-left"><div className="font-bold text-slate-700 group-hover:text-indigo-700">{tag}</div><div className="text-xs text-slate-400">Toplam {ready + resting} kelime</div></div></div>
-                                        <div className="flex gap-2">{ready > 0 && (<span className="bg-green-100 text-green-700 px-2 py-1 rounded-md text-xs font-bold flex items-center gap-1"><Play className="w-3 h-3 fill-green-700"/> {ready}</span>)}{resting > 0 && (<span className="bg-orange-100 text-orange-600 px-2 py-1 rounded-md text-xs font-bold flex items-center gap-1"><Clock className="w-3 h-3"/> {resting}</span>)}</div>
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    )}
-                </div>
-            </div>
-        </div>
-      );
-  }
+  const getShortType = (t) => {
+    const map = { noun: "n.", verb: "v.", adjective: "adj.", adverb: "adv.", prep: "prep.", pronoun: "pron.", conj: "conj.", article: "art.", other: "other" };
+    return map[t] || t;
+  };
 
-  if (gameStage === "summary") {
-    // Özet Ekranı Mantığı (Aynı Kalıyor)
-    const all = getAllWords();
-    let filteredPool = all;
-    if (selectedTag) filteredPool = all.filter(w => w.tags && w.tags.includes(selectedTag));
-    const totalKnown = filteredPool.filter(w => knownWordIds.includes(w.id)).length;
-    const now = new Date();
-    const waitingCount = filteredPool.filter(w => { const progress = learningQueue.find(q => q.wordId === w.id); if (!progress) return false; const d = new Date(progress.nextReview); return d > now && !knownWordIds.includes(w.id); }).length;
-    const availableToPlay = filteredPool.length - totalKnown - waitingCount;
+  const renderSourceBadge = (source) => (
+    <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${source === "system" ? "bg-blue-100 text-blue-600" : "bg-orange-100 text-orange-600"}`}>
+      {source === "system" ? "Sistem" : "Kullanıcı"}
+    </span>
+  );
 
+  const FeatureRow = ({ label, value }) => {
+    if (!value) return null;
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50 p-6 text-center">
-        <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full">
-           <Trophy className="w-20 h-20 text-yellow-500 mx-auto mb-4"/>
-           <h2 className="text-2xl font-bold text-slate-800 mb-2">{selectedTag ? `${selectedTag} Bitti!` : "Oturum Tamamlandı!"}</h2>
-           <div className="flex justify-center gap-6 my-6 border-b border-slate-100 pb-6"><div><div className="text-3xl font-bold text-green-600">{stats.learned}</div><div className="text-xs text-slate-500 font-bold uppercase">Öğrenildi</div></div><div><div className="text-3xl font-bold text-orange-500">{stats.review}</div><div className="text-xs text-slate-500 font-bold uppercase">Tekrar</div></div></div>
-           <div className="space-y-3 mb-6">
-                {selectedTag && <div className="bg-indigo-50 p-2 rounded-lg text-sm font-bold text-indigo-700 mb-2 border border-indigo-100">Kategori: {selectedTag}</div>}
-                <div className="flex justify-between text-sm text-slate-600 bg-slate-50 p-3 rounded-lg"><span>Tamamen Öğrenilen:</span><span className="font-bold text-indigo-600">{totalKnown}</span></div>
-                <div className="flex justify-between text-sm text-slate-600 bg-slate-50 p-3 rounded-lg"><span>Dinlenmede:</span><span className="font-bold text-orange-500 flex items-center gap-1"><Clock className="w-3 h-3"/> {waitingCount}</span></div>
-                <div className="flex justify-between text-sm text-slate-600 bg-slate-50 p-3 rounded-lg"><span>Sırada Bekleyen:</span><span className="font-bold text-green-600">{availableToPlay}</span></div>
-           </div>
-           <button onClick={() => startSession(selectedTag, true)} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-xl flex items-center justify-center gap-2 mb-3"><RotateCcw className="w-5 h-5"/> Devam Et (Hepsini Sor)</button>
-           <button onClick={() => setGameStage("selection")} className="w-full bg-white border border-slate-200 text-slate-600 font-bold py-3 px-6 rounded-xl hover:bg-slate-50 flex items-center justify-center gap-2"><Layers className="w-5 h-5"/> Kategori Değiştir</button>
-           <button onClick={() => navigate("/")} className="w-full mt-3 bg-white border border-slate-200 text-slate-600 font-bold py-3 px-6 rounded-xl hover:bg-slate-50 flex items-center justify-center gap-2"><Home className="w-5 h-5"/> Ana Sayfa</button>
-        </div>
-      </div>
+      <div className="flex items-center justify-between group"><div className="flex items-center gap-1 overflow-hidden"><span className="font-semibold shrink-0">{label}:</span><span className="truncate">{value}</span></div><button onClick={(e) => speak(value, e)} className="p-1 text-indigo-300 hover:text-indigo-600 hover:bg-indigo-50 rounded-full transition-colors opacity-60 group-hover:opacity-100" title="Oku"><Volume2 className="w-3 h-3" /></button></div>
     );
-  }
-
-  const currentCard = sessionWords[currentIndex];
-  const progress = sessionWords.length > 0 ? (currentIndex / sessionWords.length) * 100 : 0;
+  };
 
   return (
-    <div className="flex flex-col min-h-screen bg-slate-100 overflow-hidden">
-      <div className="bg-white shadow-sm p-4 z-10">
-        <div className="max-w-md mx-auto">
-          <div className="flex justify-between items-center mb-2">
-            <button onClick={handleQuitEarly} className="text-slate-400 hover:text-slate-700"><X className="w-6 h-6"/></button>
-            <div className="flex items-center gap-2">
-                {selectedTag && <span className="text-[10px] bg-indigo-50 text-indigo-600 px-2 py-1 rounded-full font-bold border border-indigo-100">{selectedTag}</span>}
-                <span className="text-xs font-semibold bg-slate-100 text-slate-600 px-2 py-1 rounded-full">{currentIndex + 1} / {sessionWords.length}</span>
-            </div>
-          </div>
-          <div className="w-full bg-slate-200 rounded-full h-2.5"><div className="bg-indigo-600 h-2.5 rounded-full transition-all duration-500" style={{ width: `${progress}%` }}></div></div>
-        </div>
-      </div>
-      <div className="flex-1 flex items-center justify-center p-4 relative">
-        {currentCard && (
-          <div className={`relative w-full max-w-sm transition-all duration-300 transform ${swipeDirection === "left" ? "-translate-x-24 -rotate-6 opacity-0" : ""} ${swipeDirection === "right" ? "translate-x-24 rotate-6 opacity-0" : ""}`}>
-             <WordCard wordObj={currentCard} />
-          </div>
+    <div className="relative w-full max-w-sm bg-white rounded-3xl shadow-xl overflow-hidden border border-slate-100 mb-4 mx-auto">
+      
+      {/* Resim Alanı */}
+      <div className="w-full h-48 bg-slate-100 relative flex items-center justify-center overflow-hidden">
+        {loadingImage && <Loader2 className="w-8 h-8 text-slate-400 animate-spin"/>}
+        {!loadingImage && !imageUrl && <ImageIcon className="w-12 h-12 text-slate-300 opacity-50"/>}
+        {!loadingImage && imageUrl && (
+            <>
+            <img src={imageUrl.url} alt={wordObj.word} className="w-full h-full object-cover animate-in fade-in duration-500" />
+            <a href={imageUrl.photographerUrl} target="_blank" rel="noopener noreferrer" className="absolute bottom-1 right-1 text-[8px] text-white bg-black/50 px-1 rounded opacity-70 hover:opacity-100">
+                Photo by {imageUrl.photographer} / Unsplash
+            </a>
+            </>
         )}
+         <div className="absolute top-2 right-2">{renderSourceBadge(wordObj.source)}</div>
       </div>
-      <div className="pb-10 px-6 max-w-md mx-auto w-full">
-        <div className="flex gap-4 justify-center">
-          <button onClick={() => handleSwipe("left")} disabled={!!swipeDirection} className="flex-1 bg-white border-2 border-orange-100 hover:bg-orange-50 text-orange-500 font-bold py-4 rounded-2xl shadow-sm flex flex-col items-center gap-1"><X className="w-6 h-6"/><span>Bilmiyorum</span></button>
-          <button onClick={() => handleSwipe("right")} disabled={!!swipeDirection} className="flex-1 bg-white border-2 border-green-100 hover:bg-green-50 text-green-600 font-bold py-4 rounded-2xl shadow-sm flex flex-col items-center gap-1"><Check className="w-6 h-6"/><span>Biliyorum</span></button>
+
+      <div className="p-6 text-center relative -mt-4 bg-white rounded-t-3xl z-10">
+        
+        <div className="flex items-center justify-center gap-3 mb-4">
+            <h2 className="text-4xl font-extrabold text-slate-800 break-words">{wordObj.word}</h2>
+            <button onClick={(e) => speak(wordObj.word, e)} className="p-3 bg-indigo-100 text-indigo-600 rounded-full hover:bg-indigo-200 transition-colors"><Volume2 className="w-6 h-6" /></button>
         </div>
-        <button onClick={handleQuitEarly} className="mt-6 flex items-center justify-center gap-2 text-slate-400 hover:text-red-500 transition-colors text-sm font-medium mx-auto"><Target className="w-4 h-4"/> Bitir</button>
+
+        <div className="space-y-4 text-left">
+            {wordObj.definitions.map((def, idx) => (
+            <div key={idx} className={`p-3 rounded-xl border ${idx === 0 ? "bg-indigo-50 border-indigo-100" : "bg-slate-50 border-slate-100"}`}>
+                <div className="flex items-center gap-2 mb-1"><span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded ${idx === 0 ? "bg-indigo-200 text-indigo-700" : "bg-slate-200 text-slate-600"}`}>{getShortType(def.type)}</span><span className={`font-bold text-lg ${idx === 0 ? "text-indigo-900" : "text-slate-700"}`}>{def.meaning}</span></div>
+                {def.engExplanation && (
+                <div className="mt-1 pl-2 border-l-2 border-indigo-200/50 group"><div className="flex items-start justify-between gap-2"><p className={`text-sm italic font-medium ${idx === 0 ? "text-indigo-500" : "text-slate-500"}`}>"{def.engExplanation}"</p><div className="flex gap-1"><button onClick={(e) => speak(def.engExplanation, e)} className="opacity-50 hover:opacity-100 p-1 bg-white rounded-full shadow-sm"><Volume2 className="w-3 h-3 text-indigo-500" /></button><button onClick={(e) => handleTranslateDef(idx, def.engExplanation, e)} className="opacity-50 hover:opacity-100 p-1 bg-white rounded-full shadow-sm">{loadingDefs[idx] ? <Loader2 className="w-3 h-3 animate-spin text-indigo-500" /> : <Languages className="w-3 h-3 text-indigo-500" />}</button></div></div>{defTranslations[idx] && <div className="mt-1 text-xs text-indigo-800 bg-indigo-100/50 p-1.5 rounded">TR: {defTranslations[idx]}</div>}</div>
+                )}
+            </div>
+            ))}
+
+            {(wordObj.plural || wordObj.v2 || wordObj.v3 || wordObj.vIng || wordObj.thirdPerson) && (
+            <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 text-left space-y-1.5 mt-2"><div className="text-[10px] uppercase tracking-wide text-slate-400 font-bold mb-1">Fiil & İsim Çekimleri</div><div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm text-slate-700"><FeatureRow label="Plural" value={wordObj.plural} /><FeatureRow label="3rd P" value={wordObj.thirdPerson} /><FeatureRow label="V2" value={wordObj.v2} /><FeatureRow label="V3" value={wordObj.v3} /><FeatureRow label="V-ing" value={wordObj.vIng} /></div></div>
+            )}
+
+            {(wordObj.advLy || wordObj.compEr || wordObj.superEst) && (
+                <div className="bg-orange-50 p-3 rounded-xl border border-orange-100 text-left space-y-1.5 mt-2"><div className="text-[10px] uppercase tracking-wide text-orange-400 font-bold mb-1">Sıfat & Zarf Halleri</div><div className="text-sm text-slate-700 space-y-1"><FeatureRow label="Zarf" value={wordObj.advLy} /><FeatureRow label="Comp" value={wordObj.compEr} /><FeatureRow label="Super" value={wordObj.superEst} /></div></div>
+            )}
+
+            <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 mt-2"><div className="flex items-center justify-between mb-2"><div className="text-xs uppercase tracking-wide text-slate-400 font-bold">Örnek Cümle</div><div className="flex gap-2"><button onClick={handleTranslateSentence} className="p-1.5 bg-white text-indigo-500 rounded-full border border-slate-200 hover:bg-indigo-50 transition-colors">{loadingSentence ? <Loader2 className="w-4 h-4 animate-spin" /> : <Languages className="w-4 h-4" />}</button><button onClick={(e) => speak(wordObj.sentence, e)} className="p-1.5 bg-white text-indigo-500 rounded-full border border-slate-200 hover:bg-indigo-50 transition-colors"><Volume2 className="w-4 h-4" /></button></div></div><p className="text-base text-slate-600 italic">"{wordObj.sentence}"</p>{sentenceTranslation && <div className="mt-2 pt-2 border-t border-slate-200 animate-in fade-in"><p className="text-slate-800 text-sm font-medium">TR: {sentenceTranslation}</p></div>}</div>
+
+            {wordObj.tags && Array.isArray(wordObj.tags) && wordObj.tags.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-4 justify-center">{wordObj.tags.map((tag, i) => ( tag && <span key={i} className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-1 rounded-full flex items-center gap-1 border border-slate-200"><Tag className="w-3 h-3 opacity-50"/> {tag}</span>))}</div>
+            )}
+        </div>
       </div>
     </div>
   );
-}
+};
+
+export default WordCard;
