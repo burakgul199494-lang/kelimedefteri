@@ -9,25 +9,21 @@ const WordCard = ({ wordObj }) => {
   const [defTranslations, setDefTranslations] = useState({});
   const [loadingDefs, setLoadingDefs] = useState({});
   
-  // Resim State'leri
   const [imageUrl, setImageUrl] = useState(null);
   const [loadingImage, setLoadingImage] = useState(false);
 
   // --- YENİ: KELİME DEĞİŞİNCE HER ŞEYİ SIFIRLA ---
+  // Bu useEffect, wordObj değiştiği an çalışır ve eski çevirileri temizler.
   useEffect(() => {
-      setSentenceTranslation(null); // Cümle çevirisini sil
-      setDefTranslations({});       // Anlam çevirilerini sil
-      setLoadingSentence(false);
-      setLoadingDefs({});
-      setImageUrl(null);            // Eski resmi sil (yeni gelene kadar boş kalsın)
-  }, [wordObj]); // wordObj değiştiği an bu blok çalışır
-  // -----------------------------------------------
-
-  // Resim Getirme
-  useEffect(() => {
+    setSentenceTranslation(null);
+    setDefTranslations({});
+    setLoadingSentence(false);
+    setLoadingDefs({});
+    
+    // Resim yüklemeyi başlat
     const loadImage = async () => {
         setLoadingImage(true);
-        //setImageUrl(null); // Yukarıdaki genel sıfırlama bunu zaten yapıyor
+        setImageUrl(null);
         const imgData = await fetchImageForWord(wordObj.word);
         if (imgData) {
             setImageUrl(imgData);
@@ -35,7 +31,9 @@ const WordCard = ({ wordObj }) => {
         setLoadingImage(false);
     };
     loadImage();
-  }, [wordObj.word]);
+
+  }, [wordObj.word]); // wordObj.word değişirse tetiklenir.
+  // -----------------------------------------------
 
   const speak = (text, e) => {
     if (e) e.stopPropagation();
@@ -74,23 +72,20 @@ const WordCard = ({ wordObj }) => {
   return (
     <div className="relative w-full max-w-sm bg-white rounded-3xl shadow-xl overflow-hidden border border-slate-100 mb-4 mx-auto">
       
-      {/* Resim Alanı */}
+      {/* RESİM ALANI */}
       <div className="w-full h-48 bg-slate-100 relative flex items-center justify-center overflow-hidden">
         {loadingImage && <Loader2 className="w-8 h-8 text-slate-400 animate-spin"/>}
         {!loadingImage && !imageUrl && <ImageIcon className="w-12 h-12 text-slate-300 opacity-50"/>}
         {!loadingImage && imageUrl && (
             <>
             <img src={imageUrl.url} alt={wordObj.word} className="w-full h-full object-cover animate-in fade-in duration-500" />
-            <a href={imageUrl.photographerUrl} target="_blank" rel="noopener noreferrer" className="absolute bottom-1 right-1 text-[8px] text-white bg-black/50 px-1 rounded opacity-70 hover:opacity-100">
-                Photo by {imageUrl.photographer} / Unsplash
-            </a>
+            <a href={imageUrl.photographerUrl} target="_blank" rel="noopener noreferrer" className="absolute bottom-1 right-1 text-[8px] text-white bg-black/50 px-1 rounded opacity-70 hover:opacity-100">Photo by {imageUrl.photographer} / Unsplash</a>
             </>
         )}
          <div className="absolute top-2 right-2">{renderSourceBadge(wordObj.source)}</div>
       </div>
 
       <div className="p-6 text-center relative -mt-4 bg-white rounded-t-3xl z-10">
-        
         <div className="flex items-center justify-center gap-3 mb-4">
             <h2 className="text-4xl font-extrabold text-slate-800 break-words">{wordObj.word}</h2>
             <button onClick={(e) => speak(wordObj.word, e)} className="p-3 bg-indigo-100 text-indigo-600 rounded-full hover:bg-indigo-200 transition-colors"><Volume2 className="w-6 h-6" /></button>
