@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useRef } from "react";
 import { useData } from "../context/DataContext";
 import WordCard from "../components/WordCard";
 import { useNavigate } from "react-router-dom";
@@ -24,12 +24,18 @@ export default function Game() {
   const [gameStage, setGameStage] = useState("selection");
   const [sessionWords, setSessionWords] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [swipeDirection, setSwipeDirection] = useState(null);
+  const [swipeDirection, setSwipeDirection] = useState(null); // "left" | "right" | null
   const [stats, setStats] = useState({ learned: 0, review: 0 });
   const [selectedTag, setSelectedTag] = useState(null);
   const [includeResting, setIncludeResting] = useState(false);
 
+  // Drag / swipe için ek state
+  const [dragX, setDragX] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStartRef = useRef(null);
+
   const POINTS_PER_CARD = 5;
+  const DRAG_THRESHOLD = 80; // Kaç px sonrası swipe kabul edilsin?
 
   // ---------------------------------------
   // --- ETİKET SAYIMLARI (HAZIR/DİNLENME) ---
@@ -94,6 +100,9 @@ export default function Game() {
     setSessionWords(shuffled.slice(0, 20));
     setCurrentIndex(0);
     setStats({ learned: 0, review: 0 });
+    setSwipeDirection(null);
+    setDragX(0);
+    setIsDragging(false);
 
     setGameStage("playing");
   };
@@ -102,9 +111,13 @@ export default function Game() {
   // --- KART KAYDIRMA ---
   // --------------------------
   const handleSwipe = async (dir) => {
-    if (currentIndex >= sessionWords.length) return;
+    if (currentIndex >= sessionWords.length || swipeDirection) return;
 
+    // Drag devam ediyorsa bırak
+    setIsDragging(false);
+    setDragX(0);
     setSwipeDirection(dir);
+
     const currentWord = sessionWords[currentIndex];
 
     setTimeout(async () => {
@@ -119,6 +132,7 @@ export default function Game() {
       if (currentIndex + 1 < sessionWords.length) {
         setCurrentIndex((p) => p + 1);
         setSwipeDirection(null);
+        setDragX(0);
       } else {
         setGameStage("summary");
         setSwipeDirection(null);
@@ -126,7 +140,36 @@ export default function Game() {
         const totalPoints = sessionWords.length * POINTS_PER_CARD;
         if (totalPoints > 0) addScore(totalPoints);
       }
-    }, 300);
+    }, 250);
+  };
+
+  // ----------------------------
+  // --- DRAG LOGİĞİ ---
+  // ----------------------------
+  const handleDragStart = (clientX) => {
+    if (swipeDirection) return; // animasyon sırasında drag olmasın
+    dragStartRef.current = clientX;
+    setIsDragging(true);
+  };
+
+  const handleDragMove = (clientX) => {
+    if (!isDragging || swipeDirection || dragStartRef.current == null) return;
+    const deltaX = clientX - dragStartRef.current;
+    setDragX(deltaX);
+  };
+
+  const handleDragEnd = () => {
+    if (!isDragging) return;
+    setIsDragging(false);
+
+    if (Math.abs(dragX) > DRAG_THRESHOLD) {
+      const dir = dragX > 0 ? "right" : "left";
+      setDragX(0);
+      handleSwipe(dir);
+    } else {
+      // Yeterince çekilmediyse eski konuma dön
+      setDragX(0);
+    }
   };
 
   // ----------------------------
@@ -162,7 +205,9 @@ export default function Game() {
             <div className="bg-indigo-100 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-3 text-indigo-600">
               <Layers className="w-8 h-8" />
             </div>
-            <h1 className="text-2xl font-bold text-slate-800">Hangi bağlamda çalışacaksın?</h1>
+            <h1 className="text-2xl font-bold text-slate-800">
+              Hangi bağlamda çalışacaksın?
+            </h1>
             <p className="text-slate-500 text-sm mt-1">
               Turuncu sayılar dinlenmedeki kelimelerdir.
             </p>
@@ -181,7 +226,9 @@ export default function Game() {
                   </div>
                   <div className="text-left">
                     <div className="font-bold text-lg">TÜMÜ</div>
-                    <div className="text-xs text-indigo-100 opacity-80">Karışık Çalış</div>
+                    <div className="text-xs text-indigo-100 opacity-80">
+                      Karışık Çalış
+                    </div>
                   </div>
                 </div>
                 <Play className="w-6 h-6 opacity-80 group-hover:translate-x-1 transition-transform" />
@@ -193,7 +240,9 @@ export default function Game() {
               >
                 <div
                   className={`w-5 h-5 rounded border flex items-center justify-center ${
-                    includeResting ? "bg-orange-500 border-orange-500 text-white" : "border-slate-300"
+                    includeResting
+                      ? "bg-orange-500 border-orange-500 text-white"
+                      : "border-slate-300"
                   }`}
                 >
                   {includeResting && <Check className="w-3 h-3" />}
@@ -210,7 +259,9 @@ export default function Game() {
                 <div className="w-full border-t border-slate-200"></div>
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-slate-50 text-slate-400 font-medium">Kategoriler</span>
+                <span className="px-2 bg-slate-50 text-slate-400 font-medium">
+                  Kategoriler
+                </span>
               </div>
             </div>
 
@@ -244,14 +295,17 @@ export default function Game() {
                           <div className="font-bold text-slate-700 group-hover:text-indigo-700">
                             {tag}
                           </div>
-                          <div className="text-xs text-slate-400">Toplam {ready + resting} kelime</div>
+                          <div className="text-xs text-slate-400">
+                            Toplam {ready + resting} kelime
+                          </div>
                         </div>
                       </div>
 
                       <div className="flex gap-2">
                         {ready > 0 && (
                           <span className="bg-green-100 text-green-700 px-2 py-1 rounded-md text-xs font-bold flex items-center gap-1">
-                            <Play className="w-3 h-3 fill-green-700" /> {ready}
+                            <Play className="w-3 h-3 fill-green-700" />{" "}
+                            {ready}
                           </span>
                         )}
                         {resting > 0 && (
@@ -281,7 +335,9 @@ export default function Game() {
       ? all.filter((w) => w.tags?.includes(selectedTag))
       : all;
 
-    const totalKnown = filteredPool.filter((w) => knownWordIds.includes(w.id)).length;
+    const totalKnown = filteredPool.filter((w) =>
+      knownWordIds.includes(w.id)
+    ).length;
 
     const now = new Date();
     const waitingCount = filteredPool.filter((w) => {
@@ -291,7 +347,8 @@ export default function Game() {
       return d > now && !knownWordIds.includes(w.id);
     }).length;
 
-    const availableToPlay = filteredPool.length - totalKnown - waitingCount;
+    const availableToPlay =
+      filteredPool.length - totalKnown - waitingCount;
 
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50 p-6 text-center">
@@ -304,13 +361,21 @@ export default function Game() {
 
           <div className="flex justify-center gap-6 my-6 border-b border-slate-100 pb-6">
             <div>
-              <div className="text-3xl font-bold text-green-600">{stats.learned}</div>
-              <div className="text-xs text-slate-500 font-bold uppercase">Öğrenildi</div>
+              <div className="text-3xl font-bold text-green-600">
+                {stats.learned}
+              </div>
+              <div className="text-xs text-slate-500 font-bold uppercase">
+                Öğrenildi
+              </div>
             </div>
 
             <div>
-              <div className="text-3xl font-bold text-orange-500">{stats.review}</div>
-              <div className="text-xs text-slate-500 font-bold uppercase">Tekrar</div>
+              <div className="text-3xl font-bold text-orange-500">
+                {stats.review}
+              </div>
+              <div className="text-xs text-slate-500 font-bold uppercase">
+                Tekrar
+              </div>
             </div>
           </div>
 
@@ -323,7 +388,9 @@ export default function Game() {
 
             <div className="flex justify-between text-sm text-slate-600 bg-slate-50 p-3 rounded-lg">
               <span>Tamamen Öğrenilen:</span>
-              <span className="font-bold text-indigo-600">{totalKnown}</span>
+              <span className="font-bold text-indigo-600">
+                {totalKnown}
+              </span>
             </div>
 
             <div className="flex justify-between text-sm text-slate-600 bg-slate-50 p-3 rounded-lg">
@@ -335,7 +402,9 @@ export default function Game() {
 
             <div className="flex justify-between text-sm text-slate-600 bg-slate-50 p-3 rounded-lg">
               <span>Sırada Bekleyen:</span>
-              <span className="font-bold text-green-600">{availableToPlay}</span>
+              <span className="font-bold text-green-600">
+                {availableToPlay}
+              </span>
             </div>
           </div>
 
@@ -370,6 +439,20 @@ export default function Game() {
   const currentCard = sessionWords[currentIndex];
   const progress =
     sessionWords.length > 0 ? (currentIndex / sessionWords.length) * 100 : 0;
+
+  // Drag + swipe için transform hesaplama
+  let transform = "translateX(0px) rotate(0deg) scale(1)";
+  if (swipeDirection === "left") {
+    transform = "translateX(-120px) rotate(-6deg) scale(0.9)";
+  } else if (swipeDirection === "right") {
+    transform = "translateX(120px) rotate(6deg) scale(0.9)";
+  } else {
+    const rotation = dragX / 20;
+    const scale = 1 - Math.min(Math.abs(dragX), 120) / 600; // hafif küçülme
+    transform = `translateX(${dragX}px) rotate(${rotation}deg) scale(${scale})`;
+  }
+
+  const cardOpacity = swipeDirection ? 0 : 1;
 
   return (
     <div className="flex flex-col min-h-screen bg-slate-100 overflow-hidden">
@@ -410,19 +493,21 @@ export default function Game() {
       <div className="flex-1 flex items-center justify-center p-4 relative">
         {currentCard && (
           <div
-            className={`relative w-full max-w-sm transition-all duration-300 transform 
-              ${
-                swipeDirection === "left"
-                  ? "-translate-x-24 -rotate-6 opacity-0"
-                  : ""
-              }
-              ${
-                swipeDirection === "right"
-                  ? "translate-x-24 rotate-6 opacity-0"
-                  : ""
-              }`}
+            className="relative w-full max-w-sm transition-transform duration-300"
+            style={{
+              transform,
+              opacity: cardOpacity,
+              touchAction: "none"
+            }}
+            onMouseDown={(e) => handleDragStart(e.clientX)}
+            onMouseMove={(e) => handleDragMove(e.clientX)}
+            onMouseUp={handleDragEnd}
+            onMouseLeave={handleDragEnd}
+            onTouchStart={(e) => handleDragStart(e.touches[0].clientX)}
+            onTouchMove={(e) => handleDragMove(e.touches[0].clientX)}
+            onTouchEnd={handleDragEnd}
           >
-            {/* 🔥 ÖNEMLİ: KEY EKLENDİ, ÇEVİRİ SORUNU TAMAMEN ÇÖZÜLDÜ */}
+            {/* Flip’li WordCard – key önemli */}
             <WordCard key={currentCard.id} wordObj={currentCard} />
           </div>
         )}
