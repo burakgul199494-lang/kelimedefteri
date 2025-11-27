@@ -508,7 +508,7 @@ export default function Game() {
             onTouchEnd={handleDragEnd}
           >
             {/* Flip’li WordCard – key önemli */}
-            <WordCard key={currentCard.id} wordObj={currentCard} />
+            <WordCard key={currentCard.id} wordObj={currentCard} inGameMode={true} />
           </div>
         )}
       </div>
