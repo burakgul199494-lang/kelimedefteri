@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import { useData } from "../context/DataContext";
 import WordCard from "../components/WordCard";
 import { useNavigate } from "react-router-dom";
@@ -34,63 +34,81 @@ export default function Game() {
   // ---------------------------------------
   // --- ETİKET SAYIMLARI (HAZIR/DİNLENME) ---
   // ---------------------------------------
-  const tagStats = useMemo(() => {
+  const { readyPool, restingPool, tagStats, countsByTag } = useMemo(() => {
     const all = getAllWords();
-    const statsMap = {};
     const now = new Date();
 
-    all.forEach((w) => {
-      if (!knownWordIds.includes(w.id)) {
-        let isReady = true;
-        const progress = learningQueue.find((q) => q.wordId === w.id);
-        if (progress) {
-          const reviewDate = new Date(progress.nextReview);
-          if (reviewDate > now) isReady = false;
-        }
+    const ready = [];
+    const resting = [];
+    const statsMap = { __all__: { ready: 0, resting: 0, known: 0, total: 0 } };
 
-        if (Array.isArray(w.tags)) {
-          w.tags.forEach((t) => {
-            if (t) {
-              if (!statsMap[t]) statsMap[t] = { ready: 0, resting: 0 };
-              if (isReady) statsMap[t].ready++;
-              else statsMap[t].resting++;
-            }
-          });
-        }
+    const ensureStats = (tag) => {
+      if (!statsMap[tag]) statsMap[tag] = { ready: 0, resting: 0, known: 0, total: 0 };
+      return statsMap[tag];
+    };
+
+    all.forEach((w) => {
+      const isKnown = knownWordIds.includes(w.id);
+      const progress = learningQueue.find((q) => q.wordId === w.id);
+      const isResting = !isKnown && progress && new Date(progress.nextReview) > now;
+      const isReady = !isKnown && !isResting;
+
+      const pushStats = (tagKey) => {
+        const target = ensureStats(tagKey);
+        target.total += 1;
+        if (isKnown) target.known += 1;
+        else if (isResting) target.resting += 1;
+        else target.ready += 1;
+      };
+
+      pushStats("__all__");
+      if (Array.isArray(w.tags) && w.tags.length > 0) {
+        w.tags.forEach((t) => t && pushStats(t));
+      }
+
+      if (!isKnown) {
+        if (isResting) resting.push(w);
+        else ready.push(w);
       }
     });
 
-    return Object.entries(statsMap)
+    const statsList = Object.entries(statsMap)
+      .filter(([tag]) => tag !== "__all__")
       .map(([tag, counts]) => ({ tag, ...counts }))
       .sort((a, b) => a.tag.localeCompare(b.tag, "tr"));
+
+    return { readyPool: ready, restingPool: resting, tagStats: statsList, countsByTag: statsMap };
   }, [getAllWords, knownWordIds, learningQueue]);
+
+  const filterByTag = useCallback((words, tag) => {
+    if (!tag) return words;
+    return words.filter((w) => Array.isArray(w.tags) && w.tags.includes(tag));
+  }, []);
+
+  const shuffleArray = (arr) => {
+    const copy = [...arr];
+    for (let i = copy.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [copy[i], copy[j]] = [copy[j], copy[i]];
+    }
+    return copy;
+  };
 
   // --------------------------
   // --- OTURUMU BAŞLAT ---
   // --------------------------
   const startSession = (tag = null, forceIncludeResting = false) => {
     setSelectedTag(tag);
-    const all = getAllWords();
-    const now = new Date();
-
-    let filteredPool = tag ? all.filter((w) => w.tags?.includes(tag)) : all;
-
-    const playableWords = filteredPool.filter((w) => {
-      if (knownWordIds.includes(w.id)) return false;
-      if (forceIncludeResting) return true;
-
-      const p = learningQueue.find((q) => q.wordId === w.id);
-      if (!p) return true;
-
-      return new Date(p.nextReview) <= now;
-    });
+    const readyWords = filterByTag(readyPool, tag);
+    const restingWords = forceIncludeResting ? filterByTag(restingPool, tag) : [];
+    const playableWords = [...readyWords, ...restingWords];
 
     if (playableWords.length === 0) {
       alert("Bu kategoride çalışılacak aktif kelime kalmadı!");
       return;
     }
 
-    const shuffled = [...playableWords].sort(() => 0.5 - Math.random());
+    const shuffled = shuffleArray(playableWords);
     setSessionWords(shuffled.slice(0, 20));
     setCurrentIndex(0);
     setStats({ learned: 0, review: 0 });
@@ -275,23 +293,10 @@ export default function Game() {
   // === ÖZET EKRANI ============
   // ===========================
   if (gameStage === "summary") {
-    const all = getAllWords();
-
-    let filteredPool = selectedTag
-      ? all.filter((w) => w.tags?.includes(selectedTag))
-      : all;
-
-    const totalKnown = filteredPool.filter((w) => knownWordIds.includes(w.id)).length;
-
-    const now = new Date();
-    const waitingCount = filteredPool.filter((w) => {
-      const p = learningQueue.find((q) => q.wordId === w.id);
-      if (!p) return false;
-      const d = new Date(p.nextReview);
-      return d > now && !knownWordIds.includes(w.id);
-    }).length;
-
-    const availableToPlay = filteredPool.length - totalKnown - waitingCount;
+    const statsForScope = selectedTag ? countsByTag[selectedTag] : countsByTag["__all__"];
+    const totalKnown = statsForScope?.known || 0;
+    const waitingCount = statsForScope?.resting || 0;
+    const availableToPlay = statsForScope?.ready || 0;
 
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50 p-6 text-center">
