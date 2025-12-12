@@ -153,10 +153,13 @@ export default function Home() {
           {/* --- AYIRAÇ --- */}
           <div className="h-px bg-slate-200 my-2"></div>
 
-          {/* Kelime Ekle */}
-          <button onClick={() => navigate("/add-word")} className="w-full bg-white text-slate-700 border-2 border-dashed border-slate-300 font-bold py-4 px-6 rounded-xl flex items-center justify-between group hover:bg-slate-50 active:scale-95 transition-transform">
-             <div className="flex items-center gap-3"><div className="bg-blue-50 p-2 rounded-lg text-blue-600"><Plus className="w-6 h-6"/></div><div className="text-left"><div className="text-base">Yeni Kelime Ekle</div></div></div><Plus className="w-5 h-5 opacity-40"/>
-          </button>
+          {/* 🔥 GÜNCELLEME BURADA 🔥 */}
+          {/* Kelime Ekle Butonu SADECE ADMIN İÇİN */}
+          {isAdmin && (
+              <button onClick={() => navigate("/add-word")} className="w-full bg-white text-slate-700 border-2 border-dashed border-slate-300 font-bold py-4 px-6 rounded-xl flex items-center justify-between group hover:bg-slate-50 active:scale-95 transition-transform">
+                 <div className="flex items-center gap-3"><div className="bg-blue-50 p-2 rounded-lg text-blue-600"><Plus className="w-6 h-6"/></div><div className="text-left"><div className="text-base">Yeni Kelime Ekle</div></div></div><Plus className="w-5 h-5 opacity-40"/>
+              </button>
+          )}
 
           {/* Listeler */}
           <div className="grid grid-cols-2 gap-3">
