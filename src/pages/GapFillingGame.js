@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useData } from "../context/DataContext";
 import { useNavigate } from "react-router-dom";
-import { X, Trophy, Loader2, ArrowRight, AlertCircle, CheckCircle2, Target, HelpCircle, Quote, Volume2, Languages } from "lucide-react"; // Volume2 ve Languages EKLENDİ
-import { translateTextWithAI } from "../services/aiService"; // Çeviri servisi eklendi
+import { X, Trophy, Loader2, ArrowRight, AlertCircle, CheckCircle2, Target, HelpCircle, Quote, Volume2, Languages } from "lucide-react";
+// API importu silindi
 
 export default function GapFillingGame() {
   const { getAllWords, knownWordIds, learningQueue, addScore } = useData();
@@ -18,20 +18,14 @@ export default function GapFillingGame() {
   const [attempts, setAttempts] = useState(0); 
   const [feedback, setFeedback] = useState(null); 
 
-  // --- YENİ STATE'LER (Çeviri İçin) ---
-  const [hintTranslation, setHintTranslation] = useState(null);
-  const [loadingHint, setLoadingHint] = useState(false);
+  // API yerine Toggle state
+  const [showHintTr, setShowHintTr] = useState(false);
 
   useEffect(() => { startGame(); }, []);
 
   useEffect(() => {
     if (gameStatus === "playing") {
-      setUserInput(""); 
-      setAttempts(0); 
-      setFeedback(null);
-      // Yeni soruda çeviriyi temizle
-      setHintTranslation(null); 
-      setLoadingHint(false);
+      setUserInput(""); setAttempts(0); setFeedback(null); setShowHintTr(false);
       setTimeout(() => inputRef.current?.focus(), 100);
     }
   }, [currentIndex, gameStatus]);
@@ -63,15 +57,13 @@ export default function GapFillingGame() {
     }
 
     const selected = pool.sort(() => 0.5 - Math.random()).slice(0, 20);
-    setQuestions(selected); 
-    setCurrentIndex(0); 
-    setScore(0); 
-    setGameStatus("playing");
+    setQuestions(selected); setCurrentIndex(0); setScore(0); setGameStatus("playing");
   };
 
   const currentWord = questions[currentIndex];
-  // İngilizce Açıklamayı Al
+  // İngilizce Açıklama ve Türkçe Çevirisi
   const englishDefinition = currentWord?.definitions[0]?.engExplanation;
+  const turkishDefinition = currentWord?.definitions[0]?.trExplanation;
 
   const getMaskedSentence = () => {
       if (!currentWord) return "";
@@ -79,22 +71,12 @@ export default function GapFillingGame() {
       return currentWord.sentence.replace(regex, "________");
   };
 
-  // --- YENİ AKSİYONLAR ---
   const speak = (text) => {
     if (!text) return;
     const u = new SpeechSynthesisUtterance(text); 
     u.lang = "en-US"; 
     window.speechSynthesis.speak(u);
   };
-
-  const handleTranslateHint = async () => {
-    if (!englishDefinition || hintTranslation) return;
-    setLoadingHint(true);
-    const res = await translateTextWithAI(englishDefinition);
-    setHintTranslation(res);
-    setLoadingHint(false);
-  };
-  // -----------------------
 
   const handleGiveUp = () => {
       setFeedback("revealed"); 
@@ -151,9 +133,9 @@ export default function GapFillingGame() {
            <div className="bg-blue-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto"><Trophy className="w-10 h-10 text-blue-600"/></div>
            <h2 className="text-2xl font-bold text-slate-800">Boşluk Doldurma Bitti!</h2>
            <div className="py-6 bg-slate-50 rounded-2xl border border-slate-100">
-              <div className="text-sm text-slate-400 font-bold uppercase">Toplam Puan</div>
-              <div className="text-5xl font-extrabold text-blue-600 mt-2">{score}</div>
-              <div className="text-xs text-slate-400 font-bold">Maksimum: {maxScore}</div>
+             <div className="text-sm text-slate-400 font-bold uppercase">Toplam Puan</div>
+             <div className="text-5xl font-extrabold text-blue-600 mt-2">{score}</div>
+             <div className="text-xs text-slate-400 font-bold">Maksimum: {maxScore}</div>
            </div>
            <button onClick={() => navigate("/")} className="w-full bg-white border-2 border-slate-200 text-slate-600 font-bold py-3 rounded-xl hover:bg-slate-50">Ana Sayfa</button>
            <button onClick={startGame} className="w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-200">Tekrar Dene</button>
@@ -171,30 +153,29 @@ export default function GapFillingGame() {
     <div className="min-h-screen bg-slate-50 flex flex-col items-center p-4">
        <div className="w-full max-w-md space-y-6 mt-4">
           
-          {/* Üst Bar */}
           <div className="flex justify-between items-center">
-             <button onClick={()=>navigate("/")} className="p-2 bg-white rounded-full hover:bg-slate-100 shadow-sm"><X className="w-5 h-5 text-slate-400"/></button>
-             <div className="font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-full border border-blue-100">{currentIndex+1} / {questions.length}</div>
-             <div className="flex items-center gap-1 bg-amber-100 text-amber-700 px-3 py-1 rounded-full font-bold text-sm border border-amber-200"><Trophy className="w-4 h-4"/> {score}</div>
+              <button onClick={()=>navigate("/")} className="p-2 bg-white rounded-full hover:bg-slate-100 shadow-sm"><X className="w-5 h-5 text-slate-400"/></button>
+              <div className="font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-full border border-blue-100">{currentIndex+1} / {questions.length}</div>
+              <div className="flex items-center gap-1 bg-amber-100 text-amber-700 px-3 py-1 rounded-full font-bold text-sm border border-amber-200"><Trophy className="w-4 h-4"/> {score}</div>
           </div>
           <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden"><div className="bg-blue-500 h-full transition-all duration-500" style={{width:`${progress}%`}}></div></div>
           
           <div className="bg-white p-6 rounded-3xl shadow-xl border border-slate-100 text-center space-y-6 animate-in fade-in zoom-in duration-300 relative overflow-hidden">
-             <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-400 to-cyan-400"></div>
-             
-             {/* Soru Alanı (Cümle) */}
-             <div className="space-y-4">
-                 <div className="flex justify-center">
-                    <div className="bg-blue-50 p-3 rounded-full"><Quote className="w-6 h-6 text-blue-400"/></div>
-                 </div>
-                 <h2 className="text-xl font-medium text-slate-700 leading-relaxed">
-                     {getMaskedSentence()}
-                 </h2>
-                 <div className="text-sm font-bold text-slate-400 uppercase tracking-wider">Boşluğa ne gelmeli?</div>
-             </div>
+              <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-400 to-cyan-400"></div>
+              
+              {/* Soru Alanı */}
+              <div className="space-y-4">
+                  <div className="flex justify-center">
+                     <div className="bg-blue-50 p-3 rounded-full"><Quote className="w-6 h-6 text-blue-400"/></div>
+                  </div>
+                  <h2 className="text-xl font-medium text-slate-700 leading-relaxed">
+                      {getMaskedSentence()}
+                  </h2>
+                  <div className="text-sm font-bold text-slate-400 uppercase tracking-wider">Boşluğa ne gelmeli?</div>
+              </div>
 
-             {/* --- YENİ: İPUCU KUTUSU (TANIM) --- */}
-             {englishDefinition && (
+              {/* İPUCU KUTUSU */}
+              {englishDefinition && (
                 <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 text-sm text-slate-600">
                     <div className="flex items-center justify-between gap-2 mb-1">
                         <span className="text-xs font-bold text-slate-400 uppercase">Tanım (İpucu)</span>
@@ -202,18 +183,22 @@ export default function GapFillingGame() {
                             <button onClick={() => speak(englishDefinition)} className="p-1 bg-white border rounded-lg hover:bg-blue-50 text-blue-600">
                                 <Volume2 className="w-3 h-3"/>
                             </button>
-                            <button onClick={handleTranslateHint} className="p-1 bg-white border rounded-lg hover:bg-indigo-50 text-indigo-600">
-                                {loadingHint ? <Loader2 className="w-3 h-3 animate-spin"/> : <Languages className="w-3 h-3"/>}
-                            </button>
+                            {/* Çeviri Butonu */}
+                            {turkishDefinition && (
+                                <button onClick={() => setShowHintTr(!showHintTr)} className={`p-1 border rounded-lg hover:bg-indigo-50 ${showHintTr ? "bg-indigo-100 text-indigo-600" : "bg-white text-indigo-600"}`}>
+                                    <Languages className="w-3 h-3"/>
+                                </button>
+                            )}
                         </div>
                     </div>
                     <p className="italic">"{englishDefinition}"</p>
-                    {hintTranslation && <div className="mt-2 pt-2 border-t border-slate-200 text-indigo-700 font-medium text-xs">TR: {hintTranslation}</div>}
+                    
+                    {/* Veritabanı Verisi (API Yok) */}
+                    {showHintTr && turkishDefinition && <div className="mt-2 pt-2 border-t border-slate-200 text-indigo-700 font-medium text-xs animate-in fade-in">TR: {turkishDefinition}</div>}
                 </div>
-             )}
-             {/* ---------------------------------- */}
+              )}
 
-             <form onSubmit={handleSubmit} className="space-y-4">
+              <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="relative">
                     <input 
                         ref={inputRef} 
@@ -244,11 +229,11 @@ export default function GapFillingGame() {
                         {isRoundOver ? (<>Sıradaki <ArrowRight className="w-5 h-5"/></>) : ("Kontrol Et")}
                     </button>
                 </div>
-             </form>
+              </form>
           </div>
 
           <button onClick={handleQuitEarly} className="w-full mt-6 flex items-center justify-center gap-2 text-slate-400 hover:text-red-500 transition-colors text-sm font-medium mx-auto">
-            <Target className="w-4 h-4"/> Bitir (Puanı Al ve Çık)
+            Bitir (Puanı Al ve Çık)
           </button>
        </div>
     </div>
