@@ -30,7 +30,7 @@ const cleanAndParseJSON = (text) => {
   }
 };
 
-// --- 1. KELİME ANALİZİ (GÜNCELLENDİ: trExplanation eklendi) ---
+// --- 1. KELİME ANALİZİ ---
 export const fetchWordAnalysisFromAI = async (word) => {
   try {
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
@@ -39,7 +39,6 @@ export const fetchWordAnalysisFromAI = async (word) => {
       safetySettings,
     });
 
-    // PROMPT GÜNCELLENDİ
     const prompt = `
       Analyze the English word: "${word}".
       Return ONLY a valid JSON object.
@@ -99,7 +98,7 @@ export const fetchRootFromAI = async (word) => {
   } catch (e) { return { root: word, original: word, changed: false }; }
 };
 
-// --- 3. CÜMLE ANALİZİ (Değişiklik Yok) ---
+// --- 3. CÜMLE ANALİZİ ---
 export const fetchSentenceAnalysisFromAI = async (text) => {
   try {
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
@@ -122,7 +121,6 @@ export const fetchSentenceAnalysisFromAI = async (text) => {
     `;
     const result = await model.generateContent(prompt);
     const raw = cleanAndParseJSON(result.response.text()) || {};
-    // ... (Kök temizleme mantığı aynı)
     let cleanedRoots = [];
     if (Array.isArray(raw.rootWords)) {
       cleanedRoots = raw.rootWords.map((w) => (w || "").toLowerCase().trim().replace(/'s$/, "").replace(/[^a-z-]/g, "")).filter((w) => w.length > 1);
