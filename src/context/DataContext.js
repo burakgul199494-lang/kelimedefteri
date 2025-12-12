@@ -23,7 +23,6 @@ export const DataProvider = ({ children }) => {
   const [learningQueue, setLearningQueue] = useState([]);
   const [leaderboardData, setLeaderboardData] = useState([]);
 
-  // --- YARDIMCI: HAFTA ANAHTARI ---
   const getCurrentWeekKey = () => {
     const d = new Date();
     const day = d.getDay(); 
@@ -53,7 +52,6 @@ export const DataProvider = ({ children }) => {
     }
   }, [user]);
 
-  // --- VERİ YÜKLEME ---
   const loadAllData = async () => {
     if (!user) return;
     setLoading(true);
@@ -68,7 +66,6 @@ export const DataProvider = ({ children }) => {
             getDoc(userProfileRef)
         ]);
 
-        // 1. Sistem Kelimelerini İşle
         const sysWords = [];
         const sysWordSet = new Set();
         systemSnapshot.forEach((doc) => {
@@ -78,14 +75,12 @@ export const DataProvider = ({ children }) => {
         });
         setDynamicSystemWords(sysWords);
 
-        // 2. Kullanıcı Kelimelerini İşle
         const usrWords = [];
         userWordsSnapshot.forEach(doc => {
             usrWords.push({ ...doc.data(), id: doc.id, source: "user" });
         });
         setCustomWords(usrWords);
 
-        // 3. Profil Verilerini İşle
         let currentDeleted = [];
         let currentKnown = [];
         let currentQueue = [];
@@ -112,7 +107,6 @@ export const DataProvider = ({ children }) => {
             currentStreak = 1;
         }
 
-        // 4. Oto-Süpürge
         let newDeletedIds = [...currentDeleted];
         let dirty = false;
 
@@ -168,16 +162,21 @@ export const DataProvider = ({ children }) => {
       } catch (e) { console.error("Puan hatası:", e); }
   };
 
-  // --- KELİME NORMALİZASYONU (GÜNCELLENDİ: sentence_tr EKLENDİ) ---
   const normalizeWord = (w) => {
     const isDynamic = dynamicSystemWords.some((d) => String(d.id) === String(w.id));
     const source = w.source || (isDynamic ? "system" : "user");
     return { 
         ...w, 
         source, 
-        sentence_tr: w.sentence_tr || "", // Eski verilerde yoksa boş string olsun
+        sentence_tr: w.sentence_tr || "",
         tags: Array.isArray(w.tags) ? w.tags : [],
-        definitions: Array.isArray(w.definitions) ? w.definitions.map(def => ({ ...def, engExplanation: def.engExplanation || "" })) : [{ type: "other", meaning: "", engExplanation: "" }] 
+        definitions: Array.isArray(w.definitions) 
+          ? w.definitions.map(def => ({ 
+              ...def, 
+              engExplanation: def.engExplanation || "",
+              trExplanation: def.trExplanation || "" 
+            })) 
+          : [{ type: "other", meaning: "", engExplanation: "", trExplanation: "" }] 
     };
   };
 
@@ -220,7 +219,6 @@ export const DataProvider = ({ children }) => {
     try { await updateDoc(userRef, { learning_queue: newQueue }); setLearningQueue(newQueue); } catch (e) { console.error(e); }
   };
 
-  // --- YENİ KELİME KAYDETME (GÜNCELLENDİ: sentence_tr EKLENDİ) ---
   const handleSaveNewWord = async (wordData) => {
     const normalizedInput = wordData.word.toLowerCase().trim();
     const allWords = getAllWords();
@@ -237,7 +235,7 @@ export const DataProvider = ({ children }) => {
       advLy: wordData.advLy||"", compEr: wordData.compEr||"", superEst: wordData.superEst||"",
       definitions: wordData.definitions, 
       sentence: wordData.sentence.trim(), 
-      sentence_tr: wordData.sentence_tr || "", // 🔥 YENİ EKLENEN KISIM
+      sentence_tr: wordData.sentence_tr || "",
       source: "user",
       createdAt: new Date()
     };
@@ -258,7 +256,6 @@ export const DataProvider = ({ children }) => {
     } catch (e) { console.error(e); }
   };
 
-  // --- KELİME GÜNCELLEME (Otomatik olarak sentence_tr'yi de günceller çünkü newData spread ediliyor) ---
   const handleUpdateWord = async (originalId, newData) => {
      try {
        const isCustom = customWords.find((w) => String(w.id) === String(originalId));
@@ -346,7 +343,6 @@ export const DataProvider = ({ children }) => {
       } catch(e) { console.error(e); }
   };
 
-  // --- ADMIN: SİSTEM KELİMESİ EKLEME (GÜNCELLENDİ: sentence_tr EKLENDİ) ---
   const handleSaveSystemWord = async (wordData) => {
     try {
       const normalizedInput = wordData.word.toLowerCase().trim();
@@ -355,14 +351,13 @@ export const DataProvider = ({ children }) => {
 
       const newWord = { 
         ...wordData, 
-        sentence_tr: wordData.sentence_tr || "", // 🔥 YENİ EKLENEN KISIM
+        sentence_tr: wordData.sentence_tr || "",
         source: "system", 
         createdAt: new Date() 
       };
       const docRef = await addDoc(collection(db, "artifacts", appId, "system_words"), newWord);
       setDynamicSystemWords(prev => [...prev, { ...newWord, id: docRef.id }]);
 
-      // Admin kendi eklediği kelimeyi anında silsin (Çakışmayı önlemek için)
       const conflictingCustom = customWords.find(w => w.word.toLowerCase() === normalizedInput);
       if (conflictingCustom) {
           const userRef = doc(db, "artifacts", appId, "users", user.uid, "vocab_game", "progress");
