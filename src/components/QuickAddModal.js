@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Loader2, X, Save, Wand2, Brain, Trash2, Plus, Tag } from "lucide-react";
+import { Loader2, X, Save, Wand2, Brain, Trash2, Plus, Tag, Languages } from "lucide-react";
 import { useData } from "../context/DataContext";
 import { fetchWordAnalysisFromAI, fetchRootFromAI } from "../services/aiService";
 
@@ -17,13 +17,18 @@ const TYPE_MAP = {
 const QuickAddModal = ({ word, prefillData, onClose }) => {
   const { handleSaveNewWord, handleSaveSystemWord, handleUpdateSystemWord, isAdmin } = useData();
   
+  // State Başlangıç Ayarları (sentence_tr EKLENDİ)
   const initialData = prefillData ? {
       ...prefillData,
+      sentence_tr: prefillData.sentence_tr || "", // Mevcut veri varsa al, yoksa boş
       tags: Array.isArray(prefillData.tags) ? prefillData.tags : [],
       definitions: prefillData.definitions.map(d => ({ type: d.type || "noun", meaning: d.meaning || "", engExplanation: d.engExplanation || "" }))
   } : {
     word: word || "", tags: [], plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
-    definitions: [{ type: "noun", meaning: "", engExplanation: "" }], sentence: "", source: isAdmin ? "system" : "user"
+    definitions: [{ type: "noun", meaning: "", engExplanation: "" }], 
+    sentence: "", 
+    sentence_tr: "", // YENİ ALAN
+    source: isAdmin ? "system" : "user"
   };
 
   const [formData, setFormData] = useState(initialData);
@@ -59,7 +64,14 @@ const QuickAddModal = ({ word, prefillData, onClose }) => {
     setLoadingAI(true);
     try {
       const data = await fetchWordAnalysisFromAI(formData.word);
-      if (data) { setFormData(prev => ({ ...prev, ...data })); }
+      if (data) { 
+          // Gelen veriyi state'e yaz (sentence_tr dahil)
+          setFormData(prev => ({ 
+              ...prev, 
+              ...data,
+              sentence_tr: data.sentence_tr || "" 
+          })); 
+      }
     } catch (e) { console.error(e); }
     setLoadingAI(false);
   };
@@ -108,7 +120,18 @@ const QuickAddModal = ({ word, prefillData, onClose }) => {
 
           <div className="space-y-2"><label className="block text-sm font-medium">Anlamlar</label>{formData.definitions.map((def, i) => (<div key={i} className="bg-slate-50 p-2 rounded border flex flex-col gap-2"><div className="flex gap-2"><select value={def.type} onChange={e => updateDef(i, "type", e.target.value)} className="p-1 border rounded text-sm bg-white w-20">{WORD_TYPES.map((t) => ( <option key={t.value} value={t.value}>{t.label.split(' ')[0]}</option> ))}</select><input value={def.meaning} onChange={e => updateDef(i, "meaning", e.target.value)} className="flex-1 p-1 border rounded text-sm" placeholder="Türkçe anlam" />{formData.definitions.length > 1 && <button onClick={() => removeDef(i)} className="text-slate-400 hover:text-red-500"><Trash2 className="w-4 h-4"/></button>}</div><input value={def.engExplanation} onChange={e => updateDef(i, "engExplanation", e.target.value)} className="w-full p-1 border rounded text-sm bg-indigo-50" placeholder="İngilizce Açıklama" /></div>))}<button onClick={addDef} className="text-sm text-indigo-600 flex items-center gap-1 font-bold"><Plus className="w-4 h-4"/> Anlam Ekle</button></div>
 
-          <textarea value={formData.sentence} onChange={e => setFormData({ ...formData, sentence: e.target.value })} className="w-full p-3 border rounded-xl text-sm" placeholder="Örnek cümle..." rows={3}></textarea>
+          {/* 🔥 GÜNCELLENEN ALAN: CÜMLE VE ÇEVİRİSİ 🔥 */}
+          <div className="space-y-2">
+              <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-1">ÖRNEK CÜMLE</label>
+                  <textarea value={formData.sentence} onChange={e => setFormData({ ...formData, sentence: e.target.value })} className="w-full p-3 border rounded-xl text-sm" placeholder="Örnek cümle..." rows={2}></textarea>
+              </div>
+              
+              <div>
+                  <label className="block text-xs font-bold text-indigo-500 mb-1 flex items-center gap-1"><Languages className="w-3 h-3"/> TÜRKÇE ÇEVİRİSİ</label>
+                  <textarea value={formData.sentence_tr} onChange={e => setFormData({ ...formData, sentence_tr: e.target.value })} className="w-full p-3 border border-indigo-100 bg-indigo-50/30 rounded-xl text-sm focus:border-indigo-500 outline-none transition-colors" placeholder="Cümlenin Türkçe çevirisi..." rows={2}></textarea>
+              </div>
+          </div>
           
           <button onClick={handleSave} disabled={saving} className="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl flex justify-center gap-2">{saving ? <Loader2 className="animate-spin" /> : <Save className="w-5 h-5" />} {prefillData ? "Güncelle" : "Kaydet"}
           </button>
