@@ -40,7 +40,7 @@ const cleanAndParseJSON = (text) => {
   }
 };
 
-// --- 1. KELİME ANALİZİ (Otomatik Gramer Etiketi) ---
+// --- 1. KELİME ANALİZİ (GÜNCELLENDİ: sentence_tr eklendi) ---
 export const fetchWordAnalysisFromAI = async (word) => {
   try {
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
@@ -49,6 +49,7 @@ export const fetchWordAnalysisFromAI = async (word) => {
       safetySettings,
     });
 
+    // GÜNCELLENEN PROMPT: sentence_tr alanı istiyoruz
     const prompt = `
       Analyze the English word: "${word}".
       Return ONLY a valid JSON object.
@@ -57,13 +58,16 @@ export const fetchWordAnalysisFromAI = async (word) => {
       1. "definitions": Meaning in TURKISH. Explanation in ENGLISH.
       2. "type": MUST be one of: noun, verb, adjective, adverb, prep, pronoun, conj, article, other.
       3. Fill ALL grammar forms (v2, v3, plural etc.) if applicable.
+      4. "sentence": A simple English example sentence using the word.
+      5. "sentence_tr": The TURKISH translation of that example sentence.
 
       JSON Structure:
       {
         "word": "${word}",
         "plural": "", "v2": "", "v3": "", "vIng": "", "thirdPerson": "",
         "advLy": "", "compEr": "", "superEst": "",
-        "sentence": "Simple sentence.",
+        "sentence": "Simple sentence example.",
+        "sentence_tr": "Basit cümle örneğinin Türkçesi.",
         "definitions": [
           { "type": "noun", "meaning": "TR", "engExplanation": "EN" }
         ]
@@ -80,7 +84,7 @@ export const fetchWordAnalysisFromAI = async (word) => {
         const trTag = TYPE_MAP[def.type] || "Diğer";
         tagsSet.add(trTag);
       });
-      data.tags = Array.from(tagsSet); // ["İsim", "Fiil"] gibi
+      data.tags = Array.from(tagsSet); 
     } else {
       if (data) data.tags = ["Diğer"];
     }
@@ -189,7 +193,6 @@ RETURN ONLY THIS JSON EXACTLY:
     const result = await model.generateContent(prompt);
     const raw = cleanAndParseJSON(result.response.text()) || {};
 
-    // Kök kelime temizleme
     let cleanedRoots = [];
     if (Array.isArray(raw.rootWords)) {
       cleanedRoots = raw.rootWords
