@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Loader2, X, Save, Wand2, Brain, Trash2, Plus, Tag, Languages } from "lucide-react";
 import { useData } from "../context/DataContext";
 import { fetchWordAnalysisFromAI, fetchRootFromAI } from "../services/aiService";
@@ -17,6 +17,9 @@ const TYPE_MAP = {
 const QuickAddModal = ({ word, prefillData, onClose }) => {
   const { handleSaveNewWord, handleSaveSystemWord, handleUpdateSystemWord, isAdmin } = useData();
   
+  // 🔥 API KİLİDİ: Bu değişken sayesinde istek sadece 1 kere atılır
+  const hasFetched = useRef(false);
+
   const initialData = prefillData ? {
       ...prefillData,
       sentence_tr: prefillData.sentence_tr || "",
@@ -40,7 +43,14 @@ const QuickAddModal = ({ word, prefillData, onClose }) => {
   const [rootLoading, setRootLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => { if (word && !prefillData) handleAIFill(); }, []);
+  // 🔥 DÜZELTİLEN KISIM: useEffect Koruması
+  useEffect(() => { 
+      // Eğer kelime varsa VE düzenleme modu değilse VE daha önce çekilmediyse
+      if (word && !prefillData && !hasFetched.current) {
+          hasFetched.current = true; // Kilidi kapat
+          handleAIFill();
+      }
+  }, []); // Dependency array boş, sadece mount anında çalışır.
 
   useEffect(() => {
       const newTags = new Set();
@@ -66,7 +76,11 @@ const QuickAddModal = ({ word, prefillData, onClose }) => {
   const handleAIFill = async () => {
     setLoadingAI(true);
     try {
-      const data = await fetchWordAnalysisFromAI(formData.word);
+      // Formdaki güncel kelimeyi veya prop'tan gelen kelimeyi kullan
+      const targetWord = formData.word || word;
+      if (!targetWord) return;
+
+      const data = await fetchWordAnalysisFromAI(targetWord);
       if (data) { 
           setFormData(prev => ({ 
               ...prev, 
