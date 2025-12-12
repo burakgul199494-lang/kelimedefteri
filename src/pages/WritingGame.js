@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useData } from "../context/DataContext";
 import { useNavigate } from "react-router-dom";
 import { X, Trophy, Volume2, Languages, Loader2, ArrowRight, AlertCircle, CheckCircle2, Target, HelpCircle } from "lucide-react";
-import { translateTextWithAI } from "../services/aiService";
+// API importu silindi
 
 export default function WritingGame() {
   const { getAllWords, knownWordIds, learningQueue, addScore } = useData();
@@ -18,14 +18,14 @@ export default function WritingGame() {
   const [attempts, setAttempts] = useState(0); 
   const [feedback, setFeedback] = useState(null); 
   
-  const [hintTranslation, setHintTranslation] = useState(null);
-  const [loadingHint, setLoadingHint] = useState(false);
+  // API yok, sadece göster/gizle
+  const [showHintTr, setShowHintTr] = useState(false);
 
   useEffect(() => { startGame(); }, []);
 
   useEffect(() => {
     if (gameStatus === "playing") {
-      setUserInput(""); setAttempts(0); setFeedback(null); setHintTranslation(null); setLoadingHint(false);
+      setUserInput(""); setAttempts(0); setFeedback(null); setShowHintTr(false);
       setTimeout(() => inputRef.current?.focus(), 100);
     }
   }, [currentIndex, gameStatus]);
@@ -59,18 +59,11 @@ export default function WritingGame() {
   const currentWord = questions[currentIndex];
   const turkishMeaning = currentWord?.definitions[0]?.meaning;
   const englishHint = currentWord?.definitions[0]?.engExplanation;
+  const turkishHint = currentWord?.definitions[0]?.trExplanation; // Veritabanından gelen
 
   const speak = (text) => {
     if (!text) return;
     const u = new SpeechSynthesisUtterance(text); u.lang = "en-US"; window.speechSynthesis.speak(u);
-  };
-
-  const handleTranslateHint = async () => {
-    if (!englishHint || hintTranslation) return;
-    setLoadingHint(true);
-    const res = await translateTextWithAI(englishHint);
-    setHintTranslation(res);
-    setLoadingHint(false);
   };
 
   const handleGiveUp = () => {
@@ -93,31 +86,23 @@ export default function WritingGame() {
 
     if (!userInput.trim()) return;
 
-    const correctWord = currentWord.word.trim(); // Orijinal hali (Büyük/küçük harf koru)
+    const correctWord = currentWord.word.trim();
     const userWordLower = userInput.toLowerCase().trim();
     const correctWordLower = correctWord.toLowerCase();
 
     if (userWordLower === correctWordLower) {
-        // DOĞRU
         setFeedback("correct"); 
         speak(currentWord.word);
-        setUserInput(correctWord); // Ekranda düzgün hali görünsün (büyük/küçük harf)
+        setUserInput(correctWord); 
         setScore(s => s + (attempts === 0 ? 5 : 2));
     } else {
-        // YANLIŞ
         if (attempts === 0) {
-            // İLK HATA: İPUCU VER
             setFeedback("wrong"); 
             setAttempts(1); 
-            
-            // --- YENİ ÖZELLİK: İLK HARFİ YAZDIR ---
-            const firstChar = correctWord.charAt(0); // İlk harfi al (Örn: 'A')
-            setUserInput(firstChar); // Inputa yaz
-            inputRef.current?.focus(); // Odaklan ki devamını yazsın
-            // --------------------------------------
-
+            const firstChar = correctWord.charAt(0);
+            setUserInput(firstChar); 
+            inputRef.current?.focus(); 
         } else {
-            // İKİNCİ HATA: PES
             setFeedback("revealed"); 
             setUserInput(currentWord.word);
         }
@@ -141,9 +126,9 @@ export default function WritingGame() {
            <div className="bg-purple-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto"><Trophy className="w-10 h-10 text-purple-600"/></div>
            <h2 className="text-2xl font-bold text-slate-800">Yazma Testi Bitti!</h2>
            <div className="py-6 bg-slate-50 rounded-2xl border border-slate-100">
-              <div className="text-sm text-slate-400 font-bold uppercase">Toplam Puan</div>
-              <div className="text-5xl font-extrabold text-purple-600 mt-2">{score}</div>
-              <div className="text-xs text-slate-400 font-bold">Maksimum: {maxScore}</div>
+             <div className="text-sm text-slate-400 font-bold uppercase">Toplam Puan</div>
+             <div className="text-5xl font-extrabold text-purple-600 mt-2">{score}</div>
+             <div className="text-xs text-slate-400 font-bold">Maksimum: {maxScore}</div>
            </div>
            <button onClick={() => navigate("/")} className="w-full bg-white border-2 border-slate-200 text-slate-600 font-bold py-3 rounded-xl hover:bg-slate-50">Ana Sayfa</button>
            <button onClick={startGame} className="w-full bg-purple-600 text-white font-bold py-3 rounded-xl hover:bg-purple-700 shadow-lg shadow-purple-200">Tekrar Dene</button>
@@ -170,52 +155,63 @@ export default function WritingGame() {
           <div className="bg-white p-6 rounded-3xl shadow-xl border border-slate-100 text-center space-y-6 animate-in fade-in zoom-in duration-300 relative overflow-hidden">
              <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-purple-400 to-pink-400"></div>
              <div className="space-y-2"><div className="text-sm font-bold text-slate-400 uppercase tracking-wider">Türkçesi</div><h2 className="text-3xl font-extrabold text-slate-800">{turkishMeaning}</h2></div>
+             
              {englishHint && (
-                <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 text-sm text-slate-600">
-                    <div className="flex items-center justify-between gap-2 mb-1"><span className="text-xs font-bold text-slate-400 uppercase">İpucu (Açıklama)</span><div className="flex gap-1"><button onClick={() => speak(englishHint)} className="p-1 bg-white border rounded-lg hover:bg-purple-50 text-purple-600"><Volume2 className="w-3 h-3"/></button><button onClick={handleTranslateHint} className="p-1 bg-white border rounded-lg hover:bg-blue-50 text-blue-600">{loadingHint ? <Loader2 className="w-3 h-3 animate-spin"/> : <Languages className="w-3 h-3"/>}</button></div></div>
-                    <p className="italic">"{englishHint}"</p>
-                    {hintTranslation && <div className="mt-2 pt-2 border-t border-slate-200 text-indigo-700 font-medium text-xs">TR: {hintTranslation}</div>}
-                </div>
+               <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 text-sm text-slate-600">
+                   <div className="flex items-center justify-between gap-2 mb-1">
+                       <span className="text-xs font-bold text-slate-400 uppercase">İpucu (Açıklama)</span>
+                       <div className="flex gap-1">
+                           <button onClick={() => speak(englishHint)} className="p-1 bg-white border rounded-lg hover:bg-purple-50 text-purple-600"><Volume2 className="w-3 h-3"/></button>
+                           {turkishHint && (
+                               <button onClick={() => setShowHintTr(!showHintTr)} className={`p-1 border rounded-lg transition-colors ${showHintTr ? "bg-indigo-100 text-indigo-600" : "bg-white hover:bg-blue-50 text-blue-600"}`}>
+                                   <Languages className="w-3 h-3"/>
+                               </button>
+                           )}
+                       </div>
+                   </div>
+                   <p className="italic">"{englishHint}"</p>
+                   
+                   {/* Veritabanı verisi (API Yok) */}
+                   {showHintTr && turkishHint && <div className="mt-2 pt-2 border-t border-slate-200 text-indigo-700 font-medium text-xs animate-in fade-in">TR: {turkishHint}</div>}
+               </div>
              )}
              
              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="relative">
-                    <input 
-                        ref={inputRef} 
-                        type="text" 
-                        value={userInput} 
-                        onChange={(e) => setUserInput(e.target.value)} 
-                        disabled={isRoundOver} 
-                        className={`w-full p-4 text-center text-xl font-bold border-2 rounded-2xl outline-none transition-colors ${feedback === "correct" ? "border-green-500 bg-green-50 text-green-700" : feedback === "wrong" ? "border-red-300 bg-red-50 text-red-700" : feedback === "revealed" ? "border-red-500 bg-red-100 text-red-800" : "border-slate-200 focus:border-purple-500 focus:bg-purple-50"}`} 
-                        placeholder="İngilizcesini yaz..." 
-                        autoComplete="off" autoCorrect="off" spellCheck="false"
-                    />
-                    <div className="absolute right-4 top-4">{feedback === "correct" && <CheckCircle2 className="w-6 h-6 text-green-500"/>}{feedback === "wrong" && <AlertCircle className="w-6 h-6 text-red-500"/>}{feedback === "revealed" && <X className="w-6 h-6 text-red-600"/>}</div>
-                </div>
-                
-                <div className="h-6 text-sm font-bold">
-                    {/* YENİ: HATA MESAJINDA İPUCU BİLGİSİ */}
-                    {feedback === "wrong" && <span className="text-red-500 flex items-center justify-center gap-1"><AlertCircle className="w-3 h-3"/> İlk harfi senin için yazdım!</span>}
-                    
-                    {feedback === "revealed" && <span className="text-red-600">Maalesef bilemedin. Doğru cevap buydu.</span>}
-                    {feedback === "correct" && <span className="text-green-600">Tebrikler! Doğru cevap.</span>}
-                </div>
+               <div className="relative">
+                   <input 
+                       ref={inputRef} 
+                       type="text" 
+                       value={userInput} 
+                       onChange={(e) => setUserInput(e.target.value)} 
+                       disabled={isRoundOver} 
+                       className={`w-full p-4 text-center text-xl font-bold border-2 rounded-2xl outline-none transition-colors ${feedback === "correct" ? "border-green-500 bg-green-50 text-green-700" : feedback === "wrong" ? "border-red-300 bg-red-50 text-red-700" : feedback === "revealed" ? "border-red-500 bg-red-100 text-red-800" : "border-slate-200 focus:border-purple-500 focus:bg-purple-50"}`} 
+                       placeholder="İngilizcesini yaz..." 
+                       autoComplete="off" autoCorrect="off" spellCheck="false"
+                   />
+                   <div className="absolute right-4 top-4">{feedback === "correct" && <CheckCircle2 className="w-6 h-6 text-green-500"/>}{feedback === "wrong" && <AlertCircle className="w-6 h-6 text-red-500"/>}{feedback === "revealed" && <X className="w-6 h-6 text-red-600"/>}</div>
+               </div>
+               
+               <div className="h-6 text-sm font-bold">
+                   {feedback === "wrong" && <span className="text-red-500 flex items-center justify-center gap-1"><AlertCircle className="w-3 h-3"/> İlk harfi senin için yazdım!</span>}
+                   {feedback === "revealed" && <span className="text-red-600">Maalesef bilemedin. Doğru cevap buydu.</span>}
+                   {feedback === "correct" && <span className="text-green-600">Tebrikler! Doğru cevap.</span>}
+               </div>
 
-                <div className="flex gap-3">
-                    {!isRoundOver && (
-                        <button type="button" onClick={handleGiveUp} className="flex-1 py-4 bg-slate-100 text-slate-500 hover:bg-slate-200 rounded-2xl font-bold transition-colors flex items-center justify-center gap-2">
-                            <HelpCircle className="w-5 h-5"/> Bilmiyorum
-                        </button>
-                    )}
-                    <button type="submit" disabled={!isRoundOver && !userInput.trim()} className={`flex-[2] py-4 rounded-2xl font-bold text-lg shadow-lg flex items-center justify-center gap-2 transition-transform active:scale-95 ${isRoundOver ? "bg-slate-800 text-white hover:bg-slate-900" : "bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"}`}>
-                        {isRoundOver ? (<>Sıradaki <ArrowRight className="w-5 h-5"/></>) : ("Kontrol Et")}
-                    </button>
-                </div>
+               <div className="flex gap-3">
+                   {!isRoundOver && (
+                       <button type="button" onClick={handleGiveUp} className="flex-1 py-4 bg-slate-100 text-slate-500 hover:bg-slate-200 rounded-2xl font-bold transition-colors flex items-center justify-center gap-2">
+                           <HelpCircle className="w-5 h-5"/> Bilmiyorum
+                       </button>
+                   )}
+                   <button type="submit" disabled={!isRoundOver && !userInput.trim()} className={`flex-[2] py-4 rounded-2xl font-bold text-lg shadow-lg flex items-center justify-center gap-2 transition-transform active:scale-95 ${isRoundOver ? "bg-slate-800 text-white hover:bg-slate-900" : "bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"}`}>
+                       {isRoundOver ? (<>Sıradaki <ArrowRight className="w-5 h-5"/></>) : ("Kontrol Et")}
+                   </button>
+               </div>
              </form>
           </div>
 
           <button onClick={handleQuitEarly} className="w-full mt-6 flex items-center justify-center gap-2 text-slate-400 hover:text-red-500 transition-colors text-sm font-medium mx-auto">
-            <Target className="w-4 h-4"/> Bitir (Puanı Al ve Çık)
+            Bitir (Puanı Al ve Çık)
           </button>
 
        </div>
