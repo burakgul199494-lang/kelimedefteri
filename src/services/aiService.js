@@ -1,19 +1,15 @@
-import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from "@google/generative-ai";
+// Google Kütüphanesini kullanmıyoruz, direkt fetch atıyoruz.
+// import { GoogleGenerativeAI } ... SİLİNDİ
 
 const GEMINI_API_KEY = process.env.REACT_APP_GEMINI_API_KEY;
+const API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
 
 const TYPE_MAP = {
   noun: "İsim", verb: "Fiil", adjective: "Sıfat", adverb: "Zarf", prep: "Edat",
   pronoun: "Zamir", conj: "Bağlaç", article: "Tanımlık", other: "Diğer",
 };
 
-const safetySettings = [
-  { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
-  { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
-  { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_NONE },
-  { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
-];
-
+// JSON Temizleme
 const cleanAndParseJSON = (text) => {
   if (!text) return null;
   try {
@@ -30,19 +26,40 @@ const cleanAndParseJSON = (text) => {
   }
 };
 
-// --- 1. KELİME ANALİZİ ---
-export const fetchWordAnalysisFromAI = async (word) => {
+// --- YARDIMCI: API İSTEK FONKSİYONU ---
+const callGeminiAPI = async (promptText) => {
   try {
-    const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-    // 🔥 DİKKAT: Model 'gemini-pro' olarak değiştirildi (En güvenli model)
-    const model = genAI.getGenerativeModel({
-      model: "gemini-pro", 
-      safetySettings,
+    const response = await fetch(`${API_URL}?key=${GEMINI_API_KEY}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{
+          parts: [{ text: promptText }]
+        }]
+      })
     });
 
+    if (!response.ok) {
+        const errData = await response.json();
+        console.error("API Hatası:", errData);
+        throw new Error(`API Hatası: ${response.status}`);
+    }
+
+    const data = await response.json();
+    // Gelen cevap yapısı: candidates[0].content.parts[0].text
+    return data.candidates?.[0]?.content?.parts?.[0]?.text || null;
+
+  } catch (error) {
+    console.error("Gemini Fetch Error:", error);
+    return null;
+  }
+};
+
+// --- 1. KELİME ANALİZİ ---
+export const fetchWordAnalysisFromAI = async (word) => {
     const prompt = `
       Analyze the English word: "${word}".
-      Return ONLY a valid JSON object.
+      Return ONLY a valid JSON object. Do not use Markdown code blocks.
 
       Rules:
       1. "definitions": 
@@ -67,8 +84,8 @@ export const fetchWordAnalysisFromAI = async (word) => {
       }
     `;
 
-    const result = await model.generateContent(prompt);
-    const data = cleanAndParseJSON(result.response.text());
+    const rawText = await callGeminiAPI(prompt);
+    const data = cleanAndParseJSON(rawText);
 
     if (data && data.definitions && Array.isArray(data.definitions)) {
       const tagsSet = new Set();
@@ -82,83 +99,29 @@ export const fetchWordAnalysisFromAI = async (word) => {
     }
 
     return data;
-  } catch (e) {
-    console.error("Word Analysis Error:", e);
-    return null;
-  }
 };
 
 // --- 2. KÖK BULMA ---
 export const fetchRootFromAI = async (word) => {
-  try {
-    const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-    // 🔥 DİKKAT: Model 'gemini-pro' yapıldı
-    const model = genAI.getGenerativeModel({ model: "gemini-pro", safetySettings });
     const prompt = `Find lemma of "${word}". Return JSON: { "root": "base", "original": "${word}", "changed": true/false }`;
-    const result = await model.generateContent(prompt);
-    return cleanAndParseJSON(result.response.text()) || { root: word, original: word, changed: false };
-  } catch (e) { return { root: word, original: word, changed: false }; }
+    const rawText = await callGeminiAPI(prompt);
+    return cleanAndParseJSON(rawText) || { root: word, original: word, changed: false };
 };
 
 // --- 3. CÜMLE ANALİZİ ---
+// (Bu fonksiyonu artık kullanmasak da hata vermesin diye tutuyoruz)
 export const fetchSentenceAnalysisFromAI = async (text) => {
-  try {
-    const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-    // 🔥 DİKKAT: Model 'gemini-pro' yapıldı
-    const model = genAI.getGenerativeModel({ model: "gemini-pro", safetySettings, generationConfig: { temperature: 0.2 } });
-    const prompt = `
-      You are an expert English teacher.
-      Analyze the ORIGINAL English text: "${text}"
-      
-      RETURN ONLY THIS JSON:
-      {
-        "correction": { "hasError": boolean, "corrected": "string", "explanation": "TR string" },
-        "turkishTranslation": "Full TR translation",
-        "detectedTense": "Zaman (TR)",
-        "simplePoints": ["Madde 1", "Madde 2"],
-        "usage": { "hasMistake": boolean, "wrong": "string", "correct": "string", "explanation": "TR string" },
-        "structure": { "subject": "string", "verb": "string", "object": "string", "phrases": ["..."] },
-        "style": { "hasIssue": boolean, "suggestion": "string", "explanation": "string" },
-        "rootWords": ["word1", "word2"]
-      }
-    `;
-    const result = await model.generateContent(prompt);
-    const raw = cleanAndParseJSON(result.response.text()) || {};
-    let cleanedRoots = [];
-    if (Array.isArray(raw.rootWords)) {
-      cleanedRoots = raw.rootWords.map((w) => (w || "").toLowerCase().trim().replace(/'s$/, "").replace(/[^a-z-]/g, "")).filter((w) => w.length > 1);
-    }
-    return { ...raw, rootWords: [...new Set(cleanedRoots)] };
-  } catch (e) { return { turkishTranslation: "Hata", correction: {}, structure: {}, rootWords: [] }; }
+    return { turkishTranslation: "Devre dışı", correction: {}, structure: {}, rootWords: [] };
 };
 
 // --- 4. HIZLI ÇEVİRİ ---
 export const translateTextWithAI = async (text) => {
-  try {
-    const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-    // 🔥 DİKKAT: Model 'gemini-pro' yapıldı
-    const model = genAI.getGenerativeModel({ model: "gemini-pro", safetySettings });
     const prompt = `Translate to Turkish. Return ONLY translation string: "${text}"`;
-    const result = await model.generateContent(prompt);
-    return result.response.text().trim();
-  } catch (e) { return "Çeviri yapılamadı."; }
+    const rawText = await callGeminiAPI(prompt);
+    return rawText ? rawText.trim() : "Çeviri yapılamadı.";
 };
 
-// --- 5. OCR ---
+// --- 5. OCR (Kaldırıldı ama hata vermemesi için boş dönüyor) ---
 export const extractTextFromImage = async (file) => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = async () => {
-      try {
-        const base64Data = reader.result.split(",")[1];
-        const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-        // Not: gemini-pro görsel desteklemez, o yüzden burada gemini-pro-vision kullanmak gerekebilir
-        // Ancak OCR sayfasını kaldırdığımız için burası kritik değil.
-        const model = genAI.getGenerativeModel({ model: "gemini-pro-vision", safetySettings }); 
-        const result = await model.generateContent(["Extract all text. No comments.", { inlineData: { data: base64Data, mimeType: file.type } }]);
-        resolve(result.response.text().trim());
-      } catch (e) { reject(e); }
-    };
-    reader.readAsDataURL(file);
-  });
+  return "OCR Devre Dışı";
 };
