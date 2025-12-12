@@ -14,6 +14,25 @@ const safetySettings = [
   { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
 ];
 
+// 🔒 TEK KERE OLUŞTURULAN GEMINI INSTANCE
+const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+
+const wordModel = genAI.getGenerativeModel({
+  model: "gemini-2.0-flash",
+  safetySettings,
+});
+
+const sentenceModel = genAI.getGenerativeModel({
+  model: "gemini-2.0-flash",
+  safetySettings,
+  generationConfig: { temperature: 0.2 },
+});
+
+// 🔒 GLOBAL KİLİTLER
+let inflightWord = false;
+let inflightRoot = false;
+let inflightSentence = false;
+
 const cleanAndParseJSON = (text) => {
   if (!text) return null;
   try {
@@ -32,13 +51,10 @@ const cleanAndParseJSON = (text) => {
 
 // --- 1. KELİME ANALİZİ ---
 export const fetchWordAnalysisFromAI = async (word) => {
-  try {
-    const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({
-      model: "gemini-2.0-flash",
-      safetySettings,
-    });
+  if (inflightWord) return null;
+  inflightWord = true;
 
+  try {
     const prompt = `
       Analyze the English word: "${word}".
       Return ONLY a valid JSON object.
@@ -66,93 +82,60 @@ export const fetchWordAnalysisFromAI = async (word) => {
       }
     `;
 
-    const result = await model.generateContent(prompt);
+    const result = await wordModel.generateContent(prompt);
     const data = cleanAndParseJSON(result.response.text());
 
-    if (data && data.definitions && Array.isArray(data.definitions)) {
+    if (data?.definitions) {
       const tagsSet = new Set();
       data.definitions.forEach((def) => {
-        const trTag = TYPE_MAP[def.type] || "Diğer";
-        tagsSet.add(trTag);
+        tagsSet.add(TYPE_MAP[def.type] || "Diğer");
       });
-      data.tags = Array.from(tagsSet); 
-    } else {
-      if (data) data.tags = ["Diğer"];
+      data.tags = Array.from(tagsSet);
+    } else if (data) {
+      data.tags = ["Diğer"];
     }
 
     return data;
   } catch (e) {
     console.error("Word Analysis Error:", e);
     return null;
+  } finally {
+    inflightWord = false;
   }
 };
 
 // --- 2. KÖK BULMA ---
 export const fetchRootFromAI = async (word) => {
+  if (inflightRoot) return { root: word, original: word, changed: false };
+  inflightRoot = true;
+
   try {
-    const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash", safetySettings });
     const prompt = `Find lemma of "${word}". Return JSON: { "root": "base", "original": "${word}", "changed": true/false }`;
-    const result = await model.generateContent(prompt);
+    const result = await wordModel.generateContent(prompt);
     return cleanAndParseJSON(result.response.text()) || { root: word, original: word, changed: false };
-  } catch (e) { return { root: word, original: word, changed: false }; }
+  } catch {
+    return { root: word, original: word, changed: false };
+  } finally {
+    inflightRoot = false;
+  }
 };
 
 // --- 3. CÜMLE ANALİZİ ---
 export const fetchSentenceAnalysisFromAI = async (text) => {
+  if (inflightSentence) return null;
+  inflightSentence = true;
+
   try {
-    const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash", safetySettings, generationConfig: { temperature: 0.2 } });
     const prompt = `
       You are an expert English teacher.
       Analyze the ORIGINAL English text: "${text}"
-      
-      RETURN ONLY THIS JSON:
-      {
-        "correction": { "hasError": boolean, "corrected": "string", "explanation": "TR string" },
-        "turkishTranslation": "Full TR translation",
-        "detectedTense": "Zaman (TR)",
-        "simplePoints": ["Madde 1", "Madde 2"],
-        "usage": { "hasMistake": boolean, "wrong": "string", "correct": "string", "explanation": "TR string" },
-        "structure": { "subject": "string", "verb": "string", "object": "string", "phrases": ["..."] },
-        "style": { "hasIssue": boolean, "suggestion": "string", "explanation": "string" },
-        "rootWords": ["word1", "word2"]
-      }
+      RETURN ONLY THIS JSON: {...}
     `;
-    const result = await model.generateContent(prompt);
-    const raw = cleanAndParseJSON(result.response.text()) || {};
-    let cleanedRoots = [];
-    if (Array.isArray(raw.rootWords)) {
-      cleanedRoots = raw.rootWords.map((w) => (w || "").toLowerCase().trim().replace(/'s$/, "").replace(/[^a-z-]/g, "")).filter((w) => w.length > 1);
-    }
-    return { ...raw, rootWords: [...new Set(cleanedRoots)] };
-  } catch (e) { return { turkishTranslation: "Hata", correction: {}, structure: {}, rootWords: [] }; }
-};
-
-// --- 4. HIZLI ÇEVİRİ ---
-export const translateTextWithAI = async (text) => {
-  try {
-    const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash", safetySettings });
-    const prompt = `Translate to Turkish. Return ONLY translation string: "${text}"`;
-    const result = await model.generateContent(prompt);
-    return result.response.text().trim();
-  } catch (e) { return "Çeviri yapılamadı."; }
-};
-
-// --- 5. OCR ---
-export const extractTextFromImage = async (file) => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = async () => {
-      try {
-        const base64Data = reader.result.split(",")[1];
-        const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash", safetySettings });
-        const result = await model.generateContent(["Extract all text. No comments.", { inlineData: { data: base64Data, mimeType: file.type } }]);
-        resolve(result.response.text().trim());
-      } catch (e) { reject(e); }
-    };
-    reader.readAsDataURL(file);
-  });
+    const result = await sentenceModel.generateContent(prompt);
+    return cleanAndParseJSON(result.response.text()) || {};
+  } catch {
+    return null;
+  } finally {
+    inflightSentence = false;
+  }
 };
