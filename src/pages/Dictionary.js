@@ -1,23 +1,19 @@
 import React, { useState, useEffect } from "react";
 import { useData } from "../context/DataContext";
-import WordCard from "../components/WordCard"; // WordCard Kullanımı
+import WordCard from "../components/WordCard";
 import { ArrowLeft, Search, X, BookOpen, AlertCircle, ArrowDownCircle, Plus } from "lucide-react";
-import { useNavigate, useLocation } from "react-router-dom"; // useLocation eklendi
+import { useNavigate, useLocation } from "react-router-dom";
 
 export default function Dictionary() {
-  const { getAllWords } = useData();
+  const { getAllWords, isAdmin } = useData(); // isAdmin eklendi
   const navigate = useNavigate();
-  const location = useLocation(); // Lokasyonu (Gelen veriyi) yakala
+  const location = useLocation();
   
-  // BAŞLANGIÇ AYARI: Eğer ekleme sayfasından geldiyse, o kelimeyi al. Yoksa boş.
   const [term, setTerm] = useState(location.state?.addedWord || "");
-  
   const [results, setResults] = useState([]);
   const [debouncedTerm, setDebouncedTerm] = useState(term);
   const [visibleCount, setVisibleCount] = useState(50);
   const PER_PAGE = 50;
-
-  // ... (Geri kalan tüm kodlar ve mantık aynı) ...
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -71,10 +67,8 @@ export default function Dictionary() {
     setVisibleCount(prev => prev + PER_PAGE);
   };
 
-  // Tam eşleşme kontrolü
   const cleanSearch = debouncedTerm.toLowerCase().trim();
   const exactMatchExists = results.some(r => r.word.toLowerCase() === cleanSearch);
-
   const displayedResults = results.slice(0, visibleCount);
 
   return (
@@ -107,20 +101,22 @@ export default function Dictionary() {
 
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10">
             
-            {debouncedTerm && !exactMatchExists && (
+            {/* GÜNCELLEME: Sadece Admin görsün */}
+            {debouncedTerm && !exactMatchExists && isAdmin && (
                 <button 
                     onClick={() => navigate("/add-word", { state: { initialWord: debouncedTerm } })}
-                    className="w-full bg-white border-2 border-dashed border-indigo-300 text-indigo-600 px-4 py-4 rounded-xl text-sm font-bold shadow-sm hover:bg-indigo-50 flex items-center justify-center gap-2 transition-colors"
+                    className="w-full bg-slate-800 border-2 border-slate-800 text-white px-4 py-4 rounded-xl text-sm font-bold shadow-sm hover:bg-slate-900 flex items-center justify-center gap-2 transition-colors"
                 >
                     <Plus className="w-5 h-5"/>
-                    "{debouncedTerm}" Kelimesini Ekle
+                    "{debouncedTerm}" Kelimesini Sisteme Ekle (Admin)
                 </button>
             )}
 
+            {/* Normal kullanıcı için uyarı */}
             {debouncedTerm && results.length === 0 && (
                 <div className="text-center text-slate-400 mt-4">
                     <AlertCircle className="w-8 h-8 mx-auto mb-2 opacity-50"/>
-                    <p>Benzer sonuç da bulunamadı.</p>
+                    <p>Sözlükte bulunamadı.</p>
                 </div>
             )}
 
