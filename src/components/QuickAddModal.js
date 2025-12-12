@@ -17,17 +17,15 @@ const TYPE_MAP = {
 const QuickAddModal = ({ word, prefillData, onClose }) => {
   const { handleSaveNewWord, handleSaveSystemWord, handleUpdateSystemWord, isAdmin } = useData();
   
-  // State Başlangıç Ayarları (trExplanation EKLENDİ)
   const initialData = prefillData ? {
       ...prefillData,
       sentence_tr: prefillData.sentence_tr || "",
       tags: Array.isArray(prefillData.tags) ? prefillData.tags : [],
-      // Tanımları maplerken trExplanation alanını da alıyoruz
       definitions: prefillData.definitions.map(d => ({ 
           type: d.type || "noun", 
           meaning: d.meaning || "", 
           engExplanation: d.engExplanation || "",
-          trExplanation: d.trExplanation || "" // YENİ
+          trExplanation: d.trExplanation || "" 
       }))
   } : {
     word: word || "", tags: [], plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
@@ -70,7 +68,6 @@ const QuickAddModal = ({ word, prefillData, onClose }) => {
     try {
       const data = await fetchWordAnalysisFromAI(formData.word);
       if (data) { 
-          // definitions içindeki trExplanation alanını da alacak şekilde set ediyoruz
           setFormData(prev => ({ 
               ...prev, 
               ...data,
@@ -79,7 +76,7 @@ const QuickAddModal = ({ word, prefillData, onClose }) => {
                   type: d.type || "noun",
                   meaning: d.meaning || "",
                   engExplanation: d.engExplanation || "",
-                  trExplanation: d.trExplanation || "" // AI'dan geleni al
+                  trExplanation: d.trExplanation || "" 
               }))
           })); 
       }
@@ -126,11 +123,9 @@ const QuickAddModal = ({ word, prefillData, onClose }) => {
               </div>
           </div>
 
-          {/* ... (Fiil/Sıfat kutuları AYNI KALSIN - Değişiklik yok) ... */}
           <div className="bg-slate-50 p-3 rounded-xl border border-slate-100"><div className="text-xs font-bold text-slate-400 mb-2 uppercase tracking-wide">Fiil & İsim Detayları</div><div className="space-y-3"><div><label className="block text-xs font-medium text-slate-500 mb-1">Çoğul</label><input value={formData.plural} onChange={e=>setFormData({...formData, plural:e.target.value})} className="w-full p-2 border rounded text-sm"/></div><div className="grid grid-cols-2 gap-2"><div><label className="block text-xs text-slate-500 mb-1">3. Tekil</label><input value={formData.thirdPerson} onChange={e=>setFormData({...formData, thirdPerson:e.target.value})} className="w-full p-2 border rounded text-sm"/></div><div><label className="block text-xs text-slate-500 mb-1">V-ing</label><input value={formData.vIng} onChange={e=>setFormData({...formData, vIng:e.target.value})} className="w-full p-2 border rounded text-sm"/></div></div><div className="grid grid-cols-2 gap-2"><div><label className="block text-xs text-slate-500 mb-1">V2 (Past)</label><input value={formData.v2} onChange={e=>setFormData({...formData, v2:e.target.value})} className="w-full p-2 border rounded text-sm"/></div><div><label className="block text-xs text-slate-500 mb-1">V3</label><input value={formData.v3} onChange={e=>setFormData({...formData, v3:e.target.value})} className="w-full p-2 border rounded text-sm"/></div></div></div></div>
           <div className="bg-orange-50 p-3 rounded-xl border border-orange-100"><div className="text-xs font-bold text-orange-400 mb-2 uppercase tracking-wide">Sıfat & Zarf Detayları</div><div className="space-y-3"><div><label className="block text-xs text-orange-700/70 mb-1">Zarf (-ly)</label><input value={formData.advLy} onChange={e=>setFormData({...formData, advLy:e.target.value})} className="w-full p-2 border rounded text-sm"/></div><div className="grid grid-cols-2 gap-2"><div><label className="block text-xs text-orange-700/70 mb-1">Comp (-er)</label><input value={formData.compEr} onChange={e=>setFormData({...formData, compEr:e.target.value})} className="w-full p-2 border rounded text-sm"/></div><div><label className="block text-xs text-orange-700/70 mb-1">Super (-est)</label><input value={formData.superEst} onChange={e=>setFormData({...formData, superEst:e.target.value})} className="w-full p-2 border rounded text-sm"/></div></div></div></div>
 
-          {/* 🔥 ANLAMLAR BÖLÜMÜ (GÜNCELLENDİ) 🔥 */}
           <div className="space-y-2">
             <label className="block text-sm font-medium">Anlamlar</label>
             {formData.definitions.map((def, i) => (
@@ -142,11 +137,7 @@ const QuickAddModal = ({ word, prefillData, onClose }) => {
                   <input value={def.meaning} onChange={e => updateDef(i, "meaning", e.target.value)} className="flex-1 p-2 border rounded text-sm font-bold text-slate-700" placeholder="Türkçe anlam" />
                   {formData.definitions.length > 1 && <button onClick={() => removeDef(i)} className="text-slate-400 hover:text-red-500"><Trash2 className="w-4 h-4"/></button>}
                 </div>
-                
-                {/* İNGİLİZCE TANIM */}
                 <input value={def.engExplanation} onChange={e => updateDef(i, "engExplanation", e.target.value)} className="w-full p-2 border rounded text-sm bg-indigo-50/50 placeholder:text-indigo-300" placeholder="İngilizce Tanım (Definition)" />
-                
-                {/* 🔥 YENİ: TANIMIN TÜRKÇE ÇEVİRİSİ 🔥 */}
                 <div className="relative">
                     <input value={def.trExplanation} onChange={e => updateDef(i, "trExplanation", e.target.value)} className="w-full p-2 pl-7 border rounded text-sm bg-green-50/50 placeholder:text-green-600/50" placeholder="Tanımın Türkçe Çevirisi" />
                     <Languages className="w-4 h-4 absolute left-2 top-2.5 text-green-600/50"/>
@@ -161,7 +152,6 @@ const QuickAddModal = ({ word, prefillData, onClose }) => {
                   <label className="block text-xs font-bold text-slate-500 mb-1">ÖRNEK CÜMLE</label>
                   <textarea value={formData.sentence} onChange={e => setFormData({ ...formData, sentence: e.target.value })} className="w-full p-3 border rounded-xl text-sm" placeholder="Örnek cümle..." rows={2}></textarea>
               </div>
-              
               <div>
                   <label className="block text-xs font-bold text-indigo-500 mb-1 flex items-center gap-1"><Languages className="w-3 h-3"/> CÜMLE ÇEVİRİSİ</label>
                   <textarea value={formData.sentence_tr} onChange={e => setFormData({ ...formData, sentence_tr: e.target.value })} className="w-full p-3 border border-indigo-100 bg-indigo-50/30 rounded-xl text-sm focus:border-indigo-500 outline-none transition-colors" placeholder="Cümlenin Türkçe çevirisi..." rows={2}></textarea>
