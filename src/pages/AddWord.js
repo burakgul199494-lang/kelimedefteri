@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useData } from "../context/DataContext";
 import { fetchWordAnalysisFromAI, fetchRootFromAI } from "../services/aiService";
-import { ArrowLeft, Loader2, Wand2, Brain, Plus, Save, Trash2, Tag } from "lucide-react";
+import { ArrowLeft, Loader2, Wand2, Brain, Plus, Save, Trash2, Tag, Languages } from "lucide-react";
 
 const WORD_TYPES = [
   { value: "noun", label: "İsim (Noun)" }, { value: "verb", label: "Fiil (Verb)" }, { value: "adjective", label: "Sıfat (Adjective)" },
@@ -24,8 +24,9 @@ export default function AddWord() {
   const initialWord = location.state?.initialWord;
   const isEditMode = !!editingWord;
 
+  // Initial Data Ayarları (sentence_tr EKLENDİ)
   const initialData = editingWord
-    ? { ...editingWord, definitions: (editingWord.definitions || []).map((d) => ({ ...d })) }
+    ? { ...editingWord, sentence_tr: editingWord.sentence_tr || "", definitions: (editingWord.definitions || []).map((d) => ({ ...d })) }
     : {
         word: initialWord || "",
         tags: [],
@@ -33,6 +34,7 @@ export default function AddWord() {
         advLy: "", compEr: "", superEst: "",
         definitions: [{ type: "noun", meaning: "", engExplanation: "" }],
         sentence: "",
+        sentence_tr: "", // YENİ ALAN
       };
 
   const [formData, setFormData] = useState(initialData);
@@ -40,8 +42,7 @@ export default function AddWord() {
   const [aiLoading, setAiLoading] = useState(false);
   const [rootLoading, setRootLoading] = useState(false);
 
-  // --- OTOMATİK ETİKET SENKRONİZASYONU ---
-  // "definitions" her değiştiğinde, seçilen türe göre etiketleri güncelle
+  // Otomatik Etiket Senkronizasyonu
   useEffect(() => {
       const newTags = new Set();
       formData.definitions.forEach(def => {
@@ -49,7 +50,6 @@ export default function AddWord() {
           newTags.add(label);
       });
       const newTagsArray = Array.from(newTags);
-      // Sonsuz döngüyü önlemek için sadece değiştiyse set et
       if (JSON.stringify(newTagsArray) !== JSON.stringify(formData.tags)) {
           setFormData(prev => ({ ...prev, tags: newTagsArray }));
       }
@@ -58,6 +58,7 @@ export default function AddWord() {
   useEffect(() => {
     const autoRun = async () => {
         if (initialWord && !isEditMode) {
+            // ... (Mevcut mantık aynı)
             setRootLoading(true);
             let searchWord = initialWord;
             try {
@@ -69,18 +70,12 @@ export default function AddWord() {
             } catch(e) { console.error(e); }
             setRootLoading(false);
 
-            setAiLoading(true);
-            try {
-                const data = await fetchWordAnalysisFromAI(searchWord);
-                if (data) {
-                    setFormData(prev => ({ ...prev, ...data }));
-                }
-            } catch(e) { console.error(e); }
-            setAiLoading(false);
+            handleAIFill(); // Fonksiyonu çağır
         }
     };
-    autoRun();
-  }, [initialWord, isEditMode]);
+    // eslint-disable-next-line
+    if(initialWord && !isEditMode) autoRun();
+  }, []); // Dependency array boşaltıldı, sadece mountta çalışsın
 
   const handleConvertToRoot = async () => {
     if (!formData.word) return;
@@ -92,11 +87,20 @@ export default function AddWord() {
   };
 
   const handleAIFill = async () => {
-    if (!formData.word) { alert("Lütfen önce bir kelime yazın!"); return; }
+    if (!formData.word && !initialWord) { alert("Lütfen önce bir kelime yazın!"); return; }
+    const targetWord = formData.word || initialWord;
+    
     setAiLoading(true);
     try {
-      const data = await fetchWordAnalysisFromAI(formData.word);
-      if (data) { setFormData((prev) => ({ ...prev, ...data })); } 
+      const data = await fetchWordAnalysisFromAI(targetWord);
+      if (data) { 
+          // Gelen veride sentence_tr varsa onu da state'e atıyoruz
+          setFormData((prev) => ({ 
+              ...prev, 
+              ...data,
+              sentence_tr: data.sentence_tr || "" // AI'dan geleni al
+          })); 
+      } 
       else { alert("Veri alınamadı."); }
     } catch (err) { alert("Hata: " + err.message); } finally { setAiLoading(false); }
   };
@@ -106,6 +110,7 @@ export default function AddWord() {
     if (!formData.word || !formData.sentence) { alert("Eksik alanları doldurun."); return; }
     setSaving(true);
 
+    // Form verisini gönderiyoruz (sentence_tr içinde var)
     if (isEditMode) {
       await handleUpdateWord(editingWord.id, formData);
       navigate(-1); 
@@ -143,7 +148,6 @@ export default function AddWord() {
             </div>
           </div>
 
-          {/* OTOMATİK ETİKET GÖSTERİMİ (Read-Only) */}
           <div className="bg-indigo-50 p-3 rounded-xl border border-indigo-100">
               <label className="block text-xs font-bold text-indigo-400 mb-2 uppercase">Otomatik Etiketler</label>
               <div className="flex flex-wrap gap-2">
@@ -164,7 +168,32 @@ export default function AddWord() {
 
           <div className="space-y-3"><div className="flex justify-between items-center"><label className="block text-sm font-medium text-slate-700">Anlamlar</label><button type="button" onClick={addDefinition} className="text-sm text-indigo-600 flex items-center gap-1 font-medium hover:text-indigo-800"><Plus className="w-4 h-4" /> Ekle</button></div>{formData.definitions.map((def, index) => (<div key={index} className="flex flex-col gap-2 bg-slate-50 p-3 rounded-xl border border-slate-100 shadow-sm"><div className="flex gap-2 items-start"><div className="flex-1 space-y-2"><select value={def.type} onChange={(e) => updateDefinition(index, "type", e.target.value)} className="w-full p-2 text-sm border border-slate-200 rounded-lg outline-none bg-white">{WORD_TYPES.map((t) => ( <option key={t.value} value={t.value}>{t.label}</option> ))}</select><input value={def.meaning} onChange={(e) => updateDefinition(index, "meaning", e.target.value)} className="w-full p-2 text-sm border border-slate-200 rounded-lg outline-none placeholder:text-slate-400" placeholder="Türkçe anlam..." /></div>{formData.definitions.length > 1 && (<button type="button" onClick={() => removeDefinition(index)} className="p-2 text-slate-400 hover:text-red-500 mt-1"><Trash2 className="w-4 h-4" /></button>)}</div><input value={def.engExplanation} onChange={(e) => updateDefinition(index, "engExplanation", e.target.value)} className="w-full p-2 text-sm border border-indigo-100 bg-indigo-50/50 rounded-lg outline-none placeholder:text-slate-400" placeholder="Bu anlam için İngilizce açıklama (Opsiyonel)..." /></div>))}</div>
 
-          <div><label className="block text-sm font-medium text-slate-700 mb-1">Örnek Cümle</label><textarea value={formData.sentence} onChange={(e) => setFormData({ ...formData, sentence: e.target.value })} className="w-full p-3 border border-slate-200 rounded-xl outline-none h-24 resize-none focus:border-indigo-500 transition-colors" placeholder="Örn: I put my money in the bank." /></div>
+          {/* 🔥 GÜNCELLENEN ALAN: Örnek Cümle ve Çevirisi 🔥 */}
+          <div className="space-y-3">
+             <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Örnek Cümle (İngilizce)</label>
+                <textarea 
+                    value={formData.sentence} 
+                    onChange={(e) => setFormData({ ...formData, sentence: e.target.value })} 
+                    className="w-full p-3 border border-slate-200 rounded-xl outline-none min-h-[80px] resize-none focus:border-indigo-500 transition-colors" 
+                    placeholder="Örn: I put my money in the bank." 
+                />
+             </div>
+             
+             {/* YENİ INPUT: Cümlenin Türkçe Çevirisi */}
+             <div>
+                <label className="block text-sm font-medium text-indigo-700 mb-1 flex items-center gap-2">
+                    <Languages className="w-4 h-4" />
+                    Cümlenin Türkçe Çevirisi
+                </label>
+                <textarea 
+                    value={formData.sentence_tr} 
+                    onChange={(e) => setFormData({ ...formData, sentence_tr: e.target.value })} 
+                    className="w-full p-3 border border-indigo-100 bg-indigo-50/30 rounded-xl outline-none min-h-[60px] resize-none focus:border-indigo-500 transition-colors text-sm" 
+                    placeholder="Örn: Parayı bankaya yatırdım. (AI otomatik doldurur)" 
+                />
+             </div>
+          </div>
 
           <button type="submit" disabled={saving} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-xl shadow-md flex items-center justify-center gap-2 transition-transform active:scale-95">{saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />} {isEditMode ? "Değişiklikleri Kaydet" : "Kelimeyi Kaydet"}</button>
         </form>
