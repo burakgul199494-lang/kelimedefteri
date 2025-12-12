@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { useData } from "../context/DataContext";
 import WordCard from "../components/WordCard";
-import { ArrowLeft, Search, X, BookOpen, AlertCircle, ArrowDownCircle, Plus } from "lucide-react";
+import { ArrowLeft, Search, X, BookOpen, AlertCircle, ArrowDownCircle } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 
 export default function Dictionary() {
-  const { getAllWords, isAdmin } = useData(); // isAdmin eklendi
+  const { getAllWords } = useData(); 
   const navigate = useNavigate();
   const location = useLocation();
   
@@ -67,8 +67,6 @@ export default function Dictionary() {
     setVisibleCount(prev => prev + PER_PAGE);
   };
 
-  const cleanSearch = debouncedTerm.toLowerCase().trim();
-  const exactMatchExists = results.some(r => r.word.toLowerCase() === cleanSearch);
   const displayedResults = results.slice(0, visibleCount);
 
   return (
@@ -101,18 +99,7 @@ export default function Dictionary() {
 
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10">
             
-            {/* GÜNCELLEME: Sadece Admin görsün */}
-            {debouncedTerm && !exactMatchExists && isAdmin && (
-                <button 
-                    onClick={() => navigate("/add-word", { state: { initialWord: debouncedTerm } })}
-                    className="w-full bg-slate-800 border-2 border-slate-800 text-white px-4 py-4 rounded-xl text-sm font-bold shadow-sm hover:bg-slate-900 flex items-center justify-center gap-2 transition-colors"
-                >
-                    <Plus className="w-5 h-5"/>
-                    "{debouncedTerm}" Kelimesini Sisteme Ekle (Admin)
-                </button>
-            )}
-
-            {/* Normal kullanıcı için uyarı */}
+            {/* Kelime Bulunamadı Uyarısı (Ekleme butonu yok) */}
             {debouncedTerm && results.length === 0 && (
                 <div className="text-center text-slate-400 mt-4">
                     <AlertCircle className="w-8 h-8 mx-auto mb-2 opacity-50"/>
