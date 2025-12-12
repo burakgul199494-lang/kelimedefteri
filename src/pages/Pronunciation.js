@@ -8,15 +8,8 @@ import {
   RefreshCw,
   Trophy,
   AlertCircle,
-  StopCircle,
-  Camera
+  StopCircle
 } from "lucide-react";
-
-import { extractTextFromImage } from "../services/aiService";
-
-// 🚀 iOS tarzı profesyonel cropper (SentenceAnalysis ile birebir aynı yapı)
-import Cropper from "react-cropper";
-import "cropperjs/dist/cropper.css";
 
 export default function Pronunciation() {
   const navigate = useNavigate();
@@ -29,12 +22,6 @@ export default function Pronunciation() {
   const [feedback, setFeedback] = useState(null);
   const [isSpeaking, setIsSpeaking] = useState(false);
 
-  // --- KIRPMA + OCR STATE'LERİ (SentenceAnalysis ile aynı mantık) ---
-  const [imgSrc, setImgSrc] = useState("");
-  const [isCropModalOpen, setIsCropModalOpen] = useState(false);
-
-  const cropperRef = useRef(null);
-  const fileInputRef = useRef(null);
   const recognitionRef = useRef(null);
 
   // Sayfadan çıkarken varsa konuşmayı durdur
@@ -44,7 +31,7 @@ export default function Pronunciation() {
     };
   }, []);
 
-  // SpeechRecognition kurulumu
+  // SpeechRecognition kurulumu (Tarayıcı Özelliği - API Kullanmaz)
   useEffect(() => {
     const SpeechRecognition =
       window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -75,53 +62,6 @@ export default function Pronunciation() {
     }
   }, [text]);
 
-  // ----------------- FOTOĞRAF SEÇME (SentenceAnalysis ile aynı mantık) -----------------
-  const handleImageSelect = (e) => {
-    if (!e.target.files?.length) return;
-
-    const file = e.target.files[0];
-    const reader = new FileReader();
-    reader.onload = () => {
-      setImgSrc(reader.result.toString());
-      setIsCropModalOpen(true);
-    };
-    reader.readAsDataURL(file);
-  };
-
-  // ----------------- KIRPMA ONAY (SentenceAnalysis ile aynı, sadece setText kullanıyor) -----------------
-  const handleCropConfirm = async () => {
-    try {
-      const cropper = cropperRef.current?.cropper;
-      if (!cropper) return;
-
-      const canvas = cropper.getCroppedCanvas({
-        imageSmoothingEnabled: true,
-        imageSmoothingQuality: "high"
-      });
-
-      const blob = await new Promise((resolve) =>
-        canvas.toBlob(resolve, "image/jpeg", 0.95)
-      );
-
-      const file = new File([blob], "crop.jpg", { type: "image/jpeg" });
-
-      setIsCropModalOpen(false);
-
-      const textFromImg = await extractTextFromImage(file);
-
-      if (textFromImg) {
-        // SentenceAnalysis'teki gibi: önceki metne ekleyerek yazıyor
-        setText((prev) => (prev ? prev + "\n" + textFromImg : textFromImg));
-      }
-    } catch (err) {
-      console.error(err);
-      alert("Kırpma sırasında hata oluştu.");
-    } finally {
-      setImgSrc("");
-      if (fileInputRef.current) fileInputRef.current.value = "";
-    }
-  };
-
   // ----------------- METNİ SESLİ OKUTMA -----------------
   const handleSpeak = () => {
     if (!text) return;
@@ -146,7 +86,7 @@ export default function Pronunciation() {
   // ----------------- MİKROFON KONTROL -----------------
   const toggleMic = () => {
     if (!text) {
-      alert("Lütfen cümle yazın veya fotoğraftan alın.");
+      alert("Lütfen önce bir cümle yazın.");
       return;
     }
 
@@ -165,7 +105,7 @@ export default function Pronunciation() {
     }
   };
 
-  // ----------------- PUANLAMA -----------------
+  // ----------------- PUANLAMA (Yerel Hesaplama - API Kullanmaz) -----------------
   const calculateScore = (target, originalSpoken) => {
     const cleanTarget = target
       .toLowerCase()
@@ -201,9 +141,6 @@ export default function Pronunciation() {
     else setFeedback({ type: "error", msg: "Tekrar dene. 😕" });
   };
 
-  // ===================================================================
-  //                              RENDER
-  // ===================================================================
   return (
     <div className="min-h-screen bg-slate-50 p-6 flex flex-col items-center">
       <div className="w-full max-w-md space-y-6">
@@ -219,24 +156,8 @@ export default function Pronunciation() {
           <h2 className="text-2xl font-bold text-slate-800">Telaffuz Koçu</h2>
         </div>
 
-        {/* Fotoğraf Seçme Butonu (SentenceAnalysis ile aynı stil) */}
         <div className="bg-white p-4 rounded-3xl shadow-sm border border-slate-200 space-y-3">
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="w-full bg-slate-100 hover:bg-slate-200 text-slate-600 py-2 rounded-xl text-sm font-bold flex items-center justify-center gap-2"
-          >
-            <Camera className="w-4 h-4" />
-            Fotoğraf Çek / Yükle
-          </button>
-
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleImageSelect}
-            accept="image/*"
-            className="hidden"
-          />
-
+          
           {/* Cümle Giriş Alanı */}
           <div>
             <label className="block text-sm font-bold text-slate-500 mb-2 uppercase">
@@ -245,8 +166,8 @@ export default function Pronunciation() {
             <textarea
               value={text}
               onChange={(e) => setText(e.target.value)}
-              className="w-full p-4 border-2 border-indigo-100 rounded-2xl text-lg font-medium text-slate-700 focus:border-indigo-500 outline-none h-32 resize-none"
-              placeholder="Buraya İngilizce bir cümle yaz veya fotoğraftan al..."
+              className="w-full p-4 border-2 border-indigo-100 rounded-2xl text-lg font-medium text-slate-700 focus:border-indigo-500 outline-none h-32 resize-none placeholder:text-slate-300"
+              placeholder="Buraya İngilizce bir cümle yaz..."
             />
           </div>
 
@@ -302,7 +223,7 @@ export default function Pronunciation() {
 
         {/* Sonuç Alanı */}
         {(spokenText || score !== null) && (
-          <div className="bg-white p-6 rounded-3xl shadow-lg border border-slate-100">
+          <div className="bg-white p-6 rounded-3xl shadow-lg border border-slate-100 animate-in fade-in slide-in-from-bottom-4">
             <div className="text-center mb-4">
               <div className="text-xs font-bold text-slate-400 uppercase mb-1">
                 Algılanan Ses
@@ -354,61 +275,6 @@ export default function Pronunciation() {
           </div>
         )}
       </div>
-
-      {/* ===========================================================
-          🚀🚀🚀   CÜMLE ANALİZİYLE AYNI iOS TARZI CROP MODAL   🚀🚀🚀
-          =========================================================== */}
-      {isCropModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black flex flex-col">
-          {/* ÜST BAR */}
-          <div className="px-4 py-6 flex justify-between items-center bg-black/70 backdrop-blur-md absolute top-0 w-full z-20">
-            <button
-              onClick={() => {
-                setIsCropModalOpen(false);
-                setImgSrc("");
-              }}
-              className="text-white font-medium p-2"
-            >
-              İptal
-            </button>
-
-            <h3 className="text-white font-bold text-sm uppercase tracking-widest">
-              Kırp
-            </h3>
-
-            <button
-              onClick={handleCropConfirm}
-              className="text-yellow-400 font-bold p-2"
-            >
-              Bitti
-            </button>
-          </div>
-
-          {/* CROP ALANI (SentenceAnalysis ile birebir aynı ayarlar) */}
-          <div className="flex-1 flex items-center justify-center overflow-hidden bg-black">
-            <Cropper
-              src={imgSrc}
-              ref={cropperRef}
-              style={{ height: "100%", width: "100%" }}
-              viewMode={1}
-              dragMode="move"
-              background={false}
-              responsive={true}
-              autoCropArea={0.8}
-              movable={true}
-              zoomable={true}
-              zoomOnTouch={true}
-              zoomOnWheel={true}
-              cropBoxMovable={true}
-              cropBoxResizable={true}
-              minCropBoxWidth={50}
-              minCropBoxHeight={50}
-              guides={true}
-            />
-          </div>
-        </div>
-      )}
-      {/* =========================================================== */}
     </div>
   );
 }
