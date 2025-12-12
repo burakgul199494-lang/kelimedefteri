@@ -5,8 +5,8 @@ import { auth } from "../services/firebase";
 import { 
   RotateCcw, LogOut, Brain, Flame, Play, Book, 
   BookOpen, Check, Trash2, Shield, Edit, HelpCircle, 
-  Settings, Trophy, Star, Mic, Quote, Plus 
-} from "lucide-react"; // Microscope ikonu da gereksiz olduğu için silindi
+  Settings, Trophy, Star, Mic, Quote 
+} from "lucide-react"; 
 import ProfileModal from "../components/ProfileModal"; 
 import LeaderboardModal from "../components/LeaderboardModal";
 
@@ -92,9 +92,9 @@ export default function Home() {
         {/* --- MENÜ LİSTESİ --- */}
         <div className="space-y-3 pb-8">
           
-          {/* Admin Butonu */}
+          {/* Admin Butonu (Varsa Göster) */}
           {isAdmin && (
-             <button onClick={() => navigate("/admin")} className="w-full bg-slate-800 text-white font-bold py-3 px-6 rounded-xl shadow-md flex items-center justify-between mb-3">
+             <button onClick={() => navigate("/admin")} className="w-full bg-slate-800 text-white font-bold py-3 px-6 rounded-xl shadow-md flex items-center justify-between mb-3 group hover:bg-slate-900 transition-colors">
                <div className="flex items-center gap-3"><div className="bg-white/20 p-2 rounded-lg"><Shield className="w-5 h-5 text-yellow-400"/></div><div className="text-left"><div className="text-base">Admin Paneli</div></div></div>
              </button>
           )}
@@ -104,7 +104,7 @@ export default function Home() {
              <div className="flex items-center gap-3"><div className="bg-white/20 p-2 rounded-lg"><Book className="w-6 h-6"/></div><div className="text-left"><div className="text-lg">Sözlük</div><div className="text-xs text-sky-100 font-normal">Kelime ara ve öğren</div></div></div>
           </button>
 
-          {/* AI Cümle Analizi BUTONU KALDIRILDI */}
+          {/* AI Cümle Analizi KALDIRILDI */}
 
           {/* --- OYUNLAR BÖLÜMÜ --- */}
           
@@ -147,15 +147,9 @@ export default function Home() {
              </button>
           </div>
 
-          {/* --- AYIRAÇ --- */}
           <div className="h-px bg-slate-200 my-2"></div>
 
-          {/* Kelime Ekle Butonu SADECE ADMIN İÇİN */}
-          {isAdmin && (
-              <button onClick={() => navigate("/add-word")} className="w-full bg-white text-slate-700 border-2 border-dashed border-slate-300 font-bold py-4 px-6 rounded-xl flex items-center justify-between group hover:bg-slate-50 active:scale-95 transition-transform">
-                 <div className="flex items-center gap-3"><div className="bg-blue-50 p-2 rounded-lg text-blue-600"><Plus className="w-6 h-6"/></div><div className="text-left"><div className="text-base">Yeni Kelime Ekle</div></div></div><Plus className="w-5 h-5 opacity-40"/>
-              </button>
-          )}
+          {/* "Yeni Kelime Ekle" Butonu BURADAN TAMAMEN KALDIRILDI */}
 
           {/* Listeler */}
           <div className="grid grid-cols-2 gap-3">
