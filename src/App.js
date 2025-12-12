@@ -1,12 +1,11 @@
 import React, { useEffect } from "react";
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from "react-router-dom"; // 🔥 useLocation eklendi
 import { DataProvider, useData } from "./context/DataContext";
 
-// SAYFALAR
+// SAYFALAR (Importlar aynı)
 import Auth from "./pages/Auth";
 import Home from "./pages/Home";
 import Dictionary from "./pages/Dictionary";
-// SentenceAnalysis importu KALDIRILDI
 import Game from "./pages/Game";
 import Quiz from "./pages/Quiz";
 import WordList from "./pages/WordList";
@@ -15,6 +14,16 @@ import AdminDashboard from "./pages/AdminDashboard";
 import WritingGame from "./pages/WritingGame"; 
 import Pronunciation from "./pages/Pronunciation"; 
 import GapFillingGame from "./pages/GapFillingGame"; 
+
+// --- SES SUSTURUCU BİLEŞEN (YENİ) ---
+const AudioSilencer = () => {
+  const location = useLocation();
+  useEffect(() => {
+    // Sayfa (lokasyon) her değiştiğinde konuşmayı iptal et
+    window.speechSynthesis.cancel();
+  }, [location]);
+  return null;
+};
 
 const PrivateRoute = ({ children }) => {
   const { user, loading } = useData();
@@ -39,6 +48,9 @@ export default function App() {
   return (
     <DataProvider>
       <Router>
+        {/* 🔥 Ses Susturucuyu Router içine ekledik */}
+        <AudioSilencer /> 
+        
         <Routes>
           <Route path="/login" element={<Auth />} />
 
@@ -46,19 +58,14 @@ export default function App() {
           <Route path="/" element={<PrivateRoute><Home /></PrivateRoute>} />
           <Route path="/dictionary" element={<PrivateRoute><Dictionary /></PrivateRoute>} />
           
-          {/* Analysis Rotası KALDIRILDI */}
-          
-          {/* Oyunlar ve Araçlar */}
           <Route path="/game" element={<PrivateRoute><Game /></PrivateRoute>} />
           <Route path="/quiz" element={<PrivateRoute><Quiz /></PrivateRoute>} />
           <Route path="/writing" element={<PrivateRoute><WritingGame /></PrivateRoute>} />
           
           <Route path="/pronunciation" element={<PrivateRoute><Pronunciation /></PrivateRoute>} />
           
-          {/* Liste Sayfaları */}
           <Route path="/list/:type" element={<PrivateRoute><WordList /></PrivateRoute>} />
           
-          {/* SADECE ADMIN */}
           <Route path="/add-word" element={<AdminRoute><AddWord /></AdminRoute>} />
           <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
 
