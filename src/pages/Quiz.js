@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useData } from "../context/DataContext";
 import { useNavigate } from "react-router-dom";
-import { X, Trophy, Volume2, Languages, Loader2, Target } from "lucide-react";
-import { translateTextWithAI } from "../services/aiService";
+import { X, Trophy, Volume2, Languages, Loader2 } from "lucide-react";
+// translateTextWithAI importu KALDIRILDI
 
 export default function Quiz() {
   const { getAllWords, knownWordIds, learningQueue, addScore } = useData();
@@ -14,19 +14,16 @@ export default function Quiz() {
   const [selected, setSelected] = useState(null);
   const [isAnswered, setIsAnswered] = useState(false);
   const [finished, setFinished] = useState(false);
-  
-  // YENİ: SORU GEÇİŞ STATE'İ (Sorunu çözen anahtar)
   const [isTransitioning, setIsTransitioning] = useState(false);
   
-  const [hintTranslation, setHintTranslation] = useState(null);
-  const [loadingHint, setLoadingHint] = useState(false);
+  // API yerine sadece görünürlük state'i
+  const [showHintTr, setShowHintTr] = useState(false);
 
   useEffect(() => { startQuiz(); }, []);
 
-  // Soru değiştiğinde temizlik yap
   useEffect(() => { 
-      setHintTranslation(null); 
-      setLoadingHint(false);
+      // Soru değişince çeviriyi kapat ve seçimleri sıfırla
+      setShowHintTr(false);
       setSelected(null);
       setIsAnswered(false);
   }, [index]);
@@ -64,7 +61,6 @@ export default function Quiz() {
   };
 
   const handleAnswer = (option, e) => {
-    // Manuel focus temizleme (Ekstra güvenlik)
     if(e && e.target) e.target.blur();
 
     if (isAnswered) return;
@@ -73,15 +69,11 @@ export default function Quiz() {
     
     setTimeout(() => {
       if (index + 1 < questions.length) {
-        // 1. Önce geçiş modunu aç (Butonları yok et)
         setIsTransitioning(true);
-        
-        // 2. Kısa bir süre sonra yeni soruyu getir
         setTimeout(() => {
             setIndex(i => i + 1);
-            setIsTransitioning(false); // Butonları geri getir
-        }, 100); // 100ms'lik bir "göz kırpma" süresi DOM'u sıfırlar
-        
+            setIsTransitioning(false);
+        }, 100); 
       } else {
         setFinished(true);
         const finalPoints = score + (option === questions[index].correct ? 5 : 0);
@@ -93,15 +85,6 @@ export default function Quiz() {
   const handleQuitEarly = () => {
       if (score > 0) addScore(score);
       setFinished(true); 
-  };
-
-  const handleTranslateHint = async () => {
-      const hint = questions[index]?.wordObj.definitions[0].engExplanation;
-      if (!hint) return;
-      setLoadingHint(true);
-      const res = await translateTextWithAI(hint);
-      setHintTranslation(res);
-      setLoadingHint(false);
   };
 
   const speak = (txt) => { 
@@ -118,9 +101,9 @@ export default function Quiz() {
            <Trophy className="w-12 h-12 text-yellow-500 mx-auto"/>
            <h2 className="text-2xl font-bold">Test Bitti!</h2>
            <div className="py-6 bg-slate-50 rounded-2xl border border-slate-100">
-              <div className="text-sm text-slate-400 font-bold">PUAN</div>
-              <div className="text-5xl font-extrabold text-indigo-600 mt-2">{score}</div>
-              <div className="text-xs text-slate-400">/ {max}</div>
+             <div className="text-sm text-slate-400 font-bold">PUAN</div>
+             <div className="text-5xl font-extrabold text-indigo-600 mt-2">{score}</div>
+             <div className="text-xs text-slate-400">/ {max}</div>
            </div>
            <button onClick={() => navigate("/")} className="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl">Ana Sayfa</button>
            <button onClick={startQuiz} className="w-full bg-white border font-bold py-3 rounded-xl">Tekrar Dene</button>
@@ -133,7 +116,10 @@ export default function Quiz() {
 
   const current = questions[index];
   const progress = ((index + 1) / questions.length) * 100;
-  const hint = current.wordObj.definitions[0].engExplanation;
+  
+  // Veritabanından gelen İngilizce ve Türkçe tanımlar
+  const hintEng = current.wordObj.definitions[0].engExplanation;
+  const hintTr = current.wordObj.definitions[0].trExplanation;
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center p-4">
@@ -145,7 +131,6 @@ export default function Quiz() {
           </div>
           <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden"><div className="bg-indigo-500 h-full transition-all duration-500" style={{width:`${progress}%`}}></div></div>
           
-          {/* GEÇİŞ EKRANI KONTROLÜ */}
           {isTransitioning ? (
               <div className="h-64 flex items-center justify-center">
                   <Loader2 className="w-10 h-10 text-indigo-600 animate-spin"/>
@@ -153,14 +138,30 @@ export default function Quiz() {
           ) : (
               <>
                 <div className="bg-white p-8 rounded-3xl shadow-lg border border-slate-100 text-center space-y-6 mt-6 animate-in fade-in zoom-in duration-300">
-                    {hint && (
+                    {hintEng && (
                         <div className="flex flex-col items-center gap-2">
                             <div className="bg-indigo-50 text-indigo-800 px-4 py-2 rounded-xl border border-indigo-100 flex items-center gap-2">
-                                <span className="text-sm italic">"{hint}"</span>
-                                <button onClick={() => speak(hint)} className="p-1 bg-white rounded-full hover:bg-indigo-100 transition-colors" title="Oku"><Volume2 className="w-3 h-3 text-indigo-500"/></button>
-                                <button onClick={handleTranslateHint} className="p-1 bg-white rounded-full hover:bg-indigo-100 transition-colors" title="Çevir">{loadingHint ? <Loader2 className="w-3 h-3 animate-spin"/> : <Languages className="w-3 h-3 text-indigo-500"/>}</button>
+                                <span className="text-sm italic">"{hintEng}"</span>
+                                <button onClick={() => speak(hintEng)} className="p-1 bg-white rounded-full hover:bg-indigo-100 transition-colors" title="Oku"><Volume2 className="w-3 h-3 text-indigo-500"/></button>
+                                
+                                {/* Çeviri varsa butonu göster (API YOK) */}
+                                {hintTr && (
+                                    <button 
+                                        onClick={() => setShowHintTr(!showHintTr)} 
+                                        className={`p-1 rounded-full transition-colors ${showHintTr ? "bg-indigo-200" : "bg-white hover:bg-indigo-100"}`} 
+                                        title="Çeviri"
+                                    >
+                                        <Languages className="w-3 h-3 text-indigo-500"/>
+                                    </button>
+                                )}
                             </div>
-                            {hintTranslation && <div className="bg-green-50 text-green-700 px-3 py-1 text-xs font-bold rounded">TR: {hintTranslation}</div>}
+                            
+                            {/* Veritabanından gelen çeviri */}
+                            {showHintTr && hintTr && (
+                                <div className="bg-green-50 text-green-700 px-3 py-1 text-xs font-bold rounded animate-in fade-in">
+                                    TR: {hintTr}
+                                </div>
+                            )}
                         </div>
                     )}
                     <h2 className="text-4xl font-extrabold text-slate-800">{current.wordObj.word}</h2>
@@ -179,7 +180,7 @@ export default function Quiz() {
                         }
                         return (
                             <button 
-                                    key={`${index}-${i}`} // Unique key
+                                    key={`${index}-${i}`} 
                                     onClick={(e)=>handleAnswer(opt, e)} 
                                     disabled={isAnswered} 
                                     className={cls}
@@ -193,7 +194,7 @@ export default function Quiz() {
           )}
 
           <button onClick={handleQuitEarly} className="w-full mt-6 flex items-center justify-center gap-2 text-slate-400 hover:text-red-500 transition-colors text-sm font-medium mx-auto">
-            <Target className="w-4 h-4"/> Bitir (Puanı Al ve Çık)
+            Bitir (Puanı Al ve Çık)
           </button>
 
        </div>
