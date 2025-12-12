@@ -14,7 +14,7 @@ const safetySettings = [
   { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
 ];
 
-// 🔒 TEK KERE OLUŞTURULAN CLIENT + MODEL
+// 🔒 TEK CLIENT + MODEL
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash", safetySettings });
 
@@ -29,8 +29,7 @@ const cleanAndParseJSON = (text) => {
     const end = clean.lastIndexOf("}");
     if (start !== -1 && end !== -1) clean = clean.substring(start, end + 1);
     return JSON.parse(clean);
-  } catch (e) {
-    console.error("JSON Parse Error:", e);
+  } catch {
     return null;
   }
 };
@@ -39,18 +38,8 @@ export const fetchWordAnalysisFromAI = async (word) => {
   if (inflight) return null;
   inflight = true;
   try {
-    const prompt = `Analyze the English word: "${word}". Return ONLY JSON.`;
-    const result = await model.generateContent(prompt);
-    const data = cleanAndParseJSON(result.response.text());
-    if (data?.definitions) {
-      const tags = new Set();
-      data.definitions.forEach(d => tags.add(TYPE_MAP[d.type] || "Diğer"));
-      data.tags = [...tags];
-    }
-    return data;
-  } catch (e) {
-    console.error(e);
-    return null;
+    const result = await model.generateContent(`Analyze the English word "${word}" and return JSON.`);
+    return cleanAndParseJSON(result.response.text());
   } finally {
     inflight = false;
   }
@@ -60,9 +49,7 @@ export const fetchRootFromAI = async (word) => {
   if (inflight) return { root: word, original: word, changed: false };
   inflight = true;
   try {
-    const result = await model.generateContent(
-      `Find lemma of "${word}". Return JSON.`
-    );
+    const result = await model.generateContent(`Find lemma of "${word}". Return JSON.`);
     return cleanAndParseJSON(result.response.text()) || { root: word, original: word, changed: false };
   } finally {
     inflight = false;
