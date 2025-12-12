@@ -4,7 +4,7 @@ import { useData } from "../context/DataContext";
 import { auth } from "../services/firebase";
 import { 
   RotateCcw, LogOut, Brain, Flame, Play, Book, 
-  Microscope, Plus, BookOpen, Check, Trash2, 
+  Microscope, BookOpen, Check, Trash2, 
   Shield, Edit, HelpCircle, Settings, Trophy, Star, Mic, Quote 
 } from "lucide-react";
 import ProfileModal from "../components/ProfileModal"; 
@@ -29,7 +29,6 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center p-6">
       
-      {/* --- MODALLAR --- */}
       {showProfileModal && <ProfileModal user={user} onClose={() => setShowProfileModal(false)} />}
       {showLeaderboard && <LeaderboardModal onClose={() => setShowLeaderboard(false)} />}
 
@@ -110,8 +109,6 @@ export default function Home() {
           </button>
 
           {/* --- OYUNLAR BÖLÜMÜ --- */}
-          
-          {/* 3. Flash Kart (EN ÜSTTE TEK BAŞINA) */}
           <button onClick={() => navigate("/game")} className="w-full bg-indigo-600 text-white font-bold py-5 px-6 rounded-2xl shadow-lg flex items-center justify-between group active:scale-95 transition-transform mb-2">
              <div className="flex items-center gap-4">
                  <div className="bg-white/20 p-3 rounded-xl"><Play className="w-8 h-8" fill="currentColor"/></div>
@@ -123,43 +120,29 @@ export default function Home() {
              <Play className="w-6 h-6 opacity-60 group-hover:translate-x-1 transition-transform"/>
           </button>
 
-          {/* DİĞER OYUNLAR (2x2 Grid) */}
           <div className="grid grid-cols-2 gap-3">
-             {/* 4. Yazma Testi */}
              <button onClick={() => navigate("/writing")} className="bg-purple-600 text-white font-bold py-4 px-4 rounded-xl shadow-md flex flex-col items-center gap-2 text-center active:scale-95 transition-transform">
                 <div className="bg-white/20 p-2 rounded-full"><Edit className="w-6 h-6"/></div>
                 <span className="text-sm">Yazma Testi</span>
              </button>
 
-             {/* 5. Quiz */}
              <button onClick={() => navigate("/quiz")} className="bg-amber-500 text-white font-bold py-4 px-4 rounded-xl shadow-md flex flex-col items-center gap-2 text-center active:scale-95 transition-transform">
                 <div className="bg-white/20 p-2 rounded-full"><HelpCircle className="w-6 h-6"/></div>
                 <span className="text-sm">Quiz</span>
              </button>
 
-             {/* 6. Telaffuz */}
              <button onClick={() => navigate("/pronunciation")} className="bg-rose-500 text-white font-bold py-4 px-4 rounded-xl shadow-md flex flex-col items-center gap-2 text-center active:scale-95 transition-transform">
                 <div className="bg-white/20 p-2 rounded-full"><Mic className="w-6 h-6"/></div>
                 <span className="text-sm">Telaffuz</span>
              </button>
 
-             {/* 7. Boşluk Doldurma */}
              <button onClick={() => navigate("/gap-filling")} className="bg-cyan-600 text-white font-bold py-4 px-4 rounded-xl shadow-md flex flex-col items-center gap-2 text-center active:scale-95 transition-transform">
                 <div className="bg-white/20 p-2 rounded-full"><Quote className="w-6 h-6"/></div>
                 <span className="text-sm">Boşluk Doldurma</span>
              </button>
           </div>
 
-          {/* --- AYIRAÇ --- */}
           <div className="h-px bg-slate-200 my-2"></div>
-
-          {/* 🔥 GÜNCELLEME BURADA 🔥 */}
-          {/* Kelime Ekle Butonu SADECE ADMIN İÇİN */}
-          {isAdmin && (
-              <button onClick={() => navigate("/add-word")} className="w-full bg-white text-slate-700 border-2 border-dashed border-slate-300 font-bold py-4 px-6 rounded-xl flex items-center justify-between group hover:bg-slate-50 active:scale-95 transition-transform">
-                 <div className="flex items-center gap-3"><div className="bg-blue-50 p-2 rounded-lg text-blue-600"><Plus className="w-6 h-6"/></div><div className="text-left"><div className="text-base">Yeni Kelime Ekle</div></div></div><Plus className="w-5 h-5 opacity-40"/>
-              </button>
-          )}
 
           {/* Listeler */}
           <div className="grid grid-cols-2 gap-3">
@@ -171,7 +154,6 @@ export default function Home() {
              </button>
           </div>
 
-          {/* Çöp Kutusu */}
           <button onClick={() => navigate("/list/trash")} className="w-full bg-white text-slate-700 border-2 border-slate-200 font-bold py-3 px-4 rounded-xl flex items-center justify-between active:scale-95 transition-transform">
              <div className="flex items-center gap-3"><div className="bg-red-100 p-2 rounded-full text-red-500"><Trash2 className="w-5 h-5"/></div><div className="text-sm">Silinen Kelimeler</div></div>
           </button>
