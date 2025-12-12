@@ -3,8 +3,8 @@ import { Volume2, Languages, Loader2, Tag } from "lucide-react";
 import { translateTextWithAI } from "../services/aiService";
 
 const WordCard = ({ wordObj }) => {
-  const [sentenceTranslation, setSentenceTranslation] = useState(null);
-  const [loadingSentence, setLoadingSentence] = useState(false);
+  // Cümle çevirisi için state ve loading SİLİNDİ. (Artık DB'den geliyor)
+  
   const [defTranslations, setDefTranslations] = useState({});
   const [loadingDefs, setLoadingDefs] = useState({});
 
@@ -14,15 +14,6 @@ const WordCard = ({ wordObj }) => {
     utterance.lang = "en-US";
     utterance.rate = 0.9;
     window.speechSynthesis.speak(utterance);
-  };
-
-  const handleTranslateSentence = async (e) => {
-    e.stopPropagation();
-    if (sentenceTranslation) return;
-    setLoadingSentence(true);
-    const text = await translateTextWithAI(wordObj.sentence);
-    setSentenceTranslation(text);
-    setLoadingSentence(false);
   };
 
   const handleTranslateDef = async (index, text, e) => {
@@ -131,16 +122,20 @@ const WordCard = ({ wordObj }) => {
           <div className="flex items-center justify-between mb-2">
             <div className="text-xs uppercase tracking-wide text-slate-400 font-bold">Örnek Cümle</div>
             <div className="flex gap-2">
-              <button onClick={handleTranslateSentence} className="p-1.5 bg-white text-indigo-500 rounded-full border border-slate-200 hover:bg-indigo-50 transition-colors">
-                {loadingSentence ? <Loader2 className="w-4 h-4 animate-spin" /> : <Languages className="w-4 h-4" />}
-              </button>
+               {/* ÇEVİRİ BUTONU KALDIRILDI, SADECE SES KALDI */}
               <button onClick={(e) => speak(wordObj.sentence, e)} className="p-1.5 bg-white text-indigo-500 rounded-full border border-slate-200 hover:bg-indigo-50 transition-colors">
                 <Volume2 className="w-4 h-4" />
               </button>
             </div>
           </div>
           <p className="text-base text-slate-600 italic">"{wordObj.sentence}"</p>
-          {sentenceTranslation && <div className="mt-2 pt-2 border-t border-slate-200 animate-in fade-in"><p className="text-slate-800 text-sm font-medium">TR: {sentenceTranslation}</p></div>}
+          
+          {/* 🔥 GÜNCELLEME: Çeviri Veritabanından (API Çağırmadan) Geliyor */}
+          {wordObj.sentence_tr && (
+             <div className="mt-2 pt-2 border-t border-slate-200 animate-in fade-in">
+                <p className="text-slate-800 text-sm font-medium">TR: {wordObj.sentence_tr}</p>
+             </div>
+          )}
         </div>
 
         {/* GÜVENLİ ETİKET GÖSTERİMİ */}
@@ -160,4 +155,3 @@ const WordCard = ({ wordObj }) => {
 };
 
 export default WordCard;
-
