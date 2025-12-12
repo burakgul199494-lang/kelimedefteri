@@ -35,7 +35,7 @@ export const fetchWordAnalysisFromAI = async (word) => {
   try {
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
     const model = genAI.getGenerativeModel({
-      model: "gemini-1.5-flash",
+      model: "gemini-pro", // 🔥 BURASI DEĞİŞTİ (Eski kütüphaneler bunu tanır)
       safetySettings,
     });
 
@@ -91,18 +91,18 @@ export const fetchWordAnalysisFromAI = async (word) => {
 export const fetchRootFromAI = async (word) => {
   try {
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash", safetySettings });
+    const model = genAI.getGenerativeModel({ model: "gemini-pro", safetySettings }); // 🔥 DEĞİŞTİ
     const prompt = `Find lemma of "${word}". Return JSON: { "root": "base", "original": "${word}", "changed": true/false }`;
     const result = await model.generateContent(prompt);
     return cleanAndParseJSON(result.response.text()) || { root: word, original: word, changed: false };
   } catch (e) { return { root: word, original: word, changed: false }; }
 };
 
-// --- 3. CÜMLE ANALİZİ ---
+// --- 3. CÜMLE ANALİZİ (Artık kullanılmasa da kodda duruyorsa düzeltelim) ---
 export const fetchSentenceAnalysisFromAI = async (text) => {
   try {
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash", safetySettings, generationConfig: { temperature: 0.2 } });
+    const model = genAI.getGenerativeModel({ model: "gemini-pro", safetySettings, generationConfig: { temperature: 0.2 } }); // 🔥 DEĞİŞTİ
     const prompt = `
       You are an expert English teacher.
       Analyze the ORIGINAL English text: "${text}"
@@ -133,7 +133,7 @@ export const fetchSentenceAnalysisFromAI = async (text) => {
 export const translateTextWithAI = async (text) => {
   try {
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash", safetySettings });
+    const model = genAI.getGenerativeModel({ model: "gemini-pro", safetySettings }); // 🔥 DEĞİŞTİ
     const prompt = `Translate to Turkish. Return ONLY translation string: "${text}"`;
     const result = await model.generateContent(prompt);
     return result.response.text().trim();
@@ -148,7 +148,9 @@ export const extractTextFromImage = async (file) => {
       try {
         const base64Data = reader.result.split(",")[1];
         const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash", safetySettings });
+        // Not: gemini-pro görsel desteklemez, o yüzden burada gemini-pro-vision kullanmak gerekebilir
+        // Ancak OCR sayfasını kaldırdığımız için burası kritik değil.
+        const model = genAI.getGenerativeModel({ model: "gemini-pro-vision", safetySettings }); 
         const result = await model.generateContent(["Extract all text. No comments.", { inlineData: { data: base64Data, mimeType: file.type } }]);
         resolve(result.response.text().trim());
       } catch (e) { reject(e); }
