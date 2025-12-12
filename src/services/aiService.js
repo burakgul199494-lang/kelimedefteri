@@ -2,11 +2,6 @@ import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from "@google/ge
 
 const GEMINI_API_KEY = process.env.REACT_APP_GEMINI_API_KEY;
 
-const TYPE_MAP = {
-  noun: "İsim", verb: "Fiil", adjective: "Sıfat", adverb: "Zarf", prep: "Edat",
-  pronoun: "Zamir", conj: "Bağlaç", article: "Tanımlık", other: "Diğer",
-};
-
 const safetySettings = [
   { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
   { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
@@ -14,21 +9,18 @@ const safetySettings = [
   { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
 ];
 
-// 🔒 TEK CLIENT + MODEL
+// 🔒 tek client
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash", safetySettings });
 
-// 🔒 GLOBAL KİLİT
+// 🔒 global kilit (429 fix)
 let inflight = false;
 
 const cleanAndParseJSON = (text) => {
   if (!text) return null;
   try {
-    let clean = text.replace(/```json/g, "").replace(/```/g, "").trim();
-    const start = clean.indexOf("{");
-    const end = clean.lastIndexOf("}");
-    if (start !== -1 && end !== -1) clean = clean.substring(start, end + 1);
-    return JSON.parse(clean);
+    let c = text.replace(/```json/g, "").replace(/```/g, "").trim();
+    return JSON.parse(c.substring(c.indexOf("{"), c.lastIndexOf("}") + 1));
   } catch {
     return null;
   }
