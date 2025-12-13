@@ -1,7 +1,17 @@
 import React, { useState, useEffect } from "react";
 import { useData } from "../context/DataContext";
 import { useNavigate } from "react-router-dom";
-import { X, Trophy, Volume2, Languages, Loader2, Home, RefreshCw, BrainCircuit, Hourglass } from "lucide-react";
+import { 
+  X, 
+  Trophy, 
+  Volume2, 
+  Languages, 
+  Loader2, 
+  Home, 
+  RefreshCw, 
+  BrainCircuit, 
+  Hourglass 
+} from "lucide-react";
 
 export default function Quiz() {
   const { getAllWords, knownWordIds, learningQueue, addScore } = useData();
@@ -16,11 +26,14 @@ export default function Quiz() {
   const [isAnswered, setIsAnswered] = useState(false);
   const [gameStatus, setGameStatus] = useState("mode-selection"); // mode-selection, playing, finished
   const [isTransitioning, setIsTransitioning] = useState(false);
+  
+  // İpucu (Türkçe) Göster/Gizle
   const [showHintTr, setShowHintTr] = useState(false);
 
   // --- KELİME HAVUZLARI ---
   const getWordPools = () => {
     const all = getAllWords();
+    // Tanımı olan geçerli kelimeler
     const validWords = all.filter(w => w.definitions && w.definitions[0]?.meaning);
     const now = new Date();
 
@@ -50,20 +63,32 @@ export default function Quiz() {
     else if (mode === "review") pool = reviewPool;
     else if (mode === "waiting") pool = waitingPool;
 
+    // Quiz için en az 4 kelime lazım (1 doğru + 3 yanlış şık)
     if (pool.length < 4) {
-      alert(`Quiz için bu modda en az 4 kelime lazım. (Şu an: ${pool.length})`);
+      alert(`Quiz başlatmak için bu modda en az 4 kelimeye ihtiyaç var. (Şu an: ${pool.length})`);
       return;
     }
 
-    // Soruları Oluştur
+    // Soruları Oluştur (Maksimum 20 soru)
     const selectedWords = [...pool].sort(() => 0.5 - Math.random()).slice(0, 20);
-    const validWords = getAllWords().filter(w => w.definitions && w.definitions[0]?.meaning);
+    
+    // Yanlış şıklar havuzu (Tüm geçerli kelimelerden seçilebilir)
+    const allValidWords = getAllWords().filter(w => w.definitions && w.definitions[0]?.meaning);
 
     const generated = selectedWords.map(target => {
       const correct = target.definitions[0].meaning;
-      // Şıklar için rastgele diğer kelimelerden al (tüm havuzdan)
-      const others = validWords.filter(w => w.id !== target.id).sort(()=>0.5-Math.random()).slice(0,3).map(w=>w.definitions[0].meaning);
-      return { wordObj: target, correct, options: [...others, correct].sort(()=>0.5-Math.random()) };
+      // Yanlış şıkları oluştur: Hedef kelime dışındaki kelimelerden 3 tane rastgele seç
+      const others = allValidWords
+        .filter(w => w.id !== target.id)
+        .sort(() => 0.5 - Math.random())
+        .slice(0, 3)
+        .map(w => w.definitions[0].meaning);
+      
+      return { 
+        wordObj: target, 
+        correct, 
+        options: [...others, correct].sort(() => 0.5 - Math.random()) // Şıkları karıştır
+      };
     });
     
     setQuestions(generated);
@@ -72,6 +97,7 @@ export default function Quiz() {
     setGameStatus("playing");
   };
 
+  // Her yeni soruda state'leri sıfırla
   useEffect(() => { 
       setShowHintTr(false);
       setSelected(null);
@@ -82,9 +108,12 @@ export default function Quiz() {
     if(e && e.target) e.target.blur();
 
     if (isAnswered) return;
-    setIsAnswered(true); setSelected(option);
+    setIsAnswered(true); 
+    setSelected(option);
+    
     if (option === questions[index].correct) setScore(s => s + 5);
     
+    // 1 Saniye sonra diğer soruya geç
     setTimeout(() => {
       if (index + 1 < questions.length) {
         setIsTransitioning(true);
@@ -112,15 +141,25 @@ export default function Quiz() {
   };
 
   // ===========================
-  // === MOD SEÇİM EKRANI ===
+  // === 1. MOD SEÇİM EKRANI ===
   // ===========================
   if (gameStatus === "mode-selection") {
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
             <div className="w-full max-w-sm space-y-6">
-                <div className="text-center space-y-2">
-                    <h1 className="text-3xl font-black text-slate-800">Quiz Zamanı!</h1>
-                    <p className="text-slate-500">Hangi kelimelerle kendini test etmek istersin?</p>
+                
+                {/* Header */}
+                <div className="flex items-center justify-between">
+                    <button onClick={() => navigate("/")} className="p-2 bg-white rounded-full shadow-sm hover:bg-slate-100">
+                      <Home className="w-5 h-5 text-slate-600" />
+                    </button>
+                    <h2 className="text-xl font-bold text-slate-800">Quiz Zamanı!</h2>
+                    <div className="w-9"></div>
+                </div>
+
+                <div className="text-center py-6">
+                    <h1 className="text-3xl font-black text-slate-800 mb-2">Nasıl Test Edelim?</h1>
+                    <p className="text-slate-500">Hangi kelimelerle kendini denemek istersin?</p>
                 </div>
 
                 <div className="space-y-4">
@@ -192,13 +231,14 @@ export default function Quiz() {
   }
 
   // ===========================
-  // === BİTİŞ EKRANI ===
+  // === 2. BİTİŞ EKRANI ===
   // ===========================
   if (gameStatus === "finished") {
     const max = questions.length * 5;
     let modeTitle = "Test Tamamlandı!";
     if (gameMode === "learn") modeTitle = "Yeni Kelime Testi Bitti";
     if (gameMode === "review") modeTitle = "Tekrar Testi Bitti";
+    if (gameMode === "waiting") modeTitle = "Bekleme Testi Bitti";
 
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
@@ -218,8 +258,10 @@ export default function Quiz() {
   }
 
   // ===========================
-  // === OYUN EKRANI ===
+  // === 3. OYUN EKRANI ===
   // ===========================
+  if (questions.length === 0) return <div className="p-10 text-center"><Loader2 className="animate-spin w-10 h-10 text-indigo-600 mx-auto"/></div>;
+
   const current = questions[index];
   const progress = ((index + 1) / questions.length) * 100;
   
@@ -246,6 +288,7 @@ export default function Quiz() {
           ) : (
               <>
                 <div className="bg-white p-8 rounded-3xl shadow-lg border border-slate-100 text-center space-y-6 mt-6 animate-in fade-in zoom-in duration-300">
+                    {/* İngilizce İpucu Alanı */}
                     {hintEng && (
                         <div className="flex flex-col items-center gap-2">
                             <div className="bg-indigo-50 text-indigo-800 px-4 py-2 rounded-xl border border-indigo-100 flex items-center gap-2">
@@ -270,6 +313,7 @@ export default function Quiz() {
                             )}
                         </div>
                     )}
+                    
                     <h2 className="text-4xl font-extrabold text-slate-800">{current.wordObj.word}</h2>
                     <button onClick={()=>speak(current.wordObj.word)} className="mx-auto p-2 bg-slate-50 rounded-full text-indigo-500 hover:bg-indigo-100 transition-colors"><Volume2 className="w-6 h-6"/></button>
                 </div>
