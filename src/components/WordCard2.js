@@ -49,20 +49,22 @@ const WordCard = ({ wordObj }) => {
     return map[t] || t;
   };
 
-  // --- 2. ORTAK BUTON BİLEŞENİ (MOBİL İZ SORUNU ÇÖZÜLDÜ) ---
+  // --- 2. ORTAK BUTON BİLEŞENİ (İZ BIRAKMAYAN VERSİYON) ---
   const ActionButton = ({ icon: Icon, onClick, isActive, title }) => (
     <button
       onClick={onClick}
       title={title}
-      // 🔥 KİLİT NOKTA: Bu stil mobildeki gri tıklama kutusunu yok eder
-      style={{ WebkitTapHighlightColor: 'transparent' }}
+      // 1. Mobildeki gri/mavi tıklama kutusunu yok eder
+      style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
       className={`
-        p-2 rounded-full border transition-all duration-200 flex items-center justify-center shrink-0
-        focus:outline-none focus:ring-0 outline-none  // Odaklanma çizgilerini siler
-        active:scale-95 // Tıklama hissi verir
+        p-2 rounded-full border flex items-center justify-center shrink-0
+        // 2. Focus ve Outline çizgilerini tamamen siler
+        focus:outline-none focus:ring-0
+        // 3. Sadece durum değişince renk değişir, hover/active efekti yok
+        transition-colors duration-200
         ${isActive 
-          ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' 
-          : 'bg-white text-slate-400 border-slate-200 hover:text-indigo-600 hover:border-indigo-200'
+          ? 'bg-indigo-600 text-white border-indigo-600' // Aktifse (Çalıyorsa/Açıksa)
+          : 'bg-white text-slate-400 border-slate-200'   // Pasifse (Kapalıysa)
         }
       `}
     >
@@ -77,19 +79,14 @@ const WordCard = ({ wordObj }) => {
 
     return (
       <div className="flex items-center justify-between py-2 border-b border-slate-50 last:border-0">
-        
-        {/* Metin Alanı (Flex-1 ve min-w-0 taşmayı engeller) */}
         <div className="flex items-center gap-3 flex-1 mr-2 min-w-0">
           <span className="text-[10px] font-bold text-slate-400 uppercase min-w-[24px] shrink-0">
             {label}
           </span>
-          {/* break-words: Kelime uzunsa alt satıra geçer, kesilmez */}
           <span className="text-sm font-semibold text-slate-700 break-words leading-tight">
             {value}
           </span>
         </div>
-
-        {/* Buton Alanı */}
         <div className="shrink-0">
           <ActionButton 
             icon={isPlaying ? Square : Volume2} 
@@ -102,7 +99,7 @@ const WordCard = ({ wordObj }) => {
   };
 
   return (
-    <div className="relative w-full max-w-sm bg-white rounded-3xl shadow-lg p-6 text-center border border-slate-100 mb-6 mx-auto hover:shadow-xl transition-shadow duration-300">
+    <div className="relative w-full max-w-sm bg-white rounded-3xl shadow-lg p-6 text-center border border-slate-100 mb-6 mx-auto transition-shadow duration-300">
       
       {/* 1. KELİME BAŞLIĞI */}
       <div className="flex items-center justify-center gap-4 mb-6 mt-2">
@@ -141,7 +138,7 @@ const WordCard = ({ wordObj }) => {
                     "{def.engExplanation}"
                   </p>
                   
-                  {/* BUTON GRUBU (Sıralama: Oku -> Çevir) */}
+                  {/* BUTON GRUBU */}
                   <div className="flex gap-1.5 shrink-0 mt-0.5">
                     <ActionButton 
                         icon={playingText === def.engExplanation ? Square : Volume2}
@@ -174,7 +171,6 @@ const WordCard = ({ wordObj }) => {
       {(wordObj.plural || wordObj.v2 || wordObj.v3 || wordObj.vIng || wordObj.thirdPerson) && (
         <div className="bg-white p-4 rounded-2xl border border-slate-200 text-left mt-4 shadow-sm">
           <div className="text-[10px] uppercase tracking-wide text-slate-400 font-bold mb-2 border-b border-slate-100 pb-1">Fiil & İsim Çekimleri</div>
-          {/* Tek Sütun Grid: Mobilde taşmayı %100 engeller */}
           <div className="grid grid-cols-1 gap-y-1">
             <FeatureRow label="Pl." value={wordObj.plural} />
             <FeatureRow label="3rd" value={wordObj.thirdPerson} />
@@ -201,7 +197,7 @@ const WordCard = ({ wordObj }) => {
         <div className="flex items-center justify-between mb-3">
           <div className="text-xs uppercase tracking-wide text-slate-400 font-bold">Örnek Cümle</div>
           
-          {/* BUTON GRUBU (Sıralama: Oku -> Çevir) */}
+          {/* BUTON GRUBU */}
           <div className="flex gap-1.5 shrink-0">
              <ActionButton 
                   icon={playingText === wordObj.sentence ? Square : Volume2}
