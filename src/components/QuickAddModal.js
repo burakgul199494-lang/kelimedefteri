@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef } from "react";
-import { Loader2, X, Save, Wand2, Brain, Trash2, Plus, Tag, Languages } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Loader2, X, Save, Trash2, Plus, Tag, Languages } from "lucide-react"; // Wand2 ve Brain kaldırıldı
 import { useData } from "../context/DataContext";
-import { fetchWordAnalysisFromAI, fetchRootFromAI } from "../services/aiService";
+// AI servis importları kaldırıldı
 
 const WORD_TYPES = [
   { value: "noun", label: "İsim" }, { value: "verb", label: "Fiil" }, { value: "adjective", label: "Sıfat" },
@@ -17,9 +17,6 @@ const TYPE_MAP = {
 const QuickAddModal = ({ word, prefillData, onClose }) => {
   const { handleSaveNewWord, handleSaveSystemWord, handleUpdateSystemWord, isAdmin } = useData();
   
-  // 🔥 API KİLİDİ: Bu değişken sayesinde istek sadece 1 kere atılır
-  const hasFetched = useRef(false);
-
   const initialData = prefillData ? {
       ...prefillData,
       sentence_tr: prefillData.sentence_tr || "",
@@ -39,19 +36,9 @@ const QuickAddModal = ({ word, prefillData, onClose }) => {
   };
 
   const [formData, setFormData] = useState(initialData);
-  const [loadingAI, setLoadingAI] = useState(false);
-  const [rootLoading, setRootLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  // 🔥 DÜZELTİLEN KISIM: useEffect Koruması
-  useEffect(() => { 
-      // Eğer kelime varsa VE düzenleme modu değilse VE daha önce çekilmediyse
-      if (word && !prefillData && !hasFetched.current) {
-          hasFetched.current = true; // Kilidi kapat
-          handleAIFill();
-      }
-  }, []); // Dependency array boş, sadece mount anında çalışır.
-
+  // Otomatik etiket güncelleme (Seçilen türe göre)
   useEffect(() => {
       const newTags = new Set();
       formData.definitions.forEach(def => {
@@ -64,51 +51,17 @@ const QuickAddModal = ({ word, prefillData, onClose }) => {
       }
   }, [formData.definitions]);
 
-  const handleConvertToRoot = async () => {
-    if (!formData.word) return;
-    setRootLoading(true);
-    try {
-      const result = await fetchRootFromAI(formData.word);
-      if (result && result.changed) setFormData(prev => ({ ...prev, word: result.root }));
-    } catch (e) { console.error(e); } finally { setRootLoading(false); }
-  };
-
-  const handleAIFill = async () => {
-    setLoadingAI(true);
-    try {
-      // Formdaki güncel kelimeyi veya prop'tan gelen kelimeyi kullan
-      const targetWord = formData.word || word;
-      if (!targetWord) return;
-
-      const data = await fetchWordAnalysisFromAI(targetWord);
-      if (data) { 
-          setFormData(prev => ({ 
-              ...prev, 
-              ...data,
-              sentence_tr: data.sentence_tr || "",
-              definitions: data.definitions.map(d => ({
-                  type: d.type || "noun",
-                  meaning: d.meaning || "",
-                  engExplanation: d.engExplanation || "",
-                  trExplanation: d.trExplanation || "" 
-              }))
-          })); 
-      }
-    } catch (e) { console.error(e); }
-    setLoadingAI(false);
-  };
-
   const handleSave = async () => {
-    if (!formData.word || !formData.sentence) { alert("Lütfen temel alanları doldurun."); return; }
+    if (!formData.word || !formData.sentence) { alert("Lütfen Kelime ve Örnek Cümle alanlarını doldurun."); return; }
     setSaving(true);
     let result;
     if (prefillData && isAdmin) result = await handleUpdateSystemWord(prefillData.id, formData);
     else if (isAdmin) result = await handleSaveSystemWord(formData);
     else result = await handleSaveNewWord(formData);
     setSaving(false);
-    if(result && result.success) { alert("Başarılı!"); onClose(); }
+    if(result && result.success) { alert("Kaydedildi!"); onClose(); }
     else if(result) alert(result.message);
-    else { alert("Başarılı!"); onClose(); }
+    else { alert("Kaydedildi!"); onClose(); }
   };
 
   const updateDef = (i, f, v) => { const n = [...formData.definitions]; n[i] = { ...n[i], [f]: v }; setFormData(p => ({ ...p, definitions: n })); };
@@ -124,21 +77,34 @@ const QuickAddModal = ({ word, prefillData, onClose }) => {
         </div>
         
         <div className="space-y-4">
-          <div className="flex gap-2">
-            <input value={formData.word} onChange={e => setFormData({ ...formData, word: e.target.value })} className="flex-1 p-3 border rounded-xl font-bold" placeholder="Kelime" />
-            <button onClick={handleConvertToRoot} disabled={rootLoading} className="bg-orange-100 text-orange-600 p-3 rounded-xl">{rootLoading ? <Loader2 className="animate-spin" /> : <Wand2 />}</button>
-            <button onClick={handleAIFill} disabled={loadingAI} className="bg-purple-600 text-white px-3 rounded-xl">{loadingAI ? <Loader2 className="animate-spin" /> : <Brain />}</button>
+          {/* Kelime Girişi (AI butonsuz) */}
+          <div>
+            <input value={formData.word} onChange={e => setFormData({ ...formData, word: e.target.value })} className="w-full p-3 border rounded-xl font-bold text-lg" placeholder="Kelimeyi yazın..." />
           </div>
 
           <div className="bg-indigo-50 p-3 rounded-xl border border-indigo-100">
               <label className="block text-xs font-bold text-indigo-400 mb-2 uppercase">Otomatik Etiketler</label>
               <div className="flex flex-wrap gap-2">
-                  {formData.tags.length > 0 ? (formData.tags.map((tag, i) => (<span key={i} className="bg-white text-indigo-600 px-2 py-1 rounded-lg text-xs font-bold shadow-sm border border-indigo-100 flex items-center gap-1"><Tag className="w-3 h-3"/> {tag}</span>))) : (<span className="text-xs text-indigo-300 italic">Tür seçimiyle oluşacak...</span>)}
+                  {formData.tags.length > 0 ? (formData.tags.map((tag, i) => (<span key={i} className="bg-white text-indigo-600 px-2 py-1 rounded-lg text-xs font-bold shadow-sm border border-indigo-100 flex items-center gap-1"><Tag className="w-3 h-3"/> {tag}</span>))) : (<span className="text-xs text-indigo-300 italic">Tür seçimine göre oluşacak...</span>)}
               </div>
           </div>
 
-          <div className="bg-slate-50 p-3 rounded-xl border border-slate-100"><div className="text-xs font-bold text-slate-400 mb-2 uppercase tracking-wide">Fiil & İsim Detayları</div><div className="space-y-3"><div><label className="block text-xs font-medium text-slate-500 mb-1">Çoğul</label><input value={formData.plural} onChange={e=>setFormData({...formData, plural:e.target.value})} className="w-full p-2 border rounded text-sm"/></div><div className="grid grid-cols-2 gap-2"><div><label className="block text-xs text-slate-500 mb-1">3. Tekil</label><input value={formData.thirdPerson} onChange={e=>setFormData({...formData, thirdPerson:e.target.value})} className="w-full p-2 border rounded text-sm"/></div><div><label className="block text-xs text-slate-500 mb-1">V-ing</label><input value={formData.vIng} onChange={e=>setFormData({...formData, vIng:e.target.value})} className="w-full p-2 border rounded text-sm"/></div></div><div className="grid grid-cols-2 gap-2"><div><label className="block text-xs text-slate-500 mb-1">V2 (Past)</label><input value={formData.v2} onChange={e=>setFormData({...formData, v2:e.target.value})} className="w-full p-2 border rounded text-sm"/></div><div><label className="block text-xs text-slate-500 mb-1">V3</label><input value={formData.v3} onChange={e=>setFormData({...formData, v3:e.target.value})} className="w-full p-2 border rounded text-sm"/></div></div></div></div>
-          <div className="bg-orange-50 p-3 rounded-xl border border-orange-100"><div className="text-xs font-bold text-orange-400 mb-2 uppercase tracking-wide">Sıfat & Zarf Detayları</div><div className="space-y-3"><div><label className="block text-xs text-orange-700/70 mb-1">Zarf (-ly)</label><input value={formData.advLy} onChange={e=>setFormData({...formData, advLy:e.target.value})} className="w-full p-2 border rounded text-sm"/></div><div className="grid grid-cols-2 gap-2"><div><label className="block text-xs text-orange-700/70 mb-1">Comp (-er)</label><input value={formData.compEr} onChange={e=>setFormData({...formData, compEr:e.target.value})} className="w-full p-2 border rounded text-sm"/></div><div><label className="block text-xs text-orange-700/70 mb-1">Super (-est)</label><input value={formData.superEst} onChange={e=>setFormData({...formData, superEst:e.target.value})} className="w-full p-2 border rounded text-sm"/></div></div></div></div>
+          <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+            <div className="text-xs font-bold text-slate-400 mb-2 uppercase tracking-wide">Fiil & İsim Detayları (Opsiyonel)</div>
+            <div className="space-y-3">
+                <div><label className="block text-xs font-medium text-slate-500 mb-1">Çoğul</label><input value={formData.plural} onChange={e=>setFormData({...formData, plural:e.target.value})} className="w-full p-2 border rounded text-sm"/></div>
+                <div className="grid grid-cols-2 gap-2"><div><label className="block text-xs text-slate-500 mb-1">3. Tekil</label><input value={formData.thirdPerson} onChange={e=>setFormData({...formData, thirdPerson:e.target.value})} className="w-full p-2 border rounded text-sm"/></div><div><label className="block text-xs text-slate-500 mb-1">V-ing</label><input value={formData.vIng} onChange={e=>setFormData({...formData, vIng:e.target.value})} className="w-full p-2 border rounded text-sm"/></div></div>
+                <div className="grid grid-cols-2 gap-2"><div><label className="block text-xs text-slate-500 mb-1">V2 (Past)</label><input value={formData.v2} onChange={e=>setFormData({...formData, v2:e.target.value})} className="w-full p-2 border rounded text-sm"/></div><div><label className="block text-xs text-slate-500 mb-1">V3</label><input value={formData.v3} onChange={e=>setFormData({...formData, v3:e.target.value})} className="w-full p-2 border rounded text-sm"/></div></div>
+            </div>
+          </div>
+          
+          <div className="bg-orange-50 p-3 rounded-xl border border-orange-100">
+             <div className="text-xs font-bold text-orange-400 mb-2 uppercase tracking-wide">Sıfat & Zarf Detayları (Opsiyonel)</div>
+             <div className="space-y-3">
+                <div><label className="block text-xs text-orange-700/70 mb-1">Zarf (-ly)</label><input value={formData.advLy} onChange={e=>setFormData({...formData, advLy:e.target.value})} className="w-full p-2 border rounded text-sm"/></div>
+                <div className="grid grid-cols-2 gap-2"><div><label className="block text-xs text-orange-700/70 mb-1">Comp (-er)</label><input value={formData.compEr} onChange={e=>setFormData({...formData, compEr:e.target.value})} className="w-full p-2 border rounded text-sm"/></div><div><label className="block text-xs text-orange-700/70 mb-1">Super (-est)</label><input value={formData.superEst} onChange={e=>setFormData({...formData, superEst:e.target.value})} className="w-full p-2 border rounded text-sm"/></div></div>
+             </div>
+          </div>
 
           <div className="space-y-2">
             <label className="block text-sm font-medium">Anlamlar</label>
