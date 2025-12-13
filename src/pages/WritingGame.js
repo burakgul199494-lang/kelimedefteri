@@ -1,75 +1,90 @@
 import React, { useState, useEffect } from "react";
 import { useData } from "../context/DataContext";
 import { useNavigate } from "react-router-dom";
-import { X, Trophy, Volume2, Lightbulb, Loader2, RefreshCw, BrainCircuit } from "lucide-react";
+import {
+  X,
+  Trophy,
+  Volume2,
+  Lightbulb,
+  Loader2,
+  RotateCcw, // Tekrar ikonu
+  Brain,     // Öğrenme ikonu
+  Hourglass, // Bekleme ikonu
+  Home,
+  RefreshCw,
+  BrainCircuit
+} from "lucide-react";
 
 export default function WritingGame() {
-  const { getAllWords, knownWordIds, addScore } = useData();
+  const { getAllWords, knownWordIds, addScore, learningQueue } = useData();
   const navigate = useNavigate();
 
-  const [gameMode, setGameMode] = useState(null);
+  // --- STATE'LER ---
+  const [gameMode, setGameMode] = useState(null); // 'review', 'learn', 'waiting'
   const [questions, setQuestions] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [score, setScore] = useState(0);
   const [gameStatus, setGameStatus] = useState("mode-selection");
 
+  // Kelime Mantığı
   const [shuffledLetters, setShuffledLetters] = useState([]); 
   const [completedLetters, setCompletedLetters] = useState([]); 
   const [wrongAnimationId, setWrongAnimationId] = useState(null); 
   const [isWordComplete, setIsWordComplete] = useState(false); 
 
-  // --- SENİN İSTEDİĞİN ÖZEL BOYUTLANDIRMA ---
-  const getDynamicStyle = (length) => {
-    // 1-5 Harf: w-11
-    if (length <= 5) return { box: "w-11 h-14", text: "text-2xl" }; 
-    
-    // 6-8 Harf: w-8
-    if (length <= 8) return { box: "w-8 h-11", text: "text-xl" };   
-    
-    // 9-11 Harf: w-6
-    if (length <= 11) return { box: "w-6 h-9", text: "text-lg" };    
-    
-    // 12-14 Harf: w-4 (16px) - Font küçüldü
-    if (length <= 14) return { box: "w-4 h-8", text: "text-sm" }; 
-    
-    // 15-17 Harf: w-3 (12px) - Font çok küçüldü
-    if (length <= 17) return { box: "w-3 h-6", text: "text-[10px]" }; 
-    
-    // 18-20+ Harf: w-2 (8px) - Mikroskobik
-    return { box: "w-2 h-5", text: "text-[8px]" };                       
-  };
-
-  const selectMode = (mode) => {
-    setGameMode(mode);
-    startGame(mode);
-  };
-
-  const startGame = (mode) => {
+  // --- KELİME HAVUZLARI ---
+  const getWordPools = () => {
     const all = getAllWords();
     const validWords = all.filter(w => w.definitions && w.definitions[0]?.meaning);
-    
-    let pool = [];
-    if (mode === 'review') {
-        pool = validWords.filter(w => knownWordIds.includes(w.id));
-        if (pool.length === 0) {
-            alert("Henüz öğrendiğin kelime yok.");
-            setGameMode(null);
-            return;
-        }
-    } else {
-        pool = validWords.filter(w => !knownWordIds.includes(w.id));
-        if (pool.length === 0) {
-            alert("Tebrikler! Tüm kelimeleri öğrendin.");
-            setGameMode(null);
-            return;
-        }
+    const now = new Date();
+
+    // 1. ÖĞRENME MODU: Bilinenlerde OLMAYAN kelimeler
+    const learnPool = validWords.filter(w => !knownWordIds.includes(w.id));
+
+    // 2. TEKRAR MODU: Bilinenlerde OLAN kelimeler
+    const reviewPool = validWords.filter(w => knownWordIds.includes(w.id));
+
+    // 3. BEKLEME LİSTESİ: LearningQueue'da olan ve tarihi GELECEKTE olanlar
+    const waitingPool = validWords.filter(w => {
+        const q = learningQueue ? learningQueue.find(item => item.wordId === w.id) : null;
+        return q && new Date(q.nextReview) > now;
+    });
+
+    return { learnPool, reviewPool, waitingPool };
+  };
+
+  const { learnPool, reviewPool, waitingPool } = getWordPools();
+
+  // --- OYUN BAŞLATMA ---
+  const startSession = (mode) => {
+    setGameMode(mode);
+    let selectedPool = [];
+
+    if (mode === "learn") selectedPool = learnPool;
+    else if (mode === "review") selectedPool = reviewPool;
+    else if (mode === "waiting") selectedPool = waitingPool;
+
+    if (selectedPool.length === 0) {
+      alert("Bu modda şu an çalışılacak kelime yok.");
+      return;
     }
 
-    const selected = pool.sort(() => 0.5 - Math.random()).slice(0, 20);
+    // 20 Kelime seç ve karıştır
+    const selected = selectedPool.sort(() => 0.5 - Math.random()).slice(0, 20);
     setQuestions(selected);
     setCurrentIndex(0);
     setScore(0);
     setGameStatus("playing");
+  };
+
+  // --- DİNAMİK BOYUT HESAPLAMA ---
+  const getDynamicStyle = (length) => {
+    if (length <= 5) return { box: "w-11 h-14", text: "text-2xl" }; 
+    if (length <= 8) return { box: "w-8 h-11", text: "text-xl" };   
+    if (length <= 11) return { box: "w-6 h-9", text: "text-lg" };    
+    if (length <= 14) return { box: "w-4 h-8", text: "text-sm" }; 
+    if (length <= 17) return { box: "w-3 h-6", text: "text-[10px]" }; 
+    return { box: "w-2 h-5", text: "text-[8px]" };                       
   };
 
   useEffect(() => {
@@ -160,40 +175,119 @@ export default function WritingGame() {
       setGameStatus("finished");
   };
 
+  // ===========================
+  // === MOD SEÇİM EKRANI (YENİ) ===
+  // ===========================
   if (gameStatus === "mode-selection") {
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
             <div className="w-full max-w-sm space-y-6">
-                <div className="text-center space-y-2">
-                    <h1 className="text-3xl font-black text-slate-800">Yazma Alıştırması</h1>
-                    <p className="text-slate-500">Hangi kelimelerle çalışmak istersin?</p>
+                
+                {/* Header */}
+                <div className="flex items-center justify-between">
+                    <button onClick={() => navigate("/")} className="p-2 bg-white rounded-full shadow-sm hover:bg-slate-100">
+                    <Home className="w-5 h-5 text-slate-600" />
+                    </button>
+                    <h2 className="text-xl font-bold text-slate-800">Yazma Alıştırması</h2>
+                    <div className="w-9"></div>
                 </div>
-                <button onClick={() => selectMode('review')} className="w-full bg-white p-6 rounded-3xl shadow-lg border-2 border-slate-100 flex items-center gap-4 hover:border-purple-200 hover:bg-purple-50 transition-all group active:scale-95">
-                    <div className="bg-purple-100 p-4 rounded-2xl group-hover:bg-purple-200 transition-colors"><RefreshCw className="w-8 h-8 text-purple-600" /></div>
-                    <div className="text-left"><div className="font-bold text-lg text-slate-800">Tekrar Modu</div><div className="text-sm text-slate-400">Öğrendiğin kelimeleri pekiştir.</div></div>
-                </button>
-                <button onClick={() => selectMode('learn')} className="w-full bg-white p-6 rounded-3xl shadow-lg border-2 border-slate-100 flex items-center gap-4 hover:border-indigo-200 hover:bg-indigo-50 transition-all group active:scale-95">
-                    <div className="bg-indigo-100 p-4 rounded-2xl group-hover:bg-indigo-200 transition-colors"><BrainCircuit className="w-8 h-8 text-indigo-600" /></div>
-                    <div className="text-left"><div className="font-bold text-lg text-slate-800">Öğrenme Modu</div><div className="text-sm text-slate-400">Yeni kelimelerle çalış.</div></div>
-                </button>
-                <button onClick={() => navigate("/")} className="w-full text-slate-400 font-bold py-3">Geri Dön</button>
+
+                <div className="text-center py-6">
+                    <h1 className="text-3xl font-black text-slate-800 mb-2">Nasıl Çalışalım?</h1>
+                    <p className="text-slate-500">Bugünkü hedefini seç ve kelimeleri yazmaya başla.</p>
+                </div>
+
+                {/* --- 3 MOD BUTONU --- */}
+                <div className="space-y-4">
+                    
+                    {/* 1. TEKRAR MODU */}
+                    <button 
+                        onClick={() => startSession('review')} 
+                        disabled={reviewPool.length === 0}
+                        className="w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 hover:border-orange-200 hover:bg-orange-50 transition-all group active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                                <div className="bg-orange-100 p-3 rounded-xl text-orange-600 group-hover:bg-orange-200 transition-colors">
+                                    <RefreshCw className="w-8 h-8" />
+                                </div>
+                                <div className="text-left">
+                                    <div className="font-bold text-xl text-slate-800">Tekrar Modu</div>
+                                    <div className="text-sm text-slate-500">Öğrendiklerini pekiştir</div>
+                                </div>
+                            </div>
+                            <div className="text-2xl font-black text-orange-600">{reviewPool.length}</div>
+                        </div>
+                    </button>
+
+                    {/* 2. ÖĞRENME MODU */}
+                    <button 
+                        onClick={() => startSession('learn')} 
+                        disabled={learnPool.length === 0}
+                        className="w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 hover:border-indigo-200 hover:bg-indigo-50 transition-all group active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                                <div className="bg-indigo-100 p-3 rounded-xl text-indigo-600 group-hover:bg-indigo-200 transition-colors">
+                                    <BrainCircuit className="w-8 h-8" />
+                                </div>
+                                <div className="text-left">
+                                    <div className="font-bold text-xl text-slate-800">Öğrenme Modu</div>
+                                    <div className="text-sm text-slate-500">Yeni kelimeler yaz</div>
+                                </div>
+                            </div>
+                            <div className="text-2xl font-black text-indigo-600">{learnPool.length}</div>
+                        </div>
+                    </button>
+
+                    {/* 3. BEKLEME LİSTESİ */}
+                    <button 
+                        onClick={() => startSession('waiting')} 
+                        disabled={waitingPool.length === 0}
+                        className="w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 hover:border-slate-300 hover:bg-slate-50 transition-all group active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                                <div className="bg-slate-100 p-3 rounded-xl text-slate-500 group-hover:bg-slate-200 transition-colors">
+                                    <Hourglass className="w-8 h-8" />
+                                </div>
+                                <div className="text-left">
+                                    <div className="font-bold text-xl text-slate-700">Bekleme Listesi</div>
+                                    <div className="text-sm text-slate-400">Gelecekte sorulacaklar</div>
+                                </div>
+                            </div>
+                            <div className="text-2xl font-black text-slate-500">{waitingPool.length}</div>
+                        </div>
+                    </button>
+
+                </div>
             </div>
         </div>
     );
   }
 
+  // ===========================
+  // === BİTİŞ EKRANI ==========
+  // ===========================
   if (gameStatus === "finished") {
+    let modeTitle = "Oturum Bitti!";
+    if (gameMode === "learn") modeTitle = "Yeni Kelimeler Çalışıldı";
+    if (gameMode === "review") modeTitle = "Tekrar Tamamlandı";
+    if (gameMode === "waiting") modeTitle = "Ekstra Çalışma Bitti";
+
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
         <div className="bg-white p-8 rounded-3xl shadow-xl max-w-sm w-full text-center space-y-6">
-           <div className="bg-purple-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto animate-bounce"><Trophy className="w-10 h-10 text-purple-600"/></div>
-           <h2 className="text-2xl font-bold text-slate-800">Harika İş Çıkardın!</h2>
+           <div className="bg-purple-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto animate-bounce">
+             <Trophy className="w-10 h-10 text-purple-600"/>
+           </div>
+           <h2 className="text-2xl font-bold text-slate-800">{modeTitle}</h2>
            <div className="py-6 bg-slate-50 rounded-2xl border border-slate-100">
              <div className="text-sm text-slate-400 font-bold uppercase">Toplam Puan</div>
              <div className="text-5xl font-extrabold text-purple-600 mt-2">{score}</div>
            </div>
+           <button onClick={() => setGameStatus("mode-selection")} className="w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-200">Başka Mod Seç</button>
            <button onClick={() => navigate("/")} className="w-full bg-white border-2 border-slate-200 text-slate-600 font-bold py-3 rounded-xl hover:bg-slate-50">Ana Sayfa</button>
-           <button onClick={() => startGame(gameMode)} className="w-full bg-purple-600 text-white font-bold py-3 rounded-xl hover:bg-purple-700 shadow-lg shadow-purple-200">Tekrar Oyna</button>
         </div>
       </div>
     );
@@ -202,8 +296,6 @@ export default function WritingGame() {
   if (gameStatus === "loading") return <div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin text-purple-600 w-10 h-10"/></div>;
 
   const progress = ((currentIndex + 1) / questions.length) * 100;
-  
-  // DİNAMİK BOYUT HESABI ÇAĞIRMA
   const styles = getDynamicStyle(targetWord.length);
 
   return (
@@ -211,9 +303,9 @@ export default function WritingGame() {
        <div className="w-full max-w-md space-y-4 mt-2">
           
           <div className="flex justify-between items-center">
-             <button onClick={()=>navigate("/")} className="p-2 bg-white rounded-full active:bg-slate-100 shadow-sm transition-colors"><X className="w-5 h-5 text-slate-400"/></button>
+             <button onClick={handleQuitEarly} className="p-2 bg-white rounded-full active:bg-slate-100 shadow-sm transition-colors"><X className="w-5 h-5 text-slate-400"/></button>
              <div className="font-bold text-purple-600 bg-purple-50 px-3 py-1 rounded-full border border-purple-100">
-                {gameMode === 'review' ? 'Tekrar' : 'Öğrenme'}: {currentIndex+1} / {questions.length}
+                {gameMode === 'review' ? 'Tekrar' : gameMode === 'learn' ? 'Öğrenme' : 'Bekleme'}: {currentIndex+1} / {questions.length}
              </div>
              <div className="flex items-center gap-1 bg-amber-100 text-amber-700 px-3 py-1 rounded-full font-bold text-sm border border-amber-200"><Trophy className="w-4 h-4"/> {score}</div>
           </div>
@@ -233,7 +325,7 @@ export default function WritingGame() {
                )}
              </div>
 
-             {/* YAZI ALANI (DİNAMİK BOYUTLAR) */}
+             {/* YAZI ALANI */}
              <div className="flex flex-wrap justify-center gap-1 min-h-[60px] items-end content-center">
                 {targetWord.split('').map((_, idx) => {
                   const char = completedLetters[idx];
@@ -253,7 +345,7 @@ export default function WritingGame() {
                 })}
              </div>
 
-             {/* KARIŞIK HARFLER (BUTONLAR) */}
+             {/* KARIŞIK HARFLER */}
              <div key={currentIndex} className="flex flex-wrap justify-center gap-2 content-center">
                 {shuffledLetters.map((item) => (
                   <button
