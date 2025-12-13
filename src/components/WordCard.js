@@ -59,24 +59,21 @@ export default function WordCard({ wordObj }) {
       onClick={handleFlip} 
       className="w-full cursor-pointer font-sans [perspective:1000px]"
     >
-      {/* GRID STACKING + OPACITY SWAP YÖNTEMİ
-         Her iki yüzü de aynı hücreye (col-1 row-1) koyuyoruz.
-         Dönüş efektini opacity ile destekleyerek karışmayı önlüyoruz.
-      */}
-      <div className="relative w-full grid grid-cols-1">
+      <div className="relative w-full transition-all duration-500 ease-in-out [transform-style:preserve-3d]">
         
         {/* ============================== */}
         {/* === ÖN YÜZ (MODERN İNGİLİZCE) === */}
         {/* ============================== */}
         <div 
           className={`
-            col-start-1 row-start-1 
-            bg-white rounded-3xl shadow-2xl flex flex-col overflow-hidden border border-slate-100 
-            transition-all duration-700 ease-in-out min-h-[500px]
+            w-full bg-white rounded-3xl shadow-2xl flex flex-col overflow-hidden border border-slate-100 
+            transition-all duration-500 ease-in-out
             [backface-visibility:hidden]
-            ${isFlipped 
-              ? "[transform:rotateY(180deg)] opacity-0 pointer-events-none" 
-              : "[transform:rotateY(0deg)] opacity-100 z-10"}
+            ${
+              isFlipped 
+                ? "absolute top-0 left-0 opacity-0 pointer-events-none [transform:rotateY(180deg)]" 
+                : "relative opacity-100 z-10 [transform:rotateY(0deg)] min-h-[500px]"
+            }
           `}
         >
           
@@ -186,13 +183,14 @@ export default function WordCard({ wordObj }) {
         {/* ============================== */}
         <div 
           className={`
-            col-start-1 row-start-1 
-            bg-slate-900 rounded-3xl shadow-2xl flex flex-col overflow-hidden border border-slate-700
-            transition-all duration-700 ease-in-out min-h-[500px]
+            w-full bg-slate-900 rounded-3xl shadow-2xl flex flex-col overflow-hidden border border-slate-700
+            transition-all duration-500 ease-in-out
             [backface-visibility:hidden]
-            ${isFlipped 
-              ? "[transform:rotateY(0deg)] opacity-100 z-10" 
-              : "[transform:rotateY(-180deg)] opacity-0 pointer-events-none"}
+            ${
+              isFlipped 
+                ? "relative opacity-100 z-10 [transform:rotateY(0deg)] min-h-[300px]" // Min-h daha düşük (300px), içeriğe göre uzayacak
+                : "absolute top-0 left-0 opacity-0 pointer-events-none [transform:rotateY(-180deg)]"
+            }
           `}
         >
           
