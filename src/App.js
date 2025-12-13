@@ -8,6 +8,7 @@ import Home from "./pages/Home";
 import Dictionary from "./pages/Dictionary";
 import Game from "./pages/Game";
 import Quiz from "./pages/Quiz";
+import Quiz2 from "./pages/Quiz2"; // <-- 1. BU SATIRI EKLE (YENİ)
 import WordList from "./pages/WordList";
 import AddWord from "./pages/AddWord";
 import AdminDashboard from "./pages/AdminDashboard";
