@@ -1,182 +1,163 @@
-import React, { useState, useEffect } from "react";
-import { useData } from "../context/DataContext";
-import { useNavigate } from "react-router-dom";
-import WordCard from "../components/WordCard";
-import { ThumbsUp, ThumbsDown, ArrowLeft, Trophy, CheckCircle2, AlertTriangle } from "lucide-react";
+import React, { useState, useEffect } from 'react';
 
-export default function Game() {
-  const { learningQueue, getAllWords, handleSmartLearn, addToKnown } = useData();
-  const navigate = useNavigate();
+// Örnek Soru Havuzu (Normalde burası veritabanından gelebilir)
+const SAMPLE_QUESTIONS = [
+  { id: 1, category: 'A1', english: 'Apple', turkish: 'Elma', options: ['Elma', 'Armut', 'Muz', 'Çilek'] },
+  { id: 2, category: 'A1', english: 'Book', turkish: 'Kitap', options: ['Defter', 'Kitap', 'Kalem', 'Silgi'] },
+  { id: 3, category: 'A1', english: 'Cat', turkish: 'Kedi', options: ['Köpek', 'Kuş', 'Kedi', 'Balık'] },
+  { id: 4, category: 'A2', english: 'Decision', turkish: 'Karar', options: ['Karar', 'Düşünce', 'Plan', 'Sonuç'] },
+  { id: 5, category: 'A2', english: 'Environment', turkish: 'Çevre', options: ['Çevre', 'Doğa', 'Şehir', 'Dünya'] },
+];
 
-  const [currentWord, setCurrentWord] = useState(null);
-  const [isFlipped, setIsFlipped] = useState(false);
-  const [finished, setFinished] = useState(false);
-  
-  // "Tamamen Biliyorum" onay penceresi için state
-  const [showMasterModal, setShowMasterModal] = useState(false);
+export default function App() {
+  // --- STATE TANIMLARI ---
+  const [gameStarted, setGameStarted] = useState(false); // Oyun başladı mı?
+  const [currentQuestions, setCurrentQuestions] = useState([]); // Seçilen sorular
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0); // Kaçıncı sorudayız
+  const [score, setScore] = useState(0); // Puan
+  const [selectedCategory, setSelectedCategory] = useState(''); // Hangi kategori seçildi
 
-  useEffect(() => {
-    loadNextCard();
-  }, [learningQueue]);
-
-  const loadNextCard = () => {
-    const all = getAllWords();
-    const now = new Date();
+  // --- OYUNU BAŞLATMA FONKSİYONU ---
+  const startGame = (category) => {
+    // Seçilen kategoriye göre soruları filtrele (veya hepsini al)
+    const filteredQuestions = SAMPLE_QUESTIONS.filter(q => q.category === category);
     
-    // Zamanı gelmiş kartları bul
-    const dueItems = learningQueue.filter(item => {
-        const reviewDate = new Date(item.nextReview);
-        return reviewDate <= now;
-    });
-
-    if (dueItems.length === 0) {
-        setFinished(true);
-        setCurrentWord(null);
-        return;
+    // Eğer o kategoride soru yoksa uyar
+    if (filteredQuestions.length === 0) {
+      alert("Bu kategoride henüz soru yok.");
+      return;
     }
 
-    // İlk sıradakini al
-    const nextItem = dueItems[0];
-    const wordObj = all.find(w => String(w.id) === String(nextItem.wordId));
-    
-    if (wordObj) {
-        setCurrentWord(wordObj);
-        setIsFlipped(false);
-        setFinished(false);
+    setSelectedCategory(category);
+    setCurrentQuestions(filteredQuestions);
+    setCurrentQuestionIndex(0);
+    setScore(0);
+    setGameStarted(true); // EKRANI DEĞİŞTİREN KİLİT NOKTA
+  };
+
+  // --- CEVAP KONTROL FONKSİYONU ---
+  const handleAnswer = (selectedOption) => {
+    const currentQuestion = currentQuestions[currentQuestionIndex];
+
+    // Doğru cevap mı?
+    if (selectedOption === currentQuestion.turkish) {
+      setScore(score + 10);
+      // Opsiyonel: Doğru ses efekti vs. buraya eklenebilir
     } else {
-        // Kelime silinmişse kuyruktan temizlemek gerekebilir ama şimdilik pas geçiyoruz
-        setFinished(true);
+      // Opsiyonel: Yanlış ses efekti
+    }
+
+    // Sonraki soruya geç
+    const nextIndex = currentQuestionIndex + 1;
+    if (nextIndex < currentQuestions.length) {
+      setCurrentQuestionIndex(nextIndex);
+    } else {
+      // Sorular bittiyse
+      alert(`Oyun Bitti! Toplam Puanın: ${score + (selectedOption === currentQuestion.turkish ? 10 : 0)}`);
+      setGameStarted(false); // Ana ekrana dön
     }
   };
 
-  const handleResponse = async (action) => {
-    if (!currentWord) return;
-    await handleSmartLearn(currentWord.id, action);
-    // State güncellemesi useEffect ile tetiklenip yeni kartı yükleyecek
+  // --- OYUNU MANUEL BİTİRME FONKSİYONU ---
+  const finishGame = () => {
+    // Burada istersen bir onay kutusu (Are you sure?) koyabilirsin.
+    setGameStarted(false); // Ana ekrana (Seçim ekranına) atar
+    setScore(0);
   };
-
-  // --- YENİ: Tamamen Biliyorum Fonksiyonu ---
-  const handleMastery = async () => {
-    if (!currentWord) return;
-    // Direkt öğrenilenlere ekle (spaced repetition döngüsünden çıkar)
-    await addToKnown(currentWord.id);
-    setShowMasterModal(false);
-    // useEffect yeni kartı otomatik yükleyecek
-  };
-
-  if (finished) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
-        <div className="text-center space-y-6 max-w-sm w-full bg-white p-8 rounded-3xl shadow-xl">
-           <div className="bg-green-100 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-4 animate-bounce">
-              <Trophy className="w-12 h-12 text-green-600" />
-           </div>
-           <h2 className="text-2xl font-bold text-slate-800">Harikasın! 🎉</h2>
-           <p className="text-slate-500">Şu an için çalışman gereken tüm kelimeleri bitirdin.</p>
-           <button onClick={() => navigate("/")} className="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl hover:bg-indigo-700 transition-all">
-             Ana Sayfaya Dön
-           </button>
-        </div>
-      </div>
-    );
-  }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col items-center p-4 relative">
-      
-      {/* Üst Bar */}
-      <div className="w-full max-w-md flex items-center justify-between mb-6">
-        <button onClick={() => navigate("/")} className="p-2 bg-white rounded-full shadow-sm text-slate-600 hover:bg-slate-100">
-           <ArrowLeft className="w-6 h-6" />
-        </button>
-        <span className="font-bold text-slate-400 text-sm uppercase tracking-wider">Flash Kart</span>
-        <div className="w-10"></div>
-      </div>
+    <div className="min-h-screen bg-gray-100 flex items-center justify-center py-8 px-4">
+      <div className="w-full max-w-md bg-white rounded-xl shadow-lg overflow-hidden p-6">
+        
+        {/* ÜST BAŞLIK */}
+        <h1 className="text-3xl font-bold text-center text-indigo-600 mb-8">
+          KEL UĞUR
+        </h1>
 
-      {/* Kart Alanı */}
-      <div className="w-full max-w-md flex-1 flex flex-col justify-center">
-         {currentWord && (
-            <div onClick={() => setIsFlipped(!isFlipped)} className="cursor-pointer perspective-1000 transition-transform active:scale-95 duration-200">
-               {/* WordCard bileşeni zaten kart görünümünü hallediyor */}
-               {/* Burada WordCard'ın "ön yüzü" ve "arka yüzü" mantığını WordCard içinde mi yoksa burada mı yönettiğimize göre değişir.
-                   Senin WordCard bileşenin tek parça olduğu için direkt gösteriyoruz. 
-                   Kullanıcı karta tıklayınca detayların açılması WordCard içindeki yapıya bağlı olabilir.
-                   Ancak "Biliyorum/Bilmiyorum" oyunu için genelde kelime görünür, tıklayınca anlamı görünür.
-                   Senin mevcut WordCard yapın her şeyi gösteriyor olabilir.
-                   Biz burada basitçe WordCard'ı gösteriyoruz.
-               */}
-               <WordCard wordObj={currentWord} />
-               
-               {!isFlipped && (
-                   <p className="text-center text-slate-400 text-xs mt-2 animate-pulse">
-                      (Kartın detaylarını incele)
-                   </p>
-               )}
-            </div>
-         )}
-      </div>
-
-      {/* Butonlar */}
-      <div className="w-full max-w-md mt-6 space-y-4 pb-8">
-         <div className="grid grid-cols-2 gap-4">
+        {/* --- DURUM KONTROLÜ --- */}
+        {!gameStarted ? (
+          // 1. DURUM: OYUN BAŞLAMADIYSA (SEÇİM EKRANI)
+          <div className="space-y-4 animate-fade-in">
+            <h2 className="text-xl text-center text-gray-700 font-semibold mb-4">
+              Bir Kategori Seç
+            </h2>
+            
             <button 
-              onClick={(e) => { e.stopPropagation(); handleResponse("forgot"); }} 
-              className="bg-rose-100 text-rose-600 border-2 border-rose-200 p-4 rounded-2xl flex flex-col items-center gap-2 font-bold hover:bg-rose-200 transition-colors active:scale-95"
+              onClick={() => startGame('A1')}
+              className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-4 px-4 rounded-lg shadow transition transform hover:scale-105"
             >
-               <ThumbsDown className="w-6 h-6" />
-               <span>Bilmiyorum</span>
+              Seviye A1 Başlat
             </button>
 
             <button 
-              onClick={(e) => { e.stopPropagation(); handleResponse("know"); }} 
-              className="bg-green-100 text-green-600 border-2 border-green-200 p-4 rounded-2xl flex flex-col items-center gap-2 font-bold hover:bg-green-200 transition-colors active:scale-95"
+              onClick={() => startGame('A2')}
+              className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-4 px-4 rounded-lg shadow transition transform hover:scale-105"
             >
-               <ThumbsUp className="w-6 h-6" />
-               <span>Biliyorum</span>
+              Seviye A2 Başlat
             </button>
-         </div>
+            
+            <p className="text-center text-xs text-gray-400 mt-4">
+              Toplam {SAMPLE_QUESTIONS.length} soru mevcut.
+            </p>
+          </div>
 
-         {/* --- YENİ: Tamamen Biliyorum Butonu --- */}
-         <button 
-            onClick={() => setShowMasterModal(true)}
-            className="w-full flex items-center justify-center gap-2 text-slate-400 hover:text-indigo-600 text-sm font-semibold py-2 transition-colors"
-         >
-            <CheckCircle2 className="w-4 h-4" />
-            Bu kelimeyi tamamen biliyorum, bir daha sorma.
-         </button>
-      </div>
-
-      {/* --- MODAL: Tamamen Biliyorum Onayı --- */}
-      {showMasterModal && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 animate-in fade-in">
-            <div className="bg-white rounded-3xl p-6 max-w-xs w-full text-center space-y-4 shadow-2xl">
-                <div className="bg-indigo-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto text-indigo-600">
-                    <CheckCircle2 className="w-8 h-8" />
-                </div>
-                <div>
-                    <h3 className="text-lg font-bold text-slate-800">Emin misin?</h3>
-                    <p className="text-sm text-slate-500 mt-2">
-                        <strong>"{currentWord?.word}"</strong> kelimesini "Öğrenilenler" listesine taşıyacağım. Aralıklı tekrar sistemiyle bir daha karşına çıkmayacak.
-                    </p>
-                </div>
-                <div className="flex gap-3 mt-2">
-                    <button 
-                        onClick={() => setShowMasterModal(false)}
-                        className="flex-1 py-3 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200"
-                    >
-                        İptal
-                    </button>
-                    <button 
-                        onClick={handleMastery}
-                        className="flex-1 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700"
-                    >
-                        Evet, Biliyorum
-                    </button>
-                </div>
+        ) : (
+          // 2. DURUM: OYUN BAŞLADIYSA (SORU EKRANI)
+          <div className="space-y-6 animate-fade-in">
+            
+            {/* Üst Bilgi Paneli */}
+            <div className="flex justify-between items-center bg-gray-50 p-3 rounded-lg border border-gray-200">
+              <span className="text-sm font-bold text-gray-600">
+                Mod: {selectedCategory}
+              </span>
+              <span className="text-sm font-bold text-indigo-600">
+                Puan: {score}
+              </span>
             </div>
-        </div>
-      )}
 
+            {/* Soru Alanı */}
+            <div className="text-center py-10 bg-indigo-50 rounded-xl border-2 border-indigo-100">
+              <span className="block text-sm text-gray-400 mb-2">İngilizcesi:</span>
+              <p className="text-4xl font-extrabold text-gray-800">
+                {currentQuestions[currentQuestionIndex]?.english}
+              </p>
+            </div>
+
+            {/* Şıklar */}
+            <div className="grid grid-cols-2 gap-4">
+              {currentQuestions[currentQuestionIndex]?.options.map((option, index) => (
+                <button
+                  key={index}
+                  onClick={() => handleAnswer(option)}
+                  className="bg-white hover:bg-indigo-500 hover:text-white text-gray-700 font-semibold py-3 px-2 border border-gray-300 rounded-lg shadow-sm transition duration-200"
+                >
+                  {option}
+                </button>
+              ))}
+            </div>
+
+            {/* İlerleme Çubuğu (Opsiyonel Görsel) */}
+            <div className="w-full bg-gray-200 rounded-full h-2.5">
+              <div 
+                className="bg-indigo-600 h-2.5 rounded-full transition-all duration-300" 
+                style={{ width: `${((currentQuestionIndex + 1) / currentQuestions.length) * 100}%` }}
+              ></div>
+            </div>
+
+            {/* --- BİTİR BUTONU (İsteğin üzerine eklendi) --- */}
+            <div className="mt-8 border-t pt-4">
+              <button
+                onClick={finishGame}
+                className="w-full bg-red-100 hover:bg-red-200 text-red-600 font-bold py-2 px-4 rounded-lg transition flex items-center justify-center gap-2"
+              >
+                <span>Oyunu Bitir ve Çık</span>
+              </button>
+            </div>
+
+          </div>
+        )}
+
+      </div>
     </div>
   );
 }
