@@ -49,13 +49,11 @@ const WordCard = ({ wordObj }) => {
     return map[t] || t;
   };
 
-  // --- 2. ORTAK BUTON BİLEŞENİ (TUTARLILIK İÇİN) ---
+  // --- 2. ORTAK BUTON BİLEŞENİ ---
   const ActionButton = ({ icon: Icon, onClick, isActive, title }) => (
     <button
       onClick={onClick}
       title={title}
-      // focus:outline-none -> Mobildeki tıklama izini kaldırır
-      // active:scale-95 -> Tıklama hissi verir
       className={`
         p-2 rounded-full border transition-all duration-200 flex items-center justify-center
         focus:outline-none active:scale-95 shrink-0
@@ -69,23 +67,33 @@ const WordCard = ({ wordObj }) => {
     </button>
   );
 
-  // --- 3. GRAMER SATIRI (YAN YANA & KISA ETİKETLER) ---
+  // --- 3. GRAMER SATIRI (DÜZELTİLDİ: Kesilme Yok, Buton Sağda Sabit) ---
   const FeatureRow = ({ label, value }) => {
     if (!value) return null;
     const isPlaying = playingText === value;
 
     return (
-      <div className="flex items-center justify-between py-1.5 border-b border-slate-50 last:border-0">
-        <div className="flex items-center gap-2 overflow-hidden mr-2">
-          {/* Label Kısa ve Sabit Genişlikte */}
-          <span className="text-[10px] font-bold text-slate-400 uppercase min-w-[24px]">{label}</span>
-          <span className="text-sm font-semibold text-slate-700 truncate">{value}</span>
+      <div className="flex items-center justify-between py-2 border-b border-slate-50 last:border-0">
+        
+        {/* Metin Alanı (Flex-1 ile yayılabildiği kadar yayılır) */}
+        <div className="flex items-center gap-3 flex-1 mr-2 min-w-0">
+          <span className="text-[10px] font-bold text-slate-400 uppercase min-w-[24px] shrink-0">
+            {label}
+          </span>
+          {/* break-words: Kelime uzunsa alta geçer, truncate YOK */}
+          <span className="text-sm font-semibold text-slate-700 break-words leading-tight">
+            {value}
+          </span>
         </div>
-        <ActionButton 
-          icon={isPlaying ? Square : Volume2} 
-          onClick={(e) => toggleSpeak(value, e)} 
-          isActive={isPlaying} 
-        />
+
+        {/* Buton Alanı (Shrink-0 ile asla küçülmez ve sağda kalır) */}
+        <div className="shrink-0">
+          <ActionButton 
+            icon={isPlaying ? Square : Volume2} 
+            onClick={(e) => toggleSpeak(value, e)} 
+            isActive={isPlaying} 
+          />
+        </div>
       </div>
     );
   };
@@ -98,7 +106,7 @@ const WordCard = ({ wordObj }) => {
         <h2 className="text-4xl font-extrabold text-slate-800 break-words leading-tight text-left">
             {wordObj.word}
         </h2>
-        <div className="scale-110"> {/* Ana butonu biraz büyüttüm */}
+        <div className="scale-110 shrink-0"> 
             <ActionButton 
                 icon={playingText === wordObj.word ? Square : Volume2}
                 onClick={(e) => toggleSpeak(wordObj.word, e)}
@@ -157,75 +165,76 @@ const WordCard = ({ wordObj }) => {
             )}
           </div>
         ))}
-
-        {/* 3. GRAMER TABLOSU (Kompakt ve Yan Yana) */}
-        {(wordObj.plural || wordObj.v2 || wordObj.v3 || wordObj.vIng || wordObj.thirdPerson) && (
-          <div className="bg-white p-4 rounded-2xl border border-slate-200 text-left mt-4 shadow-sm">
-            <div className="text-[10px] uppercase tracking-wide text-slate-400 font-bold mb-2 border-b border-slate-100 pb-1">Fiil & İsim Çekimleri</div>
-            <div className="grid grid-cols-2 gap-x-6 gap-y-1">
-              <FeatureRow label="Pl." value={wordObj.plural} />
-              <FeatureRow label="3rd" value={wordObj.thirdPerson} />
-              <FeatureRow label="V2" value={wordObj.v2} />
-              <FeatureRow label="V3" value={wordObj.v3} />
-              <FeatureRow label="Ing" value={wordObj.vIng} />
-            </div>
-          </div>
-        )}
-
-        {(wordObj.advLy || wordObj.compEr || wordObj.superEst) && (
-            <div className="bg-orange-50/50 p-4 rounded-2xl border border-orange-100 text-left mt-2">
-                <div className="text-[10px] uppercase tracking-wide text-orange-400 font-bold mb-2 border-b border-orange-100 pb-1">Sıfat & Zarf Halleri</div>
-                <div className="grid grid-cols-2 gap-x-6 gap-y-1">
-                    <FeatureRow label="Adv." value={wordObj.advLy} />
-                    <FeatureRow label="Comp." value={wordObj.compEr} />
-                    <FeatureRow label="Super." value={wordObj.superEst} />
-                </div>
-            </div>
-        )}
-
-        {/* 4. ÖRNEK CÜMLE */}
-        <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 mt-4">
-          <div className="flex items-center justify-between mb-3">
-            <div className="text-xs uppercase tracking-wide text-slate-400 font-bold">Örnek Cümle</div>
-            
-            {/* BUTON GRUBU (Sıralama: Oku -> Çevir) */}
-            <div className="flex gap-1.5">
-               <ActionButton 
-                    icon={playingText === wordObj.sentence ? Square : Volume2}
-                    onClick={(e) => toggleSpeak(wordObj.sentence, e)}
-                    isActive={playingText === wordObj.sentence}
-                />
-               <ActionButton 
-                  icon={Languages}
-                  onClick={toggleSentenceTranslation}
-                  isActive={showSentenceTranslation}
-                />
-            </div>
-          </div>
-          <p className="text-base text-slate-600 italic leading-relaxed">"{wordObj.sentence}"</p>
-          
-          {/* Gizli Cümle Çevirisi */}
-          {showSentenceTranslation && (
-            <div className="mt-3 pt-2 border-t border-slate-200 animate-in fade-in slide-in-from-top-1">
-                <p className="text-slate-800 text-sm font-medium bg-white p-2 rounded-lg border border-slate-100">
-                   {wordObj.sentence_tr ? `TR: ${wordObj.sentence_tr}` : <span className="text-slate-400 italic font-normal">Sistemde çeviri bulunamadı.</span>}
-                </p>
-            </div>
-          )}
-        </div>
-
-        {/* 5. ETİKETLER */}
-        {wordObj.tags && Array.isArray(wordObj.tags) && wordObj.tags.length > 0 && (
-            <div className="flex flex-wrap gap-2 mt-4 justify-center">
-                {wordObj.tags.map((tag, i) => (
-                    <span key={i} className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-1 rounded-full flex items-center gap-1 border border-slate-200">
-                        <Tag className="w-3 h-3 opacity-50"/> {tag}
-                    </span>
-                ))}
-            </div>
-        )}
-
       </div>
+
+      {/* 3. GRAMER TABLOSU */}
+      {(wordObj.plural || wordObj.v2 || wordObj.v3 || wordObj.vIng || wordObj.thirdPerson) && (
+        <div className="bg-white p-4 rounded-2xl border border-slate-200 text-left mt-4 shadow-sm">
+          <div className="text-[10px] uppercase tracking-wide text-slate-400 font-bold mb-2 border-b border-slate-100 pb-1">Fiil & İsim Çekimleri</div>
+          {/* Tek sütun (grid-cols-1) veya geniş ekranda 2 sütun. Mobilde taşmaması için tek sütun daha güvenlidir ama 2 sütun istersen sığmayan aşağı iner */}
+          <div className="grid grid-cols-1 gap-y-1">
+            <FeatureRow label="Pl." value={wordObj.plural} />
+            <FeatureRow label="3rd" value={wordObj.thirdPerson} />
+            <FeatureRow label="V2" value={wordObj.v2} />
+            <FeatureRow label="V3" value={wordObj.v3} />
+            <FeatureRow label="Ing" value={wordObj.vIng} />
+          </div>
+        </div>
+      )}
+
+      {(wordObj.advLy || wordObj.compEr || wordObj.superEst) && (
+          <div className="bg-orange-50/50 p-4 rounded-2xl border border-orange-100 text-left mt-2">
+              <div className="text-[10px] uppercase tracking-wide text-orange-400 font-bold mb-2 border-b border-orange-100 pb-1">Sıfat & Zarf Halleri</div>
+              <div className="grid grid-cols-1 gap-y-1">
+                  <FeatureRow label="Adv." value={wordObj.advLy} />
+                  <FeatureRow label="Comp." value={wordObj.compEr} />
+                  <FeatureRow label="Super." value={wordObj.superEst} />
+              </div>
+          </div>
+      )}
+
+      {/* 4. ÖRNEK CÜMLE */}
+      <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 mt-4">
+        <div className="flex items-center justify-between mb-3">
+          <div className="text-xs uppercase tracking-wide text-slate-400 font-bold">Örnek Cümle</div>
+          
+          {/* BUTON GRUBU (Sıralama: Oku -> Çevir) */}
+          <div className="flex gap-1.5 shrink-0">
+             <ActionButton 
+                  icon={playingText === wordObj.sentence ? Square : Volume2}
+                  onClick={(e) => toggleSpeak(wordObj.sentence, e)}
+                  isActive={playingText === wordObj.sentence}
+              />
+             <ActionButton 
+                icon={Languages}
+                onClick={toggleSentenceTranslation}
+                isActive={showSentenceTranslation}
+              />
+          </div>
+        </div>
+        <p className="text-base text-slate-600 italic leading-relaxed text-left">"{wordObj.sentence}"</p>
+        
+        {/* Gizli Cümle Çevirisi */}
+        {showSentenceTranslation && (
+          <div className="mt-3 pt-2 border-t border-slate-200 animate-in fade-in slide-in-from-top-1 text-left">
+              <p className="text-slate-800 text-sm font-medium bg-white p-2 rounded-lg border border-slate-100">
+                 {wordObj.sentence_tr ? `TR: ${wordObj.sentence_tr}` : <span className="text-slate-400 italic font-normal">Sistemde çeviri bulunamadı.</span>}
+              </p>
+          </div>
+        )}
+      </div>
+
+      {/* 5. ETİKETLER */}
+      {wordObj.tags && Array.isArray(wordObj.tags) && wordObj.tags.length > 0 && (
+          <div className="flex flex-wrap gap-2 mt-4 justify-center">
+              {wordObj.tags.map((tag, i) => (
+                  <span key={i} className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-1 rounded-full flex items-center gap-1 border border-slate-200">
+                      <Tag className="w-3 h-3 opacity-50"/> {tag}
+                  </span>
+              ))}
+          </div>
+      )}
+
     </div>
   );
 };
