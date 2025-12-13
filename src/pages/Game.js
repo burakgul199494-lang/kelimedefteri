@@ -33,27 +33,24 @@ export default function Game() {
   const POINTS_PER_CARD = 5;
 
   // --------------------------
-  // --- KELİME HAVUZLARI ---
+  // --- KELİME HAVUZLARI (DÜZELTİLDİ) ---
   // --------------------------
   const getWordPools = () => {
     const all = getAllWords();
     const now = new Date();
 
-    // 1. ÖĞRENME MODU: Bilinenlerde YOK ve LearningQueue'da YOK
-    const learnPool = all.filter(w => 
-        !knownWordIds.includes(w.id) && 
-        !learningQueue.find(q => q.wordId === w.id)
-    );
+    // 1. ÖĞRENME MODU: Bilinenlerde OLMAYAN kelimeler
+    // (Henüz 'Biliyorum' denmemiş, havuzdaki kelimeler)
+    const learnPool = all.filter(w => !knownWordIds.includes(w.id));
 
-    // 2. TEKRAR MODU: LearningQueue'da VAR ve Zamanı GELMİŞ
-    const reviewPool = all.filter(w => {
-        const q = learningQueue.find(item => item.wordId === w.id);
-        return q && new Date(q.nextReview) <= now;
-    });
+    // 2. TEKRAR MODU: Bilinenlerde OLAN kelimeler
+    // (Daha önce 'Biliyorum' denmiş, pekiştirilecek kelimeler)
+    const reviewPool = all.filter(w => knownWordIds.includes(w.id));
 
-    // 3. BEKLEME LİSTESİ: LearningQueue'da VAR ama Zamanı GELMEMİŞ
+    // 3. BEKLEME LİSTESİ: LearningQueue'da olan ve tarihi GELECEKTE olanlar
+    // (Sistemin otomatik ertelediği kelimeler - Zorla çalışmak için)
     const waitingPool = all.filter(w => {
-        const q = learningQueue.find(item => item.wordId === w.id);
+        const q = learningQueue ? learningQueue.find(item => item.wordId === w.id) : null;
         return q && new Date(q.nextReview) > now;
     });
 
@@ -165,7 +162,7 @@ export default function Game() {
           {/* --- 3 MOD BUTONU --- */}
           <div className="space-y-4">
             
-            {/* 1. TEKRAR MODU (En Önemli) */}
+            {/* 1. TEKRAR MODU (Öğrendiklerim) */}
             <button 
               onClick={() => startSession("review")}
               disabled={reviewPool.length === 0}
@@ -178,14 +175,14 @@ export default function Game() {
                   </div>
                   <div className="text-left">
                     <div className="font-bold text-xl text-slate-800">Tekrar Modu</div>
-                    <div className="text-sm text-slate-500">Zamanı gelen kelimeler</div>
+                    <div className="text-sm text-slate-500">Öğrendiğin kelimeleri pekiştir</div>
                   </div>
                 </div>
                 <div className="text-2xl font-black text-orange-600">{reviewPool.length}</div>
               </div>
             </button>
 
-            {/* 2. ÖĞRENME MODU */}
+            {/* 2. ÖĞRENME MODU (Öğreneceklerim) */}
             <button 
               onClick={() => startSession("learn")}
               disabled={learnPool.length === 0}
@@ -218,7 +215,7 @@ export default function Game() {
                   </div>
                   <div className="text-left">
                     <div className="font-bold text-xl text-slate-700">Bekleme Listesi</div>
-                    <div className="text-sm text-slate-400">Zamanı gelmemiş olanlar</div>
+                    <div className="text-sm text-slate-400">Gelecekte sorulacaklar</div>
                   </div>
                 </div>
                 <div className="text-2xl font-black text-slate-500">{waitingPool.length}</div>
