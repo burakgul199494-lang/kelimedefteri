@@ -15,7 +15,8 @@ import {
   AlertCircle,
   X,
   Target,
-  Layers
+  Layers,
+  Info // Bilgi ikonu eklendi
 } from "lucide-react";
 
 export default function Pronunciation() {
@@ -29,14 +30,24 @@ export default function Pronunciation() {
   const [sessionScore, setSessionScore] = useState(0);
   const [activeMode, setActiveMode] = useState(null);
   
-  // Telaffuz State'leri
   const [isListening, setIsListening] = useState(false);
   const [spokenText, setSpokenText] = useState("");
   const [feedback, setFeedback] = useState(null); 
   const [isRoundDone, setIsRoundDone] = useState(false);
+  const [isIOSPWA, setIsIOSPWA] = useState(false); // iOS PWA kontrolü
 
-  // Referans: Her render'da kaybolmasın diye
   const recognitionRef = useRef(null);
+
+  // --- 0. ORTAM KONTROLÜ ---
+  useEffect(() => {
+    // Uygulama iOS ana ekrandan mı çalışıyor kontrol et
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
+    
+    if (isIOS && isStandalone) {
+        setIsIOSPWA(true);
+    }
+  }, []);
 
   // --- 1. KELİME HAVUZLARI ---
   const getWordPools = () => {
@@ -77,29 +88,42 @@ export default function Pronunciation() {
   };
 
   const resetRound = () => {
-    stopMicrophone(); // Önceki bağlantıyı kesin kes
+    stopMicrophone();
     setSpokenText("");
     setFeedback(null);
     setIsRoundDone(false);
   };
 
-  // --- 3. MİKROFON YÖNETİMİ (MOBİL İÇİN OPTİMİZE EDİLDİ) ---
+  // --- 3. MİKROFON YÖNETİMİ (iOS PWA FIX) ---
   
-  // Mikrofonu Başlatan Fonksiyon
-  const startListening = () => {
-    // 1. Önce varsa eskiyi durdur
+  const startListening = async () => {
+    // Varsa eskiyi durdur
     if (recognitionRef.current) {
         recognitionRef.current.abort();
     }
 
+    // --- iOS PWA İÇİN KRİTİK YAMA ---
+    // Ses servisini başlatmadan önce tarayıcıdan ham mikrofon izni isteyip
+    // donanımı uyandırıyoruz.
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        // İzin alındı, hemen stream'i kapatabiliriz, amaç uyandırmaktı.
+        stream.getTracks().forEach(track => track.stop());
+    } catch (err) {
+        setFeedback({ score: 0, type: "error", msg: "Mikrofon izni verilemedi." });
+        console.error("Mic Permission Error:", err);
+        return;
+    }
+    // ---------------------------------
+
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
-        alert("Tarayıcınız ses tanımayı desteklemiyor (Chrome kullanın).");
+        alert("Tarayıcınız ses tanımayı desteklemiyor.");
         return;
     }
 
     const recognition = new SpeechRecognition();
-    recognition.continuous = false; // Mobil için en sağlıklısı false
+    recognition.continuous = false;
     recognition.lang = "en-US";
     recognition.interimResults = false;
     recognition.maxAlternatives = 1;
@@ -118,12 +142,13 @@ export default function Pronunciation() {
 
     recognition.onerror = (event) => {
         setIsListening(false);
-        if (event.error === 'no-speech') {
-            // Sessiz kaldıysa hata verme, sadece kapat
-            return; 
-        }
-        if (event.error !== 'aborted') {
-            setFeedback({ score: 0, type: "error", msg: "Anlaşılamadı." });
+        console.error("Speech API Error:", event.error);
+        if (event.error === 'no-speech') return;
+        
+        if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+             setFeedback({ score: 0, type: "error", msg: "Ayarlardan mikrofona izin verin." });
+        } else {
+             setFeedback({ score: 0, type: "error", msg: "Anlaşılamadı, tekrar dene." });
         }
     };
 
@@ -132,19 +157,25 @@ export default function Pronunciation() {
     };
 
     recognitionRef.current = recognition;
-    recognition.start();
+    
+    // Hafif bir gecikme ile başlat (iOS kararlılığı için)
+    setTimeout(() => {
+        try {
+            recognition.start();
+        } catch (e) {
+            console.error("Start error:", e);
+        }
+    }, 100);
   };
 
-  // Mikrofonu Durduran Fonksiyon
   const stopMicrophone = () => {
     if (recognitionRef.current) {
-        recognitionRef.current.abort(); // stop yerine abort daha keskin bir çözüm
+        recognitionRef.current.abort();
         recognitionRef.current = null;
     }
     setIsListening(false);
   };
 
-  // Butona basınca çalışacak toggle
   const toggleMic = () => {
     if (isListening) {
         stopMicrophone();
@@ -153,7 +184,6 @@ export default function Pronunciation() {
     }
   };
 
-  // Sayfadan çıkarken temizle
   useEffect(() => {
     return () => {
         stopMicrophone();
@@ -198,10 +228,8 @@ export default function Pronunciation() {
     setIsRoundDone(true);
   };
 
-  // --- 5. DİĞER AKSİYONLAR ---
   const handleNext = () => {
-    stopMicrophone(); // Sonraki soruya geçerken mikrofonu öldür
-    
+    stopMicrophone();
     if (currentIndex + 1 < sessionWords.length) {
       setCurrentIndex(p => p + 1);
       resetRound();
@@ -232,6 +260,17 @@ export default function Pronunciation() {
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
             <div className="w-full max-w-sm space-y-6">
+                
+                {/* iOS UYARISI */}
+                {isIOSPWA && (
+                    <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl flex items-start gap-3 text-amber-800 text-sm">
+                        <Info className="w-5 h-5 shrink-0 mt-0.5" />
+                        <div>
+                            <strong>Dikkat:</strong> iPhone ana ekrandan kullanırken mikrofon bazen çalışmayabilir. Sorun yaşarsan uygulamayı <strong>Safari</strong> içinden açmayı dene.
+                        </div>
+                    </div>
+                )}
+
                 <div className="flex items-center justify-between">
                     <button onClick={() => navigate("/")} className="p-2 bg-white rounded-full shadow-sm hover:bg-slate-100">
                     <Home className="w-5 h-5 text-slate-600" />
