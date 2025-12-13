@@ -17,16 +17,34 @@ export default function Quiz2() {
   const [gameStatus, setGameStatus] = useState("mode-selection");
   const [isTransitioning, setIsTransitioning] = useState(false);
 
-  // --- KELİME HAVUZLARI ---
+  // --- KELİME HAVUZLARI (DÜZELTİLDİ - SRS MANTIĞI) ---
   const getWordPools = () => {
     const all = getAllWords();
+    // Tanımı olan geçerli kelimeler (Ters quiz için anlam şart)
     const validWords = all.filter(w => w.definitions && w.definitions[0]?.meaning);
     const now = new Date();
 
-    const learnPool = validWords.filter(w => !knownWordIds.includes(w.id));
-    const reviewPool = validWords.filter(w => knownWordIds.includes(w.id));
+    // Kuyruktaki kelimelerin ID'leri
+    const queueIds = learningQueue ? learningQueue.map(q => q.wordId) : [];
+
+    // 1. ÖĞRENME MODU (Kalanlar)
+    // Kural: Öğrenilenlerde YOK --VE-- Kuyrukta YOK
+    const learnPool = validWords.filter(w => 
+        !knownWordIds.includes(w.id) && 
+        !queueIds.includes(w.id)
+    );
+
+    // 2. TEKRAR MODU (Sırası Gelenler)
+    // Kural: Kuyrukta VAR --VE-- Zamanı ŞİMDİ veya GEÇMİŞ
+    const reviewPool = validWords.filter(w => {
+        const q = learningQueue.find(item => item.wordId === w.id);
+        return q && new Date(q.nextReview) <= now;
+    });
+
+    // 3. BEKLEME LİSTESİ (Gelecekteki Tekrarlar)
+    // Kural: Kuyrukta VAR --VE-- Zamanı GELECEKTE
     const waitingPool = validWords.filter(w => {
-        const q = learningQueue ? learningQueue.find(item => item.wordId === w.id) : null;
+        const q = learningQueue.find(item => item.wordId === w.id);
         return q && new Date(q.nextReview) > now;
     });
 
