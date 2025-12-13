@@ -15,7 +15,7 @@ import {
   AlertCircle,
   X,
   Target,
-  Layers // İkon eklendi
+  Layers
 } from "lucide-react";
 
 export default function Pronunciation() {
@@ -23,18 +23,18 @@ export default function Pronunciation() {
   const navigate = useNavigate();
 
   // --- STATE'LER ---
-  const [gameStage, setGameStage] = useState("selection"); // selection, playing, finished
+  const [gameStage, setGameStage] = useState("selection"); 
   const [sessionWords, setSessionWords] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [sessionScore, setSessionScore] = useState(0);
-  const [activeMode, setActiveMode] = useState(null); // Mod bilgisini tutmak için
+  const [activeMode, setActiveMode] = useState(null);
   
-  // Telaffuz State'leri
   const [isListening, setIsListening] = useState(false);
   const [spokenText, setSpokenText] = useState("");
   const [feedback, setFeedback] = useState(null); 
   const [isRoundDone, setIsRoundDone] = useState(false);
 
+  // Recognition Referansı
   const recognitionRef = useRef(null);
 
   // --- 1. KELİME HAVUZLARI ---
@@ -56,7 +56,7 @@ export default function Pronunciation() {
 
   // --- 2. OYUNU BAŞLAT ---
   const startSession = (mode) => {
-    setActiveMode(mode); // Modu kaydet (Başlık için)
+    setActiveMode(mode);
     let selectedPool = [];
     if (mode === "learn") selectedPool = learnPool;
     else if (mode === "review") selectedPool = reviewPool;
@@ -82,15 +82,22 @@ export default function Pronunciation() {
     setIsRoundDone(false);
   };
 
-  // --- 3. SES TANIMA KURULUMU & TEMİZLİK ---
+  // --- 3. SES TANIMA KURULUMU ---
   useEffect(() => {
+    // Tarayıcı desteği kontrolü
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     
     if (SpeechRecognition) {
       const recognition = new SpeechRecognition();
-      recognition.continuous = false;
+      recognition.continuous = false; // Mobilde false olması daha kararlıdır
       recognition.lang = "en-US";
       recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+
+      recognition.onstart = () => {
+        setIsListening(true);
+        setFeedback(null);
+      };
 
       recognition.onresult = (event) => {
         const transcript = event.results[0][0].transcript;
@@ -99,10 +106,27 @@ export default function Pronunciation() {
         setIsListening(false);
       };
 
-      recognition.onerror = (e) => {
+      // 🔥 HATA YAKALAMA GÜNCELLEMESİ 🔥
+      recognition.onerror = (event) => {
         setIsListening(false);
-        if (e.error !== 'aborted') {
-            setFeedback({ score: 0, type: "error", msg: "Duyamadım, tekrar dene." });
+        console.error("Speech Error:", event.error); // Konsola yazdır
+
+        let errorMessage = "Anlaşılamadı.";
+        
+        if (event.error === 'not-allowed') {
+            errorMessage = "Mikrofon izni verilmedi!";
+        } else if (event.error === 'no-speech') {
+            errorMessage = "Ses algılanmadı.";
+        } else if (event.error === 'network') {
+            errorMessage = "İnternet bağlantısı hatası.";
+        } else if (event.error === 'audio-capture') {
+            errorMessage = "Mikrofon bulunamadı.";
+        } else if (event.error !== 'aborted') {
+            errorMessage = "Hata oluştu, tekrar dene.";
+        }
+
+        if (event.error !== 'aborted') {
+            setFeedback({ score: 0, type: "error", msg: errorMessage });
         }
       };
 
@@ -111,8 +135,11 @@ export default function Pronunciation() {
       };
 
       recognitionRef.current = recognition;
+    } else {
+        setFeedback({ score: 0, type: "error", msg: "Tarayıcınız bu özelliği desteklemiyor." });
     }
 
+    // Cleanup
     return () => {
         if (recognitionRef.current) {
             recognitionRef.current.abort(); 
@@ -161,14 +188,21 @@ export default function Pronunciation() {
 
   // --- 5. AKSİYONLAR ---
   const toggleMic = () => {
+    if (!recognitionRef.current) {
+        alert("Mikrofon desteği yok veya engellendi.");
+        return;
+    }
+
     if (isListening) {
-      recognitionRef.current?.stop();
-      setIsListening(false);
+      recognitionRef.current.stop();
     } else {
       setSpokenText("");
       setFeedback(null);
-      recognitionRef.current?.start();
-      setIsListening(true);
+      try {
+          recognitionRef.current.start();
+      } catch (error) {
+          console.error("Mic start error:", error);
+      }
     }
   };
 
@@ -258,7 +292,7 @@ export default function Pronunciation() {
   }
 
   // ===========================
-  // === 2. BİTİŞ EKRANI (DÜZELTİLDİ) ===
+  // === 2. BİTİŞ EKRANI ===
   // ===========================
   if (gameStage === "finished") {
     const maxScore = sessionWords.length * 10;
@@ -280,7 +314,6 @@ export default function Pronunciation() {
              <div className="text-xs text-slate-400 mt-1">Maksimum: {maxScore}</div>
            </div>
 
-           {/* BUTONLAR */}
            <button 
                 onClick={() => setGameStage("selection")} 
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-xl flex items-center justify-center gap-2 mb-3 shadow-lg shadow-blue-200"
