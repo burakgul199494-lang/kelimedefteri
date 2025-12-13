@@ -223,8 +223,6 @@ export default function Quiz() {
                         </div>
                     </button>
                 </div>
-
-                <button onClick={() => navigate("/")} className="w-full text-slate-400 font-bold py-3">Geri Dön</button>
             </div>
         </div>
     );
