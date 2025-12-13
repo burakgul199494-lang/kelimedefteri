@@ -14,8 +14,6 @@ import {
   BrainCircuit, 
   Hourglass, 
   Home,
-  CheckCircle2,
-  AlertCircle,
   Layers // Başka mod seç ikonu
 } from "lucide-react";
 
@@ -44,7 +42,7 @@ export default function GapFillingGame() {
   // İpucu (Türkçe) Göster/Gizle
   const [showHintTr, setShowHintTr] = useState(false);
 
-  // --- KELİME HAVUZLARI ---
+  // --- KELİME HAVUZLARI (SRS DÜZELTİLDİ) ---
   const getWordPools = () => {
     const all = getAllWords();
     const now = new Date();
@@ -57,10 +55,24 @@ export default function GapFillingGame() {
         w.definitions && w.definitions[0]?.meaning
     );
 
-    const learnPool = validWords.filter(w => !knownWordIds.includes(w.id));
-    const reviewPool = validWords.filter(w => knownWordIds.includes(w.id));
+    // Kuyruktaki kelimelerin ID'leri
+    const queueIds = learningQueue ? learningQueue.map(q => q.wordId) : [];
+
+    // 1. ÖĞRENME MODU (Kalanlar)
+    const learnPool = validWords.filter(w => 
+        !knownWordIds.includes(w.id) && 
+        !queueIds.includes(w.id)
+    );
+
+    // 2. TEKRAR MODU (Sırası Gelenler)
+    const reviewPool = validWords.filter(w => {
+        const q = learningQueue.find(item => item.wordId === w.id);
+        return q && new Date(q.nextReview) <= now;
+    });
+
+    // 3. BEKLEME LİSTESİ (Gelecekteki Tekrarlar)
     const waitingPool = validWords.filter(w => {
-        const q = learningQueue ? learningQueue.find(item => item.wordId === w.id) : null;
+        const q = learningQueue.find(item => item.wordId === w.id);
         return q && new Date(q.nextReview) > now;
     });
 
@@ -364,7 +376,7 @@ export default function GapFillingGame() {
                    {getMaskedSentence()}
                </h2>
                
-               {/* İPUCU KUTUSU (GÜNCELLENDİ) */}
+               {/* İPUCU KUTUSU */}
                {englishDefinition && (
                  <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 text-sm text-slate-600 mt-2">
                     <div className="flex items-center justify-between gap-2 mb-1">
