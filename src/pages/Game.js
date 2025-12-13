@@ -1,30 +1,26 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 
-// Örnek Soru Havuzu (Normalde burası veritabanından gelebilir)
+// Örnek Soru Havuzu (Test amaçlı)
 const SAMPLE_QUESTIONS = [
   { id: 1, category: 'A1', english: 'Apple', turkish: 'Elma', options: ['Elma', 'Armut', 'Muz', 'Çilek'] },
   { id: 2, category: 'A1', english: 'Book', turkish: 'Kitap', options: ['Defter', 'Kitap', 'Kalem', 'Silgi'] },
-  { id: 3, category: 'A1', english: 'Cat', turkish: 'Kedi', options: ['Köpek', 'Kuş', 'Kedi', 'Balık'] },
-  { id: 4, category: 'A2', english: 'Decision', turkish: 'Karar', options: ['Karar', 'Düşünce', 'Plan', 'Sonuç'] },
-  { id: 5, category: 'A2', english: 'Environment', turkish: 'Çevre', options: ['Çevre', 'Doğa', 'Şehir', 'Dünya'] },
+  { id: 3, category: 'A2', english: 'Decision', turkish: 'Karar', options: ['Karar', 'Düşünce', 'Plan', 'Sonuç'] },
 ];
 
 export default function App() {
   // --- STATE TANIMLARI ---
-  const [gameStarted, setGameStarted] = useState(false); // Oyun başladı mı?
-  const [currentQuestions, setCurrentQuestions] = useState([]); // Seçilen sorular
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0); // Kaçıncı sorudayız
-  const [score, setScore] = useState(0); // Puan
-  const [selectedCategory, setSelectedCategory] = useState(''); // Hangi kategori seçildi
+  const [gameStarted, setGameStarted] = useState(false);
+  const [currentQuestions, setCurrentQuestions] = useState([]);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [score, setScore] = useState(0);
+  const [selectedCategory, setSelectedCategory] = useState('');
 
-  // --- OYUNU BAŞLATMA FONKSİYONU ---
+  // --- OYUNU BAŞLATMA ---
   const startGame = (category) => {
-    // Seçilen kategoriye göre soruları filtrele (veya hepsini al)
     const filteredQuestions = SAMPLE_QUESTIONS.filter(q => q.category === category);
     
-    // Eğer o kategoride soru yoksa uyar
     if (filteredQuestions.length === 0) {
-      alert("Bu kategoride henüz soru yok.");
+      alert("Bu kategoride soru bulunamadı.");
       return;
     }
 
@@ -32,36 +28,29 @@ export default function App() {
     setCurrentQuestions(filteredQuestions);
     setCurrentQuestionIndex(0);
     setScore(0);
-    setGameStarted(true); // EKRANI DEĞİŞTİREN KİLİT NOKTA
+    setGameStarted(true); // Oyun ekranını açar
   };
 
-  // --- CEVAP KONTROL FONKSİYONU ---
+  // --- CEVAP KONTROL ---
   const handleAnswer = (selectedOption) => {
     const currentQuestion = currentQuestions[currentQuestionIndex];
 
-    // Doğru cevap mı?
     if (selectedOption === currentQuestion.turkish) {
       setScore(score + 10);
-      // Opsiyonel: Doğru ses efekti vs. buraya eklenebilir
-    } else {
-      // Opsiyonel: Yanlış ses efekti
     }
 
-    // Sonraki soruya geç
     const nextIndex = currentQuestionIndex + 1;
     if (nextIndex < currentQuestions.length) {
       setCurrentQuestionIndex(nextIndex);
     } else {
-      // Sorular bittiyse
-      alert(`Oyun Bitti! Toplam Puanın: ${score + (selectedOption === currentQuestion.turkish ? 10 : 0)}`);
-      setGameStarted(false); // Ana ekrana dön
+      alert(`Oyun Bitti! Puanın: ${score + (selectedOption === currentQuestion.turkish ? 10 : 0)}`);
+      setGameStarted(false); // Ana ekrana döner
     }
   };
 
-  // --- OYUNU MANUEL BİTİRME FONKSİYONU ---
+  // --- MANUEL ÇIKIŞ ---
   const finishGame = () => {
-    // Burada istersen bir onay kutusu (Are you sure?) koyabilirsin.
-    setGameStarted(false); // Ana ekrana (Seçim ekranına) atar
+    setGameStarted(false); // Ana ekrana döner
     setScore(0);
   };
 
@@ -69,55 +58,46 @@ export default function App() {
     <div className="min-h-screen bg-gray-100 flex items-center justify-center py-8 px-4">
       <div className="w-full max-w-md bg-white rounded-xl shadow-lg overflow-hidden p-6">
         
-        {/* ÜST BAŞLIK */}
-        <h1 className="text-3xl font-bold text-center text-indigo-600 mb-8">
-          KEL UĞUR
+        {/* GENEL BAŞLIK */}
+        <h1 className="text-3xl font-bold text-center text-blue-600 mb-8">
+          İngilizce Kelime Oyunu
         </h1>
 
-        {/* --- DURUM KONTROLÜ --- */}
+        {/* --- EKRAN KONTROLÜ --- */}
         {!gameStarted ? (
-          // 1. DURUM: OYUN BAŞLAMADIYSA (SEÇİM EKRANI)
-          <div className="space-y-4 animate-fade-in">
+          // 1. SEÇİM EKRANI
+          <div className="space-y-4">
             <h2 className="text-xl text-center text-gray-700 font-semibold mb-4">
-              Bir Kategori Seç
+              Seviye Seçiniz
             </h2>
             
             <button 
               onClick={() => startGame('A1')}
-              className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-4 px-4 rounded-lg shadow transition transform hover:scale-105"
+              className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-4 px-4 rounded-lg shadow transition"
             >
               Seviye A1 Başlat
             </button>
 
             <button 
               onClick={() => startGame('A2')}
-              className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-4 px-4 rounded-lg shadow transition transform hover:scale-105"
+              className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-4 px-4 rounded-lg shadow transition"
             >
               Seviye A2 Başlat
             </button>
-            
-            <p className="text-center text-xs text-gray-400 mt-4">
-              Toplam {SAMPLE_QUESTIONS.length} soru mevcut.
-            </p>
           </div>
 
         ) : (
-          // 2. DURUM: OYUN BAŞLADIYSA (SORU EKRANI)
-          <div className="space-y-6 animate-fade-in">
+          // 2. OYUN EKRANI
+          <div className="space-y-6">
             
-            {/* Üst Bilgi Paneli */}
-            <div className="flex justify-between items-center bg-gray-50 p-3 rounded-lg border border-gray-200">
-              <span className="text-sm font-bold text-gray-600">
-                Mod: {selectedCategory}
-              </span>
-              <span className="text-sm font-bold text-indigo-600">
-                Puan: {score}
-              </span>
+            {/* Bilgi Paneli */}
+            <div className="flex justify-between items-center bg-gray-50 p-3 rounded-lg border">
+              <span className="text-sm font-bold text-gray-600">Mod: {selectedCategory}</span>
+              <span className="text-sm font-bold text-blue-600">Puan: {score}</span>
             </div>
 
-            {/* Soru Alanı */}
-            <div className="text-center py-10 bg-indigo-50 rounded-xl border-2 border-indigo-100">
-              <span className="block text-sm text-gray-400 mb-2">İngilizcesi:</span>
+            {/* Soru */}
+            <div className="text-center py-10 bg-blue-50 rounded-xl border border-blue-100">
               <p className="text-4xl font-extrabold text-gray-800">
                 {currentQuestions[currentQuestionIndex]?.english}
               </p>
@@ -129,28 +109,20 @@ export default function App() {
                 <button
                   key={index}
                   onClick={() => handleAnswer(option)}
-                  className="bg-white hover:bg-indigo-500 hover:text-white text-gray-700 font-semibold py-3 px-2 border border-gray-300 rounded-lg shadow-sm transition duration-200"
+                  className="bg-white hover:bg-blue-500 hover:text-white text-gray-700 font-semibold py-3 px-2 border border-gray-300 rounded-lg shadow-sm transition"
                 >
                   {option}
                 </button>
               ))}
             </div>
 
-            {/* İlerleme Çubuğu (Opsiyonel Görsel) */}
-            <div className="w-full bg-gray-200 rounded-full h-2.5">
-              <div 
-                className="bg-indigo-600 h-2.5 rounded-full transition-all duration-300" 
-                style={{ width: `${((currentQuestionIndex + 1) / currentQuestions.length) * 100}%` }}
-              ></div>
-            </div>
-
-            {/* --- BİTİR BUTONU (İsteğin üzerine eklendi) --- */}
+            {/* ÇIKIŞ BUTONU */}
             <div className="mt-8 border-t pt-4">
               <button
                 onClick={finishGame}
-                className="w-full bg-red-100 hover:bg-red-200 text-red-600 font-bold py-2 px-4 rounded-lg transition flex items-center justify-center gap-2"
+                className="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg transition"
               >
-                <span>Oyunu Bitir ve Çık</span>
+                Oyunu Bitir ve Ana Ekrana Dön
               </button>
             </div>
 
