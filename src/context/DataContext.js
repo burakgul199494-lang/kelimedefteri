@@ -194,7 +194,16 @@ export const DataProvider = ({ children }) => {
     return [...systemDeleted, ...customDeleted].sort((a, b) => a.word.localeCompare(b.word));
   };
 
+  // ----------------------------------------------------------------
+  // 🔥 DÜZENLENEN KISIM: MASTER (EZBERLEDİM) MANTIĞI EKLENDİ 🔥
+  // ----------------------------------------------------------------
   const handleSmartLearn = async (wordId, action) => {
+    // 1. Eğer eylem 'master' ise direkt 'addToKnown' fonksiyonunu kullan ve çık.
+    if (action === "master") {
+        await addToKnown(wordId);
+        return; // Fonksiyonu burada kesiyoruz, aşağısı çalışmayacak.
+    }
+
     const userRef = doc(db, "artifacts", appId, "users", user.uid, "vocab_game", "progress");
     const currentProgress = learningQueue.find(q => String(q.wordId) === String(wordId)) || { wordId, level: 0 };
     let newQueue = [...learningQueue.filter(q => String(q.wordId) !== String(wordId))];
@@ -283,10 +292,10 @@ export const DataProvider = ({ children }) => {
 
   const addToKnown = async (wordId) => {
      try {
-        const userRef = doc(db, "artifacts", appId, "users", user.uid, "vocab_game", "progress");
-        const newQueue = learningQueue.filter(q => String(q.wordId) !== String(wordId));
-        await updateDoc(userRef, { known_ids: arrayUnion(wordId), learning_queue: newQueue });
-        setKnownWordIds(prev => [...prev, wordId]); setLearningQueue(newQueue);
+       const userRef = doc(db, "artifacts", appId, "users", user.uid, "vocab_game", "progress");
+       const newQueue = learningQueue.filter(q => String(q.wordId) !== String(wordId));
+       await updateDoc(userRef, { known_ids: arrayUnion(wordId), learning_queue: newQueue });
+       setKnownWordIds(prev => [...prev, wordId]); setLearningQueue(newQueue);
      } catch(e) { console.error(e); }
   };
 
