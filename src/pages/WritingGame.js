@@ -1,32 +1,46 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { useData } from "../context/DataContext";
 import { useNavigate } from "react-router-dom";
-import { X, Trophy, Volume2, Languages, Loader2, ArrowRight, AlertCircle, CheckCircle2, Target, HelpCircle } from "lucide-react";
-// API importu silindi
+import { X, Trophy, Volume2, Lightbulb, Loader2, ArrowRight } from "lucide-react";
 
 export default function WritingGame() {
   const { getAllWords, knownWordIds, learningQueue, addScore } = useData();
   const navigate = useNavigate();
-  const inputRef = useRef(null);
 
+  // Oyun Durumları
   const [questions, setQuestions] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [score, setScore] = useState(0);
-  const [gameStatus, setGameStatus] = useState("loading"); 
-  
-  const [userInput, setUserInput] = useState("");
-  const [attempts, setAttempts] = useState(0); 
-  const [feedback, setFeedback] = useState(null); 
-  
-  // API yok, sadece göster/gizle
-  const [showHintTr, setShowHintTr] = useState(false);
+  const [gameStatus, setGameStatus] = useState("loading"); // loading, playing, finished
 
-  useEffect(() => { startGame(); }, []);
+  // Kelime Mantığı Durumları
+  const [shuffledLetters, setShuffledLetters] = useState([]); // Aşağıdaki karışık harfler
+  const [completedLetters, setCompletedLetters] = useState([]); // Yukarıya yerleşen doğru harfler
+  const [wrongAnimationId, setWrongAnimationId] = useState(null); // Hatalı tıklanan harf animasyonu için
+  const [isWordComplete, setIsWordComplete] = useState(false); // Kelime bitti mi?
 
   useEffect(() => {
-    if (gameStatus === "playing") {
-      setUserInput(""); setAttempts(0); setFeedback(null); setShowHintTr(false);
-      setTimeout(() => inputRef.current?.focus(), 100);
+    startGame();
+  }, []);
+
+  // Soru değiştiğinde harfleri karıştır ve resetle
+  useEffect(() => {
+    if (gameStatus === "playing" && questions[currentIndex]) {
+      const word = questions[currentIndex].word.trim();
+      
+      // Harflere unique ID veriyoruz ki aynı harflerden birden fazla varsa karışmasın (örn: PAPER -> 2 tane P)
+      const letters = word.split('').map((char, index) => ({
+        id: `${char}-${index}-${Math.random()}`,
+        char: char,
+        isUsed: false
+      }));
+
+      // Harfleri karıştır
+      const shuffled = [...letters].sort(() => Math.random() - 0.5);
+      
+      setShuffledLetters(shuffled);
+      setCompletedLetters([]);
+      setIsWordComplete(false);
     }
   }, [currentIndex, gameStatus]);
 
@@ -34,6 +48,7 @@ export default function WritingGame() {
     const all = getAllWords();
     const now = new Date();
     
+    // Geçerli kelimeleri filtrele
     const validWords = all.filter(w => w.definitions && w.definitions[0]?.meaning);
     
     const pool = validWords.filter(w => {
@@ -52,99 +67,133 @@ export default function WritingGame() {
         return;
     }
 
+    // 20 Kelime seç
     const selected = pool.sort(() => 0.5 - Math.random()).slice(0, 20);
-    setQuestions(selected); setCurrentIndex(0); setScore(0); setGameStatus("playing");
+    setQuestions(selected);
+    setCurrentIndex(0);
+    setScore(0);
+    setGameStatus("playing");
   };
 
-  const currentWord = questions[currentIndex];
-  const turkishMeaning = currentWord?.definitions[0]?.meaning;
-  const englishHint = currentWord?.definitions[0]?.engExplanation;
-  const turkishHint = currentWord?.definitions[0]?.trExplanation; // Veritabanından gelen
+  const currentWordObj = questions[currentIndex];
+  const targetWord = currentWordObj?.word.trim() || "";
+  const turkishMeaning = currentWordObj?.definitions[0]?.meaning;
+  const turkishExplanation = currentWordObj?.definitions[0]?.trExplanation; 
 
   const speak = (text) => {
     if (!text) return;
-    const u = new SpeechSynthesisUtterance(text); u.lang = "en-US"; window.speechSynthesis.speak(u);
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = "en-US";
+    u.rate = 0.8;
+    window.speechSynthesis.speak(u);
   };
 
-  const handleGiveUp = () => {
-      setFeedback("revealed"); 
-      setUserInput(currentWord.word); 
+  // HARFE TIKLAMA MANTIĞI
+  const handleLetterClick = (letterObj) => {
+    if (isWordComplete || letterObj.isUsed) return;
+
+    // Sıradaki beklenen harf ne?
+    const nextIndex = completedLetters.length;
+    const expectedChar = targetWord[nextIndex];
+
+    // Harf kontrolü (Büyük/Küçük harf duyarsız)
+    if (letterObj.char.toLowerCase() === expectedChar.toLowerCase()) {
+      // DOĞRU HARF
+      
+      // 1. Aşağıdaki havuzda bu harfi kullanıldı işaretle
+      const newShuffled = shuffledLetters.map(l => 
+        l.id === letterObj.id ? { ...l, isUsed: true } : l
+      );
+      setShuffledLetters(newShuffled);
+
+      // 2. Yukarıya ekle
+      const newCompleted = [...completedLetters, letterObj.char];
+      setCompletedLetters(newCompleted);
+
+      // 3. Kelime bitti mi kontrol et
+      if (newCompleted.length === targetWord.length) {
+        handleWordComplete();
+      }
+
+    } else {
+      // YANLIŞ HARF
+      // Titreme ve kırmızı efekt için ID set et
+      setWrongAnimationId(letterObj.id);
+      setTimeout(() => setWrongAnimationId(null), 500); // 0.5sn sonra efekti sil
+    }
   };
 
+  // İPUCU MANTIĞI (Otomatik doğru harfi basar)
+  const handleHint = () => {
+    if (isWordComplete) return;
+
+    const nextIndex = completedLetters.length;
+    const expectedChar = targetWord[nextIndex];
+
+    // Havuzda kullanılmamış ve doğru karaktere sahip İLK harfi bul
+    const correctLetterObj = shuffledLetters.find(l => 
+      !l.isUsed && l.char.toLowerCase() === expectedChar.toLowerCase()
+    );
+
+    if (correctLetterObj) {
+      handleLetterClick(correctLetterObj);
+    }
+  };
+
+  // KELİME TAMAMLANINCA
+  const handleWordComplete = () => {
+    setIsWordComplete(true);
+    speak(targetWord); // Kelimeyi oku
+    addScore(5); // Puan ekle
+    setScore(s => s + 5);
+
+    // 1 Saniye bekle sonra diğer soruya geç
+    setTimeout(() => {
+      if (currentIndex + 1 < questions.length) {
+        setCurrentIndex(p => p + 1);
+      } else {
+        setGameStatus("finished");
+      }
+    }, 1200);
+  };
+
+  // ERKEN BİTİRME
   const handleQuitEarly = () => {
       if (score > 0) addScore(score);
       setGameStatus("finished");
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    
-    if (feedback === "correct" || feedback === "revealed") { 
-        nextQuestion(); 
-        return; 
-    }
-
-    if (!userInput.trim()) return;
-
-    const correctWord = currentWord.word.trim();
-    const userWordLower = userInput.toLowerCase().trim();
-    const correctWordLower = correctWord.toLowerCase();
-
-    if (userWordLower === correctWordLower) {
-        setFeedback("correct"); 
-        speak(currentWord.word);
-        setUserInput(correctWord); 
-        setScore(s => s + (attempts === 0 ? 5 : 2));
-    } else {
-        if (attempts === 0) {
-            setFeedback("wrong"); 
-            setAttempts(1); 
-            const firstChar = correctWord.charAt(0);
-            setUserInput(firstChar); 
-            inputRef.current?.focus(); 
-        } else {
-            setFeedback("revealed"); 
-            setUserInput(currentWord.word);
-        }
-    }
-  };
-
-  const nextQuestion = () => {
-    if (currentIndex + 1 < questions.length) { 
-        setCurrentIndex(p => p + 1); 
-    } else { 
-        setGameStatus("finished"); 
-        addScore(score); 
-    }
-  };
+  // --- RENDER BÖLÜMÜ ---
 
   if (gameStatus === "finished") {
-    const maxScore = questions.length * 5;
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
         <div className="bg-white p-8 rounded-3xl shadow-xl max-w-sm w-full text-center space-y-6">
-           <div className="bg-purple-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto"><Trophy className="w-10 h-10 text-purple-600"/></div>
-           <h2 className="text-2xl font-bold text-slate-800">Yazma Testi Bitti!</h2>
+           <div className="bg-purple-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto animate-bounce">
+             <Trophy className="w-10 h-10 text-purple-600"/>
+           </div>
+           <h2 className="text-2xl font-bold text-slate-800">Harika İş Çıkardın!</h2>
            <div className="py-6 bg-slate-50 rounded-2xl border border-slate-100">
              <div className="text-sm text-slate-400 font-bold uppercase">Toplam Puan</div>
              <div className="text-5xl font-extrabold text-purple-600 mt-2">{score}</div>
-             <div className="text-xs text-slate-400 font-bold">Maksimum: {maxScore}</div>
            </div>
            <button onClick={() => navigate("/")} className="w-full bg-white border-2 border-slate-200 text-slate-600 font-bold py-3 rounded-xl hover:bg-slate-50">Ana Sayfa</button>
-           <button onClick={startGame} className="w-full bg-purple-600 text-white font-bold py-3 rounded-xl hover:bg-purple-700 shadow-lg shadow-purple-200">Tekrar Dene</button>
+           <button onClick={startGame} className="w-full bg-purple-600 text-white font-bold py-3 rounded-xl hover:bg-purple-700 shadow-lg shadow-purple-200">Tekrar Oyna</button>
         </div>
       </div>
     );
   }
 
-  if (gameStatus === "loading") return <div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin text-purple-600"/></div>;
+  if (gameStatus === "loading") return <div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin text-purple-600 w-10 h-10"/></div>;
 
   const progress = ((currentIndex + 1) / questions.length) * 100;
-  const isRoundOver = feedback === "correct" || feedback === "revealed"; 
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center p-4">
-       <div className="w-full max-w-md space-y-6 mt-4">
+       <div className="w-full max-w-md space-y-6 mt-2">
+          
+          {/* HEADER */}
           <div className="flex justify-between items-center">
              <button onClick={()=>navigate("/")} className="p-2 bg-white rounded-full hover:bg-slate-100 shadow-sm"><X className="w-5 h-5 text-slate-400"/></button>
              <div className="font-bold text-purple-600 bg-purple-50 px-3 py-1 rounded-full border border-purple-100">{currentIndex+1} / {questions.length}</div>
@@ -152,67 +201,94 @@ export default function WritingGame() {
           </div>
           <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden"><div className="bg-purple-500 h-full transition-all duration-500" style={{width:`${progress}%`}}></div></div>
           
-          <div className="bg-white p-6 rounded-3xl shadow-xl border border-slate-100 text-center space-y-6 animate-in fade-in zoom-in duration-300 relative overflow-hidden">
-             <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-purple-400 to-pink-400"></div>
-             <div className="space-y-2"><div className="text-sm font-bold text-slate-400 uppercase tracking-wider">Türkçesi</div><h2 className="text-3xl font-extrabold text-slate-800">{turkishMeaning}</h2></div>
+          {/* ANA KART */}
+          <div className="bg-white p-6 rounded-3xl shadow-xl border border-slate-100 text-center space-y-6 relative overflow-hidden min-h-[400px] flex flex-col justify-between">
+             <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-purple-400 to-pink-400"></div>
              
-             {englishHint && (
-               <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 text-sm text-slate-600">
-                   <div className="flex items-center justify-between gap-2 mb-1">
-                       <span className="text-xs font-bold text-slate-400 uppercase">İpucu (Açıklama)</span>
-                       <div className="flex gap-1">
-                           <button onClick={() => speak(englishHint)} className="p-1 bg-white border rounded-lg hover:bg-purple-50 text-purple-600"><Volume2 className="w-3 h-3"/></button>
-                           {turkishHint && (
-                               <button onClick={() => setShowHintTr(!showHintTr)} className={`p-1 border rounded-lg transition-colors ${showHintTr ? "bg-indigo-100 text-indigo-600" : "bg-white hover:bg-blue-50 text-blue-600"}`}>
-                                   <Languages className="w-3 h-3"/>
-                               </button>
-                           )}
-                       </div>
-                   </div>
-                   <p className="italic">"{englishHint}"</p>
-                   
-                   {/* Veritabanı verisi (API Yok) */}
-                   {showHintTr && turkishHint && <div className="mt-2 pt-2 border-t border-slate-200 text-indigo-700 font-medium text-xs animate-in fade-in">TR: {turkishHint}</div>}
-               </div>
-             )}
-             
-             <form onSubmit={handleSubmit} className="space-y-4">
-               <div className="relative">
-                   <input 
-                       ref={inputRef} 
-                       type="text" 
-                       value={userInput} 
-                       onChange={(e) => setUserInput(e.target.value)} 
-                       disabled={isRoundOver} 
-                       className={`w-full p-4 text-center text-xl font-bold border-2 rounded-2xl outline-none transition-colors ${feedback === "correct" ? "border-green-500 bg-green-50 text-green-700" : feedback === "wrong" ? "border-red-300 bg-red-50 text-red-700" : feedback === "revealed" ? "border-red-500 bg-red-100 text-red-800" : "border-slate-200 focus:border-purple-500 focus:bg-purple-50"}`} 
-                       placeholder="İngilizcesini yaz..." 
-                       autoComplete="off" autoCorrect="off" spellCheck="false"
-                   />
-                   <div className="absolute right-4 top-4">{feedback === "correct" && <CheckCircle2 className="w-6 h-6 text-green-500"/>}{feedback === "wrong" && <AlertCircle className="w-6 h-6 text-red-500"/>}{feedback === "revealed" && <X className="w-6 h-6 text-red-600"/>}</div>
-               </div>
-               
-               <div className="h-6 text-sm font-bold">
-                   {feedback === "wrong" && <span className="text-red-500 flex items-center justify-center gap-1"><AlertCircle className="w-3 h-3"/> İlk harfi senin için yazdım!</span>}
-                   {feedback === "revealed" && <span className="text-red-600">Maalesef bilemedin. Doğru cevap buydu.</span>}
-                   {feedback === "correct" && <span className="text-green-600">Tebrikler! Doğru cevap.</span>}
-               </div>
+             {/* SORU BÖLÜMÜ */}
+             <div className="space-y-3 mt-2">
+               <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">Türkçesi</div>
+               <h2 className="text-3xl font-extrabold text-slate-800 break-words">{turkishMeaning}</h2>
+               {turkishExplanation && (
+                 <div className="text-sm text-slate-500 font-medium bg-slate-50 p-2 rounded-lg inline-block border border-slate-100">
+                    💡 {turkishExplanation}
+                 </div>
+               )}
+             </div>
 
-               <div className="flex gap-3">
-                   {!isRoundOver && (
-                       <button type="button" onClick={handleGiveUp} className="flex-1 py-4 bg-slate-100 text-slate-500 hover:bg-slate-200 rounded-2xl font-bold transition-colors flex items-center justify-center gap-2">
-                           <HelpCircle className="w-5 h-5"/> Bilmiyorum
-                       </button>
-                   )}
-                   <button type="submit" disabled={!isRoundOver && !userInput.trim()} className={`flex-[2] py-4 rounded-2xl font-bold text-lg shadow-lg flex items-center justify-center gap-2 transition-transform active:scale-95 ${isRoundOver ? "bg-slate-800 text-white hover:bg-slate-900" : "bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"}`}>
-                       {isRoundOver ? (<>Sıradaki <ArrowRight className="w-5 h-5"/></>) : ("Kontrol Et")}
-                   </button>
-               </div>
-             </form>
+             {/* YAZI ALANI (Placeholders) */}
+             <div className="flex flex-wrap justify-center gap-2 min-h-[60px] items-end">
+                {targetWord.split('').map((_, idx) => {
+                  const char = completedLetters[idx];
+                  const isFilled = char !== undefined;
+                  return (
+                    <div 
+                      key={idx} 
+                      className={`
+                        w-10 h-12 flex items-center justify-center text-2xl font-bold border-b-4 rounded-t-lg transition-all
+                        ${isFilled ? "border-purple-500 text-purple-700 bg-purple-50 translate-y-0" : "border-slate-200 bg-slate-50 text-transparent"}
+                      `}
+                    >
+                      {char}
+                    </div>
+                  );
+                })}
+             </div>
+
+             {/* KARIŞIK HARFLER (BUTONLAR) */}
+             <div className="grid grid-cols-6 gap-2 place-items-center">
+                {shuffledLetters.map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => handleLetterClick(item)}
+                    disabled={item.isUsed || isWordComplete}
+                    className={`
+                      w-11 h-11 rounded-xl font-bold text-lg shadow-[0_4px_0_rgb(0,0,0,0.1)] transition-all active:shadow-none active:translate-y-[4px]
+                      ${item.isUsed 
+                          ? "opacity-0 pointer-events-none scale-0" 
+                          : wrongAnimationId === item.id 
+                              ? "bg-red-500 text-white shadow-red-700 animate-[shake_0.5s_ease-in-out]" 
+                              : "bg-white border-2 border-slate-200 text-slate-700 hover:border-purple-300 hover:text-purple-600"
+                      }
+                    `}
+                  >
+                    {item.char}
+                  </button>
+                ))}
+             </div>
+
+             {/* KONTROL BUTONLARI (İpucu & Ses) */}
+             <div className="flex items-center justify-center gap-4 pt-4 border-t border-slate-100">
+                <button 
+                  onClick={() => speak(targetWord)} 
+                  className="flex items-center gap-2 px-5 py-3 bg-slate-100 text-slate-600 rounded-2xl font-bold hover:bg-slate-200 transition-colors active:scale-95"
+                >
+                  <Volume2 className="w-5 h-5"/> Dinle
+                </button>
+                
+                <button 
+                  onClick={handleHint} 
+                  disabled={isWordComplete}
+                  className="flex items-center gap-2 px-5 py-3 bg-amber-100 text-amber-700 rounded-2xl font-bold hover:bg-amber-200 transition-colors active:scale-95 disabled:opacity-50"
+                >
+                  <Lightbulb className="w-5 h-5"/> İpucu
+                </button>
+             </div>
+
           </div>
 
-          <button onClick={handleQuitEarly} className="w-full mt-6 flex items-center justify-center gap-2 text-slate-400 hover:text-red-500 transition-colors text-sm font-medium mx-auto">
-            Bitir (Puanı Al ve Çık)
+          <button onClick={handleQuitEarly} className="w-full text-center text-slate-400 hover:text-red-500 text-sm font-medium transition-colors">
+            Bitir ve Çık
           </button>
+
+          {/* Hata Animasyonu İçin Style */}
+          <style jsx>{`
+            @keyframes shake {
+              0%, 100% { transform: translateX(0); }
+              25% { transform: translateX(-5px); }
+              75% { transform: translateX(5px); }
+            }
+          `}</style>
 
        </div>
     </div>
