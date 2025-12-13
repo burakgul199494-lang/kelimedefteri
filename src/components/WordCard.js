@@ -73,8 +73,7 @@ export default function WordCard({ wordObj }) {
               </h1>
               <button
                 onClick={(e) => toggleSpeak(e, wordObj.word)}
-                // DÜZELTME: focus:outline-none eklendi (İz kalmasın diye)
-                className="p-3 bg-white/20 hover:bg-white text-white hover:text-indigo-600 rounded-full backdrop-blur-md transition-all active:scale-90 shrink-0 focus:outline-none"
+                className="flex items-center justify-center p-3 bg-white/20 hover:bg-white text-white hover:text-indigo-600 rounded-full backdrop-blur-md transition-all active:scale-90 shrink-0 focus:outline-none"
               >
                 {playingText === wordObj.word ? <Square className="w-6 h-6 fill-current" /> : <Volume2 className="w-6 h-6" />}
               </button>
@@ -84,19 +83,24 @@ export default function WordCard({ wordObj }) {
           {/* İÇERİK GÖVDESİ */}
           <div className="flex-1 flex flex-col p-6 gap-5 bg-slate-50/50 justify-center">
             
-            {/* 1. Tek Tanım */}
+            {/* 1. Tek Tanım (Definition) */}
             {mainDefinition && (
               <div className={`relative p-5 rounded-2xl border bg-white border-indigo-100 shadow-sm`}>
-                <div className="flex justify-between items-start mb-2">
+                <div className="flex justify-between items-center mb-3">
                   <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-600">
                     Definition
                   </span>
+                  
+                  {/* DÜZELTME 1: Buton diğerleriyle aynı stile getirildi (Arkaplan + Yuvarlak) */}
                   <button
                     onClick={(e) => toggleSpeak(e, mainDefinition.engExplanation)}
-                    // DÜZELTME: focus:outline-none eklendi
-                    className={`transition-colors focus:outline-none ${playingText === mainDefinition.engExplanation ? 'text-indigo-600' : 'text-slate-400 hover:text-indigo-500'}`}
+                    className={`flex items-center justify-center p-2 rounded-full focus:outline-none transition-colors ${
+                      playingText === mainDefinition.engExplanation 
+                        ? 'bg-indigo-600 text-white shadow-md' 
+                        : 'bg-indigo-50 text-indigo-500 hover:bg-indigo-100'
+                    }`}
                   >
-                     {playingText === mainDefinition.engExplanation ? <Square className="w-4 h-4 fill-indigo-600" /> : <Volume2 className="w-4 h-4" />}
+                     {playingText === mainDefinition.engExplanation ? <Square className="w-4 h-4 fill-current" /> : <Volume2 className="w-4 h-4" />}
                   </button>
                 </div>
                 <p className="text-slate-700 font-medium text-lg leading-relaxed">
@@ -105,25 +109,31 @@ export default function WordCard({ wordObj }) {
               </div>
             )}
 
-            {/* 2. Örnek Cümle */}
-            <div className="relative bg-white p-5 rounded-2xl border border-indigo-100 shadow-sm group/sentence">
-               <Quote className="absolute top-4 left-4 w-4 h-4 text-indigo-200" />
-               <div className="pl-6 pr-8">
+            {/* 2. Örnek Cümle (DÜZELTME 2: Flexbox ile Hizalama) */}
+            <div className="relative bg-white p-5 rounded-2xl border border-indigo-100 shadow-sm group/sentence flex items-center gap-4">
+               {/* Tırnak İkonu */}
+               <div className="shrink-0 self-start mt-1">
+                 <Quote className="w-5 h-5 text-indigo-200 fill-indigo-50" />
+               </div>
+
+               {/* Cümle Metni */}
+               <div className="flex-1">
                  <p className="text-slate-600 italic text-base leading-relaxed font-medium">
                    "{wordObj.sentence}"
                  </p>
-                 
-                 {/* DÜZELTME: 
-                     1. opacity sınıfları kaldırıldı (Hep görünür).
-                     2. focus:outline-none eklendi (Tıklama izi yok).
-                 */}
-                 <button
-                    onClick={(e) => toggleSpeak(e, wordObj.sentence)}
-                    className="absolute bottom-3 right-3 p-1.5 bg-indigo-50 text-indigo-500 rounded-full transition-all hover:bg-indigo-100 focus:outline-none"
-                  >
-                    {playingText === wordObj.sentence ? <Square className="w-4 h-4 fill-indigo-500" /> : <Volume2 className="w-4 h-4" />}
-                  </button>
                </div>
+               
+               {/* Ses Butonu (Artık sağda, ortalı ve sabit) */}
+               <button
+                  onClick={(e) => toggleSpeak(e, wordObj.sentence)}
+                  className={`flex items-center justify-center shrink-0 p-2 rounded-full transition-all focus:outline-none ${
+                    playingText === wordObj.sentence
+                      ? 'bg-indigo-600 text-white shadow-md'
+                      : 'bg-indigo-50 text-indigo-500 hover:bg-indigo-100'
+                  }`}
+                >
+                  {playingText === wordObj.sentence ? <Square className="w-4 h-4 fill-current" /> : <Volume2 className="w-4 h-4" />}
+                </button>
             </div>
             
           </div>
