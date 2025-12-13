@@ -165,6 +165,13 @@ export default function Home() {
                 <span className="text-sm">Yazma Testi</span>
              </button>
 
+            {/* 7. Telaffuz */}
+             <button onClick={() => navigate("/pronunciation")} className="bg-rose-500 text-white font-bold py-4 px-4 rounded-xl shadow-md flex flex-col items-center gap-2 text-center active:scale-95 transition-transform">
+                <div className="bg-white/20 p-2 rounded-full"><Mic className="w-6 h-6"/></div>
+                <span className="text-sm">Telaffuz</span>
+             </button>
+        
+
              {/* 5. Quiz */}
              <button onClick={() => navigate("/quiz")} className="bg-amber-500 text-white font-bold py-4 px-4 rounded-xl shadow-md flex flex-col items-center gap-2 text-center active:scale-95 transition-transform">
                 <div className="bg-white/20 p-2 rounded-full"><HelpCircle className="w-6 h-6"/></div>
@@ -177,11 +184,7 @@ export default function Home() {
                 <span className="text-sm">Ters Quiz</span>
              </button>
 
-             {/* 7. Telaffuz */}
-             <button onClick={() => navigate("/pronunciation")} className="bg-rose-500 text-white font-bold py-4 px-4 rounded-xl shadow-md flex flex-col items-center gap-2 text-center active:scale-95 transition-transform">
-                <div className="bg-white/20 p-2 rounded-full"><Mic className="w-6 h-6"/></div>
-                <span className="text-sm">Telaffuz</span>
-             </button>
+             
 
              {/* 8. Boşluk Doldurma */}
              <button onClick={() => navigate("/gap-filling")} className="bg-cyan-600 text-white font-bold py-4 px-4 rounded-xl shadow-md flex flex-col items-center gap-2 text-center active:scale-95 transition-transform w-full col-span-2">
