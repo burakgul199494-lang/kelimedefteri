@@ -23,18 +23,19 @@ export default function Pronunciation() {
   const navigate = useNavigate();
 
   // --- STATE'LER ---
-  const [gameStage, setGameStage] = useState("selection"); 
+  const [gameStage, setGameStage] = useState("selection");
   const [sessionWords, setSessionWords] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [sessionScore, setSessionScore] = useState(0);
   const [activeMode, setActiveMode] = useState(null);
   
+  // Telaffuz State'leri
   const [isListening, setIsListening] = useState(false);
   const [spokenText, setSpokenText] = useState("");
   const [feedback, setFeedback] = useState(null); 
   const [isRoundDone, setIsRoundDone] = useState(false);
 
-  // Recognition Referansı
+  // Referans: Her render'da kaybolmasın diye
   const recognitionRef = useRef(null);
 
   // --- 1. KELİME HAVUZLARI ---
@@ -76,78 +77,89 @@ export default function Pronunciation() {
   };
 
   const resetRound = () => {
-    setIsListening(false);
+    stopMicrophone(); // Önceki bağlantıyı kesin kes
     setSpokenText("");
     setFeedback(null);
     setIsRoundDone(false);
   };
 
-  // --- 3. SES TANIMA KURULUMU ---
-  useEffect(() => {
-    // Tarayıcı desteği kontrolü
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    
-    if (SpeechRecognition) {
-      const recognition = new SpeechRecognition();
-      recognition.continuous = false; // Mobilde false olması daha kararlıdır
-      recognition.lang = "en-US";
-      recognition.interimResults = false;
-      recognition.maxAlternatives = 1;
+  // --- 3. MİKROFON YÖNETİMİ (MOBİL İÇİN OPTİMİZE EDİLDİ) ---
+  
+  // Mikrofonu Başlatan Fonksiyon
+  const startListening = () => {
+    // 1. Önce varsa eskiyi durdur
+    if (recognitionRef.current) {
+        recognitionRef.current.abort();
+    }
 
-      recognition.onstart = () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+        alert("Tarayıcınız ses tanımayı desteklemiyor (Chrome kullanın).");
+        return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = false; // Mobil için en sağlıklısı false
+    recognition.lang = "en-US";
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    recognition.onstart = () => {
         setIsListening(true);
         setFeedback(null);
-      };
+    };
 
-      recognition.onresult = (event) => {
+    recognition.onresult = (event) => {
         const transcript = event.results[0][0].transcript;
         setSpokenText(transcript);
         evaluatePronunciation(transcript);
         setIsListening(false);
-      };
+    };
 
-      // 🔥 HATA YAKALAMA GÜNCELLEMESİ 🔥
-      recognition.onerror = (event) => {
+    recognition.onerror = (event) => {
         setIsListening(false);
-        console.error("Speech Error:", event.error); // Konsola yazdır
-
-        let errorMessage = "Anlaşılamadı.";
-        
-        if (event.error === 'not-allowed') {
-            errorMessage = "Mikrofon izni verilmedi!";
-        } else if (event.error === 'no-speech') {
-            errorMessage = "Ses algılanmadı.";
-        } else if (event.error === 'network') {
-            errorMessage = "İnternet bağlantısı hatası.";
-        } else if (event.error === 'audio-capture') {
-            errorMessage = "Mikrofon bulunamadı.";
-        } else if (event.error !== 'aborted') {
-            errorMessage = "Hata oluştu, tekrar dene.";
+        if (event.error === 'no-speech') {
+            // Sessiz kaldıysa hata verme, sadece kapat
+            return; 
         }
-
         if (event.error !== 'aborted') {
-            setFeedback({ score: 0, type: "error", msg: errorMessage });
+            setFeedback({ score: 0, type: "error", msg: "Anlaşılamadı." });
         }
-      };
+    };
 
-      recognition.onend = () => {
+    recognition.onend = () => {
         setIsListening(false);
-      };
+    };
 
-      recognitionRef.current = recognition;
-    } else {
-        setFeedback({ score: 0, type: "error", msg: "Tarayıcınız bu özelliği desteklemiyor." });
+    recognitionRef.current = recognition;
+    recognition.start();
+  };
+
+  // Mikrofonu Durduran Fonksiyon
+  const stopMicrophone = () => {
+    if (recognitionRef.current) {
+        recognitionRef.current.abort(); // stop yerine abort daha keskin bir çözüm
+        recognitionRef.current = null;
     }
+    setIsListening(false);
+  };
 
-    // Cleanup
+  // Butona basınca çalışacak toggle
+  const toggleMic = () => {
+    if (isListening) {
+        stopMicrophone();
+    } else {
+        startListening();
+    }
+  };
+
+  // Sayfadan çıkarken temizle
+  useEffect(() => {
     return () => {
-        if (recognitionRef.current) {
-            recognitionRef.current.abort(); 
-        }
-        setIsListening(false);
+        stopMicrophone();
         window.speechSynthesis.cancel();
     };
-  }, [currentIndex, gameStage]);
+  }, []);
 
   // --- 4. PUANLAMA MANTIĞI ---
   const evaluatePronunciation = (spoken) => {
@@ -186,28 +198,9 @@ export default function Pronunciation() {
     setIsRoundDone(true);
   };
 
-  // --- 5. AKSİYONLAR ---
-  const toggleMic = () => {
-    if (!recognitionRef.current) {
-        alert("Mikrofon desteği yok veya engellendi.");
-        return;
-    }
-
-    if (isListening) {
-      recognitionRef.current.stop();
-    } else {
-      setSpokenText("");
-      setFeedback(null);
-      try {
-          recognitionRef.current.start();
-      } catch (error) {
-          console.error("Mic start error:", error);
-      }
-    }
-  };
-
+  // --- 5. DİĞER AKSİYONLAR ---
   const handleNext = () => {
-    if (recognitionRef.current) recognitionRef.current.abort();
+    stopMicrophone(); // Sonraki soruya geçerken mikrofonu öldür
     
     if (currentIndex + 1 < sessionWords.length) {
       setCurrentIndex(p => p + 1);
@@ -219,7 +212,7 @@ export default function Pronunciation() {
   };
 
   const handleQuitEarly = () => {
-      if (recognitionRef.current) recognitionRef.current.abort(); 
+      stopMicrophone();
       if (sessionScore > 0) addScore(sessionScore); 
       setGameStage("finished"); 
   };
