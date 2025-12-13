@@ -159,6 +159,25 @@ export default function Home() {
 
           {/* DİĞER OYUNLAR */}
           <div className="grid grid-cols-2 gap-3">
+
+           {/* 5. Quiz */}
+             <button onClick={() => navigate("/quiz")} className="bg-amber-500 text-white font-bold py-4 px-4 rounded-xl shadow-md flex flex-col items-center gap-2 text-center active:scale-95 transition-transform">
+                <div className="bg-white/20 p-2 rounded-full"><HelpCircle className="w-6 h-6"/></div>
+                <span className="text-sm">Quiz</span>
+             </button>
+
+             {/* 6. Ters Quiz (YENİ EKLENDİ) */}
+             <button onClick={() => navigate("/quiz2")} className="bg-emerald-500 text-white font-bold py-4 px-4 rounded-xl shadow-md flex flex-col items-center gap-2 text-center active:scale-95 transition-transform">
+                <div className="bg-white/20 p-2 rounded-full"><Languages className="w-6 h-6"/></div>
+                <span className="text-sm">Ters Quiz</span>
+             </button>
+
+
+
+
+
+
+            
              {/* 4. Yazma Testi */}
              <button onClick={() => navigate("/writing")} className="bg-purple-600 text-white font-bold py-4 px-4 rounded-xl shadow-md flex flex-col items-center gap-2 text-center active:scale-95 transition-transform">
                 <div className="bg-white/20 p-2 rounded-full"><Edit className="w-6 h-6"/></div>
@@ -172,17 +191,7 @@ export default function Home() {
              </button>
         
 
-             {/* 5. Quiz */}
-             <button onClick={() => navigate("/quiz")} className="bg-amber-500 text-white font-bold py-4 px-4 rounded-xl shadow-md flex flex-col items-center gap-2 text-center active:scale-95 transition-transform">
-                <div className="bg-white/20 p-2 rounded-full"><HelpCircle className="w-6 h-6"/></div>
-                <span className="text-sm">Quiz</span>
-             </button>
-
-             {/* 6. Ters Quiz (YENİ EKLENDİ) */}
-             <button onClick={() => navigate("/quiz2")} className="bg-emerald-500 text-white font-bold py-4 px-4 rounded-xl shadow-md flex flex-col items-center gap-2 text-center active:scale-95 transition-transform">
-                <div className="bg-white/20 p-2 rounded-full"><Languages className="w-6 h-6"/></div>
-                <span className="text-sm">Ters Quiz</span>
-             </button>
+            
 
              
 
