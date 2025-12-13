@@ -5,11 +5,18 @@ export default function WordCard({ wordObj }) {
   const [isFlipped, setIsFlipped] = useState(false);
   const [playingText, setPlayingText] = useState(null);
 
-  // 1. Kelime değişince resetle
+  // 1. KELİME DEĞİŞTİĞİNDE VEYA KART EKRANDAN GİTTİĞİNDE (UNMOUNT)
   useEffect(() => {
+    // Yeni kelime geldiğinde sıfırla
     window.speechSynthesis.cancel();
     setPlayingText(null);
     setIsFlipped(false);
+
+    // TEMİZLİK FONKSİYONU (CLEANUP)
+    // Bu kart ekrandan kaldırılırsa (Bitir butonu, sayfa değişimi vb.) çalışır.
+    return () => {
+      window.speechSynthesis.cancel();
+    };
   }, [wordObj]);
 
   // 2. Ses Fonksiyonu
