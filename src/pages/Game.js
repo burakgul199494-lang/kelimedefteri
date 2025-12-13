@@ -9,9 +9,9 @@ import {
   Check,
   CheckCheck,
   Trophy,
-  RotateCcw, // Tekrar ikonu
-  Brain,     // Öğrenme ikonu
-  Hourglass, // Bekleme ikonu
+  RotateCcw,
+  Brain,
+  Hourglass,
   Layers
 } from "lucide-react";
 
@@ -39,16 +39,26 @@ export default function Game() {
     const all = getAllWords();
     const now = new Date();
 
-    // 1. ÖĞRENME MODU: Bilinenlerde OLMAYAN kelimeler
-    // (Henüz 'Biliyorum' denmemiş, havuzdaki kelimeler)
-    const learnPool = all.filter(w => !knownWordIds.includes(w.id));
+    // Kuyruktaki kelimelerin ID'lerini al (Performans ve Kontrol için)
+    // learningQueue undefined gelirse boş dizi ata
+    const queueIds = learningQueue ? learningQueue.map(q => q.wordId) : [];
 
-    // 2. TEKRAR MODU: Bilinenlerde OLAN kelimeler
-    // (Daha önce 'Biliyorum' denmiş, pekiştirilecek kelimeler)
-    const reviewPool = all.filter(w => knownWordIds.includes(w.id));
+    // 1. ÖĞRENME MODU (Kalanlar): 
+    // Bilinenlerde YOK --VE-- Kuyrukta (Beklemede/Tekrarda) YOK
+    const learnPool = all.filter(w => 
+        !knownWordIds.includes(w.id) && 
+        !queueIds.includes(w.id)
+    );
 
-    // 3. BEKLEME LİSTESİ: LearningQueue'da olan ve tarihi GELECEKTE olanlar
-    // (Sistemin otomatik ertelediği kelimeler - Zorla çalışmak için)
+    // 2. TEKRAR MODU (Sırası Gelmiş Olanlar):
+    // Kuyrukta VAR --VE-- Zamanı ŞİMDİ veya GEÇMİŞSE
+    const reviewPool = all.filter(w => {
+        const q = learningQueue ? learningQueue.find(item => item.wordId === w.id) : null;
+        return q && new Date(q.nextReview) <= now;
+    });
+
+    // 3. BEKLEME LİSTESİ (Gelecekteki Tekrarlar):
+    // Kuyrukta VAR --VE-- Zamanı GELECEKTEYSE
     const waitingPool = all.filter(w => {
         const q = learningQueue ? learningQueue.find(item => item.wordId === w.id) : null;
         return q && new Date(q.nextReview) > now;
@@ -162,7 +172,7 @@ export default function Game() {
           {/* --- 3 MOD BUTONU --- */}
           <div className="space-y-4">
             
-            {/* 1. TEKRAR MODU (Öğrendiklerim) */}
+            {/* 1. TEKRAR MODU (Öğrendiklerim -> Değişti: Artık Sırası Gelenler) */}
             <button 
               onClick={() => startSession("review")}
               disabled={reviewPool.length === 0}
@@ -175,7 +185,7 @@ export default function Game() {
                   </div>
                   <div className="text-left">
                     <div className="font-bold text-xl text-slate-800">Tekrar Modu</div>
-                    <div className="text-sm text-slate-500">Öğrendiğin kelimeleri pekiştir</div>
+                    <div className="text-sm text-slate-500">Unutmadan tekrar et</div>
                   </div>
                 </div>
                 <div className="text-2xl font-black text-orange-600">{reviewPool.length}</div>
