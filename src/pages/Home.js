@@ -7,7 +7,7 @@ import {
   Brain, Flame, Play, Book, 
   Edit, HelpCircle, 
   Settings, Trophy,
-  Star, Mic, Quote, Hourglass 
+  Star, Mic, Quote, Hourglass // Hourglass eklendi
 } from "lucide-react"; 
 import ProfileModal from "../components/ProfileModal"; 
 import LeaderboardModal from "../components/LeaderboardModal";
@@ -22,20 +22,19 @@ export default function Home() {
   
   const allWords = getAllWords();
   const totalWords = allWords.length;
-  
+
   // --- HESAPLAMALAR ---
   const learnedCount = knownWordIds.length;
   
   // Beklemede: learningQueue içinde olup tarihi henüz gelmeyenler
   const now = new Date();
-  const waitingCount = learningQueue.filter(item => new Date(item.nextReview) > now).length;
+  const waitingCount = learningQueue ? learningQueue.filter(item => new Date(item.nextReview) > now).length : 0;
   
-  // Kalan (Öğreneceğim): Toplam - Öğrenilenler
+  // Kalan: Toplam - Öğrenilen
   const remainingCount = totalWords - learnedCount;
 
-  // İlerleme Yüzdesi
   const progressPercentage = totalWords > 0 ? (learnedCount / totalWords) * 100 : 0;
-
+  
   const myScore = leaderboardData.find(u => u.id === user?.uid)?.score || 0;
 
   const handleLogout = async () => { await auth.signOut(); navigate("/login"); };
@@ -91,45 +90,35 @@ export default function Home() {
           <p className="text-slate-500 mt-2 text-sm">Merhaba, <span className="font-bold text-indigo-600">{user?.displayName || user?.email}</span></p>
         </div>
 
-        {/* İlerleme Kartı (Tıklanabilir İstatistikler) */}
+        {/* İlerleme Kartı (GÜNCELLENDİ: 3 Tıklanabilir Bölüm) */}
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
            <div className="flex justify-between items-end mb-2">
               <span className="text-sm font-medium text-slate-500">Genel İlerleme</span>
               <span className="text-2xl font-bold text-indigo-600">%{progressPercentage.toFixed(1)}</span>
            </div>
-           <div className="w-full bg-slate-100 rounded-full h-3 mb-6">
+           <div className="w-full bg-slate-100 rounded-full h-3 mb-4">
               <div className="bg-indigo-600 h-3 rounded-full transition-all duration-500" style={{ width: `${progressPercentage}%` }}></div>
            </div>
            
-           {/* İstatistik Butonları */}
            <div className="flex justify-between text-sm divide-x divide-slate-100">
-              {/* 1. ÖĞRENİLEN */}
-              <div 
-                onClick={() => navigate("/list/known")}
-                className="text-center flex-1 px-1 cursor-pointer hover:bg-slate-50 rounded-lg transition-colors group"
-              >
+              {/* 1. Öğrenilen */}
+              <div onClick={() => navigate("/list/known")} className="text-center flex-1 px-1 cursor-pointer hover:bg-slate-50 rounded transition-colors group">
                  <div className="font-bold text-slate-800 group-hover:text-green-600 transition-colors">{learnedCount}</div>
-                 <div className="text-slate-400 text-xs mt-1">Öğrenilen</div>
+                 <div className="text-slate-400 text-xs">Öğrenilen</div>
               </div>
 
-              {/* 2. BEKLEMEDE (YENİ) */}
-              <div 
-                onClick={() => navigate("/list/waiting")}
-                className="text-center flex-1 px-1 cursor-pointer hover:bg-slate-50 rounded-lg transition-colors group"
-              >
+              {/* 2. Beklemede (YENİ) */}
+              <div onClick={() => navigate("/list/waiting")} className="text-center flex-1 px-1 cursor-pointer hover:bg-slate-50 rounded transition-colors group">
                  <div className="font-bold text-slate-800 group-hover:text-amber-500 transition-colors flex items-center justify-center gap-1">
-                    {waitingCount} <Hourglass size={12} className="text-amber-400"/>
+                    {waitingCount} <Hourglass size={10} className="text-amber-400"/>
                  </div>
-                 <div className="text-slate-400 text-xs mt-1">Beklemede</div>
+                 <div className="text-slate-400 text-xs">Beklemede</div>
               </div>
 
-              {/* 3. KALAN */}
-              <div 
-                onClick={() => navigate("/list/unknown")}
-                className="text-center flex-1 px-1 cursor-pointer hover:bg-slate-50 rounded-lg transition-colors group"
-              >
+              {/* 3. Kalan */}
+              <div onClick={() => navigate("/list/unknown")} className="text-center flex-1 px-1 cursor-pointer hover:bg-slate-50 rounded transition-colors group">
                  <div className="font-bold text-slate-800 group-hover:text-blue-500 transition-colors">{remainingCount}</div>
-                 <div className="text-slate-400 text-xs mt-1">Kalan</div>
+                 <div className="text-slate-400 text-xs">Kalan</div>
               </div>
            </div>
         </div>
@@ -137,21 +126,18 @@ export default function Home() {
         {/* --- MENÜ LİSTESİ --- */}
         <div className="space-y-3 pb-8">
           
-          {/* Admin Butonu (Varsa Göster) */}
           {isAdmin && (
             <button onClick={() => navigate("/admin")} className="w-full bg-slate-800 text-white font-bold py-3 px-6 rounded-xl shadow-md flex items-center justify-between mb-3 group hover:bg-slate-900 transition-colors">
                <div className="flex items-center gap-3"><div className="bg-white/20 p-2 rounded-lg"><Shield className="w-5 h-5 text-yellow-400"/></div><div className="text-left"><div className="text-base">Admin Paneli</div></div></div>
             </button>
           )}
 
-          {/* 1. Sözlük */}
+          {/* Sözlük */}
           <button onClick={() => navigate("/dictionary")} className="w-full bg-sky-500 text-white font-bold py-4 px-6 rounded-xl shadow-md flex items-center justify-between group active:scale-95 transition-transform">
              <div className="flex items-center gap-3"><div className="bg-white/20 p-2 rounded-lg"><Book className="w-6 h-6"/></div><div className="text-left"><div className="text-lg">Sözlük</div><div className="text-xs text-sky-100 font-normal">Kelime ara ve öğren</div></div></div>
           </button>
 
-          {/* --- OYUNLAR BÖLÜMÜ --- */}
-          
-          {/* 3. Flash Kart */}
+          {/* Flash Kart */}
           <button onClick={() => navigate("/game")} className="w-full bg-indigo-600 text-white font-bold py-5 px-6 rounded-2xl shadow-lg flex items-center justify-between group active:scale-95 transition-transform mb-2">
              <div className="flex items-center gap-4">
                 <div className="bg-white/20 p-3 rounded-xl"><Play className="w-8 h-8" fill="currentColor"/></div>
@@ -186,9 +172,8 @@ export default function Home() {
              </button>
           </div>
 
-          <div className="h-px bg-slate-200 my-2"></div>
-
-          {/* ALT BUTONLAR (SİLİNEN, ÖĞRENİLEN, ÖĞRENECEĞİM) TAMAMEN KALDIRILDI */}
+          {/* DİKKAT: ALT BUTONLAR (Öğreneceğim, Öğrendiğim, Silinen) BURADAN SİLİNDİ */}
+          
         </div>
       </div>
     </div>
