@@ -8,6 +8,7 @@ import {
   Home,
   Target,
   Check,
+  CheckCheck, // YENİ: Çift tik ikonu eklendi
   Trophy,
   BookOpen,
   Clock,
@@ -25,11 +26,12 @@ export default function Game() {
   const [sessionWords, setSessionWords] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [swipeDirection, setSwipeDirection] = useState(null);
-  const [stats, setStats] = useState({ learned: 0, review: 0 });
+  const [stats, setStats] = useState({ learned: 0, review: 0, mastered: 0 }); // YENİ: Mastered istatistiği
   const [selectedTag, setSelectedTag] = useState(null);
   const [includeResting, setIncludeResting] = useState(false);
 
   const POINTS_PER_CARD = 5;
+  const POINTS_MASTER = 10; // YENİ: Tamamen bilince ekstra puan
 
   // ---------------------------------------
   // --- ETİKET SAYIMLARI (HAZIR/DİNLENME) ---
@@ -93,28 +95,35 @@ export default function Game() {
     const shuffled = [...playableWords].sort(() => 0.5 - Math.random());
     setSessionWords(shuffled.slice(0, 20));
     setCurrentIndex(0);
-    setStats({ learned: 0, review: 0 });
+    setStats({ learned: 0, review: 0, mastered: 0 });
     setGameStage("playing");
   };
 
   // --------------------------
-  // --- KART KAYDIRMA ---
+  // --- KART KAYDIRMA / CEVAPLAMA ---
   // --------------------------
-  const handleSwipe = async (dir) => {
+  // type: 'know' | 'dont_know' | 'master'
+  // dir: 'left' | 'right' | 'up'
+  const handleAnswerAction = async (dir, type) => {
     if (currentIndex >= sessionWords.length) return;
 
-    setSwipeDirection(dir);
+    setSwipeDirection(dir); // Animasyon yönünü belirle
     const currentWord = sessionWords[currentIndex];
 
     setTimeout(async () => {
-      if (dir === "right") {
-        await handleSmartLearn(currentWord.id, "know");
+      // 1. Backend İşlemi
+      await handleSmartLearn(currentWord.id, type);
+
+      // 2. İstatistik Güncelleme
+      if (type === "know") {
         setStats((p) => ({ ...p, learned: p.learned + 1 }));
-      } else {
-        await handleSmartLearn(currentWord.id, "dont_know");
+      } else if (type === "dont_know") {
         setStats((p) => ({ ...p, review: p.review + 1 }));
+      } else if (type === "master") {
+        setStats((p) => ({ ...p, mastered: p.mastered + 1, learned: p.learned + 1 }));
       }
 
+      // 3. Sonraki Soruya Geçiş
       if (currentIndex + 1 < sessionWords.length) {
         setCurrentIndex((p) => p + 1);
         setSwipeDirection(null);
@@ -122,10 +131,15 @@ export default function Game() {
         setGameStage("summary");
         setSwipeDirection(null);
 
-        const totalPoints = sessionWords.length * POINTS_PER_CARD;
+        // Puan hesaplama (Master puanı eklenebilir)
+        let totalPoints = 0;
+        // Basit hesap: Öğrenilenler * 5, ama master için ekstra mantık kurabiliriz
+        // Şimdilik standart puan ekliyorum:
+        totalPoints = sessionWords.length * POINTS_PER_CARD; 
+        
         if (totalPoints > 0) addScore(totalPoints);
       }
-    }, 300);
+    }, 300); // Animasyon süresi
   };
 
   // ----------------------------
@@ -322,6 +336,18 @@ export default function Game() {
               </div>
             </div>
 
+            {/* YENİ: Master edilenleri de gösterelim (opsiyonel, learned içine dahil ettik ama ayrı da gösterebiliriz) */}
+            {stats.mastered > 0 && (
+               <div>
+               <div className="text-3xl font-bold text-blue-500">
+                 {stats.mastered}
+               </div>
+               <div className="text-xs text-slate-500 font-bold uppercase">
+                 Full
+               </div>
+             </div>
+            )}
+
             <div>
               <div className="text-3xl font-bold text-orange-500">
                 {stats.review}
@@ -440,9 +466,14 @@ export default function Game() {
                 swipeDirection === "right"
                   ? "translate-x-24 rotate-6 opacity-0"
                   : ""
+              }
+              ${
+                // YENİ: Yukarı kaydırma animasyonu
+                swipeDirection === "up"
+                  ? "-translate-y-24 scale-90 opacity-0"
+                  : ""
               }`}
           >
-            {/* 🔥 ÖNEMLİ: KEY EKLENDİ, ÇEVİRİ SORUNU TAMAMEN ÇÖZÜLDÜ */}
             <WordCard key={currentCard.id} wordObj={currentCard} />
           </div>
         )}
@@ -450,24 +481,38 @@ export default function Game() {
 
       {/* BUTONLAR */}
       <div className="pb-10 px-6 max-w-md mx-auto w-full">
-        <div className="flex gap-4 justify-center">
+        <div className="flex gap-3 justify-center">
+          
+          {/* 1. BİLMİYORUM */}
           <button
-            onClick={() => handleSwipe("left")}
+            onClick={() => handleAnswerAction("left", "dont_know")}
             disabled={!!swipeDirection}
-            className="flex-1 bg-white border-2 border-orange-100 hover:bg-orange-50 text-orange-500 font-bold py-4 rounded-2xl shadow-sm flex flex-col items-center gap-1"
+            className="flex-1 bg-white border-2 border-orange-100 hover:bg-orange-50 text-orange-500 font-bold py-4 rounded-2xl shadow-sm flex flex-col items-center gap-1 active:scale-95 transition-transform"
           >
             <X className="w-6 h-6" />
-            <span>Bilmiyorum</span>
+            <span className="text-sm">Bilmiyorum</span>
           </button>
 
+          {/* 2. BİLİYORUM (Normal) */}
           <button
-            onClick={() => handleSwipe("right")}
+            onClick={() => handleAnswerAction("right", "know")}
             disabled={!!swipeDirection}
-            className="flex-1 bg-white border-2 border-green-100 hover:bg-green-50 text-green-600 font-bold py-4 rounded-2xl shadow-sm flex flex-col items-center gap-1"
+            className="flex-1 bg-white border-2 border-green-100 hover:bg-green-50 text-green-600 font-bold py-4 rounded-2xl shadow-sm flex flex-col items-center gap-1 active:scale-95 transition-transform"
           >
             <Check className="w-6 h-6" />
-            <span>Biliyorum</span>
+            <span className="text-sm">Biliyorum</span>
           </button>
+          
+          {/* 3. TAMAMEN BİLİYORUM (YENİ BUTON) */}
+          <button
+            onClick={() => handleAnswerAction("up", "master")}
+            disabled={!!swipeDirection}
+            className="flex-1 bg-white border-2 border-blue-100 hover:bg-blue-50 text-blue-600 font-bold py-4 rounded-2xl shadow-sm flex flex-col items-center gap-1 active:scale-95 transition-transform"
+          >
+            <CheckCheck className="w-6 h-6" />
+            <span className="text-sm">Tamamen</span>
+          </button>
+
         </div>
 
         <button
