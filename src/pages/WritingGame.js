@@ -23,18 +23,33 @@ export default function WritingGame() {
   // Puanlama ve Hata Takibi
   const [hintCount, setHintCount] = useState(0);
   const [currentWordPoints, setCurrentWordPoints] = useState(5); 
-  const [mistakeCount, setMistakeCount] = useState(0); // YENİ: Hata Sayacı
+  const [mistakeCount, setMistakeCount] = useState(0); 
 
-  // --- KELİME HAVUZLARI ---
+  // --- KELİME HAVUZLARI (DÜZELTİLDİ - SRS MANTIĞI) ---
   const getWordPools = () => {
     const all = getAllWords();
     const validWords = all.filter(w => w.definitions && w.definitions[0]?.meaning);
     const now = new Date();
 
-    const learnPool = validWords.filter(w => !knownWordIds.includes(w.id));
-    const reviewPool = validWords.filter(w => knownWordIds.includes(w.id));
+    // Kuyruktaki kelimelerin ID'leri
+    const queueIds = learningQueue ? learningQueue.map(q => q.wordId) : [];
+
+    // 1. ÖĞRENME MODU (Kalanlar)
+    // Kural: Öğrenilenlerde YOK --VE-- Kuyrukta YOK
+    const learnPool = validWords.filter(w => 
+        !knownWordIds.includes(w.id) && 
+        !queueIds.includes(w.id)
+    );
+
+    // 2. TEKRAR MODU (Sırası Gelenler)
+    const reviewPool = validWords.filter(w => {
+        const q = learningQueue.find(item => item.wordId === w.id);
+        return q && new Date(q.nextReview) <= now;
+    });
+
+    // 3. BEKLEME LİSTESİ (Gelecekteki Tekrarlar)
     const waitingPool = validWords.filter(w => {
-        const q = learningQueue ? learningQueue.find(item => item.wordId === w.id) : null;
+        const q = learningQueue.find(item => item.wordId === w.id);
         return q && new Date(q.nextReview) > now;
     });
 
@@ -91,7 +106,7 @@ export default function WritingGame() {
       
       // Resetlemeler
       setHintCount(0);
-      setMistakeCount(0); // Hataları sıfırla
+      setMistakeCount(0); 
       setCurrentWordPoints(5); 
     }
   }, [currentIndex, gameStatus]);
@@ -129,29 +144,25 @@ export default function WritingGame() {
       setCompletedLetters(newCompleted);
 
       if (newCompleted.length === targetWord.length) {
-        handleWordComplete(); // Başarılı bitiş
+        handleWordComplete(); 
       }
     } else {
       // YANLIŞ HARF
       const newMistakes = mistakeCount + 1;
       setMistakeCount(newMistakes);
       
-      // Titreme Efekti
       setWrongAnimationId(letterObj.id);
       setTimeout(() => setWrongAnimationId(null), 500);
 
       // LİMİT KONTROLÜ (2 HATA)
       if (newMistakes >= 2) {
-          // Hata hakkı doldu -> BAŞARISIZ BİTİŞ
-          setCurrentWordPoints(0); // Puan sıfırlanır
+          setCurrentWordPoints(0); 
           
-          // Animasyonun bitmesini bekle ve doğrusunu aç
           setTimeout(() => {
-              setCompletedLetters(targetWord.split('')); // Doğrusunu yaz
+              setCompletedLetters(targetWord.split('')); 
               setIsWordComplete(true);
               speak(targetWord);
               
-              // Biraz daha uzun bekle ki kullanıcı doğrusunu görsün
               setTimeout(() => {
                   if (currentIndex + 1 < questions.length) {
                       setCurrentIndex(p => p + 1);
@@ -229,7 +240,7 @@ export default function WritingGame() {
                 </div>
 
                 <div className="space-y-4">
-                    {/* MOD BUTONLARI (Aynı) */}
+                    {/* Tekrar Modu */}
                     <button onClick={() => startSession('review')} disabled={reviewPool.length === 0} className="w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 hover:border-orange-200 hover:bg-orange-50 transition-all group active:scale-95 disabled:opacity-60">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-4">
@@ -240,6 +251,7 @@ export default function WritingGame() {
                         </div>
                     </button>
 
+                    {/* Öğrenme Modu */}
                     <button onClick={() => startSession('learn')} disabled={learnPool.length === 0} className="w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 hover:border-indigo-200 hover:bg-indigo-50 transition-all group active:scale-95 disabled:opacity-60">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-4">
@@ -250,6 +262,7 @@ export default function WritingGame() {
                         </div>
                     </button>
 
+                    {/* Bekleme Modu */}
                     <button onClick={() => startSession('waiting')} disabled={waitingPool.length === 0} className="w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 hover:border-slate-300 hover:bg-slate-50 transition-all group active:scale-95 disabled:opacity-60">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-4">
