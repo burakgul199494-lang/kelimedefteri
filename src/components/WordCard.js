@@ -5,15 +5,12 @@ export default function WordCard({ wordObj }) {
   const [isFlipped, setIsFlipped] = useState(false);
   const [playingText, setPlayingText] = useState(null);
 
-  // 1. KELİME DEĞİŞTİĞİNDE VEYA KART EKRANDAN GİTTİĞİNDE (UNMOUNT)
+  // 1. Kelime değişince resetle & Temizlik
   useEffect(() => {
-    // Yeni kelime geldiğinde sıfırla
     window.speechSynthesis.cancel();
     setPlayingText(null);
     setIsFlipped(false);
 
-    // TEMİZLİK FONKSİYONU (CLEANUP)
-    // Bu kart ekrandan kaldırılırsa (Bitir butonu, sayfa değişimi vb.) çalışır.
     return () => {
       window.speechSynthesis.cancel();
     };
@@ -41,7 +38,6 @@ export default function WordCard({ wordObj }) {
 
   const handleFlip = () => setIsFlipped(!isFlipped);
 
-  // Sadece ilk tanımı alıyoruz
   const mainDefinition = wordObj.definitions && wordObj.definitions[0];
 
   return (
@@ -67,7 +63,7 @@ export default function WordCard({ wordObj }) {
           `}
         >
           
-          {/* HERO BÖLÜMÜ (Etiketsiz, sadece kelime) */}
+          {/* HERO BÖLÜMÜ */}
           <div className="relative bg-gradient-to-br from-indigo-600 to-violet-700 p-6 flex flex-col items-center justify-center min-h-[160px] text-center shrink-0">
             <div className="absolute top-0 left-0 w-full h-full opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
             
@@ -77,7 +73,8 @@ export default function WordCard({ wordObj }) {
               </h1>
               <button
                 onClick={(e) => toggleSpeak(e, wordObj.word)}
-                className="p-3 bg-white/20 hover:bg-white text-white hover:text-indigo-600 rounded-full backdrop-blur-md transition-all active:scale-90 shrink-0"
+                // DÜZELTME: focus:outline-none eklendi (İz kalmasın diye)
+                className="p-3 bg-white/20 hover:bg-white text-white hover:text-indigo-600 rounded-full backdrop-blur-md transition-all active:scale-90 shrink-0 focus:outline-none"
               >
                 {playingText === wordObj.word ? <Square className="w-6 h-6 fill-current" /> : <Volume2 className="w-6 h-6" />}
               </button>
@@ -87,7 +84,7 @@ export default function WordCard({ wordObj }) {
           {/* İÇERİK GÖVDESİ */}
           <div className="flex-1 flex flex-col p-6 gap-5 bg-slate-50/50 justify-center">
             
-            {/* 1. Tek Tanım (Definition) */}
+            {/* 1. Tek Tanım */}
             {mainDefinition && (
               <div className={`relative p-5 rounded-2xl border bg-white border-indigo-100 shadow-sm`}>
                 <div className="flex justify-between items-start mb-2">
@@ -96,7 +93,8 @@ export default function WordCard({ wordObj }) {
                   </span>
                   <button
                     onClick={(e) => toggleSpeak(e, mainDefinition.engExplanation)}
-                    className={`transition-colors ${playingText === mainDefinition.engExplanation ? 'text-indigo-600' : 'text-slate-400 hover:text-indigo-500'}`}
+                    // DÜZELTME: focus:outline-none eklendi
+                    className={`transition-colors focus:outline-none ${playingText === mainDefinition.engExplanation ? 'text-indigo-600' : 'text-slate-400 hover:text-indigo-500'}`}
                   >
                      {playingText === mainDefinition.engExplanation ? <Square className="w-4 h-4 fill-indigo-600" /> : <Volume2 className="w-4 h-4" />}
                   </button>
@@ -114,9 +112,14 @@ export default function WordCard({ wordObj }) {
                  <p className="text-slate-600 italic text-base leading-relaxed font-medium">
                    "{wordObj.sentence}"
                  </p>
+                 
+                 {/* DÜZELTME: 
+                     1. opacity sınıfları kaldırıldı (Hep görünür).
+                     2. focus:outline-none eklendi (Tıklama izi yok).
+                 */}
                  <button
                     onClick={(e) => toggleSpeak(e, wordObj.sentence)}
-                    className={`absolute bottom-3 right-3 p-1.5 bg-indigo-50 text-indigo-500 rounded-full transition-all hover:bg-indigo-100 ${playingText === wordObj.sentence ? 'opacity-100' : 'opacity-0 group-hover/sentence:opacity-100'}`}
+                    className="absolute bottom-3 right-3 p-1.5 bg-indigo-50 text-indigo-500 rounded-full transition-all hover:bg-indigo-100 focus:outline-none"
                   >
                     {playingText === wordObj.sentence ? <Square className="w-4 h-4 fill-indigo-500" /> : <Volume2 className="w-4 h-4" />}
                   </button>
