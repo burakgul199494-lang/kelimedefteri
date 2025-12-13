@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Volume2, RotateCw, BookOpen, Layers, Hash } from "lucide-react";
+import { Volume2, RotateCw, BookOpen } from "lucide-react";
 
 export default function WordCard({ wordObj }) {
   const [isFlipped, setIsFlipped] = useState(false);
@@ -22,6 +22,24 @@ export default function WordCard({ wordObj }) {
 
   // Gramer var mı kontrolü
   const hasGrammar = wordObj.v2 || wordObj.v3 || wordObj.plural || wordObj.vIng;
+
+  // Gramer etiketlerini oluşturmak için yardımcı fonksiyon
+  const renderGrammarTag = (label, value) => {
+    if (!value) return null;
+    return (
+      <div className="flex items-center gap-1 pl-2 pr-1 py-1 bg-slate-50 rounded border border-slate-200 text-slate-600 group/tag hover:border-indigo-200 transition-colors">
+        <span className="text-[9px] text-slate-400 font-bold uppercase mr-0.5">{label}:</span>
+        <span className="font-bold text-xs">{value}</span>
+        <button
+          onClick={(e) => speakText(e, value)}
+          className="p-1 ml-1 bg-white hover:bg-indigo-100 text-slate-400 hover:text-indigo-600 rounded-full shadow-sm transition-colors"
+          title={`${label} halini dinle`}
+        >
+          <Volume2 className="w-3 h-3" />
+        </button>
+      </div>
+    );
+  };
 
   return (
     <div 
@@ -62,14 +80,14 @@ export default function WordCard({ wordObj }) {
             </div>
           </div>
 
-          {/* 2. TANIMLAR LİSTESİ (Scrollable / Kaydırılabilir Alan) */}
+          {/* 2. TANIMLAR LİSTESİ (Scrollable) */}
           <div className="flex-1 overflow-y-auto pr-1 space-y-2 custom-scrollbar">
             {wordObj.definitions && wordObj.definitions.map((def, index) => (
               <div 
                 key={index} 
                 className={`p-3 rounded-xl border relative group/item transition-colors ${index === 0 ? 'bg-blue-50 border-blue-100' : 'bg-slate-50 border-slate-100'}`}
               >
-                {/* Tür Etiketi (Noun, Verb vs.) ve Ses */}
+                {/* Tür Etiketi ve Ses */}
                 <div className="flex justify-between items-start mb-1">
                   <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${index === 0 ? 'bg-blue-200 text-blue-700' : 'bg-slate-200 text-slate-600'}`}>
                     {def.type || (index + 1)}
@@ -94,12 +112,13 @@ export default function WordCard({ wordObj }) {
           {/* 3. ALT BİLGİLER (Gramer & Örnek - Sabit) */}
           <div className="mt-2 pt-2 border-t border-slate-100 shrink-0 space-y-2">
             
-            {/* Gramer */}
+            {/* --- GÜNCELLENEN KISIM: Gramer Butonları --- */}
             {hasGrammar && (
-              <div className="flex flex-wrap justify-center gap-2 text-xs">
-                {wordObj.v2 && <span className="px-2 py-1 bg-slate-50 rounded border border-slate-200 text-slate-600">V2: <b>{wordObj.v2}</b></span>}
-                {wordObj.v3 && <span className="px-2 py-1 bg-slate-50 rounded border border-slate-200 text-slate-600">V3: <b>{wordObj.v3}</b></span>}
-                {wordObj.plural && <span className="px-2 py-1 bg-slate-50 rounded border border-slate-200 text-slate-600">Plural: <b>{wordObj.plural}</b></span>}
+              <div className="flex flex-wrap justify-center gap-2">
+                {renderGrammarTag('Plural', wordObj.plural)}
+                {renderGrammarTag('V2', wordObj.v2)}
+                {renderGrammarTag('V3', wordObj.v3)}
+                {renderGrammarTag('V-Ing', wordObj.vIng)}
               </div>
             )}
 
@@ -108,6 +127,7 @@ export default function WordCard({ wordObj }) {
                <button
                   onClick={(e) => speakText(e, wordObj.sentence)}
                   className="mt-0.5 p-1 bg-white text-indigo-500 rounded-full shadow-sm hover:bg-indigo-50 shrink-0"
+                  title="Cümleyi Dinle"
                 >
                   <Volume2 className="w-3 h-3" />
                 </button>
@@ -172,7 +192,7 @@ export default function WordCard({ wordObj }) {
 
       </div>
       
-      {/* Scrollbar CSS'i (Bunu index.css'e de ekleyebilirsin ama burada da çalışır) */}
+      {/* Scrollbar CSS */}
       <style jsx>{`
         .custom-scrollbar::-webkit-scrollbar {
           width: 4px;
