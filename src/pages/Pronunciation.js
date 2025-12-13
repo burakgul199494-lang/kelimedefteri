@@ -14,7 +14,8 @@ import {
   CheckCircle2,
   AlertCircle,
   X,
-  Target // İkon eklendi
+  Target,
+  Layers // İkon eklendi
 } from "lucide-react";
 
 export default function Pronunciation() {
@@ -26,11 +27,12 @@ export default function Pronunciation() {
   const [sessionWords, setSessionWords] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [sessionScore, setSessionScore] = useState(0);
+  const [activeMode, setActiveMode] = useState(null); // Mod bilgisini tutmak için
   
   // Telaffuz State'leri
   const [isListening, setIsListening] = useState(false);
   const [spokenText, setSpokenText] = useState("");
-  const [feedback, setFeedback] = useState(null); // { score: 0-10, type: 'success'|'warning'|'error' }
+  const [feedback, setFeedback] = useState(null); 
   const [isRoundDone, setIsRoundDone] = useState(false);
 
   const recognitionRef = useRef(null);
@@ -40,13 +42,8 @@ export default function Pronunciation() {
     const all = getAllWords();
     const now = new Date();
 
-    // Öğrenme Modu (Bilinmeyenler)
     const learnPool = all.filter(w => !knownWordIds.includes(w.id) && !learningQueue.find(q => q.wordId === w.id));
-    
-    // Tekrar Modu (Bilinenler)
     const reviewPool = all.filter(w => knownWordIds.includes(w.id));
-    
-    // Bekleme Modu (Gelecekteki tekrarlar)
     const waitingPool = all.filter(w => {
         const q = learningQueue.find(item => item.wordId === w.id);
         return q && new Date(q.nextReview) > now;
@@ -59,6 +56,7 @@ export default function Pronunciation() {
 
   // --- 2. OYUNU BAŞLAT ---
   const startSession = (mode) => {
+    setActiveMode(mode); // Modu kaydet (Başlık için)
     let selectedPool = [];
     if (mode === "learn") selectedPool = learnPool;
     else if (mode === "review") selectedPool = reviewPool;
@@ -69,7 +67,6 @@ export default function Pronunciation() {
       return;
     }
 
-    // 10 Kelime Seç
     const selected = selectedPool.sort(() => 0.5 - Math.random()).slice(0, 10);
     setSessionWords(selected);
     setCurrentIndex(0);
@@ -116,7 +113,6 @@ export default function Pronunciation() {
       recognitionRef.current = recognition;
     }
 
-    // --- CLEANUP (Mikrofonu Kapat) ---
     return () => {
         if (recognitionRef.current) {
             recognitionRef.current.abort(); 
@@ -188,11 +184,10 @@ export default function Pronunciation() {
     }
   };
 
-  // YENİ: Erken Bitirme Fonksiyonu
   const handleQuitEarly = () => {
-      if (recognitionRef.current) recognitionRef.current.abort(); // Mikrofonu sustur
-      if (sessionScore > 0) addScore(sessionScore); // Puanı kaydet
-      setGameStage("finished"); // Bitiş ekranına git
+      if (recognitionRef.current) recognitionRef.current.abort(); 
+      if (sessionScore > 0) addScore(sessionScore); 
+      setGameStage("finished"); 
   };
 
   const speakWord = () => {
@@ -263,21 +258,42 @@ export default function Pronunciation() {
   }
 
   // ===========================
-  // === 2. BİTİŞ EKRANI ===
+  // === 2. BİTİŞ EKRANI (DÜZELTİLDİ) ===
   // ===========================
   if (gameStage === "finished") {
     const maxScore = sessionWords.length * 10;
+    
+    let modeTitle = "Oturum Tamamlandı!";
+    if (activeMode === 'learn') modeTitle = "Öğrenme Modu Bitti";
+    if (activeMode === 'review') modeTitle = "Tekrar Modu Bitti";
+    if (activeMode === 'waiting') modeTitle = "Bekleme Modu Bitti";
+
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
         <div className="bg-white p-8 rounded-3xl shadow-xl max-w-sm w-full text-center space-y-6">
            <div className="bg-purple-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto animate-bounce"><Trophy className="w-10 h-10 text-purple-600"/></div>
-           <h2 className="text-2xl font-bold text-slate-800">Telaffuz Testi Bitti!</h2>
+           <h2 className="text-2xl font-bold text-slate-800">{modeTitle}</h2>
+           
            <div className="py-6 bg-slate-50 rounded-2xl border border-slate-100">
              <div className="text-sm text-slate-400 font-bold uppercase">TOPLAM PUAN</div>
              <div className="text-5xl font-extrabold text-purple-600 mt-2">{sessionScore}</div>
              <div className="text-xs text-slate-400 mt-1">Maksimum: {maxScore}</div>
            </div>
-           <button onClick={() => setGameStage("selection")} className="w-full bg-white border-2 border-slate-200 text-slate-600 font-bold py-3 rounded-xl hover:bg-slate-50">Ana Sayfa</button>
+
+           {/* BUTONLAR */}
+           <button 
+                onClick={() => setGameStage("selection")} 
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-xl flex items-center justify-center gap-2 mb-3 shadow-lg shadow-blue-200"
+           >
+                <Layers className="w-5 h-5" /> Başka Mod Seç
+           </button>
+           
+           <button 
+                onClick={() => navigate("/")} 
+                className="w-full bg-white border-2 border-slate-200 text-slate-600 font-bold py-3 px-6 rounded-xl hover:bg-slate-50 flex items-center justify-center gap-2"
+           >
+                <Home className="w-5 h-5" /> Ana Sayfa
+           </button>
         </div>
       </div>
     );
@@ -296,7 +312,9 @@ export default function Pronunciation() {
             {/* Header */}
             <div className="flex justify-between items-center">
                 <button onClick={handleQuitEarly} className="p-2 bg-white rounded-full shadow-sm hover:bg-slate-100"><X className="w-5 h-5 text-slate-400"/></button>
-                <div className="font-bold text-indigo-600">{currentIndex + 1} / {sessionWords.length}</div>
+                <div className="font-bold text-indigo-600">
+                    {activeMode === 'review' ? 'Tekrar' : activeMode === 'learn' ? 'Öğrenme' : 'Bekleme'}: {currentIndex + 1} / {sessionWords.length}
+                </div>
                 <div className="flex items-center gap-1 bg-amber-100 text-amber-700 px-3 py-1 rounded-full font-bold text-sm"><Trophy className="w-4 h-4"/> {sessionScore}</div>
             </div>
             <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden"><div className="bg-indigo-500 h-full transition-all duration-500" style={{width:`${progress}%`}}></div></div>
@@ -355,7 +373,7 @@ export default function Pronunciation() {
                 )}
             </div>
 
-            {/* BİTİR VE ÇIK BUTONU (YENİ) */}
+            {/* BİTİR VE ÇIK BUTONU */}
             <button onClick={handleQuitEarly} className="w-full mt-6 flex items-center justify-center gap-2 text-slate-400 hover:text-red-500 transition-colors text-sm font-medium mx-auto">
                 <Target className="w-4 h-4" /> Bitir (Puanı Al ve Çık)
             </button>
