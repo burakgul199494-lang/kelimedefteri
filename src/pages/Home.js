@@ -8,7 +8,8 @@ import {
   Edit, HelpCircle, 
   Settings, Trophy,
   Star, Mic, Quote, Shield,
-  Hourglass
+  Hourglass,
+  Languages // YENİ: Ters Quiz ikonu için eklendi
 } from "lucide-react"; 
 import ProfileModal from "../components/ProfileModal"; 
 import LeaderboardModal from "../components/LeaderboardModal";
@@ -23,32 +24,21 @@ export default function Home() {
   const allWords = getAllWords();
   const totalWords = allWords.length;
 
-  // --- HESAPLAMALAR (DÜZELTİLDİ) ---
-  
-  // 1. ÖĞRENİLENLER:
-  // HATA ÇÖZÜMÜ: Sadece knownWordIds.length alırsak silinen kelimelerin ID'lerini de sayar.
-  // Bu yüzden, sistemdeki mevcut kelimeler (allWords) ile eşleşenleri sayıyoruz.
+  // --- HESAPLAMALAR ---
   const validKnownWords = allWords.filter(w => knownWordIds.includes(w.id));
   const learnedCount = validKnownWords.length;
   
-  // 2. BEKLEMEDE:
-  // Aynı mantıkla, kuyruktaki kelimenin sistemde hala var olup olmadığına bakıyoruz.
   const now = new Date();
   const waitingCount = learningQueue && Array.isArray(learningQueue) 
     ? learningQueue.filter(item => {
-        const exists = allWords.some(w => w.id === item.wordId); // Kelime hala var mı?
-        const isFuture = new Date(item.nextReview) > now;        // Zamanı gelmemiş mi?
+        const exists = allWords.some(w => w.id === item.wordId);
+        const isFuture = new Date(item.nextReview) > now;
         return exists && isFuture;
       }).length 
     : 0;
   
-  // 3. KALAN:
-  // Toplam mevcut kelimeden, (geçerli) öğrenilenleri çıkarıyoruz.
   const remainingCount = totalWords - learnedCount;
-
-  // İlerleme Yüzdesi
   const progressPercentage = totalWords > 0 ? (learnedCount / totalWords) * 100 : 0;
-  
   const myScore = leaderboardData.find(u => u.id === user?.uid)?.score || 0;
 
   const handleLogout = async () => { await auth.signOut(); navigate("/login"); };
@@ -169,24 +159,36 @@ export default function Home() {
 
           {/* DİĞER OYUNLAR */}
           <div className="grid grid-cols-2 gap-3">
+             {/* 4. Yazma Testi */}
              <button onClick={() => navigate("/writing")} className="bg-purple-600 text-white font-bold py-4 px-4 rounded-xl shadow-md flex flex-col items-center gap-2 text-center active:scale-95 transition-transform">
                 <div className="bg-white/20 p-2 rounded-full"><Edit className="w-6 h-6"/></div>
                 <span className="text-sm">Yazma Testi</span>
              </button>
 
+             {/* 5. Quiz */}
              <button onClick={() => navigate("/quiz")} className="bg-amber-500 text-white font-bold py-4 px-4 rounded-xl shadow-md flex flex-col items-center gap-2 text-center active:scale-95 transition-transform">
                 <div className="bg-white/20 p-2 rounded-full"><HelpCircle className="w-6 h-6"/></div>
                 <span className="text-sm">Quiz</span>
              </button>
 
+             {/* 6. Ters Quiz (YENİ EKLENDİ) */}
+             <button onClick={() => navigate("/quiz2")} className="bg-emerald-500 text-white font-bold py-4 px-4 rounded-xl shadow-md flex flex-col items-center gap-2 text-center active:scale-95 transition-transform">
+                <div className="bg-white/20 p-2 rounded-full"><Languages className="w-6 h-6"/></div>
+                <span className="text-sm">Ters Quiz</span>
+             </button>
+
+             {/* 7. Telaffuz */}
              <button onClick={() => navigate("/pronunciation")} className="bg-rose-500 text-white font-bold py-4 px-4 rounded-xl shadow-md flex flex-col items-center gap-2 text-center active:scale-95 transition-transform">
                 <div className="bg-white/20 p-2 rounded-full"><Mic className="w-6 h-6"/></div>
                 <span className="text-sm">Telaffuz</span>
              </button>
 
-             <button onClick={() => navigate("/gap-filling")} className="bg-cyan-600 text-white font-bold py-4 px-4 rounded-xl shadow-md flex flex-col items-center gap-2 text-center active:scale-95 transition-transform">
-                <div className="bg-white/20 p-2 rounded-full"><Quote className="w-6 h-6"/></div>
-                <span className="text-sm">Boşluk Doldurma</span>
+             {/* 8. Boşluk Doldurma */}
+             <button onClick={() => navigate("/gap-filling")} className="bg-cyan-600 text-white font-bold py-4 px-4 rounded-xl shadow-md flex flex-col items-center gap-2 text-center active:scale-95 transition-transform w-full col-span-2">
+                <div className="flex items-center justify-center gap-2">
+                    <div className="bg-white/20 p-2 rounded-full"><Quote className="w-6 h-6"/></div>
+                    <span className="text-sm">Boşluk Doldurma</span>
+                </div>
              </button>
           </div>
 
