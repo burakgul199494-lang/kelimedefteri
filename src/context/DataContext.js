@@ -195,37 +195,67 @@ export const DataProvider = ({ children }) => {
   };
 
   // ----------------------------------------------------------------
-  // 🔥 DÜZENLENEN KISIM: MASTER (EZBERLEDİM) MANTIĞI EKLENDİ 🔥
+  // 🔥 YENİLENEN KISIM: ARALIKLI TEKRAR (SRS) MANTIĞI 🔥
   // ----------------------------------------------------------------
   const handleSmartLearn = async (wordId, action) => {
-    // 1. Eğer eylem 'master' ise direkt 'addToKnown' fonksiyonunu kullan ve çık.
-    if (action === "master") {
-        await addToKnown(wordId);
-        return; // Fonksiyonu burada kesiyoruz, aşağısı çalışmayacak.
-    }
+    try {
+        const userRef = doc(db, "artifacts", appId, "users", user.uid, "vocab_game", "progress");
+        const now = new Date();
 
-    const userRef = doc(db, "artifacts", appId, "users", user.uid, "vocab_game", "progress");
-    const currentProgress = learningQueue.find(q => String(q.wordId) === String(wordId)) || { wordId, level: 0 };
-    let newQueue = [...learningQueue.filter(q => String(q.wordId) !== String(wordId))];
-
-    if (action === "know") {
-        let nextLevel = (currentProgress.level || 0) + 1;
-        let delayDays = 0;
-        if (nextLevel === 1) delayDays = 2;
-        else if (nextLevel === 2) delayDays = 3;
-        
-        if (nextLevel >= 3) {
-            await addToKnown(wordId);
-            await updateDoc(userRef, { learning_queue: newQueue });
-            setLearningQueue(newQueue);
+        // 1. EZBERLEDİM (MASTER) -> Direkt Mezun Et
+        if (action === "master") {
+            await addToKnown(wordId); // Bu fonksiyon zaten kuyruktan da siliyor.
             return;
         }
-        const nextDate = new Date(); nextDate.setDate(nextDate.getDate() + delayDays);
-        newQueue.push({ wordId, level: nextLevel, nextReview: nextDate.toISOString() });
-    } else {
-        newQueue.push({ wordId, level: 0, nextReview: new Date().toISOString() });
+
+        // Mevcut kelimenin kuyruktaki durumunu bul
+        const currentItem = learningQueue.find(q => String(q.wordId) === String(wordId));
+        const currentLevel = currentItem ? (currentItem.level || 0) : 0;
+
+        // Geçici yeni kuyruk (Mevcut kelimeyi çıkararak başlıyoruz)
+        let newQueue = learningQueue.filter(q => String(q.wordId) !== String(wordId));
+
+        // 2. BİLİYORUM (KNOW)
+        if (action === "know") {
+            // Zaten öğrenilmişse işlem yapma
+            if (knownWordIds.includes(wordId)) return;
+
+            if (currentLevel === 0) {
+                // SEVİYE 1: İlk kez bilindi -> 1 Gün Beklet
+                const nextDate = new Date();
+                nextDate.setDate(now.getDate() + 1);
+                newQueue.push({ wordId, level: 1, nextReview: nextDate.toISOString() });
+                
+            } else if (currentLevel === 1) {
+                // SEVİYE 2: İkinci kez bilindi -> 2 Gün Beklet
+                const nextDate = new Date();
+                nextDate.setDate(now.getDate() + 2);
+                newQueue.push({ wordId, level: 2, nextReview: nextDate.toISOString() });
+
+            } else if (currentLevel >= 2) {
+                // MEZUNİYET: Üçüncü kez bilindi -> Öğrenilenlere At
+                await addToKnown(wordId);
+                return; // addToKnown kuyruk temizliğini yaptığı için burada işimiz bitiyor.
+            }
+        } 
+        // 3. BİLMİYORUM (DONT_KNOW)
+        else if (action === "dont_know") {
+            // Eğer yanlışlıkla öğrenilenlerdeyse oradan çıkar
+            if (knownWordIds.includes(wordId)) {
+                await removeFromKnown(wordId);
+            }
+            
+            // CEZA: Seviye sıfırlanır, hemen tekrar sorulur (Review Now)
+            newQueue.push({ wordId, level: 0, nextReview: now.toISOString() });
+        }
+
+        // Veritabanını ve State'i Güncelle (Sadece mezun olmayanlar için)
+        await updateDoc(userRef, { learning_queue: newQueue });
+        setLearningQueue(newQueue);
+
+    } catch (e) {
+        console.error("Smart Learn Hatası:", e);
     }
-    try { await updateDoc(userRef, { learning_queue: newQueue }); setLearningQueue(newQueue); } catch (e) { console.error(e); }
   };
 
   const handleSaveNewWord = async (wordData) => {
