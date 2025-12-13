@@ -7,20 +7,25 @@ export default function WritingGame() {
   const { getAllWords, knownWordIds, addScore } = useData();
   const navigate = useNavigate();
 
-  // --- STATE'LER ---
   const [gameMode, setGameMode] = useState(null);
   const [questions, setQuestions] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [score, setScore] = useState(0);
   const [gameStatus, setGameStatus] = useState("mode-selection");
 
-  // Kelime Mantığı
   const [shuffledLetters, setShuffledLetters] = useState([]); 
   const [completedLetters, setCompletedLetters] = useState([]); 
   const [wrongAnimationId, setWrongAnimationId] = useState(null); 
   const [isWordComplete, setIsWordComplete] = useState(false); 
 
-  // --- OYUN BAŞLATMA ---
+  // --- DİNAMİK BOYUT HESAPLAMA ---
+  const getDynamicStyle = (length) => {
+    if (length <= 6) return { box: "w-11 h-14 md:w-14 md:h-16", text: "text-2xl md:text-3xl" }; // Kısa
+    if (length <= 9) return { box: "w-9 h-12 md:w-11 md:h-14", text: "text-xl md:text-2xl" };   // Orta
+    if (length <= 12) return { box: "w-7 h-10 md:w-9 md:h-12", text: "text-lg md:text-xl" };    // Uzun
+    return { box: "w-5 h-8 md:w-7 md:h-10", text: "text-sm md:text-lg" };                       // Çok Uzun
+  };
+
   const selectMode = (mode) => {
     setGameMode(mode);
     startGame(mode);
@@ -34,14 +39,14 @@ export default function WritingGame() {
     if (mode === 'review') {
         pool = validWords.filter(w => knownWordIds.includes(w.id));
         if (pool.length === 0) {
-            alert("Henüz öğrendiğin kelime yok. Önce biraz kelime çalışmalısın!");
+            alert("Henüz öğrendiğin kelime yok.");
             setGameMode(null);
             return;
         }
     } else {
         pool = validWords.filter(w => !knownWordIds.includes(w.id));
         if (pool.length === 0) {
-            alert("Tebrikler! Tüm kelimeleri öğrendin. Tekrar modunu deneyebilirsin.");
+            alert("Tebrikler! Tüm kelimeleri öğrendin.");
             setGameMode(null);
             return;
         }
@@ -54,7 +59,6 @@ export default function WritingGame() {
     setGameStatus("playing");
   };
 
-  // --- SORU DEĞİŞİMİ ---
   useEffect(() => {
     if (gameStatus === "playing" && questions[currentIndex]) {
       const word = questions[currentIndex].word.trim();
@@ -84,12 +88,8 @@ export default function WritingGame() {
     window.speechSynthesis.speak(u);
   };
 
-  // --- HARFE TIKLAMA (KRİTİK DÜZELTME BURADA) ---
   const handleLetterClick = (letterObj, e) => {
-    // 1. ODAĞI KALDIR (Mavi izi siler)
-    if (e && e.currentTarget) {
-        e.currentTarget.blur();
-    }
+    if (e && e.currentTarget) e.currentTarget.blur();
 
     if (isWordComplete || letterObj.isUsed) return;
 
@@ -97,12 +97,10 @@ export default function WritingGame() {
     const expectedChar = targetWord[nextIndex];
 
     if (letterObj.char.toLowerCase() === expectedChar.toLowerCase()) {
-      // DOĞRU
       const newShuffled = shuffledLetters.map(l => 
         l.id === letterObj.id ? { ...l, isUsed: true } : l
       );
       setShuffledLetters(newShuffled);
-      
       const newCompleted = [...completedLetters, letterObj.char];
       setCompletedLetters(newCompleted);
 
@@ -110,17 +108,15 @@ export default function WritingGame() {
         handleWordComplete();
       }
     } else {
-      // YANLIŞ
       setWrongAnimationId(letterObj.id);
       setTimeout(() => setWrongAnimationId(null), 500);
     }
   };
 
   const handleHint = (e) => {
-    // Odağı kaldır
     if (e && e.currentTarget) e.currentTarget.blur();
-
     if (isWordComplete) return;
+
     const nextIndex = completedLetters.length;
     const expectedChar = targetWord[nextIndex];
 
@@ -128,10 +124,7 @@ export default function WritingGame() {
       !l.isUsed && l.char.toLowerCase() === expectedChar.toLowerCase()
     );
 
-    if (correctLetterObj) {
-      // Hint fonksiyonunda event (e) olmadığı için null gönderiyoruz
-      handleLetterClick(correctLetterObj, null);
-    }
+    if (correctLetterObj) handleLetterClick(correctLetterObj, null);
   };
 
   const handleWordComplete = () => {
@@ -154,9 +147,6 @@ export default function WritingGame() {
       setGameStatus("finished");
   };
 
-
-  // --- EKRANLAR ---
-
   if (gameStatus === "mode-selection") {
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
@@ -165,29 +155,13 @@ export default function WritingGame() {
                     <h1 className="text-3xl font-black text-slate-800">Yazma Alıştırması</h1>
                     <p className="text-slate-500">Hangi kelimelerle çalışmak istersin?</p>
                 </div>
-                <button 
-                    onClick={() => selectMode('review')}
-                    className="w-full bg-white p-6 rounded-3xl shadow-lg border-2 border-slate-100 flex items-center gap-4 hover:border-purple-200 hover:bg-purple-50 transition-all group active:scale-95"
-                >
-                    <div className="bg-purple-100 p-4 rounded-2xl group-hover:bg-purple-200 transition-colors">
-                        <RefreshCw className="w-8 h-8 text-purple-600" />
-                    </div>
-                    <div className="text-left">
-                        <div className="font-bold text-lg text-slate-800">Tekrar Modu</div>
-                        <div className="text-sm text-slate-400">Öğrendiğin kelimeleri pekiştir.</div>
-                    </div>
+                <button onClick={() => selectMode('review')} className="w-full bg-white p-6 rounded-3xl shadow-lg border-2 border-slate-100 flex items-center gap-4 hover:border-purple-200 hover:bg-purple-50 transition-all group active:scale-95">
+                    <div className="bg-purple-100 p-4 rounded-2xl group-hover:bg-purple-200 transition-colors"><RefreshCw className="w-8 h-8 text-purple-600" /></div>
+                    <div className="text-left"><div className="font-bold text-lg text-slate-800">Tekrar Modu</div><div className="text-sm text-slate-400">Öğrendiğin kelimeleri pekiştir.</div></div>
                 </button>
-                <button 
-                    onClick={() => selectMode('learn')}
-                    className="w-full bg-white p-6 rounded-3xl shadow-lg border-2 border-slate-100 flex items-center gap-4 hover:border-indigo-200 hover:bg-indigo-50 transition-all group active:scale-95"
-                >
-                    <div className="bg-indigo-100 p-4 rounded-2xl group-hover:bg-indigo-200 transition-colors">
-                        <BrainCircuit className="w-8 h-8 text-indigo-600" />
-                    </div>
-                    <div className="text-left">
-                        <div className="font-bold text-lg text-slate-800">Öğrenme Modu</div>
-                        <div className="text-sm text-slate-400">Yeni kelimelerle çalış.</div>
-                    </div>
+                <button onClick={() => selectMode('learn')} className="w-full bg-white p-6 rounded-3xl shadow-lg border-2 border-slate-100 flex items-center gap-4 hover:border-indigo-200 hover:bg-indigo-50 transition-all group active:scale-95">
+                    <div className="bg-indigo-100 p-4 rounded-2xl group-hover:bg-indigo-200 transition-colors"><BrainCircuit className="w-8 h-8 text-indigo-600" /></div>
+                    <div className="text-left"><div className="font-bold text-lg text-slate-800">Öğrenme Modu</div><div className="text-sm text-slate-400">Yeni kelimelerle çalış.</div></div>
                 </button>
                 <button onClick={() => navigate("/")} className="w-full text-slate-400 font-bold py-3">Geri Dön</button>
             </div>
@@ -199,9 +173,7 @@ export default function WritingGame() {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
         <div className="bg-white p-8 rounded-3xl shadow-xl max-w-sm w-full text-center space-y-6">
-           <div className="bg-purple-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto animate-bounce">
-             <Trophy className="w-10 h-10 text-purple-600"/>
-           </div>
+           <div className="bg-purple-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto animate-bounce"><Trophy className="w-10 h-10 text-purple-600"/></div>
            <h2 className="text-2xl font-bold text-slate-800">Harika İş Çıkardın!</h2>
            <div className="py-6 bg-slate-50 rounded-2xl border border-slate-100">
              <div className="text-sm text-slate-400 font-bold uppercase">Toplam Puan</div>
@@ -217,12 +189,13 @@ export default function WritingGame() {
   if (gameStatus === "loading") return <div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin text-purple-600 w-10 h-10"/></div>;
 
   const progress = ((currentIndex + 1) / questions.length) * 100;
+  // DİNAMİK BOYUT HESABI
+  const styles = getDynamicStyle(targetWord.length);
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center p-4">
        <div className="w-full max-w-md space-y-4 mt-2">
           
-          {/* HEADER */}
           <div className="flex justify-between items-center">
              <button onClick={()=>navigate("/")} className="p-2 bg-white rounded-full active:bg-slate-100 shadow-sm transition-colors"><X className="w-5 h-5 text-slate-400"/></button>
              <div className="font-bold text-purple-600 bg-purple-50 px-3 py-1 rounded-full border border-purple-100">
@@ -232,7 +205,6 @@ export default function WritingGame() {
           </div>
           <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden"><div className="bg-purple-500 h-full transition-all duration-500" style={{width:`${progress}%`}}></div></div>
           
-          {/* ANA KART */}
           <div className="bg-white p-6 rounded-3xl shadow-xl border border-slate-100 text-center space-y-6 relative overflow-hidden min-h-[450px] flex flex-col justify-between">
              <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-purple-400 to-pink-400"></div>
              
@@ -247,8 +219,8 @@ export default function WritingGame() {
                )}
              </div>
 
-             {/* YAZI ALANI */}
-             <div className="flex flex-wrap justify-center gap-1.5 min-h-[50px] items-end content-center">
+             {/* YAZI ALANI (DİNAMİK BOYUTLANDIRMA) */}
+             <div className="flex flex-wrap justify-center gap-1.5 min-h-[60px] items-end content-center">
                 {targetWord.split('').map((_, idx) => {
                   const char = completedLetters[idx];
                   const isFilled = char !== undefined;
@@ -256,7 +228,8 @@ export default function WritingGame() {
                     <div 
                       key={idx} 
                       className={`
-                        w-9 h-11 flex items-center justify-center text-xl font-bold border-b-4 rounded-t-lg transition-all
+                        ${styles.box} ${styles.text} 
+                        flex items-center justify-center font-bold border-b-4 rounded-t-lg transition-all
                         ${isFilled ? "border-purple-500 text-purple-700 bg-purple-50 translate-y-0" : "border-slate-200 bg-slate-50 text-transparent"}
                       `}
                     >
@@ -267,28 +240,22 @@ export default function WritingGame() {
              </div>
 
              {/* KARIŞIK HARFLER (BUTONLAR) */}
-             <div key={currentIndex} className="grid grid-cols-6 gap-2 place-items-center content-center">
+             <div key={currentIndex} className="flex flex-wrap justify-center gap-2 content-center">
                 {shuffledLetters.map((item) => (
                   <button
                     key={item.id}
-                    onClick={(e) => handleLetterClick(item, e)} // Event'i gönderiyoruz
+                    onClick={(e) => handleLetterClick(item, e)}
                     disabled={item.isUsed || isWordComplete}
-                    // Mobilde iz kalmaması için stil:
                     style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
                     className={`
                       w-10 h-10 md:w-11 md:h-11 rounded-xl font-bold text-lg shadow-[0_3px_0_rgb(0,0,0,0.1)] 
-                      
-                      // HOVER EFEKTLERİNİ SİLDİM (Mobilde iz bırakır)
-                      // SADECE ACTIVE (Basınca) renk değişimi koydum:
                       active:bg-purple-100 active:border-purple-300 active:text-purple-600 active:shadow-none active:translate-y-[2px]
-                      
                       transition-all duration-75 select-none touch-manipulation focus:outline-none focus:ring-0
-                      
                       ${item.isUsed 
                           ? "opacity-0 pointer-events-none scale-0" 
                           : wrongAnimationId === item.id 
                               ? "bg-red-500 text-white shadow-none animate-[shake_0.5s_ease-in-out]" 
-                              : "bg-white border-2 border-slate-200 text-slate-700" // Normal hali
+                              : "bg-white border-2 border-slate-200 text-slate-700"
                       }
                     `}
                   >
@@ -330,7 +297,6 @@ export default function WritingGame() {
               75% { transform: translateX(5px); }
             }
           `}</style>
-
        </div>
     </div>
   );
