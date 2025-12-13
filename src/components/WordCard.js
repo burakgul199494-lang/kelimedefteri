@@ -1,40 +1,73 @@
-import React, { useState } from "react";
-import { Volume2, RotateCw, BookOpen, Sparkles, Quote, ChevronRight } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Volume2, Square, RotateCw, Quote } from "lucide-react";
 
 export default function WordCard({ wordObj }) {
   const [isFlipped, setIsFlipped] = useState(false);
+  
+  // Hangi metnin çaldığını takip etmek için state (null ise çalmıyor demektir)
+  const [playingText, setPlayingText] = useState(null);
 
-  // Genel Okuma Fonksiyonu
-  const speakText = (e, text) => {
-    e.stopPropagation();
-    if (!text) return;
+  // 1. KELİME DEĞİŞTİĞİNDE SESİ KES
+  useEffect(() => {
     window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = "en-US";
-    utterance.rate = 0.9;
-    window.speechSynthesis.speak(utterance);
+    setPlayingText(null);
+    setIsFlipped(false); // Yeni kelime gelince kartı da ön yüze çevir
+  }, [wordObj]);
+
+  // 2. SES AÇ/KAPA (TOGGLE) FONKSİYONU
+  const toggleSpeak = (e, text) => {
+    e.stopPropagation(); // Kartın dönmesini engelle
+    if (!text) return;
+
+    // Eğer şu an bu metin çalıyorsa -> DURDUR
+    if (playingText === text) {
+      window.speechSynthesis.cancel();
+      setPlayingText(null);
+    } 
+    // Çalmıyorsa veya başka bir şey çalıyorsa -> YENİSİNİ ÇAL
+    else {
+      window.speechSynthesis.cancel(); // Öncekini sustur
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = "en-US";
+      utterance.rate = 0.9;
+      
+      // Okuma bittiğinde ikonu eski haline getir
+      utterance.onend = () => {
+        setPlayingText(null);
+      };
+      
+      // Hata olursa veya kesilirse de ikonu düzelt
+      utterance.onerror = () => {
+        setPlayingText(null);
+      };
+
+      window.speechSynthesis.speak(utterance);
+      setPlayingText(text);
+    }
   };
 
   const handleFlip = () => setIsFlipped(!isFlipped);
 
-  // Gramer var mı?
   const hasGrammar = wordObj.v2 || wordObj.v3 || wordObj.plural || wordObj.vIng;
 
-  // Modern Gramer Kutucuğu Bileşeni
-  const GrammarBox = ({ label, value, colorClass }) => (
-    <div className={`flex items-center justify-between p-3 rounded-xl border ${colorClass} transition-all hover:shadow-md group/gbox`}>
-      <div className="flex flex-col">
-        <span className="text-[10px] font-black uppercase opacity-60 tracking-wider">{label}</span>
-        <span className="font-bold text-sm text-slate-700">{value}</span>
+  // Gramer Kutucuğu Bileşeni
+  const GrammarBox = ({ label, value, colorClass }) => {
+    const isPlayingThis = playingText === value;
+    return (
+      <div className={`flex items-center justify-between p-3 rounded-xl border ${colorClass} transition-all hover:shadow-md group/gbox`}>
+        <div className="flex flex-col">
+          <span className="text-[10px] font-black uppercase opacity-60 tracking-wider">{label}</span>
+          <span className="font-bold text-sm text-slate-700">{value}</span>
+        </div>
+        <button
+          onClick={(e) => toggleSpeak(e, value)}
+          className={`p-1.5 bg-white rounded-full shadow-sm transition-opacity text-indigo-600 ${isPlayingThis ? 'opacity-100' : 'opacity-0 group-hover/gbox:opacity-100'}`}
+        >
+          {isPlayingThis ? <Square className="w-3.5 h-3.5 fill-indigo-600" /> : <Volume2 className="w-3.5 h-3.5" />}
+        </button>
       </div>
-      <button
-        onClick={(e) => speakText(e, value)}
-        className="p-1.5 bg-white rounded-full shadow-sm opacity-0 group-hover/gbox:opacity-100 transition-opacity text-indigo-600"
-      >
-        <Volume2 className="w-3.5 h-3.5" />
-      </button>
-    </div>
-  );
+    );
+  };
 
   return (
     <div 
@@ -53,30 +86,38 @@ export default function WordCard({ wordObj }) {
         <div className="absolute inset-0 w-full h-full bg-white rounded-3xl shadow-2xl flex flex-col overflow-hidden [backface-visibility:hidden] border border-slate-100">
           
           {/* 1. HERO BÖLÜMÜ (Kelime) */}
-          <div className="relative bg-gradient-to-br from-indigo-600 to-violet-700 p-6 pt-8 text-center shrink-0">
+          <div className="relative bg-gradient-to-br from-indigo-600 to-violet-700 p-6 pt-10 text-center shrink-0 flex flex-col items-center justify-center min-h-[180px]">
             {/* Arka plan dekoru */}
             <div className="absolute top-0 left-0 w-full h-full opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
             
-            <div className="relative z-10">
-              <div className="flex justify-center gap-2 mb-2">
-                {wordObj.tags && wordObj.tags.map((tag, i) => (
-                  <span key={i} className="px-2 py-0.5 bg-white/20 text-white text-[10px] font-bold rounded-full uppercase tracking-wide backdrop-blur-sm">
-                    {tag}
-                  </span>
-                ))}
-              </div>
+            <div className="relative z-10 w-full">
               
-              <div className="flex items-center justify-center gap-3">
+              {/* Kelime ve Ana Ses Butonu */}
+              <div className="flex items-center justify-center gap-4 mb-4">
                 <h1 className="text-5xl font-black text-white tracking-tight drop-shadow-md">
                   {wordObj.word}
                 </h1>
                 <button
-                  onClick={(e) => speakText(e, wordObj.word)}
+                  onClick={(e) => toggleSpeak(e, wordObj.word)}
                   className="p-3 bg-white/20 hover:bg-white text-white hover:text-indigo-600 rounded-full backdrop-blur-md transition-all active:scale-90"
                 >
-                  <Volume2 className="w-6 h-6" />
+                  {playingText === wordObj.word ? (
+                    <Square className="w-6 h-6 fill-current" /> // Durdur İkonu
+                  ) : (
+                    <Volume2 className="w-6 h-6" /> // Oku İkonu
+                  )}
                 </button>
               </div>
+
+              {/* Tagler (Kelimenin ALTINA alındı ve küçültüldü) */}
+              <div className="flex justify-center gap-2">
+                {wordObj.tags && wordObj.tags.map((tag, i) => (
+                  <span key={i} className="px-2 py-0.5 bg-black/20 text-white/80 text-[10px] font-bold rounded-full uppercase tracking-wider backdrop-blur-sm border border-white/10">
+                    {tag}
+                  </span>
+                ))}
+              </div>
+
             </div>
           </div>
 
@@ -85,33 +126,36 @@ export default function WordCard({ wordObj }) {
             
             {/* A. Tanımlar (Scrollable) */}
             <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-3">
-              {wordObj.definitions && wordObj.definitions.map((def, index) => (
-                <div 
-                  key={index} 
-                  className={`relative p-4 rounded-2xl border transition-all ${
-                    index === 0 
-                      ? 'bg-white border-indigo-100 shadow-sm' 
-                      : 'bg-slate-50 border-slate-100 opacity-80 hover:opacity-100'
-                  }`}
-                >
-                  <div className="flex justify-between items-start mb-1">
-                    <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-md ${
-                      index === 0 ? 'bg-indigo-50 text-indigo-600' : 'bg-slate-200 text-slate-500'
-                    }`}>
-                      {def.type || `Def ${index + 1}`}
-                    </span>
-                    <button
-                      onClick={(e) => speakText(e, def.engExplanation)}
-                      className="text-slate-400 hover:text-indigo-500 transition-colors"
-                    >
-                      <Volume2 className="w-4 h-4" />
-                    </button>
+              {wordObj.definitions && wordObj.definitions.map((def, index) => {
+                const isPlayingDef = playingText === def.engExplanation;
+                return (
+                  <div 
+                    key={index} 
+                    className={`relative p-4 rounded-2xl border transition-all ${
+                      index === 0 
+                        ? 'bg-white border-indigo-100 shadow-sm' 
+                        : 'bg-slate-50 border-slate-100 opacity-80 hover:opacity-100'
+                    }`}
+                  >
+                    <div className="flex justify-between items-start mb-1">
+                      <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-md ${
+                        index === 0 ? 'bg-indigo-50 text-indigo-600' : 'bg-slate-200 text-slate-500'
+                      }`}>
+                        {def.type || `Def ${index + 1}`}
+                      </span>
+                      <button
+                        onClick={(e) => toggleSpeak(e, def.engExplanation)}
+                        className={`transition-colors ${isPlayingDef ? 'text-indigo-600' : 'text-slate-400 hover:text-indigo-500'}`}
+                      >
+                         {isPlayingDef ? <Square className="w-4 h-4 fill-indigo-600" /> : <Volume2 className="w-4 h-4" />}
+                      </button>
+                    </div>
+                    <p className="text-slate-700 font-medium leading-relaxed">
+                      "{def.engExplanation || 'No definition.'}"
+                    </p>
                   </div>
-                  <p className="text-slate-700 font-medium leading-relaxed">
-                    "{def.engExplanation || 'No definition.'}"
-                  </p>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             {/* B. Gramer Grid (Varsa) */}
@@ -124,18 +168,18 @@ export default function WordCard({ wordObj }) {
               </div>
             )}
 
-            {/* C. Örnek Cümle (Modern Kart) */}
+            {/* C. Örnek Cümle */}
             <div className="relative bg-white p-4 rounded-2xl border border-indigo-100 shadow-sm shrink-0 group/sentence">
                <Quote className="absolute top-3 left-3 w-4 h-4 text-indigo-200" />
-               <div className="pl-6">
+               <div className="pl-6 pr-8">
                  <p className="text-slate-600 italic text-sm leading-relaxed font-medium">
                    "{wordObj.sentence}"
                  </p>
                  <button
-                    onClick={(e) => speakText(e, wordObj.sentence)}
-                    className="absolute bottom-3 right-3 p-1.5 bg-indigo-50 text-indigo-500 rounded-full opacity-0 group-hover/sentence:opacity-100 transition-all hover:bg-indigo-100"
+                    onClick={(e) => toggleSpeak(e, wordObj.sentence)}
+                    className={`absolute bottom-3 right-3 p-1.5 bg-indigo-50 text-indigo-500 rounded-full transition-all hover:bg-indigo-100 ${playingText === wordObj.sentence ? 'opacity-100' : 'opacity-0 group-hover/sentence:opacity-100'}`}
                   >
-                    <Volume2 className="w-4 h-4" />
+                    {playingText === wordObj.sentence ? <Square className="w-4 h-4 fill-indigo-500" /> : <Volume2 className="w-4 h-4" />}
                   </button>
                </div>
             </div>
@@ -201,7 +245,6 @@ export default function WordCard({ wordObj }) {
 
       </div>
       
-      {/* Özel Scrollbar Stili */}
       <style jsx>{`
         .animate-spin-slow { animation: spin 3s linear infinite; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
