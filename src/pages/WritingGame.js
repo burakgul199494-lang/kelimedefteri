@@ -366,7 +366,7 @@ export default function WritingGame() {
                   className="flex items-center gap-2 px-5 py-3 bg-amber-100 text-amber-700 rounded-2xl font-bold active:bg-amber-200 transition-colors active:scale-95 disabled:opacity-50 focus:outline-none"
                 >
                   <Lightbulb className="w-5 h-5"/> 
-                  {hintCount === 0 ? "İpucu (5 Puan)" : hintCount === 1 ? "İpucu (2 Puan)" : "İpucu (0 Puan)"}
+                  {hintCount === 0 ? "İpucu" : hintCount === 1 ? "İpucu" : "İpucu"}
                 </button>
              </div>
 
