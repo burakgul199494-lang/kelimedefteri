@@ -61,6 +61,7 @@ export default function App() {
           
           <Route path="/game" element={<PrivateRoute><Game /></PrivateRoute>} />
           <Route path="/quiz" element={<PrivateRoute><Quiz /></PrivateRoute>} />
+            <Route path="/quiz2" element={<PrivateRoute><Quiz2 /></PrivateRoute>} />
           <Route path="/writing" element={<PrivateRoute><WritingGame /></PrivateRoute>} />
           
           <Route path="/pronunciation" element={<PrivateRoute><Pronunciation /></PrivateRoute>} />
