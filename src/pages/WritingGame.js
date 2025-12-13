@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useData } from "../context/DataContext";
 import { useNavigate } from "react-router-dom";
-import { X, Trophy, Volume2, Lightbulb, Loader2, RefreshCw, BrainCircuit, Hourglass, Home } from "lucide-react";
+import { X, Trophy, Volume2, Lightbulb, Loader2, RefreshCw, BrainCircuit, Hourglass, Home, AlertTriangle } from "lucide-react";
 
 export default function WritingGame() {
   const { getAllWords, knownWordIds, addScore, learningQueue } = useData();
@@ -20,9 +20,10 @@ export default function WritingGame() {
   const [wrongAnimationId, setWrongAnimationId] = useState(null); 
   const [isWordComplete, setIsWordComplete] = useState(false); 
 
-  // YENİ: İpucu Sayacı ve Anlık Kelime Puanı
+  // Puanlama ve Hata Takibi
   const [hintCount, setHintCount] = useState(0);
   const [currentWordPoints, setCurrentWordPoints] = useState(5); 
+  const [mistakeCount, setMistakeCount] = useState(0); // YENİ: Hata Sayacı
 
   // --- KELİME HAVUZLARI ---
   const getWordPools = () => {
@@ -88,8 +89,9 @@ export default function WritingGame() {
       setCompletedLetters([]);
       setIsWordComplete(false);
       
-      // YENİ: İpucu ve Puan Sıfırlama
+      // Resetlemeler
       setHintCount(0);
+      setMistakeCount(0); // Hataları sıfırla
       setCurrentWordPoints(5); 
     }
   }, [currentIndex, gameStatus]);
@@ -108,6 +110,7 @@ export default function WritingGame() {
     window.speechSynthesis.speak(u);
   };
 
+  // --- HARF TIKLAMA VE HATA KONTROLÜ ---
   const handleLetterClick = (letterObj, e) => {
     if (e && e.currentTarget) e.currentTarget.blur();
 
@@ -117,6 +120,7 @@ export default function WritingGame() {
     const expectedChar = targetWord[nextIndex];
 
     if (letterObj.char.toLowerCase() === expectedChar.toLowerCase()) {
+      // DOĞRU HARF
       const newShuffled = shuffledLetters.map(l => 
         l.id === letterObj.id ? { ...l, isUsed: true } : l
       );
@@ -125,25 +129,51 @@ export default function WritingGame() {
       setCompletedLetters(newCompleted);
 
       if (newCompleted.length === targetWord.length) {
-        handleWordComplete();
+        handleWordComplete(); // Başarılı bitiş
       }
     } else {
+      // YANLIŞ HARF
+      const newMistakes = mistakeCount + 1;
+      setMistakeCount(newMistakes);
+      
+      // Titreme Efekti
       setWrongAnimationId(letterObj.id);
       setTimeout(() => setWrongAnimationId(null), 500);
+
+      // LİMİT KONTROLÜ (2 HATA)
+      if (newMistakes >= 2) {
+          // Hata hakkı doldu -> BAŞARISIZ BİTİŞ
+          setCurrentWordPoints(0); // Puan sıfırlanır
+          
+          // Animasyonun bitmesini bekle ve doğrusunu aç
+          setTimeout(() => {
+              setCompletedLetters(targetWord.split('')); // Doğrusunu yaz
+              setIsWordComplete(true);
+              speak(targetWord);
+              
+              // Biraz daha uzun bekle ki kullanıcı doğrusunu görsün
+              setTimeout(() => {
+                  if (currentIndex + 1 < questions.length) {
+                      setCurrentIndex(p => p + 1);
+                  } else {
+                      setGameStatus("finished");
+                  }
+              }, 2000); 
+          }, 600);
+      }
     }
   };
 
-  // --- İPUCU KULLANIMI (GÜNCELLENDİ) ---
+  // --- İPUCU KULLANIMI ---
   const handleHint = (e) => {
     if (e && e.currentTarget) e.currentTarget.blur();
     if (isWordComplete) return;
 
-    // Puan Kesintisi Mantığı
     const newHintCount = hintCount + 1;
     setHintCount(newHintCount);
 
-    if (newHintCount === 1) setCurrentWordPoints(2); // 1 ipucu -> 2 puan
-    else if (newHintCount >= 2) setCurrentWordPoints(0); // 2+ ipucu -> 0 puan
+    if (newHintCount === 1) setCurrentWordPoints(2); 
+    else if (newHintCount >= 2) setCurrentWordPoints(0); 
 
     const nextIndex = completedLetters.length;
     const expectedChar = targetWord[nextIndex];
@@ -155,12 +185,11 @@ export default function WritingGame() {
     if (correctLetterObj) handleLetterClick(correctLetterObj, null);
   };
 
-  // --- KELİME BİTİRME (GÜNCELLENDİ) ---
+  // --- KELİME BİTİRME (BAŞARILI) ---
   const handleWordComplete = () => {
     setIsWordComplete(true);
     speak(targetWord);
     
-    // Kalan puanı ekle
     if (currentWordPoints > 0) {
         addScore(currentWordPoints);
         setScore(s => s + currentWordPoints);
@@ -176,7 +205,6 @@ export default function WritingGame() {
   };
 
   const handleQuitEarly = () => {
-      // Bitirince ekstra puan ekleme, zaten her kelimede ekleniyor.
       setGameStatus("finished");
   };
 
@@ -187,8 +215,6 @@ export default function WritingGame() {
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
             <div className="w-full max-w-sm space-y-6">
-                
-                {/* Header */}
                 <div className="flex items-center justify-between">
                     <button onClick={() => navigate("/")} className="p-2 bg-white rounded-full shadow-sm hover:bg-slate-100">
                     <Home className="w-5 h-5 text-slate-600" />
@@ -203,8 +229,7 @@ export default function WritingGame() {
                 </div>
 
                 <div className="space-y-4">
-                    
-                    {/* 1. TEKRAR MODU */}
+                    {/* MOD BUTONLARI (Aynı) */}
                     <button onClick={() => startSession('review')} disabled={reviewPool.length === 0} className="w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 hover:border-orange-200 hover:bg-orange-50 transition-all group active:scale-95 disabled:opacity-60">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-4">
@@ -215,7 +240,6 @@ export default function WritingGame() {
                         </div>
                     </button>
 
-                    {/* 2. ÖĞRENME MODU */}
                     <button onClick={() => startSession('learn')} disabled={learnPool.length === 0} className="w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 hover:border-indigo-200 hover:bg-indigo-50 transition-all group active:scale-95 disabled:opacity-60">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-4">
@@ -226,7 +250,6 @@ export default function WritingGame() {
                         </div>
                     </button>
 
-                    {/* 3. BEKLEME LİSTESİ */}
                     <button onClick={() => startSession('waiting')} disabled={waitingPool.length === 0} className="w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 hover:border-slate-300 hover:bg-slate-50 transition-all group active:scale-95 disabled:opacity-60">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-4">
@@ -236,7 +259,6 @@ export default function WritingGame() {
                             <div className="text-2xl font-black text-slate-500">{waitingPool.length}</div>
                         </div>
                     </button>
-
                 </div>
             </div>
         </div>
@@ -255,9 +277,7 @@ export default function WritingGame() {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
         <div className="bg-white p-8 rounded-3xl shadow-xl max-w-sm w-full text-center space-y-6">
-           <div className="bg-purple-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto animate-bounce">
-             <Trophy className="w-10 h-10 text-purple-600"/>
-           </div>
+           <div className="bg-purple-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto animate-bounce"><Trophy className="w-10 h-10 text-purple-600"/></div>
            <h2 className="text-2xl font-bold text-slate-800">{modeTitle}</h2>
            <div className="py-6 bg-slate-50 rounded-2xl border border-slate-100">
              <div className="text-sm text-slate-400 font-bold uppercase">Toplam Puan</div>
@@ -279,7 +299,6 @@ export default function WritingGame() {
     <div className="min-h-screen bg-slate-50 flex flex-col items-center p-4">
        <div className="w-full max-w-md space-y-4 mt-2">
           
-          {/* Header */}
           <div className="flex justify-between items-center">
              <button onClick={handleQuitEarly} className="p-2 bg-white rounded-full active:bg-slate-100 shadow-sm transition-colors"><X className="w-5 h-5 text-slate-400"/></button>
              <div className="font-bold text-purple-600 bg-purple-50 px-3 py-1 rounded-full border border-purple-100">
@@ -289,7 +308,6 @@ export default function WritingGame() {
           </div>
           <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden"><div className="bg-purple-500 h-full transition-all duration-500" style={{width:`${progress}%`}}></div></div>
           
-          {/* OYUN KARTI */}
           <div className="bg-white p-6 rounded-3xl shadow-xl border border-slate-100 text-center space-y-6 relative overflow-hidden min-h-[450px] flex flex-col justify-between">
              <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-purple-400 to-pink-400"></div>
              
@@ -349,7 +367,7 @@ export default function WritingGame() {
                 ))}
              </div>
 
-             {/* KONTROL BUTONLARI (İpucu Puan Göstergeli) */}
+             {/* KONTROL BUTONLARI */}
              <div className="flex items-center justify-center gap-4 pt-4 border-t border-slate-100 mt-auto">
                 <button 
                   onClick={() => speak(targetWord)} 
@@ -366,7 +384,11 @@ export default function WritingGame() {
                   className="flex items-center gap-2 px-5 py-3 bg-amber-100 text-amber-700 rounded-2xl font-bold active:bg-amber-200 transition-colors active:scale-95 disabled:opacity-50 focus:outline-none"
                 >
                   <Lightbulb className="w-5 h-5"/> 
-                  {hintCount === 0 ? "İpucu" : hintCount === 1 ? "İpucu" : "İpucu"}
+                  {/* Puan ve Hata Bilgisi */}
+                  <span className="text-xs ml-1 flex flex-col items-start leading-none">
+                      <span>İpucu ({hintCount === 0 ? "5p" : hintCount === 1 ? "2p" : "0p"})</span>
+                      <span className="text-[9px] text-amber-600/80">Hata: {mistakeCount}/2</span>
+                  </span>
                 </button>
              </div>
 
