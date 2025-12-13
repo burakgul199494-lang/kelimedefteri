@@ -6,7 +6,7 @@ import { ArrowLeft, Volume2, RotateCcw, Check, Trophy, ArrowDownCircle, Hourglas
 export default function WordList() {
   const { type } = useParams(); // "known", "unknown" veya "waiting"
   const navigate = useNavigate();
-  // learningQueue eklendi, delete fonksiyonları UI'dan kalktığı için buradan da sildik (temizlik için)
+  // learningQueue eklendi
   const { knownWordIds, getAllWords, removeFromKnown, addToKnown, learningQueue } = useData();
 
   const [search, setSearch] = useState("");
@@ -22,24 +22,30 @@ export default function WordList() {
   let wordList = [];
   const all = getAllWords();
 
-  // --- LİSTELEME MANTIĞI ---
+  // --- LİSTELEME MANTIĞI (GÜNCELLENDİ) ---
+  
+  // Kuyruktaki (Süreçteki) tüm kelimelerin ID'lerini al
+  const queueIds = learningQueue ? learningQueue.map(q => q.wordId) : [];
+
   if (isKnown) {
+    // 1. ÖĞRENİLENLER (MEZUNLAR)
     title = "Öğrendiğim Kelimeler";
     wordList = all.filter(w => knownWordIds.includes(w.id));
+
   } else if (isWaiting) {
-    // BEKLEMEDE OLANLAR
+    // 2. BEKLEMEDE OLANLAR (SÜREÇTEKİLER)
     title = "Tekrar Bekleyenler";
-    const now = new Date();
-    // learningQueue boş gelebilir diye kontrol ediyoruz
-    const queue = learningQueue || [];
-    // Tarihi henüz gelmemiş (gelecekte) olanları bul
-    const waitingIds = queue.filter(q => new Date(q.nextReview) > now).map(q => q.wordId);
-    
-    wordList = all.filter(w => waitingIds.includes(w.id));
+    // Kuyrukta olan tüm kelimeleri getir (Zamanı gelmiş veya gelmemiş fark etmez, süreçte olanlar)
+    wordList = all.filter(w => queueIds.includes(w.id));
+
   } else {
-    // UNKNOWN (Kalanlar)
+    // 3. ÖĞRENECEĞİM KELİMELER (KALANLAR - UNKNOWN)
     title = "Öğreneceğim Kelimeler";
-    wordList = all.filter(w => !knownWordIds.includes(w.id));
+    // Hem MEZUN DEĞİL, hem de SÜREÇTE DEĞİL (Yepyeni kelimeler)
+    wordList = all.filter(w => 
+        !knownWordIds.includes(w.id) && 
+        !queueIds.includes(w.id)
+    );
   }
 
   // Arama ve Sıralama
@@ -82,8 +88,8 @@ export default function WordList() {
             <ArrowLeft className="w-6 h-6 text-slate-600"/>
           </button>
           <div>
-             <h2 className="text-xl font-bold text-slate-800">{title}</h2>
-             <div className="text-xs text-slate-400 font-bold">{filteredWords.length} kelime</div>
+              <h2 className="text-xl font-bold text-slate-800">{title}</h2>
+              <div className="text-xs text-slate-400 font-bold">{filteredWords.length} kelime</div>
           </div>
         </div>
 
