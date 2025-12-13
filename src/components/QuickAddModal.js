@@ -1,18 +1,12 @@
-import React, { useState, useEffect } from "react";
-import { Loader2, X, Save, Trash2, Plus, Tag, Languages } from "lucide-react"; // Wand2 ve Brain kaldırıldı
+import React, { useState } from "react"; // useEffect kaldırıldı (otomatik etiket için gerek kalmadı)
+import { Loader2, X, Save, Trash2, Plus, Tag, Languages } from "lucide-react";
 import { useData } from "../context/DataContext";
-// AI servis importları kaldırıldı
 
 const WORD_TYPES = [
   { value: "noun", label: "İsim" }, { value: "verb", label: "Fiil" }, { value: "adjective", label: "Sıfat" },
   { value: "adverb", label: "Zarf" }, { value: "prep", label: "Edat" }, { value: "pronoun", label: "Zamir" },
   { value: "conj", label: "Bağlaç" }, { value: "article", label: "Tanımlık" }, { value: "other", label: "Diğer" },
 ];
-
-const TYPE_MAP = {
-  noun: "İsim", verb: "Fiil", adjective: "Sıfat", adverb: "Zarf", prep: "Edat",
-  pronoun: "Zamir", conj: "Bağlaç", article: "Tanımlık", other: "Diğer"
-};
 
 const QuickAddModal = ({ word, prefillData, onClose }) => {
   const { handleSaveNewWord, handleSaveSystemWord, handleUpdateSystemWord, isAdmin } = useData();
@@ -37,20 +31,35 @@ const QuickAddModal = ({ word, prefillData, onClose }) => {
 
   const [formData, setFormData] = useState(initialData);
   const [saving, setSaving] = useState(false);
+  
+  // Manuel etiket girişi için state
+  const [tagInput, setTagInput] = useState("");
 
-  // Otomatik etiket güncelleme (Seçilen türe göre)
-  useEffect(() => {
-      const newTags = new Set();
-      formData.definitions.forEach(def => {
-          const label = TYPE_MAP[def.type] || "Diğer";
-          newTags.add(label);
-      });
-      const newTagsArray = Array.from(newTags);
-      if (JSON.stringify(newTagsArray) !== JSON.stringify(formData.tags)) {
-          setFormData(prev => ({ ...prev, tags: newTagsArray }));
+  // --- MANUEL ETİKET FONKSİYONLARI ---
+  const handleAddTag = () => {
+    const trimmedTag = tagInput.trim();
+    if (!trimmedTag) return; // Boşsa ekleme
+    if (formData.tags.includes(trimmedTag)) {
+        setTagInput(""); // Zaten varsa kutuyu temizle çık
+        return; 
+    }
+    
+    setFormData(prev => ({ ...prev, tags: [...prev.tags, trimmedTag] }));
+    setTagInput(""); // Kutuyu temizle
+  };
+
+  const handleRemoveTag = (tagToRemove) => {
+    setFormData(prev => ({ ...prev, tags: prev.tags.filter(t => t !== tagToRemove) }));
+  };
+
+  const handleKeyDown = (e) => {
+      if (e.key === 'Enter') {
+          e.preventDefault(); // Formu göndermeyi engelle
+          handleAddTag();
       }
-  }, [formData.definitions]);
+  };
 
+  // --- KAYDETME ---
   const handleSave = async () => {
     if (!formData.word || !formData.sentence) { alert("Lütfen Kelime ve Örnek Cümle alanlarını doldurun."); return; }
     setSaving(true);
@@ -64,6 +73,7 @@ const QuickAddModal = ({ word, prefillData, onClose }) => {
     else { alert("Kaydedildi!"); onClose(); }
   };
 
+  // Tanım güncelleme yardımcıları
   const updateDef = (i, f, v) => { const n = [...formData.definitions]; n[i] = { ...n[i], [f]: v }; setFormData(p => ({ ...p, definitions: n })); };
   const addDef = () => setFormData(p => ({ ...p, definitions: [...p.definitions, { type: "noun", meaning: "", engExplanation: "", trExplanation: "" }] }));
   const removeDef = (i) => { if(formData.definitions.length > 1) setFormData(p => ({...p, definitions: p.definitions.filter((_, idx) => idx !== i)})); };
@@ -77,18 +87,53 @@ const QuickAddModal = ({ word, prefillData, onClose }) => {
         </div>
         
         <div className="space-y-4">
-          {/* Kelime Girişi (AI butonsuz) */}
+          
+          {/* Kelime Girişi */}
           <div>
-            <input value={formData.word} onChange={e => setFormData({ ...formData, word: e.target.value })} className="w-full p-3 border rounded-xl font-bold text-lg" placeholder="Kelimeyi yazın..." />
+            <label className="block text-xs font-bold text-slate-500 mb-1">KELİME</label>
+            <input value={formData.word} onChange={e => setFormData({ ...formData, word: e.target.value })} className="w-full p-3 border rounded-xl font-bold text-lg focus:border-indigo-500 outline-none" placeholder="Kelimeyi yazın..." />
           </div>
 
+          {/* --- MANUEL ETİKET ALANI --- */}
           <div className="bg-indigo-50 p-3 rounded-xl border border-indigo-100">
-              <label className="block text-xs font-bold text-indigo-400 mb-2 uppercase">Otomatik Etiketler</label>
+              <label className="block text-xs font-bold text-indigo-400 mb-2 uppercase">Etiketler (Manuel)</label>
+              
+              {/* Etiket Giriş Kutusu */}
+              <div className="flex gap-2 mb-3">
+                  <input 
+                    value={tagInput}
+                    onChange={(e) => setTagInput(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    className="flex-1 p-2 border border-indigo-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500"
+                    placeholder="Etiket yaz (Örn: A1, Fiil)..."
+                  />
+                  <button 
+                    onClick={handleAddTag}
+                    className="bg-indigo-600 text-white p-2 rounded-lg hover:bg-indigo-700 transition-colors"
+                  >
+                    <Plus className="w-5 h-5" />
+                  </button>
+              </div>
+
+              {/* Eklenen Etiketler Listesi */}
               <div className="flex flex-wrap gap-2">
-                  {formData.tags.length > 0 ? (formData.tags.map((tag, i) => (<span key={i} className="bg-white text-indigo-600 px-2 py-1 rounded-lg text-xs font-bold shadow-sm border border-indigo-100 flex items-center gap-1"><Tag className="w-3 h-3"/> {tag}</span>))) : (<span className="text-xs text-indigo-300 italic">Tür seçimine göre oluşacak...</span>)}
+                  {formData.tags.length > 0 ? (
+                      formData.tags.map((tag, i) => (
+                        <span key={i} className="bg-white text-indigo-600 px-2 py-1 rounded-lg text-xs font-bold shadow-sm border border-indigo-100 flex items-center gap-1 group">
+                            <Tag className="w-3 h-3"/> 
+                            {tag}
+                            <button onClick={() => handleRemoveTag(tag)} className="text-indigo-300 hover:text-red-500 ml-1">
+                                <X className="w-3 h-3" />
+                            </button>
+                        </span>
+                      ))
+                  ) : (
+                      <span className="text-xs text-indigo-300 italic">Hiç etiket yok.</span>
+                  )}
               </div>
           </div>
 
+          {/* Fiil & İsim Detayları */}
           <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
             <div className="text-xs font-bold text-slate-400 mb-2 uppercase tracking-wide">Fiil & İsim Detayları (Opsiyonel)</div>
             <div className="space-y-3">
@@ -98,6 +143,7 @@ const QuickAddModal = ({ word, prefillData, onClose }) => {
             </div>
           </div>
           
+          {/* Sıfat & Zarf Detayları */}
           <div className="bg-orange-50 p-3 rounded-xl border border-orange-100">
              <div className="text-xs font-bold text-orange-400 mb-2 uppercase tracking-wide">Sıfat & Zarf Detayları (Opsiyonel)</div>
              <div className="space-y-3">
@@ -106,6 +152,7 @@ const QuickAddModal = ({ word, prefillData, onClose }) => {
              </div>
           </div>
 
+          {/* Anlamlar */}
           <div className="space-y-2">
             <label className="block text-sm font-medium">Anlamlar</label>
             {formData.definitions.map((def, i) => (
@@ -127,6 +174,7 @@ const QuickAddModal = ({ word, prefillData, onClose }) => {
             <button onClick={addDef} className="text-sm text-indigo-600 flex items-center gap-1 font-bold mt-2"><Plus className="w-4 h-4"/> Anlam Ekle</button>
           </div>
 
+          {/* Örnek Cümle ve Çevirisi */}
           <div className="space-y-2">
               <div>
                   <label className="block text-xs font-bold text-slate-500 mb-1">ÖRNEK CÜMLE</label>
