@@ -33,26 +33,9 @@ export default function WordCard({ wordObj }) {
   };
 
   const handleFlip = () => setIsFlipped(!isFlipped);
-  const hasGrammar = wordObj.v2 || wordObj.v3 || wordObj.plural || wordObj.vIng;
 
-  // Gramer Kutucuğu
-  const GrammarBox = ({ label, value, colorClass }) => {
-    const isPlayingThis = playingText === value;
-    return (
-      <div className={`flex items-center justify-between p-3 rounded-xl border ${colorClass} transition-all hover:shadow-md group/gbox`}>
-        <div className="flex flex-col">
-          <span className="text-[10px] font-black uppercase opacity-60 tracking-wider">{label}</span>
-          <span className="font-bold text-sm text-slate-700">{value}</span>
-        </div>
-        <button
-          onClick={(e) => toggleSpeak(e, value)}
-          className={`p-1.5 bg-white rounded-full shadow-sm transition-opacity text-indigo-600 ${isPlayingThis ? 'opacity-100' : 'opacity-0 group-hover/gbox:opacity-100'}`}
-        >
-          {isPlayingThis ? <Square className="w-3.5 h-3.5 fill-indigo-600" /> : <Volume2 className="w-3.5 h-3.5" />}
-        </button>
-      </div>
-    );
-  };
+  // Sadece ilk tanımı alıyoruz
+  const mainDefinition = wordObj.definitions && wordObj.definitions[0];
 
   return (
     <div 
@@ -62,7 +45,7 @@ export default function WordCard({ wordObj }) {
       <div className="relative w-full transition-all duration-500 ease-in-out [transform-style:preserve-3d]">
         
         {/* ============================== */}
-        {/* === ÖN YÜZ (MODERN İNGİLİZCE) === */}
+        {/* === ÖN YÜZ (SADELEŞTİRİLMİŞ İNGİLİZCE) === */}
         {/* ============================== */}
         <div 
           className={`
@@ -72,90 +55,56 @@ export default function WordCard({ wordObj }) {
             ${
               isFlipped 
                 ? "absolute top-0 left-0 opacity-0 pointer-events-none [transform:rotateY(180deg)]" 
-                : "relative opacity-100 z-10 [transform:rotateY(0deg)] min-h-[500px]"
+                : "relative opacity-100 z-10 [transform:rotateY(0deg)] min-h-[400px]"
             }
           `}
         >
           
-          {/* HERO BÖLÜMÜ */}
-          <div className="relative bg-gradient-to-br from-indigo-600 to-violet-700 p-6 pt-10 text-center shrink-0 flex flex-col items-center justify-center min-h-[180px]">
+          {/* HERO BÖLÜMÜ (Etiketsiz, sadece kelime) */}
+          <div className="relative bg-gradient-to-br from-indigo-600 to-violet-700 p-6 flex flex-col items-center justify-center min-h-[160px] text-center shrink-0">
             <div className="absolute top-0 left-0 w-full h-full opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
             
-            <div className="relative z-10 w-full">
-              <div className="flex items-center justify-center gap-4 mb-4">
-                <h1 className="text-5xl font-black text-white tracking-tight drop-shadow-md break-words">
-                  {wordObj.word}
-                </h1>
-                <button
-                  onClick={(e) => toggleSpeak(e, wordObj.word)}
-                  className="p-3 bg-white/20 hover:bg-white text-white hover:text-indigo-600 rounded-full backdrop-blur-md transition-all active:scale-90 shrink-0"
-                >
-                  {playingText === wordObj.word ? <Square className="w-6 h-6 fill-current" /> : <Volume2 className="w-6 h-6" />}
-                </button>
-              </div>
-
-              {/* Tagler */}
-              <div className="flex flex-wrap justify-center gap-2">
-                {wordObj.tags && wordObj.tags.map((tag, i) => (
-                  <span key={i} className="px-2 py-0.5 bg-black/20 text-white/80 text-[10px] font-bold rounded-full uppercase tracking-wider backdrop-blur-sm border border-white/10">
-                    {tag}
-                  </span>
-                ))}
-              </div>
+            <div className="relative z-10 w-full flex items-center justify-center gap-4">
+              <h1 className="text-5xl font-black text-white tracking-tight drop-shadow-md break-words">
+                {wordObj.word}
+              </h1>
+              <button
+                onClick={(e) => toggleSpeak(e, wordObj.word)}
+                className="p-3 bg-white/20 hover:bg-white text-white hover:text-indigo-600 rounded-full backdrop-blur-md transition-all active:scale-90 shrink-0"
+              >
+                {playingText === wordObj.word ? <Square className="w-6 h-6 fill-current" /> : <Volume2 className="w-6 h-6" />}
+              </button>
             </div>
           </div>
 
           {/* İÇERİK GÖVDESİ */}
-          <div className="flex-1 flex flex-col p-5 gap-4 bg-slate-50/50">
-            {/* Tanımlar */}
-            <div className="space-y-3">
-              {wordObj.definitions && wordObj.definitions.map((def, index) => {
-                const isPlayingDef = playingText === def.engExplanation;
-                return (
-                  <div 
-                    key={index} 
-                    className={`relative p-4 rounded-2xl border transition-all ${
-                      index === 0 
-                        ? 'bg-white border-indigo-100 shadow-sm' 
-                        : 'bg-slate-50 border-slate-100 opacity-80 hover:opacity-100'
-                    }`}
+          <div className="flex-1 flex flex-col p-6 gap-5 bg-slate-50/50 justify-center">
+            
+            {/* 1. Tek Tanım (Definition) */}
+            {mainDefinition && (
+              <div className={`relative p-5 rounded-2xl border bg-white border-indigo-100 shadow-sm`}>
+                <div className="flex justify-between items-start mb-2">
+                  <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-600">
+                    Definition
+                  </span>
+                  <button
+                    onClick={(e) => toggleSpeak(e, mainDefinition.engExplanation)}
+                    className={`transition-colors ${playingText === mainDefinition.engExplanation ? 'text-indigo-600' : 'text-slate-400 hover:text-indigo-500'}`}
                   >
-                    <div className="flex justify-between items-start mb-1">
-                      <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-md ${
-                        index === 0 ? 'bg-indigo-50 text-indigo-600' : 'bg-slate-200 text-slate-500'
-                      }`}>
-                        {def.type || `Def ${index + 1}`}
-                      </span>
-                      <button
-                        onClick={(e) => toggleSpeak(e, def.engExplanation)}
-                        className={`transition-colors ${isPlayingDef ? 'text-indigo-600' : 'text-slate-400 hover:text-indigo-500'}`}
-                      >
-                         {isPlayingDef ? <Square className="w-4 h-4 fill-indigo-600" /> : <Volume2 className="w-4 h-4" />}
-                      </button>
-                    </div>
-                    <p className="text-slate-700 font-medium leading-relaxed">
-                      "{def.engExplanation || 'No definition.'}"
-                    </p>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Gramer Grid */}
-            {hasGrammar && (
-              <div className="grid grid-cols-2 gap-2 mt-2">
-                {wordObj.plural && <GrammarBox label="Plural" value={wordObj.plural} colorClass="bg-pink-50 border-pink-100 text-pink-700" />}
-                {wordObj.v2 && <GrammarBox label="Past (V2)" value={wordObj.v2} colorClass="bg-orange-50 border-orange-100 text-orange-700" />}
-                {wordObj.v3 && <GrammarBox label="Perfect (V3)" value={wordObj.v3} colorClass="bg-emerald-50 border-emerald-100 text-emerald-700" />}
-                {wordObj.vIng && <GrammarBox label="Gerund" value={wordObj.vIng} colorClass="bg-sky-50 border-sky-100 text-sky-700" />}
+                     {playingText === mainDefinition.engExplanation ? <Square className="w-4 h-4 fill-indigo-600" /> : <Volume2 className="w-4 h-4" />}
+                  </button>
+                </div>
+                <p className="text-slate-700 font-medium text-lg leading-relaxed">
+                  "{mainDefinition.engExplanation || 'No definition.'}"
+                </p>
               </div>
             )}
 
-            {/* Örnek Cümle */}
-            <div className="relative bg-white p-4 rounded-2xl border border-indigo-100 shadow-sm group/sentence mt-2">
-               <Quote className="absolute top-3 left-3 w-4 h-4 text-indigo-200" />
+            {/* 2. Örnek Cümle */}
+            <div className="relative bg-white p-5 rounded-2xl border border-indigo-100 shadow-sm group/sentence">
+               <Quote className="absolute top-4 left-4 w-4 h-4 text-indigo-200" />
                <div className="pl-6 pr-8">
-                 <p className="text-slate-600 italic text-sm leading-relaxed font-medium">
+                 <p className="text-slate-600 italic text-base leading-relaxed font-medium">
                    "{wordObj.sentence}"
                  </p>
                  <button
@@ -167,11 +116,10 @@ export default function WordCard({ wordObj }) {
                </div>
             </div>
             
-            <div className="h-4"></div>
           </div>
 
           {/* Footer Uyarısı */}
-          <div className="py-2 bg-white border-t border-slate-100 flex justify-center items-center text-xs text-slate-400 font-semibold gap-1 mt-auto rounded-b-3xl">
+          <div className="py-3 bg-white border-t border-slate-100 flex justify-center items-center text-xs text-slate-400 font-semibold gap-1 mt-auto rounded-b-3xl">
             <RotateCw className="w-3 h-3 animate-spin-slow" />
             <span>Türkçesi için dokun</span>
           </div>
@@ -179,7 +127,7 @@ export default function WordCard({ wordObj }) {
         </div>
 
         {/* ============================== */}
-        {/* === ARKA YÜZ (MODERN TÜRKÇE) === */}
+        {/* === ARKA YÜZ (SADELEŞTİRİLMİŞ TÜRKÇE) === */}
         {/* ============================== */}
         <div 
           className={`
@@ -188,7 +136,7 @@ export default function WordCard({ wordObj }) {
             [backface-visibility:hidden]
             ${
               isFlipped 
-                ? "relative opacity-100 z-10 [transform:rotateY(0deg)] min-h-[300px]" // Min-h daha düşük (300px), içeriğe göre uzayacak
+                ? "relative opacity-100 z-10 [transform:rotateY(0deg)] min-h-[400px]" 
                 : "absolute top-0 left-0 opacity-0 pointer-events-none [transform:rotateY(-180deg)]"
             }
           `}
@@ -196,34 +144,28 @@ export default function WordCard({ wordObj }) {
           
           {/* Header */}
           <div className="p-6 bg-slate-800 border-b border-slate-700/50 text-center shrink-0">
-            <span className="text-xs font-bold text-indigo-400 uppercase tracking-[0.2em] mb-2 block">Türkçe Karşılıkları</span>
+            <span className="text-xs font-bold text-indigo-400 uppercase tracking-[0.2em] mb-2 block">Türkçe Karşılığı</span>
             <div className="w-12 h-1 bg-indigo-500 mx-auto rounded-full"></div>
           </div>
 
-          {/* Tanımlar Listesi */}
-          <div className="flex-1 p-5 space-y-4">
-             {wordObj.definitions && wordObj.definitions.map((def, index) => (
-                <div key={index} className="flex gap-4 group/tr">
-                  <div className="flex flex-col items-center gap-1 mt-1">
-                     <div className={`w-2 h-2 rounded-full ${index === 0 ? 'bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.6)]' : 'bg-slate-600'}`}></div>
-                     <div className="w-0.5 h-full bg-slate-800 group-last/tr:hidden min-h-[20px]"></div>
-                  </div>
-                  <div className="flex-1 pb-4">
-                     <h3 className={`text-xl font-bold ${index === 0 ? 'text-white' : 'text-slate-400'}`}>
-                       {def.meaning}
-                     </h3>
-                     {def.trExplanation && (
-                       <p className="text-sm text-slate-400 mt-1 leading-relaxed border-l-2 border-slate-700 pl-3">
-                         {def.trExplanation}
-                       </p>
-                     )}
-                  </div>
+          {/* Ana İçerik */}
+          <div className="flex-1 p-6 flex flex-col items-center justify-center text-center gap-6">
+             {mainDefinition && (
+                <div>
+                   <h3 className="text-3xl font-bold text-white mb-3">
+                     {mainDefinition.meaning}
+                   </h3>
+                   {mainDefinition.trExplanation && (
+                     <p className="text-slate-400 text-sm leading-relaxed max-w-xs mx-auto border-t border-slate-700 pt-3">
+                       {mainDefinition.trExplanation}
+                     </p>
+                   )}
                 </div>
-             ))}
+             )}
           </div>
 
           {/* Footer Çeviri */}
-          <div className="bg-slate-800/50 p-5 backdrop-blur-sm border-t border-slate-700 mt-auto">
+          <div className="bg-slate-800/50 p-6 backdrop-blur-sm border-t border-slate-700 mt-auto">
             {wordObj.sentence_tr && (
                <div className="bg-slate-800 p-4 rounded-xl border border-slate-700 relative">
                   <div className="absolute -top-2.5 left-4 bg-slate-700 px-2 py-0.5 rounded text-[10px] text-indigo-300 font-bold uppercase">Çeviri</div>
