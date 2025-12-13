@@ -57,24 +57,27 @@ export default function WordCard({ wordObj }) {
   return (
     <div 
       onClick={handleFlip} 
-      className="group w-full cursor-pointer [perspective:1000px] font-sans"
+      className="w-full cursor-pointer font-sans [perspective:1000px]"
     >
-      {/* GRID STACKING YÖNTEMİ: 
-         Ön ve Arka yüzü aynı grid hücresine koyuyoruz (grid-area: 1/1).
-         Böylece kartın yüksekliğini "içeriği en uzun olan yüz" belirliyor.
-         Bu, mobildeki taşma ve kayma sorunlarını çözer.
+      {/* GRID STACKING + OPACITY SWAP YÖNTEMİ
+         Her iki yüzü de aynı hücreye (col-1 row-1) koyuyoruz.
+         Dönüş efektini opacity ile destekleyerek karışmayı önlüyoruz.
       */}
-      <div
-        className={`relative w-full transition-all duration-700 [transform-style:preserve-3d] grid grid-cols-1 ${
-          isFlipped ? "[transform:rotateY(180deg)]" : ""
-        }`}
-      >
+      <div className="relative w-full grid grid-cols-1">
         
         {/* ============================== */}
         {/* === ÖN YÜZ (MODERN İNGİLİZCE) === */}
         {/* ============================== */}
         <div 
-          className="col-start-1 row-start-1 bg-white rounded-3xl shadow-2xl flex flex-col overflow-hidden border border-slate-100 [backface-visibility:hidden] min-h-[500px]"
+          className={`
+            col-start-1 row-start-1 
+            bg-white rounded-3xl shadow-2xl flex flex-col overflow-hidden border border-slate-100 
+            transition-all duration-700 ease-in-out min-h-[500px]
+            [backface-visibility:hidden]
+            ${isFlipped 
+              ? "[transform:rotateY(180deg)] opacity-0 pointer-events-none" 
+              : "[transform:rotateY(0deg)] opacity-100 z-10"}
+          `}
         >
           
           {/* HERO BÖLÜMÜ */}
@@ -105,10 +108,9 @@ export default function WordCard({ wordObj }) {
             </div>
           </div>
 
-          {/* İÇERİK GÖVDESİ (Scroll YOK - H-AUTO) */}
+          {/* İÇERİK GÖVDESİ */}
           <div className="flex-1 flex flex-col p-5 gap-4 bg-slate-50/50">
-            
-            {/* Tanımlar (Hepsini göster, kart uzasın) */}
+            {/* Tanımlar */}
             <div className="space-y-3">
               {wordObj.definitions && wordObj.definitions.map((def, index) => {
                 const isPlayingDef = playingText === def.engExplanation;
@@ -168,7 +170,6 @@ export default function WordCard({ wordObj }) {
                </div>
             </div>
             
-            {/* Boşluk Bırak (Flip butonu görünürlüğü için) */}
             <div className="h-4"></div>
           </div>
 
@@ -184,7 +185,15 @@ export default function WordCard({ wordObj }) {
         {/* === ARKA YÜZ (MODERN TÜRKÇE) === */}
         {/* ============================== */}
         <div 
-          className="col-start-1 row-start-1 bg-slate-900 rounded-3xl shadow-2xl flex flex-col overflow-hidden border border-slate-700 [backface-visibility:hidden] [transform:rotateY(180deg)] min-h-[500px]"
+          className={`
+            col-start-1 row-start-1 
+            bg-slate-900 rounded-3xl shadow-2xl flex flex-col overflow-hidden border border-slate-700
+            transition-all duration-700 ease-in-out min-h-[500px]
+            [backface-visibility:hidden]
+            ${isFlipped 
+              ? "[transform:rotateY(0deg)] opacity-100 z-10" 
+              : "[transform:rotateY(-180deg)] opacity-0 pointer-events-none"}
+          `}
         >
           
           {/* Header */}
@@ -193,7 +202,7 @@ export default function WordCard({ wordObj }) {
             <div className="w-12 h-1 bg-indigo-500 mx-auto rounded-full"></div>
           </div>
 
-          {/* Tanımlar Listesi (Scroll YOK - Uzayabilir) */}
+          {/* Tanımlar Listesi */}
           <div className="flex-1 p-5 space-y-4">
              {wordObj.definitions && wordObj.definitions.map((def, index) => (
                 <div key={index} className="flex gap-4 group/tr">
