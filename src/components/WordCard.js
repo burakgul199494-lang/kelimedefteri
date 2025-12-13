@@ -3,54 +3,39 @@ import { Volume2, Square, RotateCw, Quote } from "lucide-react";
 
 export default function WordCard({ wordObj }) {
   const [isFlipped, setIsFlipped] = useState(false);
-  
-  // Hangi metnin çaldığını takip etmek için state (null ise çalmıyor demektir)
   const [playingText, setPlayingText] = useState(null);
 
-  // 1. KELİME DEĞİŞTİĞİNDE SESİ KES
+  // 1. Kelime değişince resetle
   useEffect(() => {
     window.speechSynthesis.cancel();
     setPlayingText(null);
-    setIsFlipped(false); // Yeni kelime gelince kartı da ön yüze çevir
+    setIsFlipped(false);
   }, [wordObj]);
 
-  // 2. SES AÇ/KAPA (TOGGLE) FONKSİYONU
+  // 2. Ses Fonksiyonu
   const toggleSpeak = (e, text) => {
-    e.stopPropagation(); // Kartın dönmesini engelle
+    e.stopPropagation();
     if (!text) return;
 
-    // Eğer şu an bu metin çalıyorsa -> DURDUR
     if (playingText === text) {
       window.speechSynthesis.cancel();
       setPlayingText(null);
-    } 
-    // Çalmıyorsa veya başka bir şey çalıyorsa -> YENİSİNİ ÇAL
-    else {
-      window.speechSynthesis.cancel(); // Öncekini sustur
+    } else {
+      window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = "en-US";
       utterance.rate = 0.9;
-      
-      // Okuma bittiğinde ikonu eski haline getir
-      utterance.onend = () => {
-        setPlayingText(null);
-      };
-      
-      // Hata olursa veya kesilirse de ikonu düzelt
-      utterance.onerror = () => {
-        setPlayingText(null);
-      };
-
+      utterance.onend = () => setPlayingText(null);
+      utterance.onerror = () => setPlayingText(null);
       window.speechSynthesis.speak(utterance);
       setPlayingText(text);
     }
   };
 
   const handleFlip = () => setIsFlipped(!isFlipped);
-
   const hasGrammar = wordObj.v2 || wordObj.v3 || wordObj.plural || wordObj.vIng;
 
-  // Gramer Kutucuğu Bileşeni
+  // Gramer Kutucuğu
   const GrammarBox = ({ label, value, colorClass }) => {
     const isPlayingThis = playingText === value;
     return (
@@ -72,10 +57,15 @@ export default function WordCard({ wordObj }) {
   return (
     <div 
       onClick={handleFlip} 
-      className="group w-full h-[620px] cursor-pointer [perspective:1000px] font-sans"
+      className="group w-full cursor-pointer [perspective:1000px] font-sans"
     >
+      {/* GRID STACKING YÖNTEMİ: 
+         Ön ve Arka yüzü aynı grid hücresine koyuyoruz (grid-area: 1/1).
+         Böylece kartın yüksekliğini "içeriği en uzun olan yüz" belirliyor.
+         Bu, mobildeki taşma ve kayma sorunlarını çözer.
+      */}
       <div
-        className={`relative w-full h-full transition-all duration-700 [transform-style:preserve-3d] ${
+        className={`relative w-full transition-all duration-700 [transform-style:preserve-3d] grid grid-cols-1 ${
           isFlipped ? "[transform:rotateY(180deg)]" : ""
         }`}
       >
@@ -83,49 +73,43 @@ export default function WordCard({ wordObj }) {
         {/* ============================== */}
         {/* === ÖN YÜZ (MODERN İNGİLİZCE) === */}
         {/* ============================== */}
-        <div className="absolute inset-0 w-full h-full bg-white rounded-3xl shadow-2xl flex flex-col overflow-hidden [backface-visibility:hidden] border border-slate-100">
+        <div 
+          className="col-start-1 row-start-1 bg-white rounded-3xl shadow-2xl flex flex-col overflow-hidden border border-slate-100 [backface-visibility:hidden] min-h-[500px]"
+        >
           
-          {/* 1. HERO BÖLÜMÜ (Kelime) */}
+          {/* HERO BÖLÜMÜ */}
           <div className="relative bg-gradient-to-br from-indigo-600 to-violet-700 p-6 pt-10 text-center shrink-0 flex flex-col items-center justify-center min-h-[180px]">
-            {/* Arka plan dekoru */}
             <div className="absolute top-0 left-0 w-full h-full opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
             
             <div className="relative z-10 w-full">
-              
-              {/* Kelime ve Ana Ses Butonu */}
               <div className="flex items-center justify-center gap-4 mb-4">
-                <h1 className="text-5xl font-black text-white tracking-tight drop-shadow-md">
+                <h1 className="text-5xl font-black text-white tracking-tight drop-shadow-md break-words">
                   {wordObj.word}
                 </h1>
                 <button
                   onClick={(e) => toggleSpeak(e, wordObj.word)}
-                  className="p-3 bg-white/20 hover:bg-white text-white hover:text-indigo-600 rounded-full backdrop-blur-md transition-all active:scale-90"
+                  className="p-3 bg-white/20 hover:bg-white text-white hover:text-indigo-600 rounded-full backdrop-blur-md transition-all active:scale-90 shrink-0"
                 >
-                  {playingText === wordObj.word ? (
-                    <Square className="w-6 h-6 fill-current" /> // Durdur İkonu
-                  ) : (
-                    <Volume2 className="w-6 h-6" /> // Oku İkonu
-                  )}
+                  {playingText === wordObj.word ? <Square className="w-6 h-6 fill-current" /> : <Volume2 className="w-6 h-6" />}
                 </button>
               </div>
 
-              {/* Tagler (Kelimenin ALTINA alındı ve küçültüldü) */}
-              <div className="flex justify-center gap-2">
+              {/* Tagler */}
+              <div className="flex flex-wrap justify-center gap-2">
                 {wordObj.tags && wordObj.tags.map((tag, i) => (
                   <span key={i} className="px-2 py-0.5 bg-black/20 text-white/80 text-[10px] font-bold rounded-full uppercase tracking-wider backdrop-blur-sm border border-white/10">
                     {tag}
                   </span>
                 ))}
               </div>
-
             </div>
           </div>
 
-          {/* 2. İÇERİK GÖVDESİ */}
-          <div className="flex-1 flex flex-col p-5 gap-4 overflow-hidden bg-slate-50/50">
+          {/* İÇERİK GÖVDESİ (Scroll YOK - H-AUTO) */}
+          <div className="flex-1 flex flex-col p-5 gap-4 bg-slate-50/50">
             
-            {/* A. Tanımlar (Scrollable) */}
-            <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-3">
+            {/* Tanımlar (Hepsini göster, kart uzasın) */}
+            <div className="space-y-3">
               {wordObj.definitions && wordObj.definitions.map((def, index) => {
                 const isPlayingDef = playingText === def.engExplanation;
                 return (
@@ -158,9 +142,9 @@ export default function WordCard({ wordObj }) {
               })}
             </div>
 
-            {/* B. Gramer Grid (Varsa) */}
+            {/* Gramer Grid */}
             {hasGrammar && (
-              <div className="grid grid-cols-2 gap-2 shrink-0 animate-in slide-in-from-bottom-2">
+              <div className="grid grid-cols-2 gap-2 mt-2">
                 {wordObj.plural && <GrammarBox label="Plural" value={wordObj.plural} colorClass="bg-pink-50 border-pink-100 text-pink-700" />}
                 {wordObj.v2 && <GrammarBox label="Past (V2)" value={wordObj.v2} colorClass="bg-orange-50 border-orange-100 text-orange-700" />}
                 {wordObj.v3 && <GrammarBox label="Perfect (V3)" value={wordObj.v3} colorClass="bg-emerald-50 border-emerald-100 text-emerald-700" />}
@@ -168,8 +152,8 @@ export default function WordCard({ wordObj }) {
               </div>
             )}
 
-            {/* C. Örnek Cümle */}
-            <div className="relative bg-white p-4 rounded-2xl border border-indigo-100 shadow-sm shrink-0 group/sentence">
+            {/* Örnek Cümle */}
+            <div className="relative bg-white p-4 rounded-2xl border border-indigo-100 shadow-sm group/sentence mt-2">
                <Quote className="absolute top-3 left-3 w-4 h-4 text-indigo-200" />
                <div className="pl-6 pr-8">
                  <p className="text-slate-600 italic text-sm leading-relaxed font-medium">
@@ -183,11 +167,13 @@ export default function WordCard({ wordObj }) {
                   </button>
                </div>
             </div>
-
+            
+            {/* Boşluk Bırak (Flip butonu görünürlüğü için) */}
+            <div className="h-4"></div>
           </div>
 
           {/* Footer Uyarısı */}
-          <div className="py-2 bg-white border-t border-slate-100 flex justify-center items-center text-xs text-slate-400 font-semibold gap-1">
+          <div className="py-2 bg-white border-t border-slate-100 flex justify-center items-center text-xs text-slate-400 font-semibold gap-1 mt-auto rounded-b-3xl">
             <RotateCw className="w-3 h-3 animate-spin-slow" />
             <span>Türkçesi için dokun</span>
           </div>
@@ -197,7 +183,9 @@ export default function WordCard({ wordObj }) {
         {/* ============================== */}
         {/* === ARKA YÜZ (MODERN TÜRKÇE) === */}
         {/* ============================== */}
-        <div className="absolute inset-0 w-full h-full bg-slate-900 rounded-3xl shadow-2xl flex flex-col overflow-hidden [backface-visibility:hidden] [transform:rotateY(180deg)] border border-slate-700">
+        <div 
+          className="col-start-1 row-start-1 bg-slate-900 rounded-3xl shadow-2xl flex flex-col overflow-hidden border border-slate-700 [backface-visibility:hidden] [transform:rotateY(180deg)] min-h-[500px]"
+        >
           
           {/* Header */}
           <div className="p-6 bg-slate-800 border-b border-slate-700/50 text-center shrink-0">
@@ -205,13 +193,13 @@ export default function WordCard({ wordObj }) {
             <div className="w-12 h-1 bg-indigo-500 mx-auto rounded-full"></div>
           </div>
 
-          {/* Tanımlar Listesi */}
-          <div className="flex-1 overflow-y-auto custom-scrollbar p-5 space-y-4">
+          {/* Tanımlar Listesi (Scroll YOK - Uzayabilir) */}
+          <div className="flex-1 p-5 space-y-4">
              {wordObj.definitions && wordObj.definitions.map((def, index) => (
                 <div key={index} className="flex gap-4 group/tr">
                   <div className="flex flex-col items-center gap-1 mt-1">
                      <div className={`w-2 h-2 rounded-full ${index === 0 ? 'bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.6)]' : 'bg-slate-600'}`}></div>
-                     <div className="w-0.5 h-full bg-slate-800 group-last/tr:hidden"></div>
+                     <div className="w-0.5 h-full bg-slate-800 group-last/tr:hidden min-h-[20px]"></div>
                   </div>
                   <div className="flex-1 pb-4">
                      <h3 className={`text-xl font-bold ${index === 0 ? 'text-white' : 'text-slate-400'}`}>
@@ -228,7 +216,7 @@ export default function WordCard({ wordObj }) {
           </div>
 
           {/* Footer Çeviri */}
-          <div className="bg-slate-800/50 p-5 backdrop-blur-sm border-t border-slate-700 shrink-0">
+          <div className="bg-slate-800/50 p-5 backdrop-blur-sm border-t border-slate-700 mt-auto">
             {wordObj.sentence_tr && (
                <div className="bg-slate-800 p-4 rounded-xl border border-slate-700 relative">
                   <div className="absolute -top-2.5 left-4 bg-slate-700 px-2 py-0.5 rounded text-[10px] text-indigo-300 font-bold uppercase">Çeviri</div>
@@ -248,11 +236,6 @@ export default function WordCard({ wordObj }) {
       <style jsx>{`
         .animate-spin-slow { animation: spin 3s linear infinite; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        
-        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 10px; }
-        .group:hover .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #94a3b8; }
       `}</style>
     </div>
   );
