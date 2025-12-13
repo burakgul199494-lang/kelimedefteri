@@ -1,17 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useData } from "../context/DataContext";
 import { useNavigate } from "react-router-dom";
-import { 
-  X, 
-  Trophy, 
-  Loader2, 
-  Home, 
-  RefreshCw, 
-  BrainCircuit, 
-  Hourglass,
-  CheckCircle2, // Görsel zenginlik için eklendi
-  HelpCircle    // Görsel zenginlik için eklendi
-} from "lucide-react";
+import { X, Trophy, Volume2, Languages, Loader2, Home, RefreshCw, BrainCircuit, Hourglass } from "lucide-react";
 
 export default function Quiz2() {
   const { getAllWords, knownWordIds, learningQueue, addScore } = useData();
@@ -24,22 +14,23 @@ export default function Quiz2() {
   const [score, setScore] = useState(0);
   const [selected, setSelected] = useState(null);
   const [isAnswered, setIsAnswered] = useState(false);
-  const [gameStatus, setGameStatus] = useState("mode-selection");
+  const [gameStatus, setGameStatus] = useState("mode-selection"); // mode-selection, playing, finished
   const [isTransitioning, setIsTransitioning] = useState(false);
-
+  
   // --- KELİME HAVUZLARI ---
   const getWordPools = () => {
     const all = getAllWords();
+    // Tanımı olan geçerli kelimeler
     const validWords = all.filter(w => w.definitions && w.definitions[0]?.meaning);
     const now = new Date();
 
-    // 1. ÖĞRENME MODU
+    // 1. ÖĞRENME MODU: Bilinenlerde OLMAYAN kelimeler
     const learnPool = validWords.filter(w => !knownWordIds.includes(w.id));
 
-    // 2. TEKRAR MODU
+    // 2. TEKRAR MODU: Bilinenlerde OLAN kelimeler
     const reviewPool = validWords.filter(w => knownWordIds.includes(w.id));
 
-    // 3. BEKLEME LİSTESİ
+    // 3. BEKLEME LİSTESİ: LearningQueue'da olan ve tarihi GELECEKTE olanlar
     const waitingPool = validWords.filter(w => {
         const q = learningQueue ? learningQueue.find(item => item.wordId === w.id) : null;
         return q && new Date(q.nextReview) > now;
@@ -59,33 +50,34 @@ export default function Quiz2() {
     else if (mode === "review") pool = reviewPool;
     else if (mode === "waiting") pool = waitingPool;
 
+    // Quiz için en az 4 kelime lazım (1 doğru + 3 yanlış şık)
     if (pool.length < 4) {
-      alert(`Bu modda quiz başlatmak için en az 4 kelimeye ihtiyaç var. (Şu an: ${pool.length})`);
+      alert(`Quiz başlatmak için bu modda en az 4 kelimeye ihtiyaç var. (Şu an: ${pool.length})`);
       return;
     }
 
-    // Soruları Oluştur
+    // Soruları Oluştur (Maksimum 20 soru)
     const selectedWords = [...pool].sort(() => 0.5 - Math.random()).slice(0, 20);
     const allValidWords = getAllWords().filter(w => w.definitions && w.definitions[0]?.meaning);
 
     const generated = selectedWords.map(target => {
-      // DOĞRU CEVAP: İngilizce Kelime
-      const correct = target.word; 
+      // TERS QUİZ FARKI:
+      // Doğru Cevap: Kelimenin kendisi (İngilizce)
+      const correct = target.word;
       
-      // SORU: Türkçe Anlamı
-      const questionText = target.definitions[0].meaning; 
-
-      // YANLIŞ ŞIKLAR: Diğer İngilizce kelimeler
+      // Yanlış Şıklar: Diğer kelimelerin kendileri (İngilizce)
       const others = allValidWords
         .filter(w => w.id !== target.id)
         .sort(() => 0.5 - Math.random())
         .slice(0, 3)
         .map(w => w.word);
       
+      // Soru Metni: Kelimenin anlamı (Türkçe)
+      // wordObj içinde tüm veriyi tutuyoruz, ekranda anlamı göstereceğiz
       return { 
         wordObj: target, 
         correct, 
-        questionText,
+        questionText: target.definitions[0].meaning,
         options: [...others, correct].sort(() => 0.5 - Math.random()) 
       };
     });
@@ -96,6 +88,7 @@ export default function Quiz2() {
     setGameStatus("playing");
   };
 
+  // Her yeni soruda state'leri sıfırla
   useEffect(() => { 
       setSelected(null);
       setIsAnswered(false);
@@ -110,6 +103,7 @@ export default function Quiz2() {
     
     if (option === questions[index].correct) setScore(s => s + 5);
     
+    // 1 Saniye sonra diğer soruya geç
     setTimeout(() => {
       if (index + 1 < questions.length) {
         setIsTransitioning(true);
@@ -138,6 +132,7 @@ export default function Quiz2() {
         <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
             <div className="w-full max-w-sm space-y-6">
                 
+                {/* Header */}
                 <div className="flex items-center justify-between">
                     <button onClick={() => navigate("/")} className="p-2 bg-white rounded-full shadow-sm hover:bg-slate-100">
                       <Home className="w-5 h-5 text-slate-600" />
@@ -147,7 +142,7 @@ export default function Quiz2() {
                 </div>
 
                 <div className="text-center py-6">
-                    <h1 className="text-3xl font-black text-slate-800 mb-2">Anlamdan Kelimeye</h1>
+                    <h1 className="text-3xl font-black text-slate-800 mb-2">Nasıl Test Edelim?</h1>
                     <p className="text-slate-500">Türkçe anlamını gör, İngilizcesini bul.</p>
                 </div>
 
@@ -212,6 +207,8 @@ export default function Quiz2() {
                         </div>
                     </button>
                 </div>
+
+                <button onClick={() => navigate("/")} className="w-full text-slate-400 font-bold py-3">Geri Dön</button>
             </div>
         </div>
     );
@@ -251,12 +248,11 @@ export default function Quiz2() {
 
   const current = questions[index];
   const progress = ((index + 1) / questions.length) * 100;
-
+  
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center p-4">
        <div className="w-full max-w-md space-y-6 mt-4">
           
-          {/* HEADER */}
           <div className="flex justify-between items-center">
              <button onClick={handleQuitEarly}><X className="w-6 h-6 text-slate-400"/></button>
              <div className="font-bold text-indigo-600">
@@ -272,46 +268,35 @@ export default function Quiz2() {
               </div>
           ) : (
               <>
-                {/* SORU KARTI (TÜRKÇE ANLAM) */}
-                <div className="bg-white p-8 rounded-3xl shadow-lg border border-slate-100 text-center space-y-4 mt-6 animate-in fade-in zoom-in duration-300">
-                    <div className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center justify-center gap-1">
-                        <HelpCircle className="w-3 h-3"/> BU KELİME HANGİSİ?
+                <div className="bg-white p-8 rounded-3xl shadow-lg border border-slate-100 text-center space-y-6 mt-6 animate-in fade-in zoom-in duration-300">
+                    {/* Sadece Türkçe Anlamı Gösteriliyor (Ters Quiz) */}
+                    <div className="flex flex-col items-center gap-2">
+                        <div className="bg-indigo-50 text-indigo-800 px-4 py-2 rounded-xl border border-indigo-100 flex items-center gap-2">
+                            <span className="text-sm font-bold uppercase tracking-wider">TÜRKÇE ANLAMI</span>
+                        </div>
                     </div>
                     
-                    {/* Okuma ve Çeviri Butonları Kaldırıldı, Sadece Metin */}
-                    <h2 className="text-3xl font-extrabold text-slate-800 break-words leading-tight">
-                        {current.questionText}
-                    </h2>
-                    
-                    <div className="w-12 h-1 bg-indigo-100 mx-auto rounded-full"></div>
+                    <h2 className="text-3xl font-extrabold text-slate-800 break-words">{current.questionText}</h2>
                 </div>
 
-                {/* ŞIKLAR (İNGİLİZCE KELİMELER) */}
                 <div className="space-y-3 mt-6">
                     {current.options.map((opt, i) => {
-                        let cls = "w-full p-4 rounded-xl text-left font-bold text-lg border-2 transition-all shadow-sm flex items-center justify-between ";
-                        
+                        let cls = "w-full p-4 rounded-xl text-left font-medium border-2 transition-all shadow-sm ";
                         if (isAnswered) {
-                            if (opt === current.correct) {
-                                cls += "bg-green-100 border-green-500 text-green-700";
-                            } else if (opt === selected) {
-                                cls += "bg-red-100 border-red-500 text-red-700";
-                            } else {
-                                cls += "opacity-50 border-slate-200";
-                            }
+                            if (opt === current.correct) cls += "bg-green-100 border-green-500 text-green-700";
+                            else if (opt === selected) cls += "bg-red-100 border-red-500 text-red-700";
+                            else cls += "opacity-50";
                         } else {
-                            cls += "bg-white border-slate-200 hover:border-indigo-300 hover:bg-indigo-50 active:bg-indigo-50 text-slate-700";
+                            cls += "bg-white border-slate-200 hover:border-indigo-300 hover:bg-indigo-50 active:bg-indigo-50";
                         }
-
                         return (
                             <button 
-                                key={`${index}-${i}`} 
-                                onClick={(e)=>handleAnswer(opt, e)} 
-                                disabled={isAnswered} 
-                                className={cls}
+                                    key={`${index}-${i}`} 
+                                    onClick={(e)=>handleAnswer(opt, e)} 
+                                    disabled={isAnswered} 
+                                    className={cls}
                             >
-                                <span>{opt}</span>
-                                {isAnswered && opt === current.correct && <CheckCircle2 className="w-5 h-5"/>}
+                                    {opt}
                             </button>
                         );
                     })}
