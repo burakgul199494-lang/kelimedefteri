@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useData } from "../context/DataContext";
-import WordCard from "../components/WordCard";
+import WordCard2 from "../components/WordCard2";
 import { ArrowLeft, Search, X, BookOpen, AlertCircle, ArrowDownCircle } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 
@@ -115,7 +115,7 @@ export default function Dictionary() {
                     
                     {displayedResults.map((resultWord) => (
                         <div key={resultWord.id} className="flex justify-center">
-                            <WordCard wordObj={resultWord} />
+                            <WordCard2 wordObj={resultWord} />
                         </div>
                     ))}
 
