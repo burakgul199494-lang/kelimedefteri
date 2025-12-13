@@ -18,34 +18,42 @@ export default function Quiz() {
   const navigate = useNavigate();
 
   // --- STATE'LER ---
-  const [gameMode, setGameMode] = useState(null); // 'review', 'learn', 'waiting'
+  const [gameMode, setGameMode] = useState(null); 
   const [questions, setQuestions] = useState([]);
   const [index, setIndex] = useState(0);
   const [score, setScore] = useState(0);
   const [selected, setSelected] = useState(null);
   const [isAnswered, setIsAnswered] = useState(false);
-  const [gameStatus, setGameStatus] = useState("mode-selection"); // mode-selection, playing, finished
+  const [gameStatus, setGameStatus] = useState("mode-selection"); 
   const [isTransitioning, setIsTransitioning] = useState(false);
   
-  // İpucu (Türkçe) Göster/Gizle
   const [showHintTr, setShowHintTr] = useState(false);
 
-  // --- KELİME HAVUZLARI ---
+  // --- KELİME HAVUZLARI (DÜZELTİLDİ) ---
   const getWordPools = () => {
     const all = getAllWords();
-    // Tanımı olan geçerli kelimeler
     const validWords = all.filter(w => w.definitions && w.definitions[0]?.meaning);
     const now = new Date();
 
-    // 1. ÖĞRENME MODU: Bilinenlerde OLMAYAN kelimeler
-    const learnPool = validWords.filter(w => !knownWordIds.includes(w.id));
+    // Kuyruktaki ID'ler
+    const queueIds = learningQueue ? learningQueue.map(q => q.wordId) : [];
 
-    // 2. TEKRAR MODU: Bilinenlerde OLAN kelimeler
-    const reviewPool = validWords.filter(w => knownWordIds.includes(w.id));
+    // 1. ÖĞRENME MODU (Kalanlar)
+    // Kural: Öğrenilenlerde YOK --VE-- Kuyrukta YOK
+    const learnPool = validWords.filter(w => 
+        !knownWordIds.includes(w.id) && 
+        !queueIds.includes(w.id)
+    );
 
-    // 3. BEKLEME LİSTESİ: LearningQueue'da olan ve tarihi GELECEKTE olanlar
+    // 2. TEKRAR MODU (Sırası Gelenler)
+    const reviewPool = validWords.filter(w => {
+        const q = learningQueue.find(item => item.wordId === w.id);
+        return q && new Date(q.nextReview) <= now;
+    });
+
+    // 3. BEKLEME LİSTESİ (Gelecekteki Tekrarlar)
     const waitingPool = validWords.filter(w => {
-        const q = learningQueue ? learningQueue.find(item => item.wordId === w.id) : null;
+        const q = learningQueue.find(item => item.wordId === w.id);
         return q && new Date(q.nextReview) > now;
     });
 
@@ -63,21 +71,16 @@ export default function Quiz() {
     else if (mode === "review") pool = reviewPool;
     else if (mode === "waiting") pool = waitingPool;
 
-    // Quiz için en az 4 kelime lazım (1 doğru + 3 yanlış şık)
     if (pool.length < 4) {
       alert(`Quiz başlatmak için bu modda en az 4 kelimeye ihtiyaç var. (Şu an: ${pool.length})`);
       return;
     }
 
-    // Soruları Oluştur (Maksimum 20 soru)
     const selectedWords = [...pool].sort(() => 0.5 - Math.random()).slice(0, 20);
-    
-    // Yanlış şıklar havuzu (Tüm geçerli kelimelerden seçilebilir)
     const allValidWords = getAllWords().filter(w => w.definitions && w.definitions[0]?.meaning);
 
     const generated = selectedWords.map(target => {
       const correct = target.definitions[0].meaning;
-      // Yanlış şıkları oluştur: Hedef kelime dışındaki kelimelerden 3 tane rastgele seç
       const others = allValidWords
         .filter(w => w.id !== target.id)
         .sort(() => 0.5 - Math.random())
@@ -87,7 +90,7 @@ export default function Quiz() {
       return { 
         wordObj: target, 
         correct, 
-        options: [...others, correct].sort(() => 0.5 - Math.random()) // Şıkları karıştır
+        options: [...others, correct].sort(() => 0.5 - Math.random()) 
       };
     });
     
@@ -97,7 +100,6 @@ export default function Quiz() {
     setGameStatus("playing");
   };
 
-  // Her yeni soruda state'leri sıfırla
   useEffect(() => { 
       setShowHintTr(false);
       setSelected(null);
@@ -113,7 +115,6 @@ export default function Quiz() {
     
     if (option === questions[index].correct) setScore(s => s + 5);
     
-    // 1 Saniye sonra diğer soruya geç
     setTimeout(() => {
       if (index + 1 < questions.length) {
         setIsTransitioning(true);
@@ -148,7 +149,6 @@ export default function Quiz() {
         <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
             <div className="w-full max-w-sm space-y-6">
                 
-                {/* Header */}
                 <div className="flex items-center justify-between">
                     <button onClick={() => navigate("/")} className="p-2 bg-white rounded-full shadow-sm hover:bg-slate-100">
                       <Home className="w-5 h-5 text-slate-600" />
