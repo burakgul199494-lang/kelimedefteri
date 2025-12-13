@@ -33,35 +33,42 @@ export default function Game() {
   const POINTS_PER_CARD = 5;
 
   // --------------------------
-  // --- KELİME HAVUZLARI (DÜZELTİLDİ) ---
+  // --- KELİME HAVUZLARI (DÜZELTİLDİ - SRS MANTIĞI) ---
   // --------------------------
   const getWordPools = () => {
     const all = getAllWords();
     const now = new Date();
 
-    // Kuyruktaki kelimelerin ID'lerini al (Performans ve Kontrol için)
+    // Kuyruktaki kelimelerin ID'lerini al (Performans için)
     // learningQueue undefined gelirse boş dizi ata
     const queueIds = learningQueue ? learningQueue.map(q => q.wordId) : [];
 
     // 1. ÖĞRENME MODU (Kalanlar): 
-    // Bilinenlerde YOK --VE-- Kuyrukta (Beklemede/Tekrarda) YOK
+    // Kural: Bilinenlerde YOK --VE-- Kuyrukta (Süreçte) YOK
     const learnPool = all.filter(w => 
         !knownWordIds.includes(w.id) && 
         !queueIds.includes(w.id)
     );
 
-    // 2. TEKRAR MODU (Sırası Gelmiş Olanlar):
-    // Kuyrukta VAR --VE-- Zamanı ŞİMDİ veya GEÇMİŞSE
+    // 2. TEKRAR MODU (Sırası Gelenler + MEZUNLAR):
+    // Kural: (Kuyrukta VAR ve Zamanı Gelmiş) --VEYA-- (Zaten Öğrenilmiş/Mezun)
     const reviewPool = all.filter(w => {
-        const q = learningQueue ? learningQueue.find(item => item.wordId === w.id) : null;
-        return q && new Date(q.nextReview) <= now;
+        const qItem = learningQueue ? learningQueue.find(item => item.wordId === w.id) : null;
+        
+        // A) Kuyrukta ve zamanı gelmiş (SRS Tekrarı)
+        const isDue = qItem && new Date(qItem.nextReview) <= now;
+        
+        // B) Zaten tamamen öğrenilmiş (Mezun Tekrarı)
+        const isKnown = knownWordIds.includes(w.id);
+
+        return isDue || isKnown;
     });
 
     // 3. BEKLEME LİSTESİ (Gelecekteki Tekrarlar):
-    // Kuyrukta VAR --VE-- Zamanı GELECEKTEYSE
+    // Kural: Kuyrukta VAR --VE-- Zamanı GELECEKTE
     const waitingPool = all.filter(w => {
-        const q = learningQueue ? learningQueue.find(item => item.wordId === w.id) : null;
-        return q && new Date(q.nextReview) > now;
+        const qItem = learningQueue ? learningQueue.find(item => item.wordId === w.id) : null;
+        return qItem && new Date(qItem.nextReview) > now;
     });
 
     return { learnPool, reviewPool, waitingPool };
@@ -172,7 +179,7 @@ export default function Game() {
           {/* --- 3 MOD BUTONU --- */}
           <div className="space-y-4">
             
-            {/* 1. TEKRAR MODU (Öğrendiklerim -> Değişti: Artık Sırası Gelenler) */}
+            {/* 1. TEKRAR MODU (Öğrendiklerim -> Değişti: Artık Sırası Gelenler + Mezunlar) */}
             <button 
               onClick={() => startSession("review")}
               disabled={reviewPool.length === 0}
