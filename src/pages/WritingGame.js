@@ -18,19 +18,25 @@ export default function WritingGame() {
   const [wrongAnimationId, setWrongAnimationId] = useState(null); 
   const [isWordComplete, setIsWordComplete] = useState(false); 
 
-  // --- GÜNCELLENMİŞ DİNAMİK BOYUT HESAPLAMA (DAHA KÜÇÜK) ---
+  // --- SENİN İSTEDİĞİN ÖZEL BOYUTLANDIRMA ---
   const getDynamicStyle = (length) => {
-    // 1-5 Harf: Geniş ve Rahat (örn: apple)
+    // 1-5 Harf: w-11
     if (length <= 5) return { box: "w-11 h-14", text: "text-2xl" }; 
     
-    // 6-8 Harf: Orta Boy (örn: teacher) -> w-8 (32px) yaptık, sığması garanti olsun
+    // 6-8 Harf: w-8
     if (length <= 8) return { box: "w-8 h-11", text: "text-xl" };   
     
-    // 9-11 Harf: Küçük Boy (örn: beautiful)
-    if (length <= 11) return { box: "w-7 h-10", text: "text-lg" };    
+    // 9-11 Harf: w-6
+    if (length <= 11) return { box: "w-6 h-9", text: "text-lg" };    
     
-    // 12+ Harf: Çok Küçük (örn: congratulations)
-    return { box: "w-6 h-9", text: "text-base" };                       
+    // 12-14 Harf: w-4 (16px) - Font küçüldü
+    if (length <= 14) return { box: "w-4 h-8", text: "text-sm" }; 
+    
+    // 15-17 Harf: w-3 (12px) - Font çok küçüldü
+    if (length <= 17) return { box: "w-3 h-6", text: "text-[10px]" }; 
+    
+    // 18-20+ Harf: w-2 (8px) - Mikroskobik
+    return { box: "w-2 h-5", text: "text-[8px]" };                       
   };
 
   const selectMode = (mode) => {
@@ -227,7 +233,7 @@ export default function WritingGame() {
                )}
              </div>
 
-             {/* YAZI ALANI (gap-1 ile boşlukları da azalttık) */}
+             {/* YAZI ALANI (DİNAMİK BOYUTLAR) */}
              <div className="flex flex-wrap justify-center gap-1 min-h-[60px] items-end content-center">
                 {targetWord.split('').map((_, idx) => {
                   const char = completedLetters[idx];
@@ -247,7 +253,7 @@ export default function WritingGame() {
                 })}
              </div>
 
-             {/* KARIŞIK HARFLER (gap-2) */}
+             {/* KARIŞIK HARFLER (BUTONLAR) */}
              <div key={currentIndex} className="flex flex-wrap justify-center gap-2 content-center">
                 {shuffledLetters.map((item) => (
                   <button
