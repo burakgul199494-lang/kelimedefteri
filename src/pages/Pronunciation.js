@@ -13,7 +13,8 @@ import {
   Hourglass,
   CheckCircle2,
   AlertCircle,
-  X
+  X,
+  Target // İkon eklendi
 } from "lucide-react";
 
 export default function Pronunciation() {
@@ -103,7 +104,6 @@ export default function Pronunciation() {
 
       recognition.onerror = (e) => {
         setIsListening(false);
-        // Hata olsa bile kullanıcıya 'Tekrar dene' mesajı verelim
         if (e.error !== 'aborted') {
             setFeedback({ score: 0, type: "error", msg: "Duyamadım, tekrar dene." });
         }
@@ -116,21 +116,20 @@ export default function Pronunciation() {
       recognitionRef.current = recognition;
     }
 
-    // --- CLEANUP FUNCTION (Mikrofonu Zorla Kapat) ---
+    // --- CLEANUP (Mikrofonu Kapat) ---
     return () => {
         if (recognitionRef.current) {
-            recognitionRef.current.abort(); // Mikrofonu anında keser
+            recognitionRef.current.abort(); 
         }
         setIsListening(false);
-        window.speechSynthesis.cancel(); // Okuma yapıyorsa onu da sustur
+        window.speechSynthesis.cancel();
     };
-  }, [currentIndex, gameStage]); // Soru veya sahne değiştiğinde çalışır
+  }, [currentIndex, gameStage]);
 
   // --- 4. PUANLAMA MANTIĞI ---
   const evaluatePronunciation = (spoken) => {
     const target = sessionWords[currentIndex].word.toLowerCase().trim();
-    const input = spoken.toLowerCase().trim()
-      .replace(/[.,?!]/g, ""); 
+    const input = spoken.toLowerCase().trim().replace(/[.,?!]/g, ""); 
 
     let earnedPoints = 0;
     let type = "error";
@@ -145,7 +144,6 @@ export default function Pronunciation() {
       type = "success";
       msg = "Güzel! (8 Puan)";
     } else {
-        // Harf benzerliği
         const matchCount = target.split('').filter(char => input.includes(char)).length;
         const accuracy = matchCount / target.length;
         
@@ -179,7 +177,6 @@ export default function Pronunciation() {
   };
 
   const handleNext = () => {
-    // Mikrofonu garanti kapat
     if (recognitionRef.current) recognitionRef.current.abort();
     
     if (currentIndex + 1 < sessionWords.length) {
@@ -189,6 +186,13 @@ export default function Pronunciation() {
       addScore(sessionScore);
       setGameStage("finished");
     }
+  };
+
+  // YENİ: Erken Bitirme Fonksiyonu
+  const handleQuitEarly = () => {
+      if (recognitionRef.current) recognitionRef.current.abort(); // Mikrofonu sustur
+      if (sessionScore > 0) addScore(sessionScore); // Puanı kaydet
+      setGameStage("finished"); // Bitiş ekranına git
   };
 
   const speakWord = () => {
@@ -291,7 +295,7 @@ export default function Pronunciation() {
             
             {/* Header */}
             <div className="flex justify-between items-center">
-                <button onClick={() => setGameStage("selection")} className="p-2 bg-white rounded-full shadow-sm hover:bg-slate-100"><X className="w-5 h-5 text-slate-400"/></button>
+                <button onClick={handleQuitEarly} className="p-2 bg-white rounded-full shadow-sm hover:bg-slate-100"><X className="w-5 h-5 text-slate-400"/></button>
                 <div className="font-bold text-indigo-600">{currentIndex + 1} / {sessionWords.length}</div>
                 <div className="flex items-center gap-1 bg-amber-100 text-amber-700 px-3 py-1 rounded-full font-bold text-sm"><Trophy className="w-4 h-4"/> {sessionScore}</div>
             </div>
@@ -350,6 +354,11 @@ export default function Pronunciation() {
                     </button>
                 )}
             </div>
+
+            {/* BİTİR VE ÇIK BUTONU (YENİ) */}
+            <button onClick={handleQuitEarly} className="w-full mt-6 flex items-center justify-center gap-2 text-slate-400 hover:text-red-500 transition-colors text-sm font-medium mx-auto">
+                <Target className="w-4 h-4" /> Bitir (Puanı Al ve Çık)
+            </button>
 
         </div>
     </div>
