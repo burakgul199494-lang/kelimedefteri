@@ -18,12 +18,19 @@ export default function WritingGame() {
   const [wrongAnimationId, setWrongAnimationId] = useState(null); 
   const [isWordComplete, setIsWordComplete] = useState(false); 
 
-  // --- DİNAMİK BOYUT HESAPLAMA ---
+  // --- GÜNCELLENMİŞ DİNAMİK BOYUT HESAPLAMA (DAHA KÜÇÜK) ---
   const getDynamicStyle = (length) => {
-    if (length <= 6) return { box: "w-11 h-14 md:w-14 md:h-16", text: "text-2xl md:text-3xl" }; // Kısa
-    if (length <= 9) return { box: "w-9 h-12 md:w-11 md:h-14", text: "text-xl md:text-2xl" };   // Orta
-    if (length <= 12) return { box: "w-7 h-10 md:w-9 md:h-12", text: "text-lg md:text-xl" };    // Uzun
-    return { box: "w-5 h-8 md:w-7 md:h-10", text: "text-sm md:text-lg" };                       // Çok Uzun
+    // 1-5 Harf: Geniş ve Rahat (örn: apple)
+    if (length <= 5) return { box: "w-11 h-14", text: "text-2xl" }; 
+    
+    // 6-8 Harf: Orta Boy (örn: teacher) -> w-8 (32px) yaptık, sığması garanti olsun
+    if (length <= 8) return { box: "w-8 h-11", text: "text-xl" };   
+    
+    // 9-11 Harf: Küçük Boy (örn: beautiful)
+    if (length <= 11) return { box: "w-7 h-10", text: "text-lg" };    
+    
+    // 12+ Harf: Çok Küçük (örn: congratulations)
+    return { box: "w-6 h-9", text: "text-base" };                       
   };
 
   const selectMode = (mode) => {
@@ -189,7 +196,8 @@ export default function WritingGame() {
   if (gameStatus === "loading") return <div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin text-purple-600 w-10 h-10"/></div>;
 
   const progress = ((currentIndex + 1) / questions.length) * 100;
-  // DİNAMİK BOYUT HESABI
+  
+  // DİNAMİK BOYUT HESABI ÇAĞIRMA
   const styles = getDynamicStyle(targetWord.length);
 
   return (
@@ -219,8 +227,8 @@ export default function WritingGame() {
                )}
              </div>
 
-             {/* YAZI ALANI (DİNAMİK BOYUTLANDIRMA) */}
-             <div className="flex flex-wrap justify-center gap-1.5 min-h-[60px] items-end content-center">
+             {/* YAZI ALANI (gap-1 ile boşlukları da azalttık) */}
+             <div className="flex flex-wrap justify-center gap-1 min-h-[60px] items-end content-center">
                 {targetWord.split('').map((_, idx) => {
                   const char = completedLetters[idx];
                   const isFilled = char !== undefined;
@@ -239,7 +247,7 @@ export default function WritingGame() {
                 })}
              </div>
 
-             {/* KARIŞIK HARFLER (BUTONLAR) */}
+             {/* KARIŞIK HARFLER (gap-2) */}
              <div key={currentIndex} className="flex flex-wrap justify-center gap-2 content-center">
                 {shuffledLetters.map((item) => (
                   <button
