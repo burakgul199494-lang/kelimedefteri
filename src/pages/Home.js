@@ -1,170 +1,196 @@
-import React from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useData } from "../context/DataContext";
-import { Trophy, BookOpen, Layers, Hourglass, ArrowRight, Play } from "lucide-react";
+import { auth } from "../services/firebase";
+import { 
+  RotateCcw, LogOut,
+  Brain, Flame, Play, Book, 
+  Edit, HelpCircle, 
+  Settings, Trophy,
+  Star, Mic, Quote, Hourglass 
+} from "lucide-react"; 
+import ProfileModal from "../components/ProfileModal"; 
+import LeaderboardModal from "../components/LeaderboardModal";
 
 export default function Home() {
-  const { getAllWords, knownWordIds, learningQueue } = useData();
+  // learningQueue eklendi
+  const { user, knownWordIds, getAllWords, streak, resetProfile, isAdmin, leaderboardData, learningQueue } = useData();
   const navigate = useNavigate();
-
+  
+  const [showProfileModal, setShowProfileModal] = useState(false); 
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
+  
   const allWords = getAllWords();
   const totalWords = allWords.length;
-
-  // --- HESAPLAMALAR ---
   
-  // 1. Öğrenilenler (Biliyorum dediklerin)
+  // --- HESAPLAMALAR ---
   const learnedCount = knownWordIds.length;
-
-  // 2. Beklemede Olanlar (Sıraya alınmış ama tekrar zamanı henüz GELMEMİŞ olanlar)
-  // learningQueue içindeki kelimelerden, nextReview tarihi şu andan büyük olanlar.
+  
+  // Beklemede: learningQueue içinde olup tarihi henüz gelmeyenler
   const now = new Date();
   const waitingCount = learningQueue.filter(item => new Date(item.nextReview) > now).length;
+  
+  // Kalan (Öğreneceğim): Toplam - Öğrenilenler
+  const remainingCount = totalWords - learnedCount;
 
-  // 3. Öğreneceğim (Kalan)
-  // Toplamdan (Bildiğim + Beklemede) olanları çıkarırsak havuzda kalanları buluruz.
-  // Not: learningQueue'de olup zamanı gelmiş olanlar da "aktif" havuz sayılır, 
-  // ama basitlik olsun diye: Bilinmeyenler - Bekleyenler formülü daha temizdir.
-  // Daha net bir mantık: (Tümü) - (Bildiklerim) - (Bekleyenler)
-  const remainingCount = totalWords - learnedCount - waitingCount;
+  // İlerleme Yüzdesi
+  const progressPercentage = totalWords > 0 ? (learnedCount / totalWords) * 100 : 0;
 
-  // Yüzde Hesabı (İlerleme çubuğu için - Sadece öğrenilen baz alınır)
-  const progressPercent = totalWords > 0 ? Math.round((learnedCount / totalWords) * 100) : 0;
+  const myScore = leaderboardData.find(u => u.id === user?.uid)?.score || 0;
 
-  // --- KART BİLEŞENİ (Tıklanabilir) ---
-  const StatCard = ({ title, count, icon: Icon, color, link, desc }) => (
-    <div 
-      onClick={() => navigate(link)}
-      className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 relative overflow-hidden group cursor-pointer transition-all hover:shadow-md hover:border-slate-200 active:scale-95"
-    >
-      <div className={`absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity ${color}`}>
-        <Icon className="w-16 h-16" />
-      </div>
-      
-      <div className="relative z-10 flex flex-col h-full justify-between">
-        <div className="flex items-center gap-2 mb-2">
-          <div className={`p-2 rounded-lg ${color} bg-opacity-10`}>
-             <Icon className={`w-5 h-5 ${color.replace("text-", "text-")}`} /> 
-             {/* Not: Tailwind class yapısı gereği color prop'unu text-color olarak gönderiyoruz */}
-          </div>
-          <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">{title}</span>
-        </div>
-        <div>
-           <div className="text-3xl font-black text-slate-800">{count}</div>
-           <div className="text-[10px] text-slate-400 font-medium mt-1">{desc}</div>
-        </div>
-      </div>
-    </div>
-  );
+  const handleLogout = async () => { await auth.signOut(); navigate("/login"); };
+  const handleReset = async () => { if(window.confirm("Emin misin? Tüm ilerleme silinecek.")) await resetProfile(); };
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-24">
+    <div className="min-h-screen bg-slate-50 flex flex-col items-center p-6">
       
-      {/* Üst Header Alanı */}
-      <div className="bg-white px-6 pt-12 pb-8 rounded-b-[40px] shadow-sm border-b border-slate-100">
-        <div className="flex justify-between items-center mb-6">
-          <div>
-            <h1 className="text-2xl font-black text-slate-800">Hoş Geldin! 👋</h1>
-            <p className="text-slate-500 text-sm font-medium">Bugün kelime hazineni genişlet.</p>
-          </div>
-          <div className="bg-indigo-50 p-2 rounded-full border border-indigo-100">
-            <Trophy className="w-6 h-6 text-indigo-600" />
-          </div>
-        </div>
+      {/* --- MODALLAR --- */}
+      {showProfileModal && <ProfileModal user={user} onClose={() => setShowProfileModal(false)} />}
+      {showLeaderboard && <LeaderboardModal onClose={() => setShowLeaderboard(false)} />}
 
-        {/* Ana İlerleme Çubuğu */}
-        <div className="bg-slate-100 rounded-full h-4 w-full overflow-hidden flex">
-          <div className="bg-green-500 h-full transition-all duration-1000" style={{ width: `${progressPercent}%` }}></div>
-        </div>
-        <div className="flex justify-between mt-2 text-xs font-bold text-slate-400">
-          <span>Başlangıç</span>
-          <span>%{progressPercent} Tamamlandı</span>
-        </div>
-      </div>
-
-      {/* İstatistik Kartları (Navigasyon) */}
-      <div className="px-6 -mt-6">
-        <div className="grid grid-cols-2 gap-3">
-            
-            {/* 1. Kalan (Öğreneceğim) */}
-            <StatCard 
-              title="Öğreneceğim" 
-              count={remainingCount} 
-              icon={Layers} 
-              color="text-blue-600"
-              link="/words/unknown"
-              desc="Çalışılacak Kelimeler"
-            />
-
-            {/* 2. Öğrenilen */}
-            <StatCard 
-              title="Öğrenilen" 
-              count={learnedCount} 
-              icon={Trophy} 
-              color="text-green-600"
-              link="/words/known"
-              desc="Ezberlediğin Kelimeler"
-            />
-        </div>
-
-        {/* 3. Beklemede (Tam Genişlik) */}
-        <div className="mt-3">
-             <div 
-                onClick={() => navigate("/words/waiting")}
-                className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between group cursor-pointer hover:shadow-md transition-all active:scale-[0.98]"
-             >
-                <div className="flex items-center gap-4">
-                    <div className="bg-amber-100 p-3 rounded-xl text-amber-600">
-                        <Hourglass className="w-6 h-6" />
-                    </div>
-                    <div>
-                        <div className="text-2xl font-black text-slate-800">{waitingCount}</div>
-                        <div className="text-xs font-bold text-slate-400 uppercase">Tekrar Bekleyenler</div>
-                    </div>
-                </div>
-                <ArrowRight className="w-5 h-5 text-slate-300 group-hover:text-amber-500 transition-colors" />
-             </div>
-        </div>
-      </div>
-
-      {/* Ana Aksiyon Butonları */}
-      <div className="px-6 mt-8 space-y-4">
-        <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider ml-1">Çalışma Alanı</h3>
+      <div className="w-full max-w-md space-y-6 mt-2">
         
-        {/* Kelime Kartları */}
-        <button 
-          onClick={() => navigate("/flashcard")}
-          className="w-full bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4 hover:border-indigo-200 transition-all group active:scale-[0.98]"
-        >
-           <div className="bg-indigo-100 p-3 rounded-xl">
-             <BookOpen className="w-6 h-6 text-indigo-600" />
+        {/* Üst Bar */}
+        <div className="flex justify-between items-center w-full px-1">
+           <div className="flex gap-2">
+             <button onClick={() => setShowProfileModal(true)} className="p-2.5 bg-white rounded-xl shadow-sm border border-slate-200 text-slate-600 hover:text-indigo-600">
+                <Settings size={18} />
+             </button>
+             <button onClick={() => setShowLeaderboard(true)} className="p-2.5 bg-white rounded-xl shadow-sm border border-slate-200 text-slate-600 hover:text-yellow-500">
+                <Trophy size={18} />
+             </button>
+             <button onClick={handleReset} className="p-2.5 bg-white rounded-xl shadow-sm border border-slate-200 text-slate-400 hover:text-red-500" title="Sıfırla">
+                <RotateCcw size={18} />
+             </button>
            </div>
-           <div className="flex-1 text-left">
-             <div className="font-bold text-lg text-slate-800">Kelime Kartları</div>
-             <div className="text-sm text-slate-500">Kartları kaydırarak çalış.</div>
-           </div>
-           <div className="bg-slate-50 p-2 rounded-full group-hover:bg-indigo-50 transition-colors">
-              <Play className="w-4 h-4 text-slate-400 group-hover:text-indigo-600 fill-current" />
-           </div>
-        </button>
+           <button onClick={handleLogout} className="p-2.5 bg-white rounded-xl shadow-sm border border-slate-200 text-slate-400 hover:text-red-500" title="Çıkış">
+             <LogOut size={18} />
+           </button>
+        </div>
 
-        {/* Yazma Alıştırması */}
-        <button 
-          onClick={() => navigate("/writing-game")}
-          className="w-full bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4 hover:border-purple-200 transition-all group active:scale-[0.98]"
-        >
-           <div className="bg-purple-100 p-3 rounded-xl">
-             <Layers className="w-6 h-6 text-purple-600" />
+        {/* Başlık & İstatistikler */}
+        <div className="text-center relative mt-4">
+          <div className="flex justify-center mb-4 relative">
+            <div className="bg-indigo-600 p-4 rounded-2xl shadow-lg transform rotate-3"><Brain className="w-12 h-12 text-white" /></div>
+            <div className="absolute -right-4 -top-4 flex flex-col items-end gap-2">
+              <div className="flex flex-col items-center">
+                 <div className="flex items-center gap-1 bg-orange-500 text-white px-3 py-1 rounded-full shadow-lg border-2 border-white min-w-[60px] justify-center">
+                   <Flame className="w-3 h-3 fill-white" /><span className="font-bold text-xs">{streak}</span>
+                 </div>
+                 <span className="text-[10px] font-bold text-orange-600 bg-orange-100 px-1.5 rounded mt-0.5">Seri</span>
+              </div>
+              <div className="flex flex-col items-center">
+                 <div className="flex items-center gap-1 bg-yellow-400 text-yellow-900 px-3 py-1 rounded-full shadow-lg border-2 border-white min-w-[60px] justify-center">
+                   <Star className="w-3 h-3 fill-yellow-900" /><span className="font-bold text-xs">{myScore}</span>
+                 </div>
+                 <span className="text-[10px] font-bold text-yellow-600 bg-yellow-100 px-1.5 rounded mt-0.5">Puan</span>
+              </div>
+            </div>
+          </div>
+          <h1 className="text-3xl font-extrabold text-slate-800 tracking-tight">Kelime Defteri</h1>
+          <p className="text-slate-500 mt-2 text-sm">Merhaba, <span className="font-bold text-indigo-600">{user?.displayName || user?.email}</span></p>
+        </div>
+
+        {/* İlerleme Kartı (Tıklanabilir İstatistikler) */}
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+           <div className="flex justify-between items-end mb-2">
+              <span className="text-sm font-medium text-slate-500">Genel İlerleme</span>
+              <span className="text-2xl font-bold text-indigo-600">%{progressPercentage.toFixed(1)}</span>
            </div>
-           <div className="flex-1 text-left">
-             <div className="font-bold text-lg text-slate-800">Yazma Testi</div>
-             <div className="text-sm text-slate-500">Kelimeleri yazarak pekiştir.</div>
+           <div className="w-full bg-slate-100 rounded-full h-3 mb-6">
+              <div className="bg-indigo-600 h-3 rounded-full transition-all duration-500" style={{ width: `${progressPercentage}%` }}></div>
            </div>
-           <div className="bg-slate-50 p-2 rounded-full group-hover:bg-purple-50 transition-colors">
-              <Play className="w-4 h-4 text-slate-400 group-hover:text-purple-600 fill-current" />
+           
+           {/* İstatistik Butonları */}
+           <div className="flex justify-between text-sm divide-x divide-slate-100">
+              {/* 1. ÖĞRENİLEN */}
+              <div 
+                onClick={() => navigate("/list/known")}
+                className="text-center flex-1 px-1 cursor-pointer hover:bg-slate-50 rounded-lg transition-colors group"
+              >
+                 <div className="font-bold text-slate-800 group-hover:text-green-600 transition-colors">{learnedCount}</div>
+                 <div className="text-slate-400 text-xs mt-1">Öğrenilen</div>
+              </div>
+
+              {/* 2. BEKLEMEDE (YENİ) */}
+              <div 
+                onClick={() => navigate("/list/waiting")}
+                className="text-center flex-1 px-1 cursor-pointer hover:bg-slate-50 rounded-lg transition-colors group"
+              >
+                 <div className="font-bold text-slate-800 group-hover:text-amber-500 transition-colors flex items-center justify-center gap-1">
+                    {waitingCount} <Hourglass size={12} className="text-amber-400"/>
+                 </div>
+                 <div className="text-slate-400 text-xs mt-1">Beklemede</div>
+              </div>
+
+              {/* 3. KALAN */}
+              <div 
+                onClick={() => navigate("/list/unknown")}
+                className="text-center flex-1 px-1 cursor-pointer hover:bg-slate-50 rounded-lg transition-colors group"
+              >
+                 <div className="font-bold text-slate-800 group-hover:text-blue-500 transition-colors">{remainingCount}</div>
+                 <div className="text-slate-400 text-xs mt-1">Kalan</div>
+              </div>
            </div>
-        </button>
+        </div>
+
+        {/* --- MENÜ LİSTESİ --- */}
+        <div className="space-y-3 pb-8">
+          
+          {/* Admin Butonu (Varsa Göster) */}
+          {isAdmin && (
+            <button onClick={() => navigate("/admin")} className="w-full bg-slate-800 text-white font-bold py-3 px-6 rounded-xl shadow-md flex items-center justify-between mb-3 group hover:bg-slate-900 transition-colors">
+               <div className="flex items-center gap-3"><div className="bg-white/20 p-2 rounded-lg"><Shield className="w-5 h-5 text-yellow-400"/></div><div className="text-left"><div className="text-base">Admin Paneli</div></div></div>
+            </button>
+          )}
+
+          {/* 1. Sözlük */}
+          <button onClick={() => navigate("/dictionary")} className="w-full bg-sky-500 text-white font-bold py-4 px-6 rounded-xl shadow-md flex items-center justify-between group active:scale-95 transition-transform">
+             <div className="flex items-center gap-3"><div className="bg-white/20 p-2 rounded-lg"><Book className="w-6 h-6"/></div><div className="text-left"><div className="text-lg">Sözlük</div><div className="text-xs text-sky-100 font-normal">Kelime ara ve öğren</div></div></div>
+          </button>
+
+          {/* --- OYUNLAR BÖLÜMÜ --- */}
+          
+          {/* 3. Flash Kart */}
+          <button onClick={() => navigate("/game")} className="w-full bg-indigo-600 text-white font-bold py-5 px-6 rounded-2xl shadow-lg flex items-center justify-between group active:scale-95 transition-transform mb-2">
+             <div className="flex items-center gap-4">
+                <div className="bg-white/20 p-3 rounded-xl"><Play className="w-8 h-8" fill="currentColor"/></div>
+                <div className="text-left">
+                    <div className="text-xl">Flash Kart</div>
+                    <div className="text-xs text-indigo-200 font-normal">Klasik öğrenme modu</div>
+                </div>
+            </div>
+             <Play className="w-6 h-6 opacity-60 group-hover:translate-x-1 transition-transform"/>
+          </button>
+
+          {/* DİĞER OYUNLAR */}
+          <div className="grid grid-cols-2 gap-3">
+             <button onClick={() => navigate("/writing")} className="bg-purple-600 text-white font-bold py-4 px-4 rounded-xl shadow-md flex flex-col items-center gap-2 text-center active:scale-95 transition-transform">
+                <div className="bg-white/20 p-2 rounded-full"><Edit className="w-6 h-6"/></div>
+                <span className="text-sm">Yazma Testi</span>
+             </button>
+
+             <button onClick={() => navigate("/quiz")} className="bg-amber-500 text-white font-bold py-4 px-4 rounded-xl shadow-md flex flex-col items-center gap-2 text-center active:scale-95 transition-transform">
+                <div className="bg-white/20 p-2 rounded-full"><HelpCircle className="w-6 h-6"/></div>
+                <span className="text-sm">Quiz</span>
+             </button>
+
+             <button onClick={() => navigate("/pronunciation")} className="bg-rose-500 text-white font-bold py-4 px-4 rounded-xl shadow-md flex flex-col items-center gap-2 text-center active:scale-95 transition-transform">
+                <div className="bg-white/20 p-2 rounded-full"><Mic className="w-6 h-6"/></div>
+                <span className="text-sm">Telaffuz</span>
+             </button>
+
+             <button onClick={() => navigate("/gap-filling")} className="bg-cyan-600 text-white font-bold py-4 px-4 rounded-xl shadow-md flex flex-col items-center gap-2 text-center active:scale-95 transition-transform">
+                <div className="bg-white/20 p-2 rounded-full"><Quote className="w-6 h-6"/></div>
+                <span className="text-sm">Boşluk Doldurma</span>
+             </button>
+          </div>
+
+          <div className="h-px bg-slate-200 my-2"></div>
+
+          {/* ALT BUTONLAR (SİLİNEN, ÖĞRENİLEN, ÖĞRENECEĞİM) TAMAMEN KALDIRILDI */}
+        </div>
       </div>
-
     </div>
   );
 }
