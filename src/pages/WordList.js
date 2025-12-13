@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useData } from "../context/DataContext";
-import { ArrowLeft, Volume2, RotateCcw, Edit2, X, Check, Trophy, ArrowDownCircle, Hourglass, Layers } from "lucide-react";
+import { ArrowLeft, Volume2, RotateCcw, Check, Trophy, ArrowDownCircle, Hourglass, Layers } from "lucide-react";
 
 export default function WordList() {
   const { type } = useParams(); // "known", "unknown" veya "waiting"
   const navigate = useNavigate();
-  // learningQueue eklendi, delete fonksiyonları durabilir ama UI'dan silindi
-  const { knownWordIds, getAllWords, learningQueue, handleDeleteWord, removeFromKnown, addToKnown } = useData();
+  // learningQueue eklendi, delete fonksiyonları UI'dan kalktığı için buradan da sildik (temizlik için)
+  const { knownWordIds, getAllWords, removeFromKnown, addToKnown, learningQueue } = useData();
 
   const [search, setSearch] = useState("");
   
@@ -22,7 +22,7 @@ export default function WordList() {
   let wordList = [];
   const all = getAllWords();
 
-  // --- LİSTE FİLTRELEME ---
+  // --- LİSTELEME MANTIĞI ---
   if (isKnown) {
     title = "Öğrendiğim Kelimeler";
     wordList = all.filter(w => knownWordIds.includes(w.id));
@@ -30,13 +30,14 @@ export default function WordList() {
     // BEKLEMEDE OLANLAR
     title = "Tekrar Bekleyenler";
     const now = new Date();
-    // Tarihi henüz gelmemiş olanlar
-    const waitingIds = learningQueue
-        ? learningQueue.filter(q => new Date(q.nextReview) > now).map(q => q.wordId)
-        : [];
+    // learningQueue boş gelebilir diye kontrol ediyoruz
+    const queue = learningQueue || [];
+    // Tarihi henüz gelmemiş (gelecekte) olanları bul
+    const waitingIds = queue.filter(q => new Date(q.nextReview) > now).map(q => q.wordId);
+    
     wordList = all.filter(w => waitingIds.includes(w.id));
   } else {
-    // UNKNOWN (Öğreneceğim)
+    // UNKNOWN (Kalanlar)
     title = "Öğreneceğim Kelimeler";
     wordList = all.filter(w => !knownWordIds.includes(w.id));
   }
@@ -46,8 +47,10 @@ export default function WordList() {
     .filter(w => w.word.toLowerCase().includes(search.toLowerCase()))
     .sort((a, b) => a.word.localeCompare(b.word));
 
+  // --- GÖRÜNÜR LİSTE ---
   const displayedWords = filteredWords.slice(0, visibleCount);
 
+  // Arama yapıldığında veya liste türü değiştiğinde sayacı sıfırla
   useEffect(() => {
     setVisibleCount(PER_PAGE);
   }, [search, type]);
@@ -79,8 +82,8 @@ export default function WordList() {
             <ArrowLeft className="w-6 h-6 text-slate-600"/>
           </button>
           <div>
-            <h2 className="text-xl font-bold text-slate-800">{title}</h2>
-            <div className="text-xs text-slate-400 font-bold">{filteredWords.length} kelime</div>
+             <h2 className="text-xl font-bold text-slate-800">{title}</h2>
+             <div className="text-xs text-slate-400 font-bold">{filteredWords.length} kelime</div>
           </div>
         </div>
 
@@ -96,14 +99,14 @@ export default function WordList() {
         {/* Liste */}
         {displayedWords.length === 0 ? (
           <div className="text-center text-slate-400 mt-20 flex flex-col items-center">
-            {isKnown ? <Check className="w-16 h-16 mx-auto mb-4 opacity-20"/> : isWaiting ? <Hourglass className="w-16 h-16 mx-auto mb-4 opacity-20 text-amber-500"/> : <Trophy className="w-16 h-16 mx-auto mb-4 text-yellow-500 opacity-50"/>}
-            <p>{isKnown ? "Henüz kelime öğrenmedin." : isWaiting ? "Şu an tekrar bekleyen kelime yok." : "Harika! Tüm kelimeleri bitirdin."}</p>
+            {isKnown ? <Trophy className="w-16 h-16 mb-4 text-green-200 opacity-50"/> : isWaiting ? <Hourglass className="w-16 h-16 mb-4 text-amber-200 opacity-50"/> : <Layers className="w-16 h-16 mb-4 text-blue-200 opacity-50"/>}
+            <p className="font-medium text-slate-500">Liste boş.</p>
+            {isWaiting && <p className="text-xs mt-2 max-w-xs">Şu an tekrar bekleyen kelime yok.</p>}
           </div>
         ) : (
           <div className="space-y-3 pb-10">
             {displayedWords.map((item) => {
-              const handleEdit = () => navigate("/add-word", { state: { editingWord: item } });
-
+              
               return (
                 <div key={item.id} className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex flex-col gap-2 animate-in fade-in">
                   <div className="flex justify-between items-start">
@@ -165,20 +168,11 @@ export default function WordList() {
 
                     {/* Butonlar */}
                     <div className="flex flex-col gap-1 ml-1">
-                          {item.source === "user" && (
-                            <button onClick={handleEdit} className="p-2 text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-colors"><Edit2 className="w-4 h-4"/></button>
-                          )}
-                          
                           {/* Eğer bilinenlerdeyse -> Çıkar, Değilse -> Ekle */}
                           {isKnown ? (
                             <button onClick={() => removeFromKnown(item.id)} className="p-2 text-slate-300 hover:text-amber-500 hover:bg-amber-50 rounded-lg transition-colors" title="Öğrenilenlerden Çıkar"><RotateCcw className="w-5 h-5"/></button>
                           ) : (
                             <button onClick={() => addToKnown(item.id)} className="p-2 text-slate-300 hover:text-green-500 hover:bg-green-50 rounded-lg transition-colors" title="Öğrenildi İşaretle"><Check className="w-5 h-5"/></button>
-                          )}
-                          
-                          {/* SİLME BUTONU: Sadece kendi eklediyse ve tamamen silmek isterse (ama Trash modu kalktığı için bu opsiyonel, genelde direkt sildirilir) */}
-                          {item.source === "user" && (
-                            <button onClick={() => handleDeleteWord(item.id)} className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"><X className="w-4 h-4"/></button>
                           )}
                     </div>
                   </div>
@@ -186,6 +180,7 @@ export default function WordList() {
               );
             })}
 
+            {/* DAHA FAZLA YÜKLE BUTONU */}
             {visibleCount < filteredWords.length && (
                 <button 
                    onClick={handleLoadMore}
