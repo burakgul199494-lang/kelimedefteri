@@ -49,14 +49,17 @@ const WordCard = ({ wordObj }) => {
     return map[t] || t;
   };
 
-  // --- 2. ORTAK BUTON BİLEŞENİ ---
+  // --- 2. ORTAK BUTON BİLEŞENİ (MOBİL İZ SORUNU ÇÖZÜLDÜ) ---
   const ActionButton = ({ icon: Icon, onClick, isActive, title }) => (
     <button
       onClick={onClick}
       title={title}
+      // 🔥 KİLİT NOKTA: Bu stil mobildeki gri tıklama kutusunu yok eder
+      style={{ WebkitTapHighlightColor: 'transparent' }}
       className={`
-        p-2 rounded-full border transition-all duration-200 flex items-center justify-center
-        focus:outline-none active:scale-95 shrink-0
+        p-2 rounded-full border transition-all duration-200 flex items-center justify-center shrink-0
+        focus:outline-none focus:ring-0 outline-none  // Odaklanma çizgilerini siler
+        active:scale-95 // Tıklama hissi verir
         ${isActive 
           ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' 
           : 'bg-white text-slate-400 border-slate-200 hover:text-indigo-600 hover:border-indigo-200'
@@ -67,7 +70,7 @@ const WordCard = ({ wordObj }) => {
     </button>
   );
 
-  // --- 3. GRAMER SATIRI (DÜZELTİLDİ: Kesilme Yok, Buton Sağda Sabit) ---
+  // --- 3. GRAMER SATIRI ---
   const FeatureRow = ({ label, value }) => {
     if (!value) return null;
     const isPlaying = playingText === value;
@@ -75,18 +78,18 @@ const WordCard = ({ wordObj }) => {
     return (
       <div className="flex items-center justify-between py-2 border-b border-slate-50 last:border-0">
         
-        {/* Metin Alanı (Flex-1 ile yayılabildiği kadar yayılır) */}
+        {/* Metin Alanı (Flex-1 ve min-w-0 taşmayı engeller) */}
         <div className="flex items-center gap-3 flex-1 mr-2 min-w-0">
           <span className="text-[10px] font-bold text-slate-400 uppercase min-w-[24px] shrink-0">
             {label}
           </span>
-          {/* break-words: Kelime uzunsa alta geçer, truncate YOK */}
+          {/* break-words: Kelime uzunsa alt satıra geçer, kesilmez */}
           <span className="text-sm font-semibold text-slate-700 break-words leading-tight">
             {value}
           </span>
         </div>
 
-        {/* Buton Alanı (Shrink-0 ile asla küçülmez ve sağda kalır) */}
+        {/* Buton Alanı */}
         <div className="shrink-0">
           <ActionButton 
             icon={isPlaying ? Square : Volume2} 
@@ -171,7 +174,7 @@ const WordCard = ({ wordObj }) => {
       {(wordObj.plural || wordObj.v2 || wordObj.v3 || wordObj.vIng || wordObj.thirdPerson) && (
         <div className="bg-white p-4 rounded-2xl border border-slate-200 text-left mt-4 shadow-sm">
           <div className="text-[10px] uppercase tracking-wide text-slate-400 font-bold mb-2 border-b border-slate-100 pb-1">Fiil & İsim Çekimleri</div>
-          {/* Tek sütun (grid-cols-1) veya geniş ekranda 2 sütun. Mobilde taşmaması için tek sütun daha güvenlidir ama 2 sütun istersen sığmayan aşağı iner */}
+          {/* Tek Sütun Grid: Mobilde taşmayı %100 engeller */}
           <div className="grid grid-cols-1 gap-y-1">
             <FeatureRow label="Pl." value={wordObj.plural} />
             <FeatureRow label="3rd" value={wordObj.thirdPerson} />
