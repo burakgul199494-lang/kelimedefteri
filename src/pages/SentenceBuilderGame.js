@@ -15,7 +15,7 @@ import {
   Undo2,
   MoveRight,
   CheckCircle2,
-  Target // Bitir butonu ikonu
+  Target
 } from "lucide-react";
 
 export default function SentenceBuilderGame() {
@@ -36,7 +36,7 @@ export default function SentenceBuilderGame() {
   
   const [mistakeCount, setMistakeCount] = useState(0);
   const [hintCount, setHintCount] = useState(0);
-  const [currentPoints, setCurrentPoints] = useState(10); // Zor olduğu için 10 puan
+  const [currentPoints, setCurrentPoints] = useState(10); 
   const [wrongAnimationId, setWrongAnimationId] = useState(null); 
   const [isComplete, setIsComplete] = useState(false); 
 
@@ -44,7 +44,10 @@ export default function SentenceBuilderGame() {
   const pools = useMemo(() => {
     const all = getAllWords();
     const now = new Date();
+    
+    // DÜZELTME: Kelime sayısı sınırı kaldırıldı. Sadece cümlesi olması yeterli.
     const validWords = all.filter(w => w.sentence && w.sentence.trim().length > 0);
+
     const getQueueItem = (id) => learningQueue ? learningQueue.find(q => q.wordId === id) : null;
 
     const waitingPool = validWords.filter(w => {
@@ -76,7 +79,8 @@ export default function SentenceBuilderGame() {
       return;
     }
 
-    const selected = selectedPool.sort(() => 0.5 - Math.random()).slice(0, 15);
+    // DÜZELTME: Maksimum 10 soru seçiliyor.
+    const selected = selectedPool.sort(() => 0.5 - Math.random()).slice(0, 10);
     setQuestions(selected);
     setCurrentIndex(0);
     setScore(0);
@@ -88,15 +92,14 @@ export default function SentenceBuilderGame() {
     if (gameStatus === "playing" && questions[currentIndex]) {
       const currentWordObj = questions[currentIndex];
       const rawSentence = currentWordObj.sentence.trim();
-      const words = rawSentence.split(/\s+/); // Boşluklara göre ayır
+      const words = rawSentence.split(/\s+/); 
       
       setTargetSentenceWords(words);
       setUserSelection([]);
       
-      // Resetlemeler
       setMistakeCount(0);
       setHintCount(0);
-      setCurrentPoints(10); // Her yeni soruda puanı 10'a çek
+      setCurrentPoints(10); 
       setIsComplete(false);
 
       const pool = words.map((word, i) => ({
@@ -124,7 +127,6 @@ export default function SentenceBuilderGame() {
     const nextExpectedIndex = userSelection.length;
     const expectedWord = targetSentenceWords[nextExpectedIndex];
 
-    // Kelime eşleşmesi (Basit string kontrolü)
     if (wordObj.text === expectedWord) {
         const newSelection = [...userSelection, wordObj];
         setUserSelection(newSelection);
@@ -152,7 +154,6 @@ export default function SentenceBuilderGame() {
       const newHintCount = hintCount + 1;
       setHintCount(newHintCount);
 
-      // Puan kırma: 1 ipucu -> 5 puan, 2 ipucu -> 0 puan
       if (newHintCount === 1) setCurrentPoints(5);
       else setCurrentPoints(0);
 
@@ -169,7 +170,7 @@ export default function SentenceBuilderGame() {
       setShuffledPool(prev => prev.map(w => ({ ...w, isUsed: false })));
   };
 
-  // --- OTOMATİK TAMAMLAMA (BAŞARISIZ) ---
+  // --- OTOMATİK TAMAMLAMA ---
   const handleFailAndComplete = () => {
       setCurrentPoints(0); 
       const remainingWords = targetSentenceWords.slice(userSelection.length);
@@ -181,7 +182,6 @@ export default function SentenceBuilderGame() {
       handleComplete(false); 
   };
 
-  // --- SORUYU TAMAMLAMA ---
   const handleComplete = (success) => {
       setIsComplete(true);
       const sentenceStr = questions[currentIndex].sentence;
@@ -201,15 +201,13 @@ export default function SentenceBuilderGame() {
       }, 2000);
   };
 
-  // --- BİTİR VE ÇIK FONKSİYONU ---
   const handleQuitEarly = () => {
       if (score > 0) addScore(score);
       setGameStatus("finished");
   };
 
-  // ===========================
-  // === 1. MOD SEÇİM EKRANI ===
-  // ===========================
+  // --- UI RENDER ---
+
   if (gameStatus === "mode-selection") {
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
@@ -258,11 +256,8 @@ export default function SentenceBuilderGame() {
     );
   }
 
-  // ===========================
-  // === 2. BİTİŞ EKRANI (DÜZELTİLDİ) ===
-  // ===========================
   if (gameStatus === "finished") {
-    // Maksimum puan: Soru sayısı * 10 (Soru başına 10 puan)
+    // Soru sayısı * 10 puan
     const maxScore = questions.length * 10;
     
     let modeTitle = "Oturum Tamamlandı!";
@@ -275,7 +270,6 @@ export default function SentenceBuilderGame() {
            <div className="bg-green-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto animate-bounce"><Trophy className="w-10 h-10 text-green-600"/></div>
            <h2 className="text-2xl font-bold text-slate-800">{modeTitle}</h2>
            
-           {/* Puan Kartı */}
            <div className="py-6 bg-slate-50 rounded-2xl border border-slate-100">
              <div className="text-sm text-slate-400 font-bold uppercase">Toplam Puan</div>
              <div className="text-5xl font-extrabold text-blue-600 mt-2">{score}</div>
@@ -292,7 +286,6 @@ export default function SentenceBuilderGame() {
   if (gameStatus === "loading") return <div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin text-blue-600 w-10 h-10"/></div>;
 
   const currentQ = questions[currentIndex];
-  // Progress bar hesabı
   const progress = ((currentIndex + 1) / questions.length) * 100;
 
   return (
@@ -307,11 +300,7 @@ export default function SentenceBuilderGame() {
              </div>
              <div className="flex items-center gap-1 bg-amber-100 text-amber-700 px-3 py-1 rounded-full font-bold text-sm border border-amber-200"><Trophy className="w-4 h-4"/> {score}</div>
           </div>
-          
-          {/* Progress Bar */}
-          <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
-              <div className="bg-blue-500 h-full transition-all duration-500" style={{width:`${progress}%`}}></div>
-          </div>
+          <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden"><div className="bg-blue-500 h-full transition-all duration-500" style={{width:`${progress}%`}}></div></div>
 
           {/* OYUN ALANI */}
           <div className="flex flex-col gap-6 mt-4">
@@ -365,7 +354,7 @@ export default function SentenceBuilderGame() {
 
           </div>
 
-          {/* BUTONLAR (ALT KISIM) */}
+          {/* BUTONLAR */}
           <div className="flex items-center justify-center gap-4 pt-4 border-t border-slate-100 mt-auto">
                 <button 
                   onClick={resetSelection}
@@ -383,7 +372,6 @@ export default function SentenceBuilderGame() {
                   className="flex-1 flex items-center justify-center gap-2 px-5 py-3 bg-amber-100 text-amber-700 rounded-2xl font-bold active:bg-amber-200 transition-colors active:scale-95 disabled:opacity-50 focus:outline-none"
                 >
                   <Lightbulb className="w-5 h-5"/> 
-                  {/* Puan Bilgisi Gösterilebilir */}
                   <span className="text-xs ml-1 flex flex-col items-start leading-none">
                       <span>İpucu ({hintCount === 0 ? "5p" : "0p"})</span>
                       <span className="text-[9px] text-amber-600/80">Hata: {mistakeCount}/2</span>
@@ -391,11 +379,18 @@ export default function SentenceBuilderGame() {
                 </button>
           </div>
 
-          {/* BİTİR VE ÇIK BUTONU (DİĞER SAYFALARLA UYUMLU) */}
-          <button onClick={handleQuitEarly} className="w-full mt-6 flex items-center justify-center gap-2 text-slate-400 hover:text-red-500 transition-colors text-sm font-medium mx-auto">
-            <Target className="w-4 h-4"/> Bitir (Puanı Al ve Çık)
+          {/* BİTİR VE ÇIK */}
+          <button onClick={handleQuitEarly} className="w-full mt-6 text-center text-slate-400 hover:text-red-500 text-sm font-medium transition-colors">
+            <Target className="w-4 h-4 inline-block mr-1 mb-0.5"/> Bitir (Puanı Al ve Çık)
           </button>
 
+          <style jsx>{`
+            @keyframes shake {
+              0%, 100% { transform: translateX(0); }
+              25% { transform: translateX(-5px); }
+              75% { transform: translateX(5px); }
+            }
+          `}</style>
        </div>
     </div>
   );
