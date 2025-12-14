@@ -196,6 +196,25 @@ export default function Home() {
                 <span className="text-sm">Telaffuz</span>
              </button>
 
+    {/* CÜMLE KURMA MODU KARTI */}
+<div onClick={() => navigate("/game/sentence-builder")} className="bg-white p-6 rounded-3xl shadow-lg border border-slate-100 relative overflow-hidden group cursor-pointer hover:shadow-xl transition-all active:scale-95">
+    <div className="absolute top-0 right-0 w-24 h-24 bg-teal-100 rounded-bl-full -mr-4 -mt-4 opacity-50 transition-transform group-hover:scale-110"></div>
+    <div className="relative z-10 flex items-center gap-4">
+        <div className="w-12 h-12 bg-teal-100 rounded-2xl flex items-center justify-center text-teal-600">
+            <Layout className="w-6 h-6" /> {/* Layout ikonunu lucide-react'tan import etmeyi unutma */}
+        </div>
+        <div>
+            <h3 className="text-lg font-bold text-slate-800">Cümle Kurma</h3>
+            <p className="text-xs text-slate-500 font-medium mt-0.5">Kelime sırasını düzenle</p>
+        </div>
+    </div>
+</div>
+
+
+
+
+
+
              {/* 8. Boşluk Doldurma (Tam Genişlik) */}
              <button onClick={() => navigate("/gap-filling")} className="bg-cyan-600 text-white font-bold py-4 px-4 rounded-xl shadow-md flex flex-col items-center gap-2 text-center active:scale-95 transition-transform w-full col-span-2">
                 <div className="flex items-center justify-center gap-2">
