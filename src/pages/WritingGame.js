@@ -418,7 +418,7 @@ export default function WritingGame() {
           </div>
 
           <button onClick={handleQuitEarly} className="w-full text-center text-slate-400 hover:text-red-500 text-sm font-medium transition-colors">
-            Bitir ve Çık
+            Bitir (Puanı Al ve Çık)
           </button>
 
           <style jsx>{`
