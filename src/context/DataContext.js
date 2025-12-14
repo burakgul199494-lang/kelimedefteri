@@ -195,8 +195,7 @@ export const DataProvider = ({ children }) => {
   };
 
   // ----------------------------------------------------------------
-  // 🔥 YENİLENEN KISIM: ARALIKLI TEKRAR (SRS) MANTIĞI 🔥
-  // ----------------------------------------------------------------
+  // --- SRS MANTIĞI GÜNCELLENDİ (KAYIP KELİME DÜZELTİLDİ) ---
   const handleSmartLearn = async (wordId, action) => {
     try {
         const userRef = doc(db, "artifacts", appId, "users", user.uid, "vocab_game", "progress");
@@ -204,11 +203,11 @@ export const DataProvider = ({ children }) => {
 
         // 1. EZBERLEDİM (MASTER) -> Direkt Mezun Et
         if (action === "master") {
-            await addToKnown(wordId); // Bu fonksiyon zaten kuyruktan da siliyor.
+            await addToKnown(wordId); 
             return;
         }
 
-        // Mevcut kelimenin kuyruktaki durumunu bul
+        // Mevcut durumu bul
         const currentItem = learningQueue.find(q => String(q.wordId) === String(wordId));
         const currentLevel = currentItem ? (currentItem.level || 0) : 0;
 
@@ -217,39 +216,39 @@ export const DataProvider = ({ children }) => {
 
         // 2. BİLİYORUM (KNOW)
         if (action === "know") {
-            // Zaten öğrenilmişse işlem yapma
             if (knownWordIds.includes(wordId)) return;
 
             if (currentLevel === 0) {
-                // SEVİYE 1: İlk kez bilindi -> 1 Gün Beklet
+                // SEVİYE 1: 1 Gün Beklet
                 const nextDate = new Date();
                 nextDate.setDate(now.getDate() + 1);
                 newQueue.push({ wordId, level: 1, nextReview: nextDate.toISOString() });
                 
             } else if (currentLevel === 1) {
-                // SEVİYE 2: İkinci kez bilindi -> 2 Gün Beklet
+                // SEVİYE 2: 2 Gün Beklet
                 const nextDate = new Date();
                 nextDate.setDate(now.getDate() + 2);
                 newQueue.push({ wordId, level: 2, nextReview: nextDate.toISOString() });
 
             } else if (currentLevel >= 2) {
-                // MEZUNİYET: Üçüncü kez bilindi -> Öğrenilenlere At
+                // MEZUNİYET -> Öğrenilenlere At
                 await addToKnown(wordId);
-                return; // addToKnown kuyruk temizliğini yaptığı için burada işimiz bitiyor.
+                return; 
             }
         } 
-        // 3. BİLMİYORUM (DONT_KNOW)
+        // 3. BİLMİYORUM (DONT_KNOW) - KRİTİK DÜZELTME
         else if (action === "dont_know") {
             // Eğer yanlışlıkla öğrenilenlerdeyse oradan çıkar
             if (knownWordIds.includes(wordId)) {
                 await removeFromKnown(wordId);
             }
             
-            // CEZA: Seviye sıfırlanır, hemen tekrar sorulur (Review Now)
+            // CEZA: Seviye sıfırlanır (Level 0)
+            // Tarih: HEMEN ŞİMDİ (Böylece 'Tekrar Modu'na düşer)
+            // Kelime kuyrukta kalmaya devam eder, silinmez.
             newQueue.push({ wordId, level: 0, nextReview: now.toISOString() });
         }
 
-        // Veritabanını ve State'i Güncelle (Sadece mezun olmayanlar için)
         await updateDoc(userRef, { learning_queue: newQueue });
         setLearningQueue(newQueue);
 
