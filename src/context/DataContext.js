@@ -196,68 +196,61 @@ export const DataProvider = ({ children }) => {
 
   // ----------------------------------------------------------------
  // ----------------------------------------------------------------
-  // 🔥 FINAL DÜZELTME: BİLMİYORUM DERSEN ÖĞRENECEKLERİME DÖNER 🔥
-  // ----------------------------------------------------------------
+  // --- HANDLE SMART LEARN (SENİN MANTIĞINA GÖRE GÜNCELLENDİ) ---
   const handleSmartLearn = async (wordId, action) => {
     try {
         const userRef = doc(db, "artifacts", appId, "users", user.uid, "vocab_game", "progress");
         const now = new Date();
 
-        // 1. EZBERLEDİM (MASTER) -> Direkt Mezun Et
+        // 1. EZBERLEDİM -> Direkt Mezun
         if (action === "master") {
-            await addToKnown(wordId); 
+            await addToKnown(wordId);
             return;
         }
 
-        // Mevcut kelimenin kuyruktaki durumunu bul
+        // Mevcut seviyeyi bul
         const currentItem = learningQueue.find(q => String(q.wordId) === String(wordId));
         const currentLevel = currentItem ? (currentItem.level || 0) : 0;
 
-        // Geçici yeni kuyruk (Mevcut kelimeyi LİSTEDEN SİLEREK başlıyoruz)
+        // İşlem başlayınca kelimeyi kuyruktan siliyoruz (yeni haliyle ekleyeceğiz)
         let newQueue = learningQueue.filter(q => String(q.wordId) !== String(wordId));
 
-        // 2. BİLİYORUM (KNOW)
         if (action === "know") {
-            // Zaten öğrenilmişse işlem yapma
             if (knownWordIds.includes(wordId)) return;
 
             if (currentLevel === 0) {
-                // SEVİYE 1: İlk kez bilindi -> 1 Gün Beklet
+                // 0 -> 1 (Bekleme: 24 Saat)
                 const nextDate = new Date();
-                nextDate.setDate(now.getDate() + 1);
+                nextDate.setDate(now.getDate() + 1); // +1 Gün
                 newQueue.push({ wordId, level: 1, nextReview: nextDate.toISOString() });
-                
+
             } else if (currentLevel === 1) {
-                // SEVİYE 2: İkinci kez bilindi -> 2 Gün Beklet
+                // 1 -> 2 (Bekleme: 48 Saat)
                 const nextDate = new Date();
-                nextDate.setDate(now.getDate() + 2);
+                nextDate.setDate(now.getDate() + 2); // +2 Gün
                 newQueue.push({ wordId, level: 2, nextReview: nextDate.toISOString() });
 
             } else if (currentLevel >= 2) {
-                // MEZUNİYET: Üçüncü kez bilindi -> Öğrenilenlere At
+                // 2 -> 3 (MEZUN OLDU -> Öğrendiklerime Git)
                 await addToKnown(wordId);
-                return; 
+                return; // Kuyruğa ekleme yapmıyoruz, bitti.
             }
         } 
-        
-        // 3. BİLMİYORUM (DONT_KNOW) - İŞTE BURASI DEĞİŞTİ
         else if (action === "dont_know") {
-            // Eğer yanlışlıkla öğrenilenlerdeyse oradan çıkar
+            // Bilmiyorum dersen; Öğrenilenlerden çıkar, kuyruktan çıkar.
+            // Böylece "Öğreneceğim" (Level 0) havuzuna düşer.
             if (knownWordIds.includes(wordId)) {
                 await removeFromKnown(wordId);
             }
-            
-            // DÜZELTME: Kelimeyi 'newQueue' dizisine geri EKLEMİYORUZ.
-            // Böylece kelime ne kuyrukta kalıyor ne de bilinenlerde.
-            // Sonuç: Otomatik olarak "Öğreneceğim Kelimeler" (Unknown) havuzuna düşüyor.
+            // newQueue'ya ekleme yapmıyoruz.
         }
 
-        // Veritabanını ve State'i Güncelle
+        // Veritabanını Güncelle
         await updateDoc(userRef, { learning_queue: newQueue });
         setLearningQueue(newQueue);
 
     } catch (e) {
-        console.error("Smart Learn Hatası:", e);
+        console.error("Hata:", e);
     }
   };
 
