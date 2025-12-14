@@ -9,7 +9,8 @@ import {
   Settings, Trophy,
   Star, Mic, Quote, Shield,
   Hourglass,
-  Languages // Ters Quiz ikonu
+  Languages,
+  Layout // EKLENDİ
 } from "lucide-react"; 
 import ProfileModal from "../components/ProfileModal"; 
 import LeaderboardModal from "../components/LeaderboardModal";
@@ -24,13 +25,10 @@ export default function Home() {
   const allWords = getAllWords();
   const totalWords = allWords.length;
 
-  // --- HESAPLAMALAR (DÜZELTİLDİ) ---
-  
-  // 1. ÖĞRENİLENLER:
+  // --- HESAPLAMALAR ---
   const validKnownWords = allWords.filter(w => knownWordIds.includes(w.id));
   const learnedCount = validKnownWords.length;
   
-  // 2. BEKLEMEDE:
   const now = new Date();
   const waitingCount = learningQueue && Array.isArray(learningQueue) 
     ? learningQueue.filter(item => {
@@ -40,16 +38,11 @@ export default function Home() {
       }).length 
     : 0;
 
-  // 3. KUYRUKTAKİLER (Bekleyen + Çalışılacak Olanlar)
-  // Bu kelimeler artık "Kalan" havuzunda değildir.
   const inQueueCount = learningQueue ? learningQueue.length : 0;
   
-  // 4. KALAN (DÜZELTME BURADA YAPILDI):
-  // Toplamdan hem öğrendiklerini hem de şu an çalışma havuzunda (beklemede/tekrar) olanları çıkarıyoruz.
   let remainingCount = totalWords - learnedCount - inQueueCount;
   if (remainingCount < 0) remainingCount = 0;
 
-  // İlerleme Yüzdesi
   const progressPercentage = totalWords > 0 ? (learnedCount / totalWords) * 100 : 0;
   const myScore = leaderboardData.find(u => u.id === user?.uid)?.score || 0;
 
@@ -109,35 +102,28 @@ export default function Home() {
         {/* İlerleme Kartı */}
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
            <div className="flex justify-between items-end mb-2">
-              <span className="text-sm font-medium text-slate-500">Genel İlerleme</span>
-              <span className="text-2xl font-bold text-indigo-600">%{progressPercentage.toFixed(1)}</span>
+             <span className="text-sm font-medium text-slate-500">Genel İlerleme</span>
+             <span className="text-2xl font-bold text-indigo-600">%{progressPercentage.toFixed(1)}</span>
            </div>
            <div className="w-full bg-slate-100 rounded-full h-3 mb-6">
-              <div className="bg-indigo-600 h-3 rounded-full transition-all duration-500" style={{ width: `${progressPercentage}%` }}></div>
+             <div className="bg-indigo-600 h-3 rounded-full transition-all duration-500" style={{ width: `${progressPercentage}%` }}></div>
            </div>
            
            <div className="flex justify-between text-sm divide-x divide-slate-100">
-              
-              {/* 1. ÖĞRENİLEN */}
-              <div onClick={() => navigate("/list/known")} className="text-center flex-1 px-1 cursor-pointer hover:bg-slate-50 rounded transition-colors group">
-                 <div className="font-bold text-slate-800 group-hover:text-green-600 transition-colors text-lg">{learnedCount}</div>
-                 <div className="text-slate-400 text-xs">Öğrenilen</div>
-              </div>
-
-              {/* 2. BEKLEMEDE */}
-              <div onClick={() => navigate("/list/waiting")} className="text-center flex-1 px-1 cursor-pointer hover:bg-slate-50 rounded transition-colors group">
-                 <div className="font-bold text-slate-800 group-hover:text-amber-500 transition-colors text-lg flex items-center justify-center gap-1">
-                    {waitingCount} <Hourglass size={12} className="text-amber-400"/>
-                 </div>
-                 <div className="text-slate-400 text-xs">Beklemede</div>
-              </div>
-
-              {/* 3. KALAN */}
-              <div onClick={() => navigate("/list/unknown")} className="text-center flex-1 px-1 cursor-pointer hover:bg-slate-50 rounded transition-colors group">
-                 <div className="font-bold text-slate-800 group-hover:text-blue-500 transition-colors text-lg">{remainingCount}</div>
-                 <div className="text-slate-400 text-xs">Kalan</div>
-              </div>
-
+             <div onClick={() => navigate("/list/known")} className="text-center flex-1 px-1 cursor-pointer hover:bg-slate-50 rounded transition-colors group">
+                <div className="font-bold text-slate-800 group-hover:text-green-600 transition-colors text-lg">{learnedCount}</div>
+                <div className="text-slate-400 text-xs">Öğrenilen</div>
+             </div>
+             <div onClick={() => navigate("/list/waiting")} className="text-center flex-1 px-1 cursor-pointer hover:bg-slate-50 rounded transition-colors group">
+                <div className="font-bold text-slate-800 group-hover:text-amber-500 transition-colors text-lg flex items-center justify-center gap-1">
+                   {waitingCount} <Hourglass size={12} className="text-amber-400"/>
+                </div>
+                <div className="text-slate-400 text-xs">Beklemede</div>
+             </div>
+             <div onClick={() => navigate("/list/unknown")} className="text-center flex-1 px-1 cursor-pointer hover:bg-slate-50 rounded transition-colors group">
+                <div className="font-bold text-slate-800 group-hover:text-blue-500 transition-colors text-lg">{remainingCount}</div>
+                <div className="text-slate-400 text-xs">Kalan</div>
+             </div>
            </div>
         </div>
 
@@ -162,14 +148,14 @@ export default function Home() {
              <div className="flex items-center gap-4">
                 <div className="bg-white/20 p-3 rounded-xl"><Play className="w-8 h-8" fill="currentColor"/></div>
                 <div className="text-left">
-                    <div className="text-xl">Flash Kart</div>
-                    <div className="text-xs text-indigo-200 font-normal">Klasik öğrenme modu</div>
+                   <div className="text-xl">Flash Kart</div>
+                   <div className="text-xs text-indigo-200 font-normal">Klasik öğrenme modu</div>
                 </div>
             </div>
              <Play className="w-6 h-6 opacity-60 group-hover:translate-x-1 transition-transform"/>
           </button>
 
-          {/* DİĞER OYUNLAR */}
+          {/* DİĞER OYUNLAR (GRID) */}
           <div className="grid grid-cols-2 gap-3">
              
              {/* 5. Quiz */}
@@ -196,25 +182,6 @@ export default function Home() {
                 <span className="text-sm">Telaffuz</span>
              </button>
 
-    {/* CÜMLE KURMA MODU KARTI */}
-<div onClick={() => navigate("/game/sentence-builder")} className="bg-white p-6 rounded-3xl shadow-lg border border-slate-100 relative overflow-hidden group cursor-pointer hover:shadow-xl transition-all active:scale-95">
-    <div className="absolute top-0 right-0 w-24 h-24 bg-teal-100 rounded-bl-full -mr-4 -mt-4 opacity-50 transition-transform group-hover:scale-110"></div>
-    <div className="relative z-10 flex items-center gap-4">
-        <div className="w-12 h-12 bg-teal-100 rounded-2xl flex items-center justify-center text-teal-600">
-            <Layout className="w-6 h-6" /> {/* Layout ikonunu lucide-react'tan import etmeyi unutma */}
-        </div>
-        <div>
-            <h3 className="text-lg font-bold text-slate-800">Cümle Kurma</h3>
-            <p className="text-xs text-slate-500 font-medium mt-0.5">Kelime sırasını düzenle</p>
-        </div>
-    </div>
-</div>
-
-
-
-
-
-
              {/* 8. Boşluk Doldurma (Tam Genişlik) */}
              <button onClick={() => navigate("/gap-filling")} className="bg-cyan-600 text-white font-bold py-4 px-4 rounded-xl shadow-md flex flex-col items-center gap-2 text-center active:scale-95 transition-transform w-full col-span-2">
                 <div className="flex items-center justify-center gap-2">
@@ -222,6 +189,15 @@ export default function Home() {
                     <span className="text-sm">Boşluk Doldurma</span>
                 </div>
              </button>
+
+             {/* 9. Cümle Kurma (Tam Genişlik - DÜZELTİLDİ) */}
+             <button onClick={() => navigate("/game/sentence-builder")} className="bg-teal-600 text-white font-bold py-4 px-4 rounded-xl shadow-md flex flex-col items-center gap-2 text-center active:scale-95 transition-transform w-full col-span-2">
+                <div className="flex items-center justify-center gap-2">
+                    <div className="bg-white/20 p-2 rounded-full"><Layout className="w-6 h-6"/></div>
+                    <span className="text-sm">Cümle Kurma</span>
+                </div>
+             </button>
+
           </div>
 
           <div className="h-px bg-slate-200 my-2"></div>
