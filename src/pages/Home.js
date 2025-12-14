@@ -10,7 +10,8 @@ import {
   Star, Mic, Quote, Shield,
   Hourglass,
   Languages,
-  Layout // EKLENDİ
+  Layout,
+  Headphones // YENİ: Dinleme ikonu eklendi
 } from "lucide-react"; 
 import ProfileModal from "../components/ProfileModal"; 
 import LeaderboardModal from "../components/LeaderboardModal";
@@ -176,21 +177,25 @@ export default function Home() {
                 <span className="text-sm">Yazma Testi</span>
              </button>
 
+             {/* YENİ: Dinle & Yaz (Writing2) */}
+             <button onClick={() => navigate("/writing2")} className="bg-pink-600 text-white font-bold py-4 px-4 rounded-xl shadow-md flex flex-col items-center gap-2 text-center active:scale-95 transition-transform">
+                <div className="bg-white/20 p-2 rounded-full"><Headphones className="w-6 h-6"/></div>
+                <span className="text-sm">Dinle & Yaz</span>
+             </button>
+
              {/* 7. Telaffuz */}
              <button onClick={() => navigate("/pronunciation")} className="bg-rose-500 text-white font-bold py-4 px-4 rounded-xl shadow-md flex flex-col items-center gap-2 text-center active:scale-95 transition-transform">
                 <div className="bg-white/20 p-2 rounded-full"><Mic className="w-6 h-6"/></div>
                 <span className="text-sm">Telaffuz</span>
              </button>
 
-             {/* 8. Boşluk Doldurma (Tam Genişlik) */}
-             <button onClick={() => navigate("/gap-filling")} className="bg-cyan-600 text-white font-bold py-4 px-4 rounded-xl shadow-md flex flex-col items-center gap-2 text-center active:scale-95 transition-transform w-full col-span-2">
-                <div className="flex items-center justify-center gap-2">
-                    <div className="bg-white/20 p-2 rounded-full"><Quote className="w-6 h-6"/></div>
-                    <span className="text-sm">Boşluk Doldurma</span>
-                </div>
+             {/* 8. Boşluk Doldurma (Grid içine alındı) */}
+             <button onClick={() => navigate("/gap-filling")} className="bg-cyan-600 text-white font-bold py-4 px-4 rounded-xl shadow-md flex flex-col items-center gap-2 text-center active:scale-95 transition-transform">
+                <div className="bg-white/20 p-2 rounded-full"><Quote className="w-6 h-6"/></div>
+                <span className="text-sm">Boşluk Doldurma</span>
              </button>
 
-             {/* 9. Cümle Kurma (Tam Genişlik - DÜZELTİLDİ) */}
+             {/* 9. Cümle Kurma (Tam Genişlik - En altta) */}
              <button onClick={() => navigate("/game/sentence-builder")} className="bg-teal-600 text-white font-bold py-4 px-4 rounded-xl shadow-md flex flex-col items-center gap-2 text-center active:scale-95 transition-transform w-full col-span-2">
                 <div className="flex items-center justify-center gap-2">
                     <div className="bg-white/20 p-2 rounded-full"><Layout className="w-6 h-6"/></div>
