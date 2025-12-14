@@ -351,7 +351,7 @@ export default function Quiz() {
           )}
 
           <button onClick={handleQuitEarly} className="w-full mt-6 flex items-center justify-center gap-2 text-slate-400 hover:text-red-500 transition-colors text-sm font-medium mx-auto">
-            Bitir (Puanı Al ve Çık)
+            <Target className="w-4 h-4"/> Bitir (Puanı Al ve Çık)
           </button>
 
        </div>
