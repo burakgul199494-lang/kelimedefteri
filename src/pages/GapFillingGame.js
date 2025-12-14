@@ -14,7 +14,8 @@ import {
   BrainCircuit, 
   Hourglass, 
   Home,
-  Layers // Başka mod seç ikonu
+  Layers,
+  Square // Durdurma ikonu
 } from "lucide-react";
 
 export default function GapFillingGame() {
@@ -23,60 +24,58 @@ export default function GapFillingGame() {
 
   // --- OYUN STATE'LERİ ---
   const [gameMode, setGameMode] = useState(null);
-  const [gameStatus, setGameStatus] = useState("mode-selection"); // mode-selection, playing, finished
+  const [gameStatus, setGameStatus] = useState("mode-selection"); 
   const [questions, setQuestions] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [score, setScore] = useState(0);
 
-  // --- KELİME & HARF MANTIĞI (Writing Game'den alındı) ---
+  // --- KELİME & HARF MANTIĞI ---
   const [shuffledLetters, setShuffledLetters] = useState([]); 
   const [completedLetters, setCompletedLetters] = useState([]); 
   const [wrongAnimationId, setWrongAnimationId] = useState(null); 
   const [isWordComplete, setIsWordComplete] = useState(false); 
 
-  // Puanlama ve Hata
   const [hintCount, setHintCount] = useState(0);
   const [currentWordPoints, setCurrentWordPoints] = useState(5); 
   const [mistakeCount, setMistakeCount] = useState(0);
 
-  // İpucu (Türkçe) Göster/Gizle
   const [showHintTr, setShowHintTr] = useState(false);
+  
+  // SES TAKİBİ (YENİ)
+  const [activeAudio, setActiveAudio] = useState(null); // 'sentence', 'hint', 'word'
 
-  // --- KELİME HAVUZLARI (SRS DÜZELTİLDİ) ---
+  // --- KELİME HAVUZLARI ---
   const getWordPools = () => {
     const all = getAllWords();
-    const validWords = all.filter(w => w.definitions && w.definitions[0]?.meaning);
     const now = new Date();
 
-    // Kuyruktaki ID'ler
+    const validWords = all.filter(w => 
+        w.sentence && 
+        w.word && 
+        w.sentence.toLowerCase().includes(w.word.toLowerCase()) &&
+        w.definitions && w.definitions[0]?.meaning
+    );
+
     const queueIds = learningQueue ? learningQueue.map(q => q.wordId) : [];
 
-    // 1. ÖĞRENME MODU (Kalanlar)
-    // Kural: Öğrenilenlerde YOK --VE-- Kuyrukta YOK
+    // 1. ÖĞRENME MODU
     const learnPool = validWords.filter(w => 
         !knownWordIds.includes(w.id) && 
         !queueIds.includes(w.id)
     );
 
-    // 2. TEKRAR MODU (Sırası Gelenler + Mezunlar)
-    // Kural: (Kuyrukta VAR ve Zamanı Gelmiş) --VEYA-- (Zaten Öğrenilmiş)
+    // 2. TEKRAR MODU
     const reviewPool = validWords.filter(w => {
-        const qItem = learningQueue ? learningQueue.find(item => item.wordId === w.id) : null;
-        
-        // A) Kuyrukta ve zamanı gelmiş (SRS Tekrarı)
-        const isDue = qItem && new Date(qItem.nextReview) <= now;
-        
-        // B) Zaten tamamen öğrenilmiş (Mezun Tekrarı)
+        const q = learningQueue.find(item => item.wordId === w.id);
+        const isDue = q && new Date(q.nextReview) <= now;
         const isKnown = knownWordIds.includes(w.id);
-
         return isDue || isKnown;
     });
 
-    // 3. BEKLEME LİSTESİ (Gelecekteki Tekrarlar)
-    // Kural: Kuyrukta VAR --VE-- Zamanı GELECEKTE
+    // 3. BEKLEME LİSTESİ
     const waitingPool = validWords.filter(w => {
-        const qItem = learningQueue ? learningQueue.find(item => item.wordId === w.id) : null;
-        return qItem && new Date(qItem.nextReview) > now;
+        const q = learningQueue.find(item => item.wordId === w.id);
+        return q && new Date(q.nextReview) > now;
     });
 
     return { learnPool, reviewPool, waitingPool };
@@ -105,7 +104,7 @@ export default function GapFillingGame() {
     setGameStatus("playing");
   };
 
-  // --- DİNAMİK BOYUT HESAPLAMA ---
+  // --- DİNAMİK BOYUT ---
   const getDynamicStyle = (length) => {
     if (length <= 5) return { box: "w-11 h-14", text: "text-2xl" }; 
     if (length <= 8) return { box: "w-8 h-11", text: "text-xl" };   
@@ -115,8 +114,12 @@ export default function GapFillingGame() {
     return { box: "w-2 h-5", text: "text-[8px]" };                       
   };
 
-  // --- SORU YÜKLEME ---
+  // --- SORU YÜKLEME VE SES TEMİZLEME ---
   useEffect(() => {
+    // Soru değişince sesi sustur
+    window.speechSynthesis.cancel();
+    setActiveAudio(null);
+
     if (gameStatus === "playing" && questions[currentIndex]) {
       const word = questions[currentIndex].word.trim();
       const letters = word.split('').map((char, index) => ({
@@ -130,18 +133,18 @@ export default function GapFillingGame() {
       setCompletedLetters([]);
       setIsWordComplete(false);
       
-      // Resetlemeler
       setHintCount(0);
       setMistakeCount(0); 
       setCurrentWordPoints(5); 
       setShowHintTr(false);
     }
+
+    return () => window.speechSynthesis.cancel();
   }, [currentIndex, gameStatus]);
 
   const currentWordObj = questions[currentIndex];
   const targetWord = currentWordObj?.word.trim() || "";
   
-  // Gap Filling'e Özel: Maskelenmiş Cümle
   const getMaskedSentence = () => {
       if (!currentWordObj) return "";
       const regex = new RegExp(currentWordObj.word, "gi");
@@ -151,16 +154,28 @@ export default function GapFillingGame() {
   const englishDefinition = currentWordObj?.definitions[0]?.engExplanation;
   const turkishDefinition = currentWordObj?.definitions[0]?.trExplanation;
 
-  const speak = (text) => {
+  // --- SES FONKSİYONU (TOGGLE) ---
+  const handleSpeak = (txt, id) => {
     if (!text) return;
-    window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = "en-US";
-    u.rate = 0.8;
-    window.speechSynthesis.speak(u);
+
+    if (activeAudio === id) {
+        window.speechSynthesis.cancel();
+        setActiveAudio(null);
+    } else {
+        window.speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance(txt);
+        u.lang = "en-US";
+        u.rate = 0.8; // Biraz yavaş okusun ki anlaşılır olsun
+        
+        u.onend = () => setActiveAudio(null);
+        u.onerror = () => setActiveAudio(null);
+
+        window.speechSynthesis.speak(u);
+        setActiveAudio(id);
+    }
   };
 
-  // --- HARF TIKLAMA (Writing Game Mantığı) ---
+  // --- HARF TIKLAMA ---
   const handleLetterClick = (letterObj, e) => {
     if (e && e.currentTarget) e.currentTarget.blur();
 
@@ -170,7 +185,6 @@ export default function GapFillingGame() {
     const expectedChar = targetWord[nextIndex];
 
     if (letterObj.char.toLowerCase() === expectedChar.toLowerCase()) {
-      // DOĞRU HARF
       const newShuffled = shuffledLetters.map(l => 
         l.id === letterObj.id ? { ...l, isUsed: true } : l
       );
@@ -182,21 +196,19 @@ export default function GapFillingGame() {
         handleWordComplete(); 
       }
     } else {
-      // YANLIŞ HARF
       const newMistakes = mistakeCount + 1;
       setMistakeCount(newMistakes);
       
       setWrongAnimationId(letterObj.id);
       setTimeout(() => setWrongAnimationId(null), 500);
 
-      // LİMİT KONTROLÜ (2 HATA)
       if (newMistakes >= 2) {
           setCurrentWordPoints(0); 
           
           setTimeout(() => {
               setCompletedLetters(targetWord.split('')); 
               setIsWordComplete(true);
-              speak(targetWord);
+              handleSpeak(targetWord, 'word');
               
               setTimeout(() => {
                   if (currentIndex + 1 < questions.length) {
@@ -210,7 +222,6 @@ export default function GapFillingGame() {
     }
   };
 
-  // --- İPUCU KULLANIMI ---
   const handleHint = (e) => {
     if (e && e.currentTarget) e.currentTarget.blur();
     if (isWordComplete) return;
@@ -231,10 +242,9 @@ export default function GapFillingGame() {
     if (correctLetterObj) handleLetterClick(correctLetterObj, null);
   };
 
-  // --- KELİME BİTİRME ---
   const handleWordComplete = () => {
     setIsWordComplete(true);
-    speak(targetWord);
+    handleSpeak(targetWord, 'word'); // Kelimeyi oku
     
     if (currentWordPoints > 0) {
         addScore(currentWordPoints);
@@ -375,9 +385,21 @@ export default function GapFillingGame() {
                <div className="flex justify-center">
                    <div className="bg-blue-50 p-3 rounded-full"><Quote className="w-6 h-6 text-blue-400"/></div>
                </div>
-               <h2 className="text-xl font-medium text-slate-700 leading-relaxed font-serif italic">
-                   {getMaskedSentence()}
-               </h2>
+               
+               {/* --- CÜMLE VE SES BUTONU (YENİ) --- */}
+               <div className="flex flex-col items-center gap-2">
+                   <h2 className="text-xl font-medium text-slate-700 leading-relaxed font-serif italic">
+                       {getMaskedSentence()}
+                   </h2>
+                   {/* Cümle Okuma Butonu */}
+                   <button 
+                       onClick={() => handleSpeak(currentWordObj.sentence, 'sentence')} 
+                       className="p-1.5 bg-blue-50 text-blue-500 rounded-full hover:bg-blue-100 transition-colors"
+                       title={activeAudio === 'sentence' ? "Durdur" : "Cümleyi Oku"}
+                   >
+                       {activeAudio === 'sentence' ? <Square className="w-4 h-4 text-red-500 fill-current"/> : <Volume2 className="w-4 h-4"/>}
+                   </button>
+               </div>
                
                {/* İPUCU KUTUSU */}
                {englishDefinition && (
@@ -385,7 +407,15 @@ export default function GapFillingGame() {
                     <div className="flex items-center justify-between gap-2 mb-1">
                         <span className="text-xs font-bold text-slate-400 uppercase">Tanım (İpucu)</span>
                         <div className="flex gap-1">
-                            <button onClick={() => speak(englishDefinition)} className="p-1 bg-white border rounded-lg hover:bg-blue-50 text-blue-600"><Volume2 className="w-3 h-3"/></button>
+                            {/* İpucu Ses Butonu */}
+                            <button 
+                                onClick={() => handleSpeak(englishDefinition, 'hint')} 
+                                className="p-1 bg-white border rounded-lg hover:bg-blue-50 text-blue-600"
+                                title={activeAudio === 'hint' ? "Durdur" : "Oku"}
+                            >
+                                {activeAudio === 'hint' ? <Square className="w-3 h-3 text-red-500 fill-current"/> : <Volume2 className="w-3 h-3"/>}
+                            </button>
+                            
                             {turkishDefinition && (
                                 <button onClick={() => setShowHintTr(!showHintTr)} className={`p-1 border rounded-lg hover:bg-indigo-50 ${showHintTr ? "bg-indigo-100 text-indigo-600" : "bg-white text-indigo-600"}`}>
                                     <Languages className="w-3 h-3"/>
@@ -399,7 +429,7 @@ export default function GapFillingGame() {
                )}
              </div>
 
-             {/* YAZI ALANI (Writing Game Tarzı) */}
+             {/* YAZI ALANI */}
              <div className="flex flex-wrap justify-center gap-1 min-h-[60px] items-end content-center">
                 {targetWord.split('').map((_, idx) => {
                   const char = completedLetters[idx];
@@ -453,7 +483,6 @@ export default function GapFillingGame() {
                   className="flex items-center gap-2 px-5 py-3 bg-amber-100 text-amber-700 rounded-2xl font-bold active:bg-amber-200 transition-colors active:scale-95 disabled:opacity-50 focus:outline-none"
                 >
                   <Lightbulb className="w-5 h-5"/> 
-                  {/* Puan ve Hata Bilgisi */}
                   <span className="text-xs ml-1 flex flex-col items-start leading-none">
                       <span>İpucu ({hintCount === 0 ? "5p" : hintCount === 1 ? "2p" : "0p"})</span>
                       <span className="text-[9px] text-amber-600/80">Hata: {mistakeCount}/2</span>
