@@ -330,9 +330,9 @@ export default function Pronunciation() {
     const maxScore = sessionWords.length * 10;
     
     let modeTitle = "Oturum Tamamlandı!";
-    if (activeMode === 'learn') modeTitle = "Öğrenme Modu Bitti";
-    if (activeMode === 'review') modeTitle = "Tekrar Modu Bitti";
-    if (activeMode === 'waiting') modeTitle = "Bekleme Modu Bitti";
+    if (activeMode === 'learn') modeTitle = "Telaffuz Testi Bitti";
+    if (activeMode === 'review') modeTitle = "Telaffuz Testi Bitti";
+    if (activeMode === 'waiting') modeTitle = "Telaffuz Testi Bitti";
 
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
