@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+Fimport React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useData } from "../context/DataContext";
 import { auth } from "../services/firebase";
@@ -102,7 +102,7 @@ export default function Home() {
               </div>
             </div>
           </div>
-          <h1 className="text-3xl font-extrabold text-slate-800 tracking-tight">Kelime Defteri 2</h1>
+          <h1 className="text-3xl font-extrabold text-slate-800 tracking-tight">Kelime Defteri</h1>
           <p className="text-slate-500 mt-2 text-sm">Merhaba, <span className="font-bold text-indigo-600">{user?.displayName || user?.email}</span></p>
         </div>
 
