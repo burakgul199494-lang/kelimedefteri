@@ -10,10 +10,8 @@ import {
   Hourglass, 
   Home, 
   Layers, 
-  CheckCircle2,
-  MoveRight,
-  Undo2,
-  HelpCircle
+  Lightbulb,
+  Volume2
 } from "lucide-react";
 
 export default function SentenceBuilderGame() {
@@ -28,31 +26,30 @@ export default function SentenceBuilderGame() {
   const [score, setScore] = useState(0);
 
   // --- CÜMLE KURMA MANTIĞI ---
-  const [targetSentenceWords, setTargetSentenceWords] = useState([]); // Doğru sıralama
-  const [shuffledPool, setShuffledPool] = useState([]); // Karışık havuz
-  const [userSelection, setUserSelection] = useState([]); // Kullanıcının seçtikleri
-  const [feedbackStatus, setFeedbackStatus] = useState("neutral"); // neutral, correct, wrong
+  const [targetSentenceWords, setTargetSentenceWords] = useState([]); // Hedef kelime dizisi
+  const [shuffledPool, setShuffledPool] = useState([]); // Karışık butonlar
+  const [userSelection, setUserSelection] = useState([]); // Yerleşenler
+  
+  // Hata ve İpucu Yönetimi
+  const [mistakeCount, setMistakeCount] = useState(0);
+  const [hintCount, setHintCount] = useState(0);
+  const [currentPoints, setCurrentPoints] = useState(5); // Soru başına puan
+  const [wrongAnimationId, setWrongAnimationId] = useState(null); // Yanlış efekt için
+  const [isComplete, setIsComplete] = useState(false); // Soru bitti mi?
 
-  // --- KELİME HAVUZLARI (SRS UYUMLU) ---
+  // --- KELİME HAVUZLARI ---
   const pools = useMemo(() => {
     const all = getAllWords();
     const now = new Date();
-
-    // Sadece CÜMLESİ OLAN kelimeler geçerli
+    // Sadece cümlesi olanlar
     const validWords = all.filter(w => w.sentence && w.sentence.trim().length > 0);
-
     const getQueueItem = (id) => learningQueue ? learningQueue.find(q => q.wordId === id) : null;
 
-    // 1. BEKLEME LİSTESİ
     const waitingPool = validWords.filter(w => {
         const q = getQueueItem(w.id);
         return q && new Date(q.nextReview) > now;
     });
-
-    // 2. TEKRAR MODU (Mezunlar)
     const reviewPool = validWords.filter(w => knownWordIds.includes(w.id));
-
-    // 3. ÖĞRENME MODU (Yeni + Zamanı Gelenler)
     const learnPool = validWords.filter(w => {
         if (knownWordIds.includes(w.id)) return false;
         const q = getQueueItem(w.id);
@@ -68,7 +65,6 @@ export default function SentenceBuilderGame() {
   const startSession = (mode) => {
     setGameMode(mode);
     let selectedPool = [];
-
     if (mode === "learn") selectedPool = pools.learnPool;
     else if (mode === "review") selectedPool = pools.reviewPool;
     else if (mode === "waiting") selectedPool = pools.waitingPool;
@@ -89,19 +85,26 @@ export default function SentenceBuilderGame() {
   useEffect(() => {
     if (gameStatus === "playing" && questions[currentIndex]) {
       const currentWordObj = questions[currentIndex];
-      const sentence = currentWordObj.sentence.trim();
-      
-      // Cümleyi kelimelere ayır (Noktalama işaretlerini koruyarak basit split)
-      const words = sentence.split(" ").filter(w => w.length > 0);
+      // Noktalama işaretlerini ve boşlukları temizleyerek kelimeleri al
+      // Basit bir regex ile kelimeleri ayırıyoruz
+      const rawSentence = currentWordObj.sentence.trim();
+      // Kelimeleri ayır (boşluklara göre)
+      const words = rawSentence.split(/\s+/);
       
       setTargetSentenceWords(words);
       setUserSelection([]);
-      setFeedbackStatus("neutral");
+      
+      // Resetlemeler
+      setMistakeCount(0);
+      setHintCount(0);
+      setCurrentPoints(5);
+      setIsComplete(false);
 
-      // Kelimeleri karıştır ve benzersiz ID ata
+      // Havuzu oluştur ve karıştır
       const pool = words.map((word, i) => ({
         id: `word-${i}-${Math.random()}`,
         text: word,
+        originalIndex: i, // Sıralama kontrolü için
         isUsed: false
       }));
       
@@ -109,67 +112,124 @@ export default function SentenceBuilderGame() {
     }
   }, [currentIndex, gameStatus, questions]);
 
-  // --- AKSİYONLAR ---
-  
-  // 1. Havuzdan Kelime Seçme
+  // --- SESLENDİRME ---
+  const speak = (txt) => {
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(txt);
+      u.lang = "en-US";
+      window.speechSynthesis.speak(u);
+  };
+
+  // --- KELİME SEÇME MANTIĞI (ANLIK KONTROL) ---
   const handleSelectWord = (wordObj) => {
-    if (feedbackStatus !== "neutral") return; // Cevap kontrol edildiyse dur
-    
-    // Havuzda kullanıldı işaretle
-    setShuffledPool(prev => prev.map(w => w.id === wordObj.id ? { ...w, isUsed: true } : w));
-    // Seçilenlere ekle
-    setUserSelection(prev => [...prev, wordObj]);
-  };
+    if (isComplete || wordObj.isUsed) return;
 
-  // 2. Seçimi Geri Alma (Seçilen kelimeye tıklayınca)
-  const handleRemoveWord = (wordObj) => {
-    if (feedbackStatus !== "neutral") return;
+    // Şu an hangi kelimeyi bekliyoruz?
+    const nextExpectedIndex = userSelection.length;
+    const expectedWord = targetSentenceWords[nextExpectedIndex];
 
-    // Seçilenlerden çıkar
-    setUserSelection(prev => prev.filter(w => w.id !== wordObj.id));
-    // Havuzda tekrar aktif et
-    setShuffledPool(prev => prev.map(w => w.id === wordObj.id ? { ...w, isUsed: false } : w));
-  };
+    // Seçilen kelime doğru mu? (Metin karşılaştırması)
+    // Küçük/büyük harf duyarlılığını kaldırmak istersen .toLowerCase() ekleyebilirsin.
+    // Ancak cümle kurmada genelde Case Sensitivity önemlidir (Cümlenin başı büyük vs.)
+    // Burada birebir eşleşme arıyoruz.
+    if (wordObj.text === expectedWord) {
+        // DOĞRU SEÇİM
+        const newSelection = [...userSelection, wordObj];
+        setUserSelection(newSelection);
+        
+        // Havuzda kullanıldı işaretle
+        setShuffledPool(prev => prev.map(w => w.id === wordObj.id ? { ...w, isUsed: true } : w));
 
-  // 3. Kontrol Et
-  const checkAnswer = () => {
-    const userSentence = userSelection.map(w => w.text).join(" ");
-    const targetSentence = targetSentenceWords.join(" ");
+        // Cümle bitti mi?
+        if (newSelection.length === targetSentenceWords.length) {
+            handleComplete(true);
+        }
 
-    // Basit karşılaştırma (Noktalama ve büyük küçük harf duyarlı olabilir veya esnetilebilir)
-    if (userSentence === targetSentence) {
-        setFeedbackStatus("correct");
-        setScore(s => s + 10);
-        // Otomatik geçiş
-        setTimeout(nextQuestion, 1500);
     } else {
-        setFeedbackStatus("wrong");
-        // Yanlışsa 1 saniye salla, sonra tekrar dene imkanı ver (veya sıfırla)
-        setTimeout(() => {
-            setFeedbackStatus("neutral");
-            // İstersen burada seçimi sıfırlayabilirsin:
-            // resetSelection(); 
-        }, 1000);
+        // YANLIŞ SEÇİM
+        const newMistakes = mistakeCount + 1;
+        setMistakeCount(newMistakes);
+        
+        // Titreme efekti
+        setWrongAnimationId(wordObj.id);
+        setTimeout(() => setWrongAnimationId(null), 500);
+
+        // 2 HATA LİMİTİ
+        if (newMistakes >= 2) {
+            handleFailAndComplete();
+        }
     }
   };
 
-  const nextQuestion = () => {
-      if (currentIndex + 1 < questions.length) {
-          setCurrentIndex(p => p + 1);
-      } else {
-          setGameStatus("finished");
-          addScore(score + 10);
+  // --- İPUCU KULLANIMI ---
+  const handleHint = () => {
+      if (isComplete) return;
+
+      const newHintCount = hintCount + 1;
+      setHintCount(newHintCount);
+
+      // Puan kırma mantığı
+      if (newHintCount === 1) setCurrentPoints(2);
+      else setCurrentPoints(0);
+
+      // Sıradaki doğru kelimeyi bul
+      const nextIndex = userSelection.length;
+      const expectedWordText = targetSentenceWords[nextIndex];
+
+      // Havuzda kullanılmamış olan doğru kelimeyi bul
+      const correctObj = shuffledPool.find(w => !w.isUsed && w.text === expectedWordText);
+
+      if (correctObj) {
+          handleSelectWord(correctObj);
       }
+  };
+
+  // --- OTOMATİK TAMAMLAMA (BAŞARISIZLIK DURUMU) ---
+  const handleFailAndComplete = () => {
+      setCurrentPoints(0); // Puanı sıfırla
+      
+      // Kalan tüm kelimeleri otomatik diz
+      const remainingWords = targetSentenceWords.slice(userSelection.length);
+      
+      // Görsel olarak doldurmak için (animasyonlu olması zor, direkt dolduruyoruz)
+      // Mevcut seçimlerin üzerine kalanları ekle
+      // (Burada görsel nesne oluşturmak biraz trick gerektirir, basitçe metinleri ekliyoruz)
+      const autoFilledObjects = remainingWords.map((txt, i) => ({
+          id: `auto-${i}`, text: txt, isUsed: true
+      }));
+      
+      setUserSelection(prev => [...prev, ...autoFilledObjects]);
+      setShuffledPool(prev => prev.map(w => ({ ...w, isUsed: true }))); // Hepsini pasif yap
+      
+      handleComplete(false); // false = başarısız bitiş (ses ve geçiş için)
+  };
+
+  // --- OYUN BİTİRME FONKSİYONU ---
+  const handleComplete = (success) => {
+      setIsComplete(true);
+      
+      // Cümleyi oku
+      const sentenceStr = questions[currentIndex].sentence;
+      speak(sentenceStr);
+
+      if (currentPoints > 0 && success) {
+          addScore(currentPoints);
+          setScore(s => s + currentPoints);
+      }
+
+      // 2 Saniye sonra diğer soruya geç
+      setTimeout(() => {
+          if (currentIndex + 1 < questions.length) {
+              setCurrentIndex(p => p + 1);
+          } else {
+              setGameStatus("finished");
+          }
+      }, 2000);
   };
 
   const handleQuitEarly = () => {
       if (score > 0) addScore(score);
       setGameStatus("finished");
-  };
-
-  const resetSelection = () => {
-      setUserSelection([]);
-      setShuffledPool(prev => prev.map(w => ({ ...w, isUsed: false })));
   };
 
   // --- UI RENDER ---
@@ -185,10 +245,9 @@ export default function SentenceBuilderGame() {
                 </div>
                 <div className="text-center py-6">
                     <h1 className="text-3xl font-black text-slate-800 mb-2">Sırala ve Kur</h1>
-                    <p className="text-slate-500">Kelimeleri doğru sıraya dizerek anlamlı cümleler oluştur.</p>
+                    <p className="text-slate-500">Kelimeleri sırayla seçerek cümleyi oluştur.</p>
                 </div>
                 
-                {/* Butonlar (Diğer sayfalarla standart) */}
                 <div className="space-y-4">
                     <button onClick={() => startSession('review')} disabled={pools.reviewPool.length === 0} className="w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 hover:border-orange-200 hover:bg-orange-50 transition-all group active:scale-95 disabled:opacity-60">
                         <div className="flex items-center justify-between">
@@ -262,10 +321,10 @@ export default function SentenceBuilderGame() {
           {/* OYUN ALANI */}
           <div className="flex flex-col gap-6 mt-4">
               
-              {/* 1. İPUCU KARTI (Türkçe Cümle veya Kelime Tanımı) */}
+              {/* 1. İPUCU KARTI */}
               <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 text-center">
                   <div className="flex items-center justify-center gap-2 text-slate-400 text-xs font-bold uppercase mb-2">
-                      <HelpCircle className="w-4 h-4"/>
+                      <Volume2 className="w-4 h-4"/>
                       <span>Çevirisi İstenen Cümle</span>
                   </div>
                   <h3 className="text-xl font-bold text-slate-800 leading-snug">
@@ -274,31 +333,33 @@ export default function SentenceBuilderGame() {
               </div>
 
               {/* 2. CEVAP ALANI (Kullanıcının dizdiği kelimeler) */}
-              <div className={`min-h-[80px] bg-slate-100 rounded-2xl p-4 flex flex-wrap gap-2 items-center justify-center border-2 border-dashed transition-colors ${feedbackStatus === 'correct' ? 'border-green-400 bg-green-50' : feedbackStatus === 'wrong' ? 'border-red-400 bg-red-50 animate-[shake_0.5s]' : 'border-slate-300'}`}>
+              <div className={`min-h-[80px] bg-slate-100 rounded-2xl p-4 flex flex-wrap gap-2 items-center justify-center border-2 border-dashed transition-colors ${isComplete ? 'border-green-400 bg-green-50' : 'border-slate-300'}`}>
                   {userSelection.length === 0 && <span className="text-slate-400 text-sm italic">Kelimelere tıklayarak cümleyi oluştur...</span>}
                   
                   {userSelection.map((item) => (
-                      <button 
+                      <div 
                         key={item.id} 
-                        onClick={() => handleRemoveWord(item)}
-                        className="bg-white px-3 py-2 rounded-xl shadow-sm font-bold text-slate-700 border border-slate-200 hover:bg-red-50 hover:border-red-200 hover:text-red-500 transition-all animate-in zoom-in duration-200"
+                        className="bg-white px-3 py-2 rounded-xl shadow-sm font-bold text-slate-700 border border-slate-200 animate-in zoom-in duration-200"
                       >
                           {item.text}
-                      </button>
+                      </div>
                   ))}
               </div>
 
-              {/* 3. KELİME HAVUZU */}
+              {/* 3. KELİME HAVUZU (BUTONLAR) */}
               <div className="flex flex-wrap gap-2 justify-center">
                   {shuffledPool.map((item) => (
                       <button
                         key={item.id}
                         onClick={() => handleSelectWord(item)}
-                        disabled={item.isUsed}
+                        disabled={item.isUsed || isComplete}
+                        style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
                         className={`px-4 py-3 rounded-xl font-bold text-lg transition-all shadow-sm active:scale-95 border-b-4
                             ${item.isUsed 
-                                ? "opacity-0 pointer-events-none scale-90" 
-                                : "bg-white text-slate-700 border-slate-200 hover:border-blue-300 hover:text-blue-600"
+                                ? "opacity-0 pointer-events-none scale-0" 
+                                : wrongAnimationId === item.id
+                                    ? "bg-red-500 text-white border-red-700 animate-[shake_0.5s_ease-in-out]"
+                                    : "bg-white text-slate-700 border-slate-200 hover:border-blue-300 hover:text-blue-600"
                             }
                         `}
                       >
@@ -309,30 +370,20 @@ export default function SentenceBuilderGame() {
 
           </div>
 
-          {/* KONTROL BUTONLARI */}
-          <div className="mt-auto pt-6 flex gap-3">
-              <button 
-                onClick={resetSelection} 
-                disabled={userSelection.length === 0 || feedbackStatus === 'correct'}
-                className="p-4 bg-white text-slate-500 rounded-2xl border-2 border-slate-200 hover:bg-slate-50 disabled:opacity-50"
-              >
-                  <Undo2 className="w-6 h-6"/>
-              </button>
-              
-              <button 
-                onClick={checkAnswer} 
-                disabled={userSelection.length === 0 || feedbackStatus === 'correct'}
-                className={`flex-1 p-4 rounded-2xl font-bold text-lg shadow-lg flex items-center justify-center gap-2 transition-all active:scale-95
-                    ${feedbackStatus === 'correct' 
-                        ? "bg-green-500 text-white shadow-green-200"
-                        : feedbackStatus === 'wrong'
-                            ? "bg-red-500 text-white shadow-red-200"
-                            : "bg-blue-600 text-white shadow-blue-200 hover:bg-blue-700"
-                    }
-                `}
-              >
-                  {feedbackStatus === 'correct' ? <><CheckCircle2/> Doğru!</> : feedbackStatus === 'wrong' ? "Tekrar Dene" : <><MoveRight/> Kontrol Et</>}
-              </button>
+          {/* İPUCU BUTONU */}
+          <div className="flex items-center justify-center gap-4 pt-4 border-t border-slate-100 mt-auto">
+                <button 
+                  onClick={handleHint} 
+                  disabled={isComplete}
+                  style={{ WebkitTapHighlightColor: 'transparent' }}
+                  className="flex items-center gap-2 px-5 py-3 bg-amber-100 text-amber-700 rounded-2xl font-bold active:bg-amber-200 transition-colors active:scale-95 disabled:opacity-50 focus:outline-none"
+                >
+                  <Lightbulb className="w-5 h-5"/> 
+                  <span className="text-xs ml-1 flex flex-col items-start leading-none">
+                      <span>İpucu ({hintCount === 0 ? "5p" : hintCount === 1 ? "2p" : "0p"})</span>
+                      <span className="text-[9px] text-amber-600/80">Hata: {mistakeCount}/2</span>
+                  </span>
+                </button>
           </div>
 
           <style jsx>{`
