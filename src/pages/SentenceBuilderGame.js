@@ -12,6 +12,8 @@ import {
   Layers, 
   Lightbulb,
   Volume2,
+  Undo2,
+  MoveRight,
   CheckCircle2,
   Target
 } from "lucide-react";
@@ -97,7 +99,7 @@ export default function SentenceBuilderGame() {
       
       setMistakeCount(0);
       setHintCount(0);
-      setCurrentPoints(10); 
+      setCurrentPoints(10); // Başlangıç puanı 10
       setIsComplete(false);
 
       const pool = words.map((word, i) => ({
@@ -118,7 +120,7 @@ export default function SentenceBuilderGame() {
       window.speechSynthesis.speak(u);
   };
 
-  // --- KELİME SEÇME (ANLIK KONTROL) ---
+  // --- KELİME SEÇME ---
   const handleSelectWord = (wordObj) => {
     if (isComplete || wordObj.isUsed) return;
 
@@ -147,14 +149,20 @@ export default function SentenceBuilderGame() {
     }
   };
 
-  // --- İPUCU ---
+  // --- İPUCU (PUANLAMA GÜNCELLENDİ) ---
   const handleHint = () => {
       if (isComplete) return;
 
       const newHintCount = hintCount + 1;
       setHintCount(newHintCount);
 
+      // PUANLAMA MANTIĞI:
+      // Başlangıç: 10
+      // 1. İpucu: 5
+      // 2. İpucu: 2
+      // 3. İpucu: 0
       if (newHintCount === 1) setCurrentPoints(5);
+      else if (newHintCount === 2) setCurrentPoints(2);
       else setCurrentPoints(0);
 
       const nextIndex = userSelection.length;
@@ -164,7 +172,13 @@ export default function SentenceBuilderGame() {
       if (correctObj) handleSelectWord(correctObj);
   };
 
-  // --- OTOMATİK TAMAMLAMA (BAŞARISIZ) ---
+  // --- TEMİZLE ---
+  const resetSelection = () => {
+      setUserSelection([]);
+      setShuffledPool(prev => prev.map(w => ({ ...w, isUsed: false })));
+  };
+
+  // --- OTOMATİK TAMAMLAMA ---
   const handleFailAndComplete = () => {
       setCurrentPoints(0); 
       const remainingWords = targetSentenceWords.slice(userSelection.length);
@@ -176,7 +190,6 @@ export default function SentenceBuilderGame() {
       handleComplete(false); 
   };
 
-  // --- BİTİRME ---
   const handleComplete = (success) => {
       setIsComplete(true);
       const sentenceStr = questions[currentIndex].sentence;
@@ -252,6 +265,7 @@ export default function SentenceBuilderGame() {
   }
 
   if (gameStatus === "finished") {
+    // Soru sayısı * 10 puan
     const maxScore = questions.length * 10;
     
     let modeTitle = "Oturum Tamamlandı!";
@@ -348,7 +362,7 @@ export default function SentenceBuilderGame() {
 
           </div>
 
-          {/* İPUCU BUTONU */}
+          {/* İPUCU BUTONU (YENİ PUANLAMA MANTIĞI GÖSTERGESİ İLE) */}
           <div className="flex items-center justify-center gap-4 pt-4 border-t border-slate-100 mt-auto">
                 <button 
                   onClick={handleHint} 
@@ -358,7 +372,8 @@ export default function SentenceBuilderGame() {
                 >
                   <Lightbulb className="w-5 h-5"/> 
                   <span className="text-xs ml-1 flex flex-col items-start leading-none">
-                      <span>İpucu ({hintCount === 0 ? "5p" : "0p"})</span>
+                      {/* Puan düşüşünü göster: 0 ipucu ise 5p'ye düşecek, 1 ise 2p'ye, 2 ise 0p'ye */}
+                      <span>İpucu ({hintCount === 0 ? "5p" : hintCount === 1 ? "2p" : "0p"})</span>
                       <span className="text-[9px] text-amber-600/80">Hata: {mistakeCount}/2</span>
                   </span>
                 </button>
