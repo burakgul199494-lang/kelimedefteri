@@ -1,0 +1,16 @@
+.App {
+  font-family: sans-serif;
+  text-align: center;
+}
+/* Mobil Zoom Engelleyici */
+:root {
+  touch-action: manipulation;
+}
+
+@media screen and (max-width: 768px) {
+  input, select, textarea, button {
+    font-size: 16px !important; /* 16px altı fontlarda iOS zoom yapar */
+    max-height: 100% !important;
+    touch-action: manipulation; /* Çift tıklama zoomunu engeller */
+  }
+}
