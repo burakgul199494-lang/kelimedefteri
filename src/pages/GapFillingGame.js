@@ -41,8 +41,8 @@ export default function GapFillingGame() {
 
   const [showHintTr, setShowHintTr] = useState(false);
   
-  // SES TAKİBİ (YENİ)
-  const [activeAudio, setActiveAudio] = useState(null); // 'sentence', 'hint', 'word'
+  // SES TAKİBİ
+  const [activeAudio, setActiveAudio] = useState(null); 
 
   // --- KELİME HAVUZLARI ---
   const getWordPools = () => {
@@ -116,7 +116,6 @@ export default function GapFillingGame() {
 
   // --- SORU YÜKLEME VE SES TEMİZLEME ---
   useEffect(() => {
-    // Soru değişince sesi sustur
     window.speechSynthesis.cancel();
     setActiveAudio(null);
 
@@ -154,21 +153,31 @@ export default function GapFillingGame() {
   const englishDefinition = currentWordObj?.definitions[0]?.engExplanation;
   const turkishDefinition = currentWordObj?.definitions[0]?.trExplanation;
 
-  // --- SES FONKSİYONU (TOGGLE) ---
+  // --- SES FONKSİYONU (DÜZELTİLDİ) ---
   const handleSpeak = (txt, id) => {
-    if (!text) return;
+    if (!txt) return; // <-- HATA BURADAYDI (text -> txt olarak düzeltildi)
+
+    // Tarayıcı desteklemiyorsa uyarı ver
+    if (!('speechSynthesis' in window)) {
+        alert("Tarayıcınız sesli okumayı desteklemiyor.");
+        return;
+    }
 
     if (activeAudio === id) {
         window.speechSynthesis.cancel();
         setActiveAudio(null);
     } else {
-        window.speechSynthesis.cancel();
+        window.speechSynthesis.cancel(); // Önceki sesi sustur
+        
         const u = new SpeechSynthesisUtterance(txt);
         u.lang = "en-US";
-        u.rate = 0.8; // Biraz yavaş okusun ki anlaşılır olsun
+        u.rate = 0.8; 
         
         u.onend = () => setActiveAudio(null);
-        u.onerror = () => setActiveAudio(null);
+        u.onerror = (e) => {
+            console.error("Ses hatası:", e);
+            setActiveAudio(null);
+        };
 
         window.speechSynthesis.speak(u);
         setActiveAudio(id);
@@ -208,7 +217,7 @@ export default function GapFillingGame() {
           setTimeout(() => {
               setCompletedLetters(targetWord.split('')); 
               setIsWordComplete(true);
-              handleSpeak(targetWord, 'word');
+              handleSpeak(targetWord, 'word'); // Kelime bitince oku
               
               setTimeout(() => {
                   if (currentIndex + 1 < questions.length) {
@@ -244,7 +253,7 @@ export default function GapFillingGame() {
 
   const handleWordComplete = () => {
     setIsWordComplete(true);
-    handleSpeak(targetWord, 'word'); // Kelimeyi oku
+    handleSpeak(targetWord, 'word'); 
     
     if (currentWordPoints > 0) {
         addScore(currentWordPoints);
@@ -386,7 +395,7 @@ export default function GapFillingGame() {
                    <div className="bg-blue-50 p-3 rounded-full"><Quote className="w-6 h-6 text-blue-400"/></div>
                </div>
                
-               {/* --- CÜMLE VE SES BUTONU (YENİ) --- */}
+               {/* --- CÜMLE VE SES BUTONU --- */}
                <div className="flex flex-col items-center gap-2">
                    <h2 className="text-xl font-medium text-slate-700 leading-relaxed font-serif italic">
                        {getMaskedSentence()}
