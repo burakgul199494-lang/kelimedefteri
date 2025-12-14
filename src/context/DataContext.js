@@ -197,66 +197,72 @@ export const DataProvider = ({ children }) => {
   // ----------------------------------------------------------------
   // 🔥 YENİLENEN KISIM: ARALIKLI TEKRAR (SRS) MANTIĞI 🔥
   // ----------------------------------------------------------------
-  const handleSmartLearn = async (wordId, action) => {
-    try {
-        const userRef = doc(db, "artifacts", appId, "users", user.uid, "vocab_game", "progress");
-        const now = new Date();
+const handleSmartLearn = async (wordId, action, source) => {
+  try {
+    const userRef = doc(db, "artifacts", appId, "users", user.uid, "vocab_game", "progress");
+    const now = new Date();
 
-        // 1. EZBERLEDİM (MASTER) -> Direkt Mezun Et
-        if (action === "master") {
-            await addToKnown(wordId); // Bu fonksiyon zaten kuyruktan da siliyor.
-            return;
-        }
-
-        // Mevcut kelimenin kuyruktaki durumunu bul
-        const currentItem = learningQueue.find(q => String(q.wordId) === String(wordId));
-        const currentLevel = currentItem ? (currentItem.level || 0) : 0;
-
-        // Geçici yeni kuyruk (Mevcut kelimeyi çıkararak başlıyoruz)
-        let newQueue = learningQueue.filter(q => String(q.wordId) !== String(wordId));
-
-        // 2. BİLİYORUM (KNOW)
-        if (action === "know") {
-            // Zaten öğrenilmişse işlem yapma
-            if (knownWordIds.includes(wordId)) return;
-
-            if (currentLevel === 0) {
-                // SEVİYE 1: İlk kez bilindi -> 1 Gün Beklet
-                const nextDate = new Date();
-                nextDate.setDate(now.getDate() + 1);
-                newQueue.push({ wordId, level: 1, nextReview: nextDate.toISOString() });
-                
-            } else if (currentLevel === 1) {
-                // SEVİYE 2: İkinci kez bilindi -> 2 Gün Beklet
-                const nextDate = new Date();
-                nextDate.setDate(now.getDate() + 2);
-                newQueue.push({ wordId, level: 2, nextReview: nextDate.toISOString() });
-
-            } else if (currentLevel >= 2) {
-                // MEZUNİYET: Üçüncü kez bilindi -> Öğrenilenlere At
-                await addToKnown(wordId);
-                return; // addToKnown kuyruk temizliğini yaptığı için burada işimiz bitiyor.
-            }
-        } 
-        // 3. BİLMİYORUM (DONT_KNOW)
-        else if (action === "dont_know") {
-            // Eğer yanlışlıkla öğrenilenlerdeyse oradan çıkar
-            if (knownWordIds.includes(wordId)) {
-                await removeFromKnown(wordId);
-            }
-            
-            // CEZA: Seviye sıfırlanır, hemen tekrar sorulur (Review Now)
-            newQueue.push({ wordId, level: 0, nextReview: now.toISOString() });
-        }
-
-        // Veritabanını ve State'i Güncelle (Sadece mezun olmayanlar için)
-        await updateDoc(userRef, { learning_queue: newQueue });
-        setLearningQueue(newQueue);
-
-    } catch (e) {
-        console.error("Smart Learn Hatası:", e);
+    // LEVEL 3 KORUMA (ÖĞRENİLENLER ASLA DÜŞMEZ)
+    if (knownWordIds.includes(wordId)) {
+      if (action === "master") return;
+      if (source !== "waiting") return;
     }
-  };
+
+    const currentItem = learningQueue.find(q => String(q.wordId) === String(wordId));
+    const currentLevel = currentItem ? (currentItem.level ?? 0) : 0;
+
+    let newQueue = learningQueue.filter(q => String(q.wordId) !== String(wordId));
+
+    // 🔵 TEKRAR MODU → HİÇBİR ŞEY YAPMA
+    if (source === "review") return;
+
+    // 🟢 ÖĞRENME MODU
+    if (source === "learn") {
+      if (action === "dont_know") return;
+
+      if (action === "know") {
+        const next = new Date();
+        next.setDate(now.getDate() + 1);
+        newQueue.push({ wordId, level: 1, nextReview: next.toISOString() });
+      }
+
+      if (action === "master") {
+        await addToKnown(wordId);
+        return;
+      }
+    }
+
+    // 🟡 BEKLEME MODU
+    if (source === "waiting") {
+      if (action === "dont_know") {
+        newQueue.push({ wordId, level: 0, nextReview: now.toISOString() });
+      }
+
+      if (action === "know") {
+        if (currentLevel === 1) {
+          const next = new Date();
+          next.setDate(now.getDate() + 2);
+          newQueue.push({ wordId, level: 2, nextReview: next.toISOString() });
+        } else if (currentLevel === 2) {
+          await addToKnown(wordId);
+          return;
+        }
+      }
+
+      if (action === "master") {
+        await addToKnown(wordId);
+        return;
+      }
+    }
+
+    await updateDoc(userRef, { learning_queue: newQueue });
+    setLearningQueue(newQueue);
+
+  } catch (e) {
+    console.error("SmartLearn Hatası:", e);
+  }
+};
+
 
   const handleSaveNewWord = async (wordData) => {
     const normalizedInput = wordData.word.toLowerCase().trim();
