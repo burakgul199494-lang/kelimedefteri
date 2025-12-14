@@ -33,21 +33,20 @@ export default function Game() {
   const POINTS_PER_CARD = 5;
 
   // --------------------------
-  // --- KELİME HAVUZLARI (DÜZELTİLDİ - SRS MANTIĞI) ---
+  // --- KELİME HAVUZLARI (SON KEZ DÜZELTİLDİ - SRS MANTIĞI) ---
   // --------------------------
   const getWordPools = () => {
     const all = getAllWords();
     const now = new Date();
 
-    // Kuyruktaki kelimelerin ID'lerini al (Performans için)
-    // learningQueue undefined gelirse boş dizi ata
+    // Kuyruktaki kelimelerin ID'lerini al
     const queueIds = learningQueue ? learningQueue.map(q => q.wordId) : [];
 
     // 1. ÖĞRENME MODU (Kalanlar): 
     // Kural: Bilinenlerde YOK --VE-- Kuyrukta (Süreçte) YOK
     const learnPool = all.filter(w => 
         !knownWordIds.includes(w.id) && 
-        !queueIds.includes(w.id)
+        !queueIds.includes(w.id) // <-- Bu sayede 'Beklemedekiler' 'Kalan' listeden düştü
     );
 
     // 2. TEKRAR MODU (Sırası Gelenler + MEZUNLAR):
@@ -61,7 +60,7 @@ export default function Game() {
         // B) Zaten tamamen öğrenilmiş (Mezun Tekrarı)
         const isKnown = knownWordIds.includes(w.id);
 
-        return isDue || isKnown;
+        return isDue || isKnown; // <-- Bu sayede Mezunlar (known) tekrar moduna dahil edildi
     });
 
     // 3. BEKLEME LİSTESİ (Gelecekteki Tekrarlar):
@@ -179,7 +178,7 @@ export default function Game() {
           {/* --- 3 MOD BUTONU --- */}
           <div className="space-y-4">
             
-            {/* 1. TEKRAR MODU (Öğrendiklerim -> Değişti: Artık Sırası Gelenler + Mezunlar) */}
+            {/* 1. TEKRAR MODU */}
             <button 
               onClick={() => startSession("review")}
               disabled={reviewPool.length === 0}
