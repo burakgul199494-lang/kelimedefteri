@@ -153,11 +153,10 @@ export default function GapFillingGame() {
   const englishDefinition = currentWordObj?.definitions[0]?.engExplanation;
   const turkishDefinition = currentWordObj?.definitions[0]?.trExplanation;
 
-  // --- SES FONKSİYONU (DÜZELTİLDİ) ---
+  // --- SES FONKSİYONU ---
   const handleSpeak = (txt, id) => {
-    if (!txt) return; // <-- HATA BURADAYDI (text -> txt olarak düzeltildi)
+    if (!txt) return;
 
-    // Tarayıcı desteklemiyorsa uyarı ver
     if (!('speechSynthesis' in window)) {
         alert("Tarayıcınız sesli okumayı desteklemiyor.");
         return;
@@ -167,7 +166,7 @@ export default function GapFillingGame() {
         window.speechSynthesis.cancel();
         setActiveAudio(null);
     } else {
-        window.speechSynthesis.cancel(); // Önceki sesi sustur
+        window.speechSynthesis.cancel();
         
         const u = new SpeechSynthesisUtterance(txt);
         u.lang = "en-US";
@@ -255,6 +254,7 @@ export default function GapFillingGame() {
     setIsWordComplete(true);
     handleSpeak(targetWord, 'word'); 
     
+    // ANLIK PUAN EKLEME BURADA YAPILIYOR
     if (currentWordPoints > 0) {
         addScore(currentWordPoints);
         setScore(s => s + currentWordPoints);
@@ -269,8 +269,10 @@ export default function GapFillingGame() {
     }, 1200);
   };
 
+  // --- DÜZELTİLEN YER ---
   const handleQuitEarly = () => {
-      if (score > 0) addScore(score);
+      // Buradaki addScore(score) kaldırıldı.
+      // Puanlar handleWordComplete içinde zaten eklendi.
       setGameStatus("finished");
   };
 
