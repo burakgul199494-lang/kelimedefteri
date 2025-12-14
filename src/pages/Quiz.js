@@ -11,7 +11,7 @@ import {
   RefreshCw, 
   BrainCircuit, 
   Hourglass,
-  Square // Durdurma ikonu için eklendi
+  Square // Durdurma ikonu
 } from "lucide-react";
 
 export default function Quiz() {
@@ -30,25 +30,25 @@ export default function Quiz() {
   
   const [showHintTr, setShowHintTr] = useState(false);
   
-  // Ses durumu takibi için state
-  const [isSpeaking, setIsSpeaking] = useState(false);
+  // --- SES TAKİBİ (DÜZELTİLDİ) ---
+  // null = hiçbiri çalmıyor, 'main' = ana kelime, 'hint' = ipucu
+  const [activeAudio, setActiveAudio] = useState(null);
 
-  // --- KELİME HAVUZLARI (SRS DÜZELTİLDİ) ---
+  // --- KELİME HAVUZLARI ---
   const getWordPools = () => {
     const all = getAllWords();
     const validWords = all.filter(w => w.definitions && w.definitions[0]?.meaning);
     const now = new Date();
 
-    // Kuyruktaki ID'ler
     const queueIds = learningQueue ? learningQueue.map(q => q.wordId) : [];
 
-    // 1. ÖĞRENME MODU (Kalanlar)
+    // 1. ÖĞRENME MODU
     const learnPool = validWords.filter(w => 
         !knownWordIds.includes(w.id) && 
         !queueIds.includes(w.id)
     );
 
-    // 2. TEKRAR MODU (Sırası Gelenler + Mezunlar)
+    // 2. TEKRAR MODU
     const reviewPool = validWords.filter(w => {
         const qItem = learningQueue ? learningQueue.find(item => item.wordId === w.id) : null;
         const isDue = qItem && new Date(qItem.nextReview) <= now;
@@ -56,7 +56,7 @@ export default function Quiz() {
         return isDue || isKnown;
     });
 
-    // 3. BEKLEME LİSTESİ (Gelecekteki Tekrarlar)
+    // 3. BEKLEME LİSTESİ
     const waitingPool = validWords.filter(w => {
         const qItem = learningQueue ? learningQueue.find(item => item.wordId === w.id) : null;
         return qItem && new Date(qItem.nextReview) > now;
@@ -105,17 +105,15 @@ export default function Quiz() {
     setGameStatus("playing");
   };
 
-  // --- OTOMATİK SES DURDURMA VE RESETLEME ---
-  // Soru değiştiğinde (index), oyun bittiğinde veya component unmount olduğunda çalışır.
+  // --- OTOMATİK TEMİZLİK ---
   useEffect(() => { 
-      window.speechSynthesis.cancel(); // Mevcut sesi sustur
-      setIsSpeaking(false); // State'i sıfırla
+      window.speechSynthesis.cancel(); 
+      setActiveAudio(null); // Sesi sıfırla
       
       setShowHintTr(false);
       setSelected(null);
       setIsAnswered(false);
       
-      // Component unmount (sayfadan çıkış) temizliği
       return () => {
           window.speechSynthesis.cancel();
       }
@@ -150,26 +148,26 @@ export default function Quiz() {
       setGameStatus("finished"); 
   };
 
-  // --- YENİ SES FONKSİYONU (TOGGLE MANTIĞI) ---
-  const handleSpeak = (txt) => { 
+  // --- SES FONKSİYONU (ID İLE AYRIŞTIRMA) ---
+  const handleSpeak = (txt, id) => { 
     if(!txt) return;
 
-    if (isSpeaking) {
-        // Eğer zaten konuşuyorsa -> DURDUR
+    // Eğer tıklanan buton zaten çalıyorsa -> DURDUR
+    if (activeAudio === id) {
         window.speechSynthesis.cancel();
-        setIsSpeaking(false);
+        setActiveAudio(null);
     } else {
-        // Konuşmuyorsa -> BAŞLAT
-        window.speechSynthesis.cancel(); // Garanti olsun diye önce temizle
+        // Başka bir şey çalıyorsa önce onu sustur, sonra yeniyi çal
+        window.speechSynthesis.cancel();
+        
         const u = new SpeechSynthesisUtterance(txt); 
         u.lang = "en-US";
         
-        // Konuşma bitince ikonu eski haline getir
-        u.onend = () => setIsSpeaking(false);
-        u.onerror = () => setIsSpeaking(false); // Hata olursa da resetle
+        u.onend = () => setActiveAudio(null);
+        u.onerror = () => setActiveAudio(null);
 
         window.speechSynthesis.speak(u); 
-        setIsSpeaking(true);
+        setActiveAudio(id); // Hangi butonun çaldığını kaydet ('hint' veya 'main')
     }
   };
 
@@ -324,13 +322,13 @@ export default function Quiz() {
                             <div className="bg-indigo-50 text-indigo-800 px-4 py-2 rounded-xl border border-indigo-100 flex items-center gap-2">
                                 <span className="text-sm italic">"{hintEng}"</span>
                                 
-                                {/* SES BUTONU (DÜZELTİLDİ) */}
+                                {/* 1. İPUCU SES BUTONU */}
                                 <button 
-                                    onClick={() => handleSpeak(hintEng)} 
+                                    onClick={() => handleSpeak(hintEng, 'hint')} // 'hint' ID'si
                                     className="p-1 bg-white rounded-full hover:bg-indigo-100 transition-colors" 
-                                    title={isSpeaking ? "Durdur" : "Oku"}
+                                    title={activeAudio === 'hint' ? "Durdur" : "Oku"}
                                 >
-                                    {isSpeaking ? <Square className="w-3 h-3 text-red-500 fill-current"/> : <Volume2 className="w-3 h-3 text-indigo-500"/>}
+                                    {activeAudio === 'hint' ? <Square className="w-3 h-3 text-red-500 fill-current"/> : <Volume2 className="w-3 h-3 text-indigo-500"/>}
                                 </button>
                                 
                                 {hintTr && (
@@ -354,13 +352,13 @@ export default function Quiz() {
                     
                     <h2 className="text-4xl font-extrabold text-slate-800">{current.wordObj.word}</h2>
                     
-                    {/* ANA SES BUTONU (DÜZELTİLDİ) */}
+                    {/* 2. ANA KELİME SES BUTONU */}
                     <button 
-                        onClick={() => handleSpeak(current.wordObj.word)} 
+                        onClick={() => handleSpeak(current.wordObj.word, 'main')} // 'main' ID'si
                         className="mx-auto p-2 bg-slate-50 rounded-full text-indigo-500 hover:bg-indigo-100 transition-colors"
-                        title={isSpeaking ? "Durdur" : "Oku"}
+                        title={activeAudio === 'main' ? "Durdur" : "Oku"}
                     >
-                        {isSpeaking ? <Square className="w-6 h-6 text-red-500 fill-current"/> : <Volume2 className="w-6 h-6"/>}
+                        {activeAudio === 'main' ? <Square className="w-6 h-6 text-red-500 fill-current"/> : <Volume2 className="w-6 h-6"/>}
                     </button>
                 </div>
 
