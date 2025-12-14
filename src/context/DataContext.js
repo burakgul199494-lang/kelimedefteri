@@ -199,59 +199,95 @@ export const DataProvider = ({ children }) => {
   // ----------------------------------------------------------------
 const handleSmartLearn = async (wordId, action, source) => {
   try {
-    const userRef = doc(db, "artifacts", appId, "users", user.uid, "vocab_game", "progress");
+    if (!user) return;
+
+    const wid = String(wordId);
     const now = new Date();
 
-    // LEVEL 3 KORUMA (ÖĞRENİLENLER ASLA DÜŞMEZ)
-    if (knownWordIds.includes(wordId)) {
-      if (action === "master") return;
-      if (source !== "waiting") return;
-    }
+    const userRef = doc(
+      db,
+      "artifacts",
+      appId,
+      "users",
+      user.uid,
+      "vocab_game",
+      "progress"
+    );
 
-    const currentItem = learningQueue.find(q => String(q.wordId) === String(wordId));
-    const currentLevel = currentItem ? (currentItem.level ?? 0) : 0;
-
-    let newQueue = learningQueue.filter(q => String(q.wordId) !== String(wordId));
-
-    // 🔵 TEKRAR MODU → HİÇBİR ŞEY YAPMA
+    // 🔵 REVIEW MODU → TAMAMEN PASİF
     if (source === "review") return;
 
-    // 🟢 ÖĞRENME MODU
+    const knownSet = new Set((knownWordIds || []).map(String));
+    const isKnown = knownSet.has(wid);
+
+    const currentItem = (learningQueue || []).find(
+      q => String(q.wordId) === wid
+    );
+    const currentLevel = currentItem ? (currentItem.level ?? 0) : 0;
+
+    let newQueue = (learningQueue || []).filter(
+      q => String(q.wordId) !== wid
+    );
+
+    // ⭐ EZBERLEDİM → HER YERDE MEZUN
+    if (action === "master") {
+      if (!isKnown) {
+        await addToKnown(wid);
+      }
+      return;
+    }
+
+    // 🟢 LEARN MODU
     if (source === "learn") {
       if (action === "dont_know") return;
 
       if (action === "know") {
-        const next = new Date();
-        next.setDate(now.getDate() + 1);
-        newQueue.push({ wordId, level: 1, nextReview: next.toISOString() });
-      }
+        const next = new Date(now);
+        next.setDate(next.getDate() + 1);
 
-      if (action === "master") {
-        await addToKnown(wordId);
-        return;
+        newQueue.push({
+          wordId: wid,
+          level: 1,
+          nextReview: next.toISOString()
+        });
       }
     }
 
-    // 🟡 BEKLEME MODU
+    // 🟡 WAITING MODU
     if (source === "waiting") {
       if (action === "dont_know") {
-        newQueue.push({ wordId, level: 0, nextReview: now.toISOString() });
+        newQueue.push({
+          wordId: wid,
+          level: 0,
+          nextReview: now.toISOString()
+        });
       }
 
       if (action === "know") {
-        if (currentLevel === 1) {
-          const next = new Date();
-          next.setDate(now.getDate() + 2);
-          newQueue.push({ wordId, level: 2, nextReview: next.toISOString() });
-        } else if (currentLevel === 2) {
-          await addToKnown(wordId);
+        if (currentLevel === 0) {
+          const next = new Date(now);
+          next.setDate(next.getDate() + 1);
+          newQueue.push({
+            wordId: wid,
+            level: 1,
+            nextReview: next.toISOString()
+          });
+        } 
+        else if (currentLevel === 1) {
+          const next = new Date(now);
+          next.setDate(next.getDate() + 2);
+          newQueue.push({
+            wordId: wid,
+            level: 2,
+            nextReview: next.toISOString()
+          });
+        } 
+        else {
+          if (!isKnown) {
+            await addToKnown(wid);
+          }
           return;
         }
-      }
-
-      if (action === "master") {
-        await addToKnown(wordId);
-        return;
       }
     }
 
@@ -259,7 +295,7 @@ const handleSmartLearn = async (wordId, action, source) => {
     setLearningQueue(newQueue);
 
   } catch (e) {
-    console.error("SmartLearn Hatası:", e);
+    console.error("handleSmartLearn ERROR:", e);
   }
 };
 
