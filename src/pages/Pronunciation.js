@@ -318,39 +318,25 @@ export default function Pronunciation() {
   // ===========================
   // === 2. BİTİŞ EKRANI ===
   // ===========================
-  if (gameStage === "finished") {
-    const maxScore = sessionWords.length * 10;
-    
-    let modeTitle = "Oturum Tamamlandı!";
-    if (activeMode === 'learn') modeTitle = "Telaffuz Testi Bitti";
-    if (activeMode === 'review') modeTitle = "Telaffuz Testi Bitti";
-    if (activeMode === 'waiting') modeTitle = "Telaffuz Testi Bitti";
+  if (gameStatus === "finished") {
+    const max = questions.length * 5;
+    let modeTitle = "Test Tamamlandı!";
+    if (gameMode === "learn") modeTitle = "Telaffuz Testi Bitti";
+    if (gameMode === "review") modeTitle = "Telaffuz Testi Bitti";
+    if (gameMode === "waiting") modeTitle = "Telaffuz Testi Bitti";
 
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
         <div className="bg-white p-8 rounded-3xl shadow-xl max-w-sm w-full text-center space-y-6">
            <div className="bg-purple-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto animate-bounce"><Trophy className="w-10 h-10 text-purple-600"/></div>
            <h2 className="text-2xl font-bold text-slate-800">{modeTitle}</h2>
-           
            <div className="py-6 bg-slate-50 rounded-2xl border border-slate-100">
              <div className="text-sm text-slate-400 font-bold uppercase">TOPLAM PUAN</div>
-             <div className="text-5xl font-extrabold text-purple-600 mt-2">{sessionScore}</div>
-             <div className="text-xs text-slate-400 mt-1">Maksimum: {maxScore}</div>
+             <div className="text-5xl font-extrabold text-indigo-600 mt-2">{score}</div>
+             <div className="text-xs text-slate-400 font-bold">Maksimum: {max}</div>
            </div>
-
-           <button 
-                onClick={() => setGameStage("selection")} 
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-xl flex items-center justify-center gap-2 mb-3 shadow-lg shadow-blue-200"
-           >
-                <Layers className="w-5 h-5" /> Başka Mod Seç
-           </button>
-           
-           <button 
-                onClick={() => navigate("/")} 
-                className="w-full bg-white border-2 border-slate-200 text-slate-600 font-bold py-3 px-6 rounded-xl hover:bg-slate-50 flex items-center justify-center gap-2"
-           >
-                <Home className="w-5 h-5" /> Ana Sayfa
-           </button>
+           <button onClick={() => setGameStatus("mode-selection")} className="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-200">Başka Test Çöz</button>
+           <button onClick={() => navigate("/")} className="w-full bg-white border-2 border-slate-200 text-slate-600 font-bold py-3 rounded-xl hover:bg-slate-50">Ana Sayfa</button>
         </div>
       </div>
     );
