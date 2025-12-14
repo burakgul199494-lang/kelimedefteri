@@ -13,10 +13,7 @@ import {
   Hourglass,
   CheckCircle2,
   AlertCircle,
-  X,
-  Target,
-  Layers,
-  Info // Bilgi ikonu eklendi
+  X
 } from "lucide-react";
 
 export default function Pronunciation() {
@@ -29,36 +26,26 @@ export default function Pronunciation() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [sessionScore, setSessionScore] = useState(0);
   const [activeMode, setActiveMode] = useState(null);
-  
+
   const [isListening, setIsListening] = useState(false);
   const [spokenText, setSpokenText] = useState("");
-  const [feedback, setFeedback] = useState(null); 
+  const [feedback, setFeedback] = useState(null);
   const [isRoundDone, setIsRoundDone] = useState(false);
-  const [isIOSPWA, setIsIOSPWA] = useState(false); // iOS PWA kontrolü
 
   const recognitionRef = useRef(null);
 
-  // --- 0. ORTAM KONTROLÜ ---
-  useEffect(() => {
-    // Uygulama iOS ana ekrandan mı çalışıyor kontrol et
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-    const isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
-    
-    if (isIOS && isStandalone) {
-        setIsIOSPWA(true);
-    }
-  }, []);
-
-  // --- 1. KELİME HAVUZLARI ---
+  // --- KELİME HAVUZLARI ---
   const getWordPools = () => {
     const all = getAllWords();
     const now = new Date();
 
-    const learnPool = all.filter(w => !knownWordIds.includes(w.id) && !learningQueue.find(q => q.wordId === w.id));
+    const learnPool = all.filter(
+      w => !knownWordIds.includes(w.id) && !learningQueue.find(q => q.wordId === w.id)
+    );
     const reviewPool = all.filter(w => knownWordIds.includes(w.id));
     const waitingPool = all.filter(w => {
-        const q = learningQueue.find(item => item.wordId === w.id);
-        return q && new Date(q.nextReview) > now;
+      const q = learningQueue.find(item => item.wordId === w.id);
+      return q && new Date(q.nextReview) > now;
     });
 
     return { learnPool, reviewPool, waitingPool };
@@ -66,13 +53,14 @@ export default function Pronunciation() {
 
   const { learnPool, reviewPool, waitingPool } = getWordPools();
 
-  // --- 2. OYUNU BAŞLAT ---
+  // --- OYUNU BAŞLAT ---
   const startSession = (mode) => {
     setActiveMode(mode);
     let selectedPool = [];
+
     if (mode === "learn") selectedPool = learnPool;
-    else if (mode === "review") selectedPool = reviewPool;
-    else if (mode === "waiting") selectedPool = waitingPool;
+    if (mode === "review") selectedPool = reviewPool;
+    if (mode === "waiting") selectedPool = waitingPool;
 
     if (selectedPool.length === 0) {
       alert("Bu modda çalışılacak kelime yok!");
@@ -94,144 +82,70 @@ export default function Pronunciation() {
     setIsRoundDone(false);
   };
 
-  // --- 3. MİKROFON YÖNETİMİ (iOS PWA FIX) ---
-  
+  // --- MİKROFON ---
   const startListening = async () => {
-    // Varsa eskiyi durdur
-    if (recognitionRef.current) {
-        recognitionRef.current.abort();
-    }
+    if (recognitionRef.current) recognitionRef.current.abort();
 
-    // --- iOS PWA İÇİN KRİTİK YAMA ---
-    // Ses servisini başlatmadan önce tarayıcıdan ham mikrofon izni isteyip
-    // donanımı uyandırıyoruz.
-    try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        // İzin alındı, hemen stream'i kapatabiliriz, amaç uyandırmaktı.
-        stream.getTracks().forEach(track => track.stop());
-    } catch (err) {
-        setFeedback({ score: 0, type: "error", msg: "Mikrofon izni verilemedi." });
-        console.error("Mic Permission Error:", err);
-        return;
-    }
-    // ---------------------------------
+    const SpeechRecognition =
+      window.SpeechRecognition || window.webkitSpeechRecognition;
 
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
-        alert("Tarayıcınız ses tanımayı desteklemiyor.");
-        return;
+      alert("Tarayıcınız ses tanımayı desteklemiyor.");
+      return;
     }
 
     const recognition = new SpeechRecognition();
-    recognition.continuous = false;
     recognition.lang = "en-US";
-    recognition.interimResults = false;
-    recognition.maxAlternatives = 1;
 
-    recognition.onstart = () => {
-        setIsListening(true);
-        setFeedback(null);
+    recognition.onstart = () => setIsListening(true);
+
+    recognition.onresult = (e) => {
+      const transcript = e.results[0][0].transcript;
+      setSpokenText(transcript);
+      evaluatePronunciation(transcript);
+      setIsListening(false);
     };
 
-    recognition.onresult = (event) => {
-        const transcript = event.results[0][0].transcript;
-        setSpokenText(transcript);
-        evaluatePronunciation(transcript);
-        setIsListening(false);
-    };
-
-    recognition.onerror = (event) => {
-        setIsListening(false);
-        console.error("Speech API Error:", event.error);
-        if (event.error === 'no-speech') return;
-        
-        if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
-             setFeedback({ score: 0, type: "error", msg: "Ayarlardan mikrofona izin verin." });
-        } else {
-             setFeedback({ score: 0, type: "error", msg: "Anlaşılamadı, tekrar dene." });
-        }
-    };
-
-    recognition.onend = () => {
-        setIsListening(false);
-    };
+    recognition.onerror = () => setIsListening(false);
+    recognition.onend = () => setIsListening(false);
 
     recognitionRef.current = recognition;
-    
-    // Hafif bir gecikme ile başlat (iOS kararlılığı için)
-    setTimeout(() => {
-        try {
-            recognition.start();
-        } catch (e) {
-            console.error("Start error:", e);
-        }
-    }, 100);
+    recognition.start();
   };
 
   const stopMicrophone = () => {
-    if (recognitionRef.current) {
-        recognitionRef.current.abort();
-        recognitionRef.current = null;
-    }
+    if (recognitionRef.current) recognitionRef.current.abort();
+    recognitionRef.current = null;
     setIsListening(false);
   };
 
   const toggleMic = () => {
-    if (isListening) {
-        stopMicrophone();
-    } else {
-        startListening();
-    }
+    isListening ? stopMicrophone() : startListening();
   };
 
-  useEffect(() => {
-    return () => {
-        stopMicrophone();
-        window.speechSynthesis.cancel();
-    };
-  }, []);
-
-  // --- 4. PUANLAMA MANTIĞI ---
+  // --- PUANLAMA ---
   const evaluatePronunciation = (spoken) => {
     const target = sessionWords[currentIndex].word.toLowerCase().trim();
-    const input = spoken.toLowerCase().trim().replace(/[.,?!]/g, ""); 
+    const input = spoken.toLowerCase().trim();
 
     let earnedPoints = 0;
     let type = "error";
-    let msg = "";
+    let msg = "Yanlış (0 Puan)";
 
     if (input === target) {
       earnedPoints = 10;
       type = "success";
       msg = "Mükemmel! (10 Puan)";
-    } else if (input.includes(target)) {
-      earnedPoints = 8;
-      type = "success";
-      msg = "Güzel! (8 Puan)";
-    } else {
-        const matchCount = target.split('').filter(char => input.includes(char)).length;
-        const accuracy = matchCount / target.length;
-        
-        if (accuracy > 0.7) {
-            earnedPoints = 5;
-            type = "warning";
-            msg = "İdare eder (5 Puan)";
-        } else {
-            earnedPoints = 0;
-            type = "error";
-            msg = "Yanlış (0 Puan)";
-        }
     }
 
-    setSessionScore(prev => prev + earnedPoints);
+    setSessionScore(p => p + earnedPoints);
     setFeedback({ score: earnedPoints, type, msg });
     setIsRoundDone(true);
   };
 
   const handleNext = () => {
-    stopMicrophone();
     if (currentIndex + 1 < sessionWords.length) {
-      setCurrentIndex(p => p + 1);
+      setCurrentIndex(i => i + 1);
       resetRound();
     } else {
       addScore(sessionScore);
@@ -239,189 +153,60 @@ export default function Pronunciation() {
     }
   };
 
-  const handleQuitEarly = () => {
-      stopMicrophone();
-      if (sessionScore > 0) addScore(sessionScore); 
-      setGameStage("finished"); 
-  };
-
-  const speakWord = () => {
-    const word = sessionWords[currentIndex].word;
-    window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(word);
-    u.lang = "en-US";
-    window.speechSynthesis.speak(u);
-  };
-
-  // ===========================
-  // === 1. MOD SEÇİM EKRANI ===
-  // ===========================
+  // =====================
+  // === SEÇİM EKRANI ===
+  // =====================
   if (gameStage === "selection") {
     return (
-        <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
-            <div className="w-full max-w-sm space-y-6">
-                
-               
-
-                <div className="flex items-center justify-between">
-                    <button onClick={() => navigate("/")} className="p-2 bg-white rounded-full shadow-sm hover:bg-slate-100">
-                    <Home className="w-5 h-5 text-slate-600" />
-                    </button>
-                    <h2 className="text-xl font-bold text-slate-800">Telaffuz Koçu</h2>
-                    <div className="w-9"></div>
-                </div>
-
-                <div className="text-center py-6">
-                    <h1 className="text-3xl font-black text-slate-800 mb-2">Konuşma Zamanı!</h1>
-                    <p className="text-slate-500">Kelimeleri sesli oku, yapay zeka puanlasın.</p>
-                </div>
-
-                <div className="space-y-4">
-                    {/* Tekrar Modu */}
-                    <button onClick={() => startSession('review')} disabled={reviewPool.length === 0} className="w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 hover:border-orange-200 hover:bg-orange-50 transition-all group active:scale-95 disabled:opacity-60">
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-4">
-                                <div className="bg-orange-100 p-3 rounded-xl text-orange-600"><RefreshCw className="w-8 h-8" /></div>
-                                <div className="text-left"><div className="font-bold text-xl text-slate-800">Tekrar Modu</div><div className="text-sm text-slate-500">Bilinen kelimeleri oku</div></div>
-                            </div>
-                            <div className="text-2xl font-black text-orange-600">{reviewPool.length}</div>
-                        </div>
-                    </button>
-
-                    {/* Öğrenme Modu */}
-                    <button onClick={() => startSession('learn')} disabled={learnPool.length === 0} className="w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 hover:border-indigo-200 hover:bg-indigo-50 transition-all group active:scale-95 disabled:opacity-60">
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-4">
-                                <div className="bg-indigo-100 p-3 rounded-xl text-indigo-600"><Brain className="w-8 h-8" /></div>
-                                <div className="text-left"><div className="font-bold text-xl text-slate-800">Öğrenme Modu</div><div className="text-sm text-slate-500">Yeni kelimeler oku</div></div>
-                            </div>
-                            <div className="text-2xl font-black text-indigo-600">{learnPool.length}</div>
-                        </div>
-                    </button>
-
-                    {/* Bekleme Modu */}
-                    <button onClick={() => startSession('waiting')} disabled={waitingPool.length === 0} className="w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 hover:border-slate-300 hover:bg-slate-50 transition-all group active:scale-95 disabled:opacity-60">
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-4">
-                                <div className="bg-slate-100 p-3 rounded-xl text-slate-500"><Hourglass className="w-8 h-8" /></div>
-                                <div className="text-left"><div className="font-bold text-xl text-slate-700">Bekleme Listesi</div><div className="text-sm text-slate-400">Gelecekteki kelimeler</div></div>
-                            </div>
-                            <div className="text-2xl font-black text-slate-500">{waitingPool.length}</div>
-                        </div>
-                    </button>
-                </div>
-            </div>
-        </div>
+      <div className="min-h-screen flex items-center justify-center">
+        <button onClick={() => startSession("learn")}>Başla</button>
+      </div>
     );
   }
 
-  // ===========================
-  // === 2. BİTİŞ EKRANI ===
-  // ===========================
-  if (gameStatus === "finished") {
-    const max = questions.length * 5;
-    let modeTitle = "Test Tamamlandı!";
-    if (gameMode === "learn") modeTitle = "Telaffuz Testi Bitti";
-    if (gameMode === "review") modeTitle = "Telaffuz Testi Bitti";
-    if (gameMode === "waiting") modeTitle = "Telaffuz Testi Bitti";
+  // =====================
+  // === BİTİŞ EKRANI ===
+  // =====================
+  if (gameStage === "finished") {
+    const max = sessionWords.length * 10;
 
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
-        <div className="bg-white p-8 rounded-3xl shadow-xl max-w-sm w-full text-center space-y-6">
-           <div className="bg-purple-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto animate-bounce"><Trophy className="w-10 h-10 text-purple-600"/></div>
-           <h2 className="text-2xl font-bold text-slate-800">{modeTitle}</h2>
-           <div className="py-6 bg-slate-50 rounded-2xl border border-slate-100">
-             <div className="text-sm text-slate-400 font-bold uppercase">TOPLAM PUAN</div>
-             <div className="text-5xl font-extrabold text-indigo-600 mt-2">{score}</div>
-             <div className="text-xs text-slate-400 font-bold">Maksimum: {max}</div>
-           </div>
-           <button onClick={() => setGameStatus("mode-selection")} className="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-200">Başka Test Çöz</button>
-           <button onClick={() => navigate("/")} className="w-full bg-white border-2 border-slate-200 text-slate-600 font-bold py-3 rounded-xl hover:bg-slate-50">Ana Sayfa</button>
+      <div className="min-h-screen flex items-center justify-center">
+        <div>
+          <Trophy />
+          <h2>Telaffuz Testi Bitti</h2>
+          <div>{sessionScore} / {max}</div>
+          <button onClick={() => setGameStage("selection")}>Tekrar</button>
         </div>
       </div>
     );
   }
 
-  // ===========================
-  // === 3. OYUN EKRANI ===
-  // ===========================
+  // =====================
+  // === OYUN EKRANI ===
+  // =====================
   const currentWord = sessionWords[currentIndex];
-  const progress = ((currentIndex + 1) / sessionWords.length) * 100;
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col items-center p-4">
-        <div className="w-full max-w-md space-y-6 mt-4">
-            
-            {/* Header */}
-            <div className="flex justify-between items-center">
-                <button onClick={handleQuitEarly} className="p-2 bg-white rounded-full shadow-sm hover:bg-slate-100"><X className="w-5 h-5 text-slate-400"/></button>
-                <div className="font-bold text-indigo-600">
-                    {activeMode === 'review' ? 'Tekrar' : activeMode === 'learn' ? 'Öğrenme' : 'Bekleme'}: {currentIndex + 1} / {sessionWords.length}
-                </div>
-                <div className="flex items-center gap-1 bg-amber-100 text-amber-700 px-3 py-1 rounded-full font-bold text-sm"><Trophy className="w-4 h-4"/> {sessionScore}</div>
-            </div>
-            <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden"><div className="bg-indigo-500 h-full transition-all duration-500" style={{width:`${progress}%`}}></div></div>
+    <div className="min-h-screen flex flex-col items-center justify-center gap-6">
+      <h1>{currentWord.word}</h1>
 
-            {/* Kelime Kartı */}
-            <div className="bg-white p-8 rounded-3xl shadow-xl border border-slate-100 text-center space-y-6 min-h-[300px] flex flex-col justify-center items-center">
-                <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">OKUMAN GEREKEN KELİME</div>
-                
-                <h2 className="text-5xl font-black text-slate-800 tracking-tight">{currentWord.word}</h2>
-                
-                <button 
-                    onClick={speakWord}
-                    className="flex items-center gap-2 bg-indigo-50 text-indigo-600 px-4 py-2 rounded-full text-sm font-bold hover:bg-indigo-100 transition-colors"
-                >
-                    <Volume2 className="w-4 h-4" /> Doğrusunu Dinle
-                </button>
+      {!isRoundDone ? (
+        <button onClick={toggleMic}>
+          {isListening ? <Square /> : <Mic />}
+        </button>
+      ) : (
+        <button onClick={handleNext}>Devam</button>
+      )}
 
-                {/* Geri Bildirim */}
-                {feedback && (
-                    <div className={`w-full p-4 rounded-2xl border-2 animate-in fade-in zoom-in duration-300 ${
-                        feedback.type === 'success' ? 'bg-green-50 border-green-200 text-green-700' :
-                        feedback.type === 'warning' ? 'bg-orange-50 border-orange-200 text-orange-700' :
-                        'bg-red-50 border-red-200 text-red-700'
-                    }`}>
-                        <div className="text-xs font-bold opacity-70 uppercase mb-1">Senin Okuduğun</div>
-                        <div className="text-lg font-bold italic">"{spokenText}"</div>
-                        <div className="mt-2 text-sm font-black flex items-center justify-center gap-1">
-                            {feedback.type === 'success' ? <CheckCircle2 className="w-4 h-4"/> : <AlertCircle className="w-4 h-4"/>}
-                            {feedback.msg}
-                        </div>
-                    </div>
-                )}
-            </div>
-
-            {/* Mikrofon / Sonraki Butonu */}
-            <div className="flex justify-center pt-4">
-                {!isRoundDone ? (
-                    <div className="flex flex-col items-center gap-3">
-                        <button
-                            onClick={toggleMic}
-                            className={`w-20 h-20 rounded-full flex items-center justify-center shadow-xl transition-all transform active:scale-95 ${
-                                isListening ? "bg-red-500 text-white animate-pulse ring-4 ring-red-200" : "bg-indigo-600 text-white hover:bg-indigo-700"
-                            }`}
-                        >
-                            {isListening ? <Square className="w-8 h-8 fill-current" /> : <Mic className="w-10 h-10" />}
-                        </button>
-                        <span className="text-slate-400 text-sm font-medium">{isListening ? "Dinliyorum..." : "Bas ve Oku"}</span>
-                    </div>
-                ) : (
-                    <button 
-                        onClick={handleNext} 
-                        className="w-full bg-indigo-600 text-white font-bold py-4 rounded-2xl shadow-lg hover:bg-indigo-700 transition-transform active:scale-95 flex items-center justify-center gap-2"
-                    >
-                        {currentIndex + 1 === sessionWords.length ? "Sonucu Gör" : "Sıradaki Kelime"} <ArrowLeft className="w-5 h-5 rotate-180"/>
-                    </button>
-                )}
-            </div>
-
-            {/* BİTİR VE ÇIK BUTONU */}
-            <button onClick={handleQuitEarly} className="w-full mt-6 flex items-center justify-center gap-2 text-slate-400 hover:text-red-500 transition-colors text-sm font-medium mx-auto">
-                Bitir (Puanı Al ve Çık)
-            </button>
-
+      {feedback && (
+        <div>
+          {feedback.type === "success"
+            ? <CheckCircle2 />
+            : <AlertCircle />}
+          {feedback.msg}
         </div>
+      )}
     </div>
   );
 }
