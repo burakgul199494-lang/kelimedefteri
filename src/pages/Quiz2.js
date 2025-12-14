@@ -17,7 +17,7 @@ export default function Quiz2() {
   const [gameStatus, setGameStatus] = useState("mode-selection");
   const [isTransitioning, setIsTransitioning] = useState(false);
 
-  // --- KELİME HAVUZLARI (DÜZELTİLDİ - SRS MANTIĞI) ---
+  // --- KELİME HAVUZLARI (SRS MANTIĞI İLE DÜZELTİLDİ) ---
   const getWordPools = () => {
     const all = getAllWords();
     // Tanımı olan geçerli kelimeler (Ters quiz için anlam şart)
@@ -28,24 +28,31 @@ export default function Quiz2() {
     const queueIds = learningQueue ? learningQueue.map(q => q.wordId) : [];
 
     // 1. ÖĞRENME MODU (Kalanlar)
-    // Kural: Öğrenilenlerde YOK --VE-- Kuyrukta YOK
+    // Kural: Öğrenilenlerde YOK --VE-- Kuyrukta YOK (Yepyeni kelimeler)
     const learnPool = validWords.filter(w => 
         !knownWordIds.includes(w.id) && 
         !queueIds.includes(w.id)
     );
 
-    // 2. TEKRAR MODU (Sırası Gelenler)
-    // Kural: Kuyrukta VAR --VE-- Zamanı ŞİMDİ veya GEÇMİŞ
+    // 2. TEKRAR MODU (Sırası Gelenler + MEZUNLAR)
+    // Kural: (Kuyrukta VAR ve Zamanı Gelmiş) --VEYA-- (Zaten Öğrenilmiş/Mezun)
     const reviewPool = validWords.filter(w => {
-        const q = learningQueue.find(item => item.wordId === w.id);
-        return q && new Date(q.nextReview) <= now;
+        const qItem = learningQueue ? learningQueue.find(item => item.wordId === w.id) : null;
+        
+        // A) Kuyrukta ve zamanı gelmiş (SRS Tekrarı)
+        const isDue = qItem && new Date(qItem.nextReview) <= now;
+        
+        // B) Zaten tamamen öğrenilmiş (Mezun Tekrarı)
+        const isKnown = knownWordIds.includes(w.id);
+
+        return isDue || isKnown;
     });
 
     // 3. BEKLEME LİSTESİ (Gelecekteki Tekrarlar)
     // Kural: Kuyrukta VAR --VE-- Zamanı GELECEKTE
     const waitingPool = validWords.filter(w => {
-        const q = learningQueue.find(item => item.wordId === w.id);
-        return q && new Date(q.nextReview) > now;
+        const qItem = learningQueue ? learningQueue.find(item => item.wordId === w.id) : null;
+        return qItem && new Date(qItem.nextReview) > now;
     });
 
     return { learnPool, reviewPool, waitingPool };
