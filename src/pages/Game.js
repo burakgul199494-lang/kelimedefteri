@@ -50,12 +50,12 @@ export default function Game() {
         !queueIds.includes(w.id)
     );
 
-    // 2. TEKRAR MODU (Sırası Gelenler + MEZUNLAR):
-    // Kural: (Kuyrukta VAR ve Zamanı Gelmiş) --VEYA-- (Zaten Öğrenilmiş/Mezun)
+    // 2. TEKRAR MODU (Sırası Gelenler + MEZUNLAR)
     const reviewPool = all.filter(w => {
-        const qItem = learningQueue ? learningQueue.find(item => item.wordId === w.id) : null;
+        const qItem = learningQueue ? learningQueue.find(q => q.wordId === w.id) : null;
         
-        // A) Kuyrukta ve zamanı gelmiş (SRS Tekrarı)
+        // A) Kuyrukta ve zamanı gelmiş (ŞİMDİ veya GEÇMİŞ)
+        // Level 0 olup "ŞİMDİ" tekrar edilmesi gerekenler de buraya düşer.
         const isDue = qItem && new Date(qItem.nextReview) <= now;
         
         // B) Zaten tamamen öğrenilmiş (Mezun Tekrarı)
