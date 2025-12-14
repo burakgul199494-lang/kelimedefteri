@@ -11,7 +11,8 @@ import {
   Hourglass,
   Languages,
   Layout,
-  Headphones // YENİ: Dinleme ikonu eklendi
+  Headphones, // Dinleme
+  Puzzle // Eşleştirme
 } from "lucide-react"; 
 import ProfileModal from "../components/ProfileModal"; 
 import LeaderboardModal from "../components/LeaderboardModal";
@@ -131,6 +132,7 @@ export default function Home() {
         {/* --- MENÜ LİSTESİ --- */}
         <div className="space-y-3 pb-8">
           
+          {/* 0. Admin */}
           {isAdmin && (
             <button onClick={() => navigate("/admin")} className="w-full bg-slate-800 text-white font-bold py-3 px-6 rounded-xl shadow-md flex items-center justify-between mb-3 group hover:bg-slate-900 transition-colors">
                <div className="flex items-center gap-3"><div className="bg-white/20 p-2 rounded-lg"><Shield className="w-5 h-5 text-yellow-400"/></div><div className="text-left"><div className="text-base">Admin Paneli</div></div></div>
@@ -142,9 +144,7 @@ export default function Home() {
              <div className="flex items-center gap-3"><div className="bg-white/20 p-2 rounded-lg"><Book className="w-6 h-6"/></div><div className="text-left"><div className="text-lg">Sözlük</div><div className="text-xs text-sky-100 font-normal">Kelime ara ve öğren</div></div></div>
           </button>
 
-          {/* --- OYUNLAR BÖLÜMÜ --- */}
-          
-          {/* 3. Flash Kart */}
+          {/* 2. Flash Kart */}
           <button onClick={() => navigate("/game")} className="w-full bg-indigo-600 text-white font-bold py-5 px-6 rounded-2xl shadow-lg flex items-center justify-between group active:scale-95 transition-transform mb-2">
              <div className="flex items-center gap-4">
                 <div className="bg-white/20 p-3 rounded-xl"><Play className="w-8 h-8" fill="currentColor"/></div>
@@ -156,51 +156,51 @@ export default function Home() {
              <Play className="w-6 h-6 opacity-60 group-hover:translate-x-1 transition-transform"/>
           </button>
 
-          {/* DİĞER OYUNLAR (GRID) */}
+          {/* 3. DİĞER OYUNLAR (GRID) */}
           <div className="grid grid-cols-2 gap-3">
              
-             {/* 5. Quiz */}
+             {/* 1. SATIR: Quiz & Ters Quiz */}
              <button onClick={() => navigate("/quiz")} className="bg-amber-500 text-white font-bold py-4 px-4 rounded-xl shadow-md flex flex-col items-center gap-2 text-center active:scale-95 transition-transform">
                 <div className="bg-white/20 p-2 rounded-full"><HelpCircle className="w-6 h-6"/></div>
                 <span className="text-sm">Quiz</span>
              </button>
 
-             {/* 6. Ters Quiz */}
              <button onClick={() => navigate("/quiz2")} className="bg-emerald-500 text-white font-bold py-4 px-4 rounded-xl shadow-md flex flex-col items-center gap-2 text-center active:scale-95 transition-transform">
                 <div className="bg-white/20 p-2 rounded-full"><Languages className="w-6 h-6"/></div>
                 <span className="text-sm">Ters Quiz</span>
              </button>
 
-             {/* 4. Yazma Testi */}
+             {/* 2. SATIR: Yazma & Dinleme */}
              <button onClick={() => navigate("/writing")} className="bg-purple-600 text-white font-bold py-4 px-4 rounded-xl shadow-md flex flex-col items-center gap-2 text-center active:scale-95 transition-transform">
                 <div className="bg-white/20 p-2 rounded-full"><Edit className="w-6 h-6"/></div>
-                <span className="text-sm">Yazma Testi</span>
+                <span className="text-sm">Yazma</span>
              </button>
 
-             {/* YENİ: Dinle & Yaz (Writing2) */}
              <button onClick={() => navigate("/writing2")} className="bg-pink-600 text-white font-bold py-4 px-4 rounded-xl shadow-md flex flex-col items-center gap-2 text-center active:scale-95 transition-transform">
                 <div className="bg-white/20 p-2 rounded-full"><Headphones className="w-6 h-6"/></div>
                 <span className="text-sm">Dinle & Yaz</span>
              </button>
 
-             {/* 7. Telaffuz */}
+             {/* 3. SATIR: Boşluk Doldurma & Cümle Kurma */}
+             <button onClick={() => navigate("/gap-filling")} className="bg-cyan-600 text-white font-bold py-4 px-4 rounded-xl shadow-md flex flex-col items-center gap-2 text-center active:scale-95 transition-transform">
+                <div className="bg-white/20 p-2 rounded-full"><Quote className="w-6 h-6"/></div>
+                <span className="text-sm">Boşluk Dol.</span>
+             </button>
+
+             <button onClick={() => navigate("/game/sentence-builder")} className="bg-teal-600 text-white font-bold py-4 px-4 rounded-xl shadow-md flex flex-col items-center gap-2 text-center active:scale-95 transition-transform">
+                <div className="bg-white/20 p-2 rounded-full"><Layout className="w-6 h-6"/></div>
+                <span className="text-sm">Cümle Kurma</span>
+             </button>
+
+             {/* 4. SATIR: Eşleştirme & Telaffuz */}
+             <button onClick={() => navigate("/game/word-match")} className="bg-orange-500 text-white font-bold py-4 px-4 rounded-xl shadow-md flex flex-col items-center gap-2 text-center active:scale-95 transition-transform">
+                <div className="bg-white/20 p-2 rounded-full"><Puzzle className="w-6 h-6"/></div>
+                <span className="text-sm">Eşleştirme</span>
+             </button>
+
              <button onClick={() => navigate("/pronunciation")} className="bg-rose-500 text-white font-bold py-4 px-4 rounded-xl shadow-md flex flex-col items-center gap-2 text-center active:scale-95 transition-transform">
                 <div className="bg-white/20 p-2 rounded-full"><Mic className="w-6 h-6"/></div>
                 <span className="text-sm">Telaffuz</span>
-             </button>
-
-             {/* 8. Boşluk Doldurma (Grid içine alındı) */}
-             <button onClick={() => navigate("/gap-filling")} className="bg-cyan-600 text-white font-bold py-4 px-4 rounded-xl shadow-md flex flex-col items-center gap-2 text-center active:scale-95 transition-transform">
-                <div className="bg-white/20 p-2 rounded-full"><Quote className="w-6 h-6"/></div>
-                <span className="text-sm">Boşluk Doldurma</span>
-             </button>
-
-             {/* 9. Cümle Kurma (Tam Genişlik - En altta) */}
-             <button onClick={() => navigate("/game/sentence-builder")} className="bg-teal-600 text-white font-bold py-4 px-4 rounded-xl shadow-md flex flex-col items-center gap-2 text-center active:scale-95 transition-transform w-full col-span-2">
-                <div className="flex items-center justify-center gap-2">
-                    <div className="bg-white/20 p-2 rounded-full"><Layout className="w-6 h-6"/></div>
-                    <span className="text-sm">Cümle Kurma</span>
-                </div>
              </button>
 
           </div>
