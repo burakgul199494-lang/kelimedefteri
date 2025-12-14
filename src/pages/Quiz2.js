@@ -206,9 +206,9 @@ export default function Quiz2() {
   if (gameStatus === "finished") {
     const max = questions.length * 5;
     let modeTitle = "Test Tamamlandı!";
-    if (gameMode === "learn") modeTitle = "Yeni Kelime Testi Bitti";
-    if (gameMode === "review") modeTitle = "Tekrar Testi Bitti";
-    if (gameMode === "waiting") modeTitle = "Bekleme Testi Bitti";
+    if (gameMode === "learn") modeTitle = "Tersine Test Bitti";
+    if (gameMode === "review") modeTitle = "Tersine Test Bitti";
+    if (gameMode === "waiting") modeTitle = "Tersine Test Bitti";
 
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
