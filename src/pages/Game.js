@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useData } from "../context/DataContext";
 import WordCard from "../components/WordCard";
 import { useNavigate } from "react-router-dom";
@@ -20,7 +20,7 @@ export default function Game() {
   const navigate = useNavigate();
 
   // --- STATE'LER ---
-  const [gameStage, setGameStage] = useState("selection");
+  const [gameStage, setGameStage] = useState("selection"); // selection, playing, summary
   const [sessionWords, setSessionWords] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [swipeDirection, setSwipeDirection] = useState(null);
@@ -33,48 +33,50 @@ export default function Game() {
   const POINTS_PER_CARD = 5;
 
   // --------------------------
-  // --- KELİME HAVUZLARI (DÜZELTİLDİ - SRS MANTIĞI) ---
+  // --- KELİME HAVUZLARI (SRS MANTIĞI - SON HALİ) ---
   // --------------------------
-  const getWordPools = () => {
+  const pools = useMemo(() => {
     const all = getAllWords();
     const now = new Date();
 
-    // Kuyruktaki kelimelerin ID'lerini al (Performans için)
-    // learningQueue undefined gelirse boş dizi ata
-    const queueIds = learningQueue ? learningQueue.map(q => q.wordId) : [];
+    // Yardımcı: Bir kelimenin kuyruktaki durumunu bul
+    const getQueueItem = (id) => learningQueue ? learningQueue.find(q => q.wordId === id) : null;
 
-    // 1. ÖĞRENME MODU (Kalanlar): 
-    // Kural: Bilinenlerde YOK --VE-- Kuyrukta (Süreçte) YOK
-    const learnPool = all.filter(w => 
-        !knownWordIds.includes(w.id) && 
-        !queueIds.includes(w.id)
-    );
-
-    // 2. TEKRAR MODU (Sırası Gelenler + MEZUNLAR)
-    const reviewPool = all.filter(w => {
-        const qItem = learningQueue ? learningQueue.find(q => q.wordId === w.id) : null;
-        
-        // A) Kuyrukta ve zamanı gelmiş (ŞİMDİ veya GEÇMİŞ)
-        // Level 0 olup "ŞİMDİ" tekrar edilmesi gerekenler de buraya düşer.
-        const isDue = qItem && new Date(qItem.nextReview) <= now;
-        
-        // B) Zaten tamamen öğrenilmiş (Mezun Tekrarı)
-        const isKnown = knownWordIds.includes(w.id);
-
-        return isDue || isKnown;
+    // 1. BEKLEME LİSTESİ (Waiting Pool)
+    // Kural: Kuyrukta OLAN ve Süresi GELECEKTE olanlar
+    const waitingPool = all.filter(w => {
+        const q = getQueueItem(w.id);
+        return q && new Date(q.nextReview) > now;
     });
 
-    // 3. BEKLEME LİSTESİ (Gelecekteki Tekrarlar):
-    // Kural: Kuyrukta VAR --VE-- Zamanı GELECEKTE
-    const waitingPool = all.filter(w => {
-        const qItem = learningQueue ? learningQueue.find(item => item.wordId === w.id) : null;
-        return qItem && new Date(qItem.nextReview) > now;
+    // 2. TEKRAR MODU (Review Pool - Sadece Mezunlar)
+    // Kural: Tamamen öğrenilmiş (Level 3) kelimeler.
+    // Kullanıcı bunları pekiştirmek için girer.
+    const reviewPool = all.filter(w => knownWordIds.includes(w.id));
+
+    // 3. ÖĞRENME MODU (Learn Pool - İşlem Yapılacaklar)
+    // Kural: (Mezun Değil) VE (Beklemede Değil)
+    // Kapsamı: 
+    //  a) Hiç görülmemiş (Level 0)
+    //  b) Kuyrukta ama süresi dolmuş (Level 1 veya 2 -> Tekrar zamanı gelmiş)
+    const learnPool = all.filter(w => {
+        // Zaten mezunsa buraya gelmez, Review Pool'a gider.
+        if (knownWordIds.includes(w.id)) return false;
+
+        const q = getQueueItem(w.id);
+        
+        // Kuyrukta yoksa -> Level 0'dır -> ÖĞRENİLECEK
+        if (!q) return true;
+
+        // Kuyrukta var ve süresi dolmuşsa -> Tekrar zamanı -> ÖĞRENİLECEK
+        if (new Date(q.nextReview) <= now) return true;
+
+        // Diğer durum (Kuyrukta ve süresi gelecekte) -> Bekleme listesindedir.
+        return false;
     });
 
     return { learnPool, reviewPool, waitingPool };
-  };
-
-  const { learnPool, reviewPool, waitingPool } = getWordPools();
+  }, [getAllWords, knownWordIds, learningQueue]);
 
   // --------------------------
   // --- OTURUMU BAŞLAT ---
@@ -83,9 +85,9 @@ export default function Game() {
     setActiveMode(mode);
     let selectedPool = [];
 
-    if (mode === "learn") selectedPool = learnPool;
-    else if (mode === "review") selectedPool = reviewPool;
-    else if (mode === "waiting") selectedPool = waitingPool;
+    if (mode === "learn") selectedPool = pools.learnPool;
+    else if (mode === "review") selectedPool = pools.reviewPool;
+    else if (mode === "waiting") selectedPool = pools.waitingPool;
 
     if (selectedPool.length === 0) {
       alert("Bu modda şu an çalışılacak kelime yok!");
@@ -109,11 +111,12 @@ export default function Game() {
     setSwipeDirection(dir);
     const currentWord = sessionWords[currentIndex];
 
+    // Animasyon süresi kadar bekle
     setTimeout(async () => {
-      // Backend işlemi
+      // Backend işlemi (DataContext'teki yeni mantığa göre çalışır)
       await handleSmartLearn(currentWord.id, type);
 
-      // İstatistik
+      // İstatistikler (Oturum özeti için)
       if (type === "know") {
         setStats((p) => ({ ...p, learned: p.learned + 1 }));
       } else if (type === "dont_know") {
@@ -122,7 +125,7 @@ export default function Game() {
         setStats((p) => ({ ...p, mastered: p.mastered + 1, learned: p.learned + 1 }));
       }
 
-      // Sonraki Soru
+      // Sonraki Soru veya Bitiş
       if (currentIndex + 1 < sessionWords.length) {
         setCurrentIndex((p) => p + 1);
         setSwipeDirection(null);
@@ -155,7 +158,7 @@ export default function Game() {
   };
 
   // ===========================
-  // === SEÇİM EKRANI (YENİ) ===
+  // === SEÇİM EKRANI ===
   // ===========================
   if (gameStage === "selection") {
     return (
@@ -179,30 +182,10 @@ export default function Game() {
           {/* --- 3 MOD BUTONU --- */}
           <div className="space-y-4">
             
-            {/* 1. TEKRAR MODU (Öğrendiklerim -> Değişti: Artık Sırası Gelenler + Mezunlar) */}
-            <button 
-              onClick={() => startSession("review")}
-              disabled={reviewPool.length === 0}
-              className="w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 hover:border-orange-200 hover:bg-orange-50 transition-all group active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="bg-orange-100 p-3 rounded-xl text-orange-600 group-hover:bg-orange-200 transition-colors">
-                    <RotateCcw className="w-8 h-8" />
-                  </div>
-                  <div className="text-left">
-                    <div className="font-bold text-xl text-slate-800">Tekrar Modu</div>
-                    <div className="text-sm text-slate-500">Unutmadan tekrar et</div>
-                  </div>
-                </div>
-                <div className="text-2xl font-black text-orange-600">{reviewPool.length}</div>
-              </div>
-            </button>
-
-            {/* 2. ÖĞRENME MODU (Öğreneceklerim) */}
+            {/* 1. ÖĞRENME MODU (Level 0 + Zamanı Gelenler) */}
             <button 
               onClick={() => startSession("learn")}
-              disabled={learnPool.length === 0}
+              disabled={pools.learnPool.length === 0}
               className="w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 hover:border-indigo-200 hover:bg-indigo-50 transition-all group active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
             >
               <div className="flex items-center justify-between">
@@ -212,17 +195,37 @@ export default function Game() {
                   </div>
                   <div className="text-left">
                     <div className="font-bold text-xl text-slate-800">Öğrenme Modu</div>
-                    <div className="text-sm text-slate-500">Yeni kelimeler keşfet</div>
+                    <div className="text-sm text-slate-500">Yeni ve zamanı gelen kelimeler</div>
                   </div>
                 </div>
-                <div className="text-2xl font-black text-indigo-600">{learnPool.length}</div>
+                <div className="text-2xl font-black text-indigo-600">{pools.learnPool.length}</div>
+              </div>
+            </button>
+
+            {/* 2. TEKRAR MODU (Sadece Mezunlar) */}
+            <button 
+              onClick={() => startSession("review")}
+              disabled={pools.reviewPool.length === 0}
+              className="w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 hover:border-orange-200 hover:bg-orange-50 transition-all group active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="bg-orange-100 p-3 rounded-xl text-orange-600 group-hover:bg-orange-200 transition-colors">
+                    <RotateCcw className="w-8 h-8" />
+                  </div>
+                  <div className="text-left">
+                    <div className="font-bold text-xl text-slate-800">Tekrar Modu</div>
+                    <div className="text-sm text-slate-500">Öğrendiklerini (Mezunları) pekiştir</div>
+                  </div>
+                </div>
+                <div className="text-2xl font-black text-orange-600">{pools.reviewPool.length}</div>
               </div>
             </button>
 
             {/* 3. BEKLEME LİSTESİ */}
             <button 
               onClick={() => startSession("waiting")}
-              disabled={waitingPool.length === 0}
+              disabled={pools.waitingPool.length === 0}
               className="w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 hover:border-slate-300 hover:bg-slate-50 transition-all group active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
             >
               <div className="flex items-center justify-between">
@@ -232,10 +235,10 @@ export default function Game() {
                   </div>
                   <div className="text-left">
                     <div className="font-bold text-xl text-slate-700">Bekleme Listesi</div>
-                    <div className="text-sm text-slate-400">Gelecekte sorulacaklar</div>
+                    <div className="text-sm text-slate-400">Henüz zamanı gelmeyenler</div>
                   </div>
                 </div>
-                <div className="text-2xl font-black text-slate-500">{waitingPool.length}</div>
+                <div className="text-2xl font-black text-slate-500">{pools.waitingPool.length}</div>
               </div>
             </button>
 
@@ -250,7 +253,7 @@ export default function Game() {
   // ===========================
   if (gameStage === "summary") {
     let modeTitle = "Oturum Bitti!";
-    if (activeMode === "learn") modeTitle = "Yeni Kelimeler Çalışıldı";
+    if (activeMode === "learn") modeTitle = "Çalışma Tamamlandı";
     if (activeMode === "review") modeTitle = "Tekrar Tamamlandı";
     if (activeMode === "waiting") modeTitle = "Ekstra Çalışma Bitti";
 
