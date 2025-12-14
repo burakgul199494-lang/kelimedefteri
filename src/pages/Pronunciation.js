@@ -261,15 +261,7 @@ export default function Pronunciation() {
         <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
             <div className="w-full max-w-sm space-y-6">
                 
-                {/* iOS UYARISI */}
-                {isIOSPWA && (
-                    <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl flex items-start gap-3 text-amber-800 text-sm">
-                        <Info className="w-5 h-5 shrink-0 mt-0.5" />
-                        <div>
-                            <strong>Dikkat:</strong> iPhone ana ekrandan kullanırken mikrofon bazen çalışmayabilir. Sorun yaşarsan uygulamayı <strong>Safari</strong> içinden açmayı dene.
-                        </div>
-                    </div>
-                )}
+               
 
                 <div className="flex items-center justify-between">
                     <button onClick={() => navigate("/")} className="p-2 bg-white rounded-full shadow-sm hover:bg-slate-100">
@@ -440,7 +432,7 @@ export default function Pronunciation() {
 
             {/* BİTİR VE ÇIK BUTONU */}
             <button onClick={handleQuitEarly} className="w-full mt-6 flex items-center justify-center gap-2 text-slate-400 hover:text-red-500 transition-colors text-sm font-medium mx-auto">
-                <Target className="w-4 h-4" /> Bitir (Puanı Al ve Çık)
+                Bitir (Puanı Al ve Çık)
             </button>
 
         </div>
