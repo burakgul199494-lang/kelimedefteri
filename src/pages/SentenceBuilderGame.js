@@ -12,8 +12,6 @@ import {
   Layers, 
   Lightbulb,
   Volume2,
-  Undo2,
-  MoveRight,
   CheckCircle2,
   Target
 } from "lucide-react";
@@ -45,7 +43,7 @@ export default function SentenceBuilderGame() {
     const all = getAllWords();
     const now = new Date();
     
-    // DÜZELTME: Kelime sayısı sınırı kaldırıldı. Sadece cümlesi olması yeterli.
+    // Cümlesi olanlar
     const validWords = all.filter(w => w.sentence && w.sentence.trim().length > 0);
 
     const getQueueItem = (id) => learningQueue ? learningQueue.find(q => q.wordId === id) : null;
@@ -79,7 +77,7 @@ export default function SentenceBuilderGame() {
       return;
     }
 
-    // DÜZELTME: Maksimum 10 soru seçiliyor.
+    // Maksimum 10 soru
     const selected = selectedPool.sort(() => 0.5 - Math.random()).slice(0, 10);
     setQuestions(selected);
     setCurrentIndex(0);
@@ -120,7 +118,7 @@ export default function SentenceBuilderGame() {
       window.speechSynthesis.speak(u);
   };
 
-  // --- KELİME SEÇME ---
+  // --- KELİME SEÇME (ANLIK KONTROL) ---
   const handleSelectWord = (wordObj) => {
     if (isComplete || wordObj.isUsed) return;
 
@@ -128,6 +126,7 @@ export default function SentenceBuilderGame() {
     const expectedWord = targetSentenceWords[nextExpectedIndex];
 
     if (wordObj.text === expectedWord) {
+        // DOĞRU
         const newSelection = [...userSelection, wordObj];
         setUserSelection(newSelection);
         setShuffledPool(prev => prev.map(w => w.id === wordObj.id ? { ...w, isUsed: true } : w));
@@ -136,6 +135,7 @@ export default function SentenceBuilderGame() {
             handleComplete(true);
         }
     } else {
+        // YANLIŞ
         const newMistakes = mistakeCount + 1;
         setMistakeCount(newMistakes);
         setWrongAnimationId(wordObj.id);
@@ -164,13 +164,7 @@ export default function SentenceBuilderGame() {
       if (correctObj) handleSelectWord(correctObj);
   };
 
-  // --- TEMİZLE / GERİ AL ---
-  const resetSelection = () => {
-      setUserSelection([]);
-      setShuffledPool(prev => prev.map(w => ({ ...w, isUsed: false })));
-  };
-
-  // --- OTOMATİK TAMAMLAMA ---
+  // --- OTOMATİK TAMAMLAMA (BAŞARISIZ) ---
   const handleFailAndComplete = () => {
       setCurrentPoints(0); 
       const remainingWords = targetSentenceWords.slice(userSelection.length);
@@ -182,6 +176,7 @@ export default function SentenceBuilderGame() {
       handleComplete(false); 
   };
 
+  // --- BİTİRME ---
   const handleComplete = (success) => {
       setIsComplete(true);
       const sentenceStr = questions[currentIndex].sentence;
@@ -257,7 +252,6 @@ export default function SentenceBuilderGame() {
   }
 
   if (gameStatus === "finished") {
-    // Soru sayısı * 10 puan
     const maxScore = questions.length * 10;
     
     let modeTitle = "Oturum Tamamlandı!";
@@ -354,22 +348,13 @@ export default function SentenceBuilderGame() {
 
           </div>
 
-          {/* BUTONLAR */}
+          {/* İPUCU BUTONU */}
           <div className="flex items-center justify-center gap-4 pt-4 border-t border-slate-100 mt-auto">
-                <button 
-                  onClick={resetSelection}
-                  disabled={userSelection.length === 0 || isComplete}
-                  className="p-3 bg-white text-slate-500 rounded-2xl border-2 border-slate-200 hover:bg-slate-50 disabled:opacity-50"
-                  title="Temizle"
-                >
-                    <Undo2 className="w-6 h-6"/>
-                </button>
-
                 <button 
                   onClick={handleHint} 
                   disabled={isComplete}
                   style={{ WebkitTapHighlightColor: 'transparent' }}
-                  className="flex-1 flex items-center justify-center gap-2 px-5 py-3 bg-amber-100 text-amber-700 rounded-2xl font-bold active:bg-amber-200 transition-colors active:scale-95 disabled:opacity-50 focus:outline-none"
+                  className="w-full flex items-center justify-center gap-2 px-5 py-3 bg-amber-100 text-amber-700 rounded-2xl font-bold active:bg-amber-200 transition-colors active:scale-95 disabled:opacity-50 focus:outline-none"
                 >
                   <Lightbulb className="w-5 h-5"/> 
                   <span className="text-xs ml-1 flex flex-col items-start leading-none">
