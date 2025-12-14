@@ -10,7 +10,8 @@ import {
   Home, 
   RefreshCw, 
   BrainCircuit, 
-  Hourglass 
+  Hourglass,
+  Square // Durdurma ikonu için eklendi
 } from "lucide-react";
 
 export default function Quiz() {
@@ -28,6 +29,9 @@ export default function Quiz() {
   const [isTransitioning, setIsTransitioning] = useState(false);
   
   const [showHintTr, setShowHintTr] = useState(false);
+  
+  // Ses durumu takibi için state
+  const [isSpeaking, setIsSpeaking] = useState(false);
 
   // --- KELİME HAVUZLARI (SRS DÜZELTİLDİ) ---
   const getWordPools = () => {
@@ -39,28 +43,20 @@ export default function Quiz() {
     const queueIds = learningQueue ? learningQueue.map(q => q.wordId) : [];
 
     // 1. ÖĞRENME MODU (Kalanlar)
-    // Kural: Öğrenilenlerde YOK --VE-- Kuyrukta YOK
     const learnPool = validWords.filter(w => 
         !knownWordIds.includes(w.id) && 
         !queueIds.includes(w.id)
     );
 
     // 2. TEKRAR MODU (Sırası Gelenler + Mezunlar)
-    // Kural: (Kuyrukta VAR ve Zamanı Gelmiş) --VEYA-- (Zaten Öğrenilmiş)
     const reviewPool = validWords.filter(w => {
         const qItem = learningQueue ? learningQueue.find(item => item.wordId === w.id) : null;
-        
-        // A) Kuyrukta ve zamanı gelmiş (SRS Tekrarı)
         const isDue = qItem && new Date(qItem.nextReview) <= now;
-        
-        // B) Zaten tamamen öğrenilmiş (Mezun Tekrarı)
         const isKnown = knownWordIds.includes(w.id);
-
         return isDue || isKnown;
     });
 
     // 3. BEKLEME LİSTESİ (Gelecekteki Tekrarlar)
-    // Kural: Kuyrukta VAR --VE-- Zamanı GELECEKTE
     const waitingPool = validWords.filter(w => {
         const qItem = learningQueue ? learningQueue.find(item => item.wordId === w.id) : null;
         return qItem && new Date(qItem.nextReview) > now;
@@ -109,11 +105,21 @@ export default function Quiz() {
     setGameStatus("playing");
   };
 
+  // --- OTOMATİK SES DURDURMA VE RESETLEME ---
+  // Soru değiştiğinde (index), oyun bittiğinde veya component unmount olduğunda çalışır.
   useEffect(() => { 
+      window.speechSynthesis.cancel(); // Mevcut sesi sustur
+      setIsSpeaking(false); // State'i sıfırla
+      
       setShowHintTr(false);
       setSelected(null);
       setIsAnswered(false);
-  }, [index]);
+      
+      // Component unmount (sayfadan çıkış) temizliği
+      return () => {
+          window.speechSynthesis.cancel();
+      }
+  }, [index, gameStatus]);
 
   const handleAnswer = (option, e) => {
     if(e && e.target) e.target.blur();
@@ -144,10 +150,27 @@ export default function Quiz() {
       setGameStatus("finished"); 
   };
 
-  const speak = (txt) => { 
+  // --- YENİ SES FONKSİYONU (TOGGLE MANTIĞI) ---
+  const handleSpeak = (txt) => { 
     if(!txt) return;
-    const u = new SpeechSynthesisUtterance(txt); 
-    u.lang = "en-US"; window.speechSynthesis.speak(u); 
+
+    if (isSpeaking) {
+        // Eğer zaten konuşuyorsa -> DURDUR
+        window.speechSynthesis.cancel();
+        setIsSpeaking(false);
+    } else {
+        // Konuşmuyorsa -> BAŞLAT
+        window.speechSynthesis.cancel(); // Garanti olsun diye önce temizle
+        const u = new SpeechSynthesisUtterance(txt); 
+        u.lang = "en-US";
+        
+        // Konuşma bitince ikonu eski haline getir
+        u.onend = () => setIsSpeaking(false);
+        u.onerror = () => setIsSpeaking(false); // Hata olursa da resetle
+
+        window.speechSynthesis.speak(u); 
+        setIsSpeaking(true);
+    }
   };
 
   // ===========================
@@ -243,9 +266,9 @@ export default function Quiz() {
   if (gameStatus === "finished") {
     const max = questions.length * 5;
     let modeTitle = "Test Tamamlandı!";
-    if (gameMode === "learn") modeTitle = "Test Bitti";
-    if (gameMode === "review") modeTitle = "Test Bitti";
-    if (gameMode === "waiting") modeTitle = "Test Bitti";
+    if (gameMode === "learn") modeTitle = "Yeni Kelime Testi Bitti";
+    if (gameMode === "review") modeTitle = "Tekrar Testi Bitti";
+    if (gameMode === "waiting") modeTitle = "Bekleme Testi Bitti";
 
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
@@ -300,7 +323,15 @@ export default function Quiz() {
                         <div className="flex flex-col items-center gap-2">
                             <div className="bg-indigo-50 text-indigo-800 px-4 py-2 rounded-xl border border-indigo-100 flex items-center gap-2">
                                 <span className="text-sm italic">"{hintEng}"</span>
-                                <button onClick={() => speak(hintEng)} className="p-1 bg-white rounded-full hover:bg-indigo-100 transition-colors" title="Oku"><Volume2 className="w-3 h-3 text-indigo-500"/></button>
+                                
+                                {/* SES BUTONU (DÜZELTİLDİ) */}
+                                <button 
+                                    onClick={() => handleSpeak(hintEng)} 
+                                    className="p-1 bg-white rounded-full hover:bg-indigo-100 transition-colors" 
+                                    title={isSpeaking ? "Durdur" : "Oku"}
+                                >
+                                    {isSpeaking ? <Square className="w-3 h-3 text-red-500 fill-current"/> : <Volume2 className="w-3 h-3 text-indigo-500"/>}
+                                </button>
                                 
                                 {hintTr && (
                                     <button 
@@ -322,7 +353,15 @@ export default function Quiz() {
                     )}
                     
                     <h2 className="text-4xl font-extrabold text-slate-800">{current.wordObj.word}</h2>
-                    <button onClick={()=>speak(current.wordObj.word)} className="mx-auto p-2 bg-slate-50 rounded-full text-indigo-500 hover:bg-indigo-100 transition-colors"><Volume2 className="w-6 h-6"/></button>
+                    
+                    {/* ANA SES BUTONU (DÜZELTİLDİ) */}
+                    <button 
+                        onClick={() => handleSpeak(current.wordObj.word)} 
+                        className="mx-auto p-2 bg-slate-50 rounded-full text-indigo-500 hover:bg-indigo-100 transition-colors"
+                        title={isSpeaking ? "Durdur" : "Oku"}
+                    >
+                        {isSpeaking ? <Square className="w-6 h-6 text-red-500 fill-current"/> : <Volume2 className="w-6 h-6"/>}
+                    </button>
                 </div>
 
                 <div className="space-y-3 mt-6">
