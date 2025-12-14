@@ -289,13 +289,14 @@ export default function WritingGame() {
   }
 
   // ===========================
-  // === BİTİŞ EKRANI ===
+  // === 2. BİTİŞ EKRANI ===
   // ===========================
   if (gameStatus === "finished") {
-    let modeTitle = "Oturum Bitti!";
-    if (gameMode === "learn") modeTitle = "Yeni Kelimeler Çalışıldı";
-    if (gameMode === "review") modeTitle = "Tekrar Tamamlandı";
-    if (gameMode === "waiting") modeTitle = "Bekleme Listesi Bitti";
+    const max = questions.length * 5;
+    let modeTitle = "Test Tamamlandı!";
+    if (gameMode === "learn") modeTitle = "Yeni Kelime Testi Bitti";
+    if (gameMode === "review") modeTitle = "Tekrar Testi Bitti";
+    if (gameMode === "waiting") modeTitle = "Bekleme Testi Bitti";
 
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
@@ -303,15 +304,18 @@ export default function WritingGame() {
            <div className="bg-purple-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto animate-bounce"><Trophy className="w-10 h-10 text-purple-600"/></div>
            <h2 className="text-2xl font-bold text-slate-800">{modeTitle}</h2>
            <div className="py-6 bg-slate-50 rounded-2xl border border-slate-100">
-             <div className="text-sm text-slate-400 font-bold uppercase">Toplam Puan</div>
-             <div className="text-5xl font-extrabold text-purple-600 mt-2">{score}</div>
+             <div className="text-sm text-slate-400 font-bold uppercase">TOPLAM PUAN</div>
+             <div className="text-5xl font-extrabold text-indigo-600 mt-2">{score}</div>
+             <div className="text-xs text-slate-400 font-bold">Maksimum: {max}</div>
            </div>
-           <button onClick={() => setGameStatus("mode-selection")} className="w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-200">Başka Mod Seç</button>
+           <button onClick={() => setGameStatus("mode-selection")} className="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-200">Başka Test Çöz</button>
            <button onClick={() => navigate("/")} className="w-full bg-white border-2 border-slate-200 text-slate-600 font-bold py-3 rounded-xl hover:bg-slate-50">Ana Sayfa</button>
         </div>
       </div>
     );
   }
+
+  // ===========================
 
   if (gameStatus === "loading") return <div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin text-purple-600 w-10 h-10"/></div>;
 
