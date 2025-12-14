@@ -97,7 +97,7 @@ export default function Game() {
 
     // --- BEKLEME MODU İÇİN GÜVENLİK KONTROLÜ ---
     if (activeMode === 'waiting' && type === 'dont_know') {
-        setShowResetConfirm(true); // Onay penceresini aç ve dur
+        setShowResetConfirm(true); 
         return;
     }
 
@@ -107,7 +107,6 @@ export default function Game() {
     setTimeout(async () => {
       // --- TEKRAR MODU İÇİN ÖZEL DURUM (PASİF GEÇİŞ) ---
       if (activeMode === 'review') {
-          // Hiçbir veritabanı işlemi yapma, sadece istatistiği güncelle
           setStats((p) => ({ ...p, review: p.review + 1 }));
       } else {
           // --- DİĞER MODLARDA SRS ÇALIŞTIR ---
@@ -116,7 +115,7 @@ export default function Game() {
           if (type === "know") {
             setStats((p) => ({ ...p, learned: p.learned + 1 }));
           } else if (type === "dont_know") {
-            setStats((p) => ({ ...p, review: p.review + 1 })); // Aslında resetlendi
+            setStats((p) => ({ ...p, review: p.review + 1 })); 
           } else if (type === "master") {
             setStats((p) => ({ ...p, mastered: p.mastered + 1, learned: p.learned + 1 }));
           }
@@ -129,7 +128,6 @@ export default function Game() {
       } else {
         setGameStage("summary");
         setSwipeDirection(null);
-        // Sadece öğrenme modunda puan ver (Tekrar modu pasif olduğu için puan yok veya az olabilir, burada veriyoruz)
         if (activeMode !== 'review') {
             const totalPoints = sessionWords.length * POINTS_PER_CARD; 
             if (totalPoints > 0) addScore(totalPoints);
@@ -141,22 +139,14 @@ export default function Game() {
   // ----------------------------
   // --- MODAL İŞLEMLERİ ---
   // ----------------------------
-  
-  // 1. Ezberledim Onayı
   const handleMasterClick = () => setShowMasterConfirm(true);
   const confirmMastery = () => {
     setShowMasterConfirm(false);
     handleAnswerAction("up", "master");
   };
 
-  // 2. Sıfırlama (Bilmiyorum) Onayı
   const confirmReset = () => {
       setShowResetConfirm(false);
-      // Onaylandıktan sonra normal dont_know akışını manuel çağırıyoruz
-      // Ancak recursive olmaması için activeMode kontrolünü bypass edecek şekilde değil,
-      // doğrudan logic'i buraya kopyalayarak değil, handleAnswerAction'a 'force' parametresi eklemek yerine
-      // basitçe o anki kelimeyi işle:
-      
       setSwipeDirection("left");
       const currentWord = sessionWords[currentIndex];
       
@@ -170,7 +160,6 @@ export default function Game() {
           } else {
               setGameStage("summary");
               setSwipeDirection(null);
-              // Puan ekleme mantığı
               if (sessionWords.length * POINTS_PER_CARD > 0) addScore(sessionWords.length * POINTS_PER_CARD);
           }
       }, 300);
@@ -190,7 +179,7 @@ export default function Game() {
   };
 
   // ===========================
-  // === SEÇİM EKRANI ===
+  // === SEÇİM EKRANI (DÜZENLENDİ) ===
   // ===========================
   if (gameStage === "selection") {
     return (
@@ -205,35 +194,66 @@ export default function Game() {
             <h1 className="text-3xl font-black text-slate-800 mb-2">Nasıl Çalışalım?</h1>
             <p className="text-slate-500">Bugünkü hedefini seç ve kelimeleri çevirmeye başla.</p>
           </div>
+          
           <div className="space-y-4">
             
-            <button onClick={() => startSession("learn")} disabled={pools.learnPool.length === 0} className="w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 hover:border-indigo-200 hover:bg-indigo-50 transition-all group active:scale-95 disabled:opacity-60">
+            {/* 1. TEKRAR MODU (En Üstte) */}
+            <button 
+              onClick={() => startSession("review")}
+              disabled={pools.reviewPool.length === 0}
+              className="w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 hover:border-orange-200 hover:bg-orange-50 transition-all group active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
+            >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  <div className="bg-indigo-100 p-3 rounded-xl text-indigo-600"><Brain className="w-8 h-8" /></div>
-                  <div className="text-left"><div className="font-bold text-xl text-slate-800">Öğrenme Modu</div><div className="text-sm text-slate-500">Yeni ve zamanı gelenler</div></div>
+                  <div className="bg-orange-100 p-3 rounded-xl text-orange-600 group-hover:bg-orange-200 transition-colors">
+                    <RotateCcw className="w-8 h-8" />
+                  </div>
+                  <div className="text-left">
+                    <div className="font-bold text-xl text-slate-800">Tekrar Modu</div>
+                    <div className="text-sm text-slate-500">Öğrendiklerini (Mezunları) pekiştir</div>
+                  </div>
+                </div>
+                <div className="text-2xl font-black text-orange-600">{pools.reviewPool.length}</div>
+              </div>
+            </button>
+
+            {/* 2. ÖĞRENME MODU (Ortada) */}
+            <button 
+              onClick={() => startSession("learn")}
+              disabled={pools.learnPool.length === 0}
+              className="w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 hover:border-indigo-200 hover:bg-indigo-50 transition-all group active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="bg-indigo-100 p-3 rounded-xl text-indigo-600 group-hover:bg-indigo-200 transition-colors">
+                    <Brain className="w-8 h-8" />
+                  </div>
+                  <div className="text-left">
+                    <div className="font-bold text-xl text-slate-800">Öğrenme Modu</div>
+                    <div className="text-sm text-slate-500">Yeni ve zamanı gelen kelimeler</div>
+                  </div>
                 </div>
                 <div className="text-2xl font-black text-indigo-600">{pools.learnPool.length}</div>
               </div>
             </button>
 
-            <button onClick={() => startSession("waiting")} disabled={pools.waitingPool.length === 0} className="w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 hover:border-slate-300 hover:bg-slate-50 transition-all group active:scale-95 disabled:opacity-60">
+            {/* 3. BEKLEME LİSTESİ (En Altta) */}
+            <button 
+              onClick={() => startSession("waiting")}
+              disabled={pools.waitingPool.length === 0}
+              className="w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 hover:border-slate-300 hover:bg-slate-50 transition-all group active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
+            >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  <div className="bg-slate-100 p-3 rounded-xl text-slate-500"><Hourglass className="w-8 h-8" /></div>
-                  <div className="text-left"><div className="font-bold text-xl text-slate-700">Bekleme Listesi</div><div className="text-sm text-slate-400">Henüz zamanı gelmeyenler</div></div>
+                  <div className="bg-slate-100 p-3 rounded-xl text-slate-500 group-hover:bg-slate-200 transition-colors">
+                    <Hourglass className="w-8 h-8" />
+                  </div>
+                  <div className="text-left">
+                    <div className="font-bold text-xl text-slate-700">Bekleme Listesi</div>
+                    <div className="text-sm text-slate-400">Henüz zamanı gelmeyenler</div>
+                  </div>
                 </div>
                 <div className="text-2xl font-black text-slate-500">{pools.waitingPool.length}</div>
-              </div>
-            </button>
-
-            <button onClick={() => startSession("review")} disabled={pools.reviewPool.length === 0} className="w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 hover:border-orange-200 hover:bg-orange-50 transition-all group active:scale-95 disabled:opacity-60">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="bg-orange-100 p-3 rounded-xl text-orange-600"><RotateCcw className="w-8 h-8" /></div>
-                  <div className="text-left"><div className="font-bold text-xl text-slate-800">Tekrar Modu</div><div className="text-sm text-slate-500">Öğrendiklerini pekiştir</div></div>
-                </div>
-                <div className="text-2xl font-black text-orange-600">{pools.reviewPool.length}</div>
               </div>
             </button>
 
@@ -293,7 +313,7 @@ export default function Game() {
         </div>
       )}
 
-      {/* --- SIFIRLAMA (BİLMİYORUM) ONAY MODALI (YENİ) --- */}
+      {/* --- SIFIRLAMA (BİLMİYORUM) ONAY MODALI --- */}
       {showResetConfirm && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-sm w-full text-center">
