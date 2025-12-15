@@ -24,27 +24,37 @@ export default function Home() {
   const [showProfileModal, setShowProfileModal] = useState(false); 
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   
+  // Veritabanından gelen temizlenmiş (silinenler hariç) tüm kelimeler
   const allWords = getAllWords();
   const totalWords = allWords.length;
 
-  // --- HESAPLAMALAR ---
+  // --- HESAPLAMALAR (DÜZELTİLDİ: HAYALET KAYITLARI YOK SAYAR) ---
+
+  // 1. ÖĞRENİLENLER: Sadece şu an sistemde var olan kelimeleri say
   const validKnownWords = allWords.filter(w => knownWordIds.includes(w.id));
   const learnedCount = validKnownWords.length;
   
-  const now = new Date();
-  const waitingCount = learningQueue && Array.isArray(learningQueue) 
-    ? learningQueue.filter(item => {
-        const exists = allWords.some(w => w.id === item.wordId);
-        const isFuture = new Date(item.nextReview) > now;
-        return exists && isFuture;
-      }).length 
-    : 0;
-
-  const inQueueCount = learningQueue ? learningQueue.length : 0;
+  // 2. KUYRUKTAKİLER: Sadece şu an sistemde var olan kelimeleri say
+  // (Eski silinen kelimeler queue'da kalsa bile burada sayılmaz)
+  const validQueueItems = learningQueue 
+    ? learningQueue.filter(q => allWords.some(w => w.id === q.wordId))
+    : [];
   
-  let remainingCount = totalWords - learnedCount - inQueueCount;
-  if (remainingCount < 0) remainingCount = 0;
+  const inQueueCount = validQueueItems.length;
 
+  // 3. BEKLEMEDE: Geçerli kuyruk öğelerinden zamanı gelmeyenler
+  const now = new Date();
+  const waitingCount = validQueueItems.filter(item => new Date(item.nextReview) > now).length;
+
+  // 4. KALAN (REMAINING): 
+  // Matematiksel çıkarma yerine DOĞRUDAN FİLTRELEME yapıyoruz.
+  // "Listemdeki kelimelerden; bildiklerim ve kuyruktakiler HARİÇ olanlar"
+  const remainingCount = allWords.filter(w => 
+    !knownWordIds.includes(w.id) && 
+    !learningQueue.some(q => q.wordId === w.id)
+  ).length;
+
+  // İlerleme Yüzdesi
   const progressPercentage = totalWords > 0 ? (learnedCount / totalWords) * 100 : 0;
   const myScore = leaderboardData.find(u => u.id === user?.uid)?.score || 0;
 
