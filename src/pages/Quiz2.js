@@ -17,6 +17,11 @@ export default function Quiz2() {
   const [gameStatus, setGameStatus] = useState("mode-selection");
   const [isTransitioning, setIsTransitioning] = useState(false);
 
+  // --- IPHONE FIX: FOCUS TEMİZLEME ---
+  const handleBlur = (e) => {
+      if (e && e.currentTarget) e.currentTarget.blur();
+  };
+
   // --- KELİME HAVUZLARI ---
   const getWordPools = () => {
     const all = getAllWords();
@@ -25,13 +30,8 @@ export default function Quiz2() {
 
     const queueIds = learningQueue ? learningQueue.map(q => q.wordId) : [];
 
-    // 1. ÖĞRENME MODU
-    const learnPool = validWords.filter(w => 
-        !knownWordIds.includes(w.id) && 
-        !queueIds.includes(w.id)
-    );
-
-    // 2. TEKRAR MODU
+    const learnPool = validWords.filter(w => !knownWordIds.includes(w.id) && !queueIds.includes(w.id));
+    
     const reviewPool = validWords.filter(w => {
         const qItem = learningQueue ? learningQueue.find(item => item.wordId === w.id) : null;
         const isDue = qItem && new Date(qItem.nextReview) <= now;
@@ -39,7 +39,6 @@ export default function Quiz2() {
         return isDue || isKnown;
     });
 
-    // 3. BEKLEME LİSTESİ
     const waitingPool = validWords.filter(w => {
         const qItem = learningQueue ? learningQueue.find(item => item.wordId === w.id) : null;
         return qItem && new Date(qItem.nextReview) > now;
@@ -51,7 +50,8 @@ export default function Quiz2() {
   const { learnPool, reviewPool, waitingPool } = getWordPools();
 
   // --- OYUN BAŞLATMA ---
-  const startQuiz = (mode) => {
+  const startQuiz = (mode, e) => {
+    handleBlur(e);
     setGameMode(mode);
     let pool = [];
 
@@ -88,16 +88,16 @@ export default function Quiz2() {
     setIndex(0);
     setScore(0);
     setGameStatus("playing");
+    // State temizliği başlangıçta yapılır
+    setSelected(null);
+    setIsAnswered(false);
   };
 
-  // --- HER YENİ SORUDA SIFIRLAMA ---
-  useEffect(() => { 
-      setSelected(null);
-      setIsAnswered(false);
-  }, [index]);
+  // --- CEVAP VERME (State Sıralaması Düzeltildi) ---
+  const handleAnswer = (option, e) => {
+    // 1. Tıklama izini sil
+    if(e && e.currentTarget) e.currentTarget.blur();
 
-  // --- CEVAP VERME ---
-  const handleAnswer = (option) => {
     if (isAnswered) return;
     setIsAnswered(true); 
     setSelected(option);
@@ -107,9 +107,12 @@ export default function Quiz2() {
     setTimeout(() => {
       if (index + 1 < questions.length) {
         setIsTransitioning(true);
-        // NÜKLEER ETKİ İÇİN KISA GEÇİŞ
+        
+        // KRİTİK NOKTA: Geçiş sırasında önce state'leri temizliyoruz, sonra index'i artırıyoruz.
         setTimeout(() => {
-            setIndex(i => i + 1);
+            setSelected(null);      // ÖNCE TEMİZLE
+            setIsAnswered(false);   // ÖNCE TEMİZLE
+            setIndex(i => i + 1);   // SONRA SORUYU DEĞİŞTİR
             setIsTransitioning(false);
         }, 150); 
       } else {
@@ -126,13 +129,13 @@ export default function Quiz2() {
   };
 
   // ===========================
-  // === 1. MOD SEÇİM EKRANI ===
+  // === UI RENDER ===
   // ===========================
+
   if (gameStatus === "mode-selection") {
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
             <div className="w-full max-w-sm space-y-6">
-                
                 <div className="flex items-center justify-between">
                     <button onClick={() => navigate("/")} className="p-2 bg-white rounded-full shadow-sm hover:bg-slate-100">
                       <Home className="w-5 h-5 text-slate-600" />
@@ -140,57 +143,26 @@ export default function Quiz2() {
                     <h2 className="text-xl font-bold text-slate-800">Ters Quiz</h2>
                     <div className="w-9"></div>
                 </div>
-
                 <div className="text-center py-6">
                     <h1 className="text-3xl font-black text-slate-800 mb-2">Anlamdan Kelimeye</h1>
                     <p className="text-slate-500">Türkçe anlamını gör, İngilizcesini bul.</p>
                 </div>
-
                 <div className="space-y-4">
-                    {/* Tekrar Modu */}
-                    <button 
-                        onClick={() => startQuiz('review')} 
-                        disabled={reviewPool.length < 4} 
-                        style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
-                        className="w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 hover:border-orange-200 hover:bg-orange-50 transition-all group active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus:ring-0"
-                    >
+                    <button onClick={(e) => startQuiz('review', e)} disabled={reviewPool.length < 4} style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }} className="w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 hover:border-orange-200 hover:bg-orange-50 transition-all group active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus:ring-0">
                         <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-4">
-                                <div className="bg-orange-100 p-3 rounded-xl text-orange-600 group-hover:bg-orange-200 transition-colors"><RefreshCw className="w-8 h-8" /></div>
-                                <div className="text-left"><div className="font-bold text-xl text-slate-800">Tekrar Modu</div><div className="text-sm text-slate-500">Öğrendiklerini pekiştir</div></div>
-                            </div>
+                            <div className="flex items-center gap-4"><div className="bg-orange-100 p-3 rounded-xl text-orange-600 group-hover:bg-orange-200 transition-colors"><RefreshCw className="w-8 h-8" /></div><div className="text-left"><div className="font-bold text-xl text-slate-800">Tekrar Modu</div><div className="text-sm text-slate-500">Öğrendiklerini pekiştir</div></div></div>
                             <div className="text-2xl font-black text-orange-600">{reviewPool.length}</div>
                         </div>
                     </button>
-
-                    {/* Öğrenme Modu */}
-                    <button 
-                        onClick={() => startQuiz('learn')} 
-                        disabled={learnPool.length < 4} 
-                        style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
-                        className="w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 hover:border-indigo-200 hover:bg-indigo-50 transition-all group active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus:ring-0"
-                    >
+                    <button onClick={(e) => startQuiz('learn', e)} disabled={learnPool.length < 4} style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }} className="w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 hover:border-indigo-200 hover:bg-indigo-50 transition-all group active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus:ring-0">
                         <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-4">
-                                <div className="bg-indigo-100 p-3 rounded-xl text-indigo-600 group-hover:bg-indigo-200 transition-colors"><BrainCircuit className="w-8 h-8" /></div>
-                                <div className="text-left"><div className="font-bold text-xl text-slate-800">Öğrenme Modu</div><div className="text-sm text-slate-500">Yeni kelimelerle test</div></div>
-                            </div>
+                            <div className="flex items-center gap-4"><div className="bg-indigo-100 p-3 rounded-xl text-indigo-600 group-hover:bg-indigo-200 transition-colors"><BrainCircuit className="w-8 h-8" /></div><div className="text-left"><div className="font-bold text-xl text-slate-800">Öğrenme Modu</div><div className="text-sm text-slate-500">Yeni kelimelerle test</div></div></div>
                             <div className="text-2xl font-black text-indigo-600">{learnPool.length}</div>
                         </div>
                     </button>
-
-                    {/* Bekleme Modu */}
-                    <button 
-                        onClick={() => startQuiz('waiting')} 
-                        disabled={waitingPool.length < 4} 
-                        style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
-                        className="w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 hover:border-slate-300 hover:bg-slate-50 transition-all group active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus:ring-0"
-                    >
+                    <button onClick={(e) => startQuiz('waiting', e)} disabled={waitingPool.length < 4} style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }} className="w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 hover:border-slate-300 hover:bg-slate-50 transition-all group active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus:ring-0">
                         <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-4">
-                                <div className="bg-slate-100 p-3 rounded-xl text-slate-500 group-hover:bg-slate-200 transition-colors"><Hourglass className="w-8 h-8" /></div>
-                                <div className="text-left"><div className="font-bold text-xl text-slate-700">Bekleme Listesi</div><div className="text-sm text-slate-400">Gelecekte sorulacaklar</div></div>
-                            </div>
+                            <div className="flex items-center gap-4"><div className="bg-slate-100 p-3 rounded-xl text-slate-500 group-hover:bg-slate-200 transition-colors"><Hourglass className="w-8 h-8" /></div><div className="text-left"><div className="font-bold text-xl text-slate-700">Bekleme Listesi</div><div className="text-sm text-slate-400">Gelecekte sorulacaklar</div></div></div>
                             <div className="text-2xl font-black text-slate-500">{waitingPool.length}</div>
                         </div>
                     </button>
@@ -200,9 +172,6 @@ export default function Quiz2() {
     );
   }
 
-  // ===========================
-  // === 2. BİTİŞ EKRANI ===
-  // ===========================
   if (gameStatus === "finished") {
     const max = questions.length * 5;
     let modeTitle = "Test Tamamlandı!";
@@ -227,9 +196,6 @@ export default function Quiz2() {
     );
   }
 
-  // ===========================
-  // === 3. OYUN EKRANI ===
-  // ===========================
   if (questions.length === 0) return <div className="p-10 text-center"><Loader2 className="animate-spin w-10 h-10 text-indigo-600 mx-auto"/></div>;
 
   const current = questions[index];
@@ -237,16 +203,12 @@ export default function Quiz2() {
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center p-4">
-       {/* CSS RESET: iPhone Tıklama İzi Engelleyici */}
        <style>{`
-         * {
-           -webkit-tap-highlight-color: transparent !important;
-         }
+         * { -webkit-tap-highlight-color: transparent !important; }
        `}</style>
 
        <div className="w-full max-w-md space-y-6 mt-4">
           
-          {/* HEADER */}
           <div className="flex justify-between items-center">
              <button onClick={handleQuitEarly} className="p-2 rounded-full active:bg-slate-100 transition-colors"><X className="w-6 h-6 text-slate-400"/></button>
              <div className="font-bold text-indigo-600">
@@ -262,17 +224,11 @@ export default function Quiz2() {
               </div>
           ) : (
               <>
-                {/* SORU KARTI (TÜRKÇE ANLAM) */}
                 <div className="bg-white p-8 rounded-3xl shadow-lg border border-slate-100 text-center space-y-6 mt-6 animate-in fade-in zoom-in duration-300">
                     <h2 className="text-3xl font-extrabold text-slate-800 break-words leading-tight">{current.questionText}</h2>
                 </div>
 
-                {/* ŞIKLAR (İNGİLİZCE KELİMELER) 
-                    NÜKLEER ÇÖZÜM: key={index} 
-                    Bu div, her soruda (index değiştiğinde) tamamen yok edilip yeniden oluşturulur.
-                    Bu sayede önceki sorudan kalan "tıklanmış" veya "hover" durumları ASLA kalmaz.
-                */}
-                <div className="space-y-3 mt-6" key={index}>
+                <div className="space-y-3 mt-6">
                     {current.options.map((opt, i) => {
                         let cls = "w-full p-4 rounded-xl text-left font-medium border-2 transition-all shadow-sm focus:outline-none focus:ring-0 select-none touch-manipulation ";
                         if (isAnswered) {
@@ -284,8 +240,8 @@ export default function Quiz2() {
                         }
                         return (
                             <button 
-                                key={`${index}-${i}`} // Buton key'i
-                                onClick={()=>handleAnswer(opt)} 
+                                key={opt} // NÜKLEER ÇÖZÜM: 'opt' metni key olarak kullanılırsa buton tamamen sıfırlanır
+                                onClick={(e)=>handleAnswer(opt, e)} 
                                 disabled={isAnswered} 
                                 style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
                                 className={cls}
