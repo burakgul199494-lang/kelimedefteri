@@ -551,7 +551,7 @@ export default function GapFillingGame() {
           </div>
 
           <button onClick={handleQuitEarly} style={{ WebkitTapHighlightColor: 'transparent' }} className="w-full text-center text-slate-400 hover:text-red-500 text-sm font-medium transition-colors focus:outline-none focus:ring-0">
-            Bitir ve Çık
+            Bitir (Puanı Al ve Çık)
           </button>
 
           <style jsx>{`
