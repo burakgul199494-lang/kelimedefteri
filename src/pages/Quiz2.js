@@ -17,12 +17,6 @@ export default function Quiz2() {
   const [gameStatus, setGameStatus] = useState("mode-selection");
   const [isTransitioning, setIsTransitioning] = useState(false);
 
-  // --- IPHONE FIX: Tıklanınca odağı kaldır (Blur) ---
-  const handleBlur = (e) => {
-      // e.target yerine e.currentTarget kullanmak daha güvenlidir
-      if (e && e.currentTarget) e.currentTarget.blur();
-  };
-
   // --- KELİME HAVUZLARI ---
   const getWordPools = () => {
     const all = getAllWords();
@@ -57,9 +51,7 @@ export default function Quiz2() {
   const { learnPool, reviewPool, waitingPool } = getWordPools();
 
   // --- OYUN BAŞLATMA ---
-  const startQuiz = (mode, e) => {
-    handleBlur(e); // Mobile Fix: Tıklama izini sil
-
+  const startQuiz = (mode) => {
     setGameMode(mode);
     let pool = [];
 
@@ -98,17 +90,14 @@ export default function Quiz2() {
     setGameStatus("playing");
   };
 
+  // --- HER YENİ SORUDA SIFIRLAMA ---
   useEffect(() => { 
       setSelected(null);
       setIsAnswered(false);
   }, [index]);
 
-  // --- CEVAP VERME (BURASI DÜZELTİLDİ) ---
-  const handleAnswer = (option, e) => {
-    // BURASI KRİTİK: Butonun odağını (focus) anında kaldırıyoruz.
-    // e.target değil e.currentTarget kullanıyoruz.
-    if(e && e.currentTarget) e.currentTarget.blur();
-
+  // --- CEVAP VERME ---
+  const handleAnswer = (option) => {
     if (isAnswered) return;
     setIsAnswered(true); 
     setSelected(option);
@@ -118,10 +107,11 @@ export default function Quiz2() {
     setTimeout(() => {
       if (index + 1 < questions.length) {
         setIsTransitioning(true);
+        // NÜKLEER ETKİ İÇİN KISA GEÇİŞ
         setTimeout(() => {
             setIndex(i => i + 1);
             setIsTransitioning(false);
-        }, 100); 
+        }, 150); 
       } else {
         setGameStatus("finished");
         const finalPoints = score + (option === questions[index].correct ? 5 : 0);
@@ -159,7 +149,7 @@ export default function Quiz2() {
                 <div className="space-y-4">
                     {/* Tekrar Modu */}
                     <button 
-                        onClick={(e) => startQuiz('review', e)} 
+                        onClick={() => startQuiz('review')} 
                         disabled={reviewPool.length < 4} 
                         style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
                         className="w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 hover:border-orange-200 hover:bg-orange-50 transition-all group active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus:ring-0"
@@ -175,7 +165,7 @@ export default function Quiz2() {
 
                     {/* Öğrenme Modu */}
                     <button 
-                        onClick={(e) => startQuiz('learn', e)} 
+                        onClick={() => startQuiz('learn')} 
                         disabled={learnPool.length < 4} 
                         style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
                         className="w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 hover:border-indigo-200 hover:bg-indigo-50 transition-all group active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus:ring-0"
@@ -191,7 +181,7 @@ export default function Quiz2() {
 
                     {/* Bekleme Modu */}
                     <button 
-                        onClick={(e) => startQuiz('waiting', e)} 
+                        onClick={() => startQuiz('waiting')} 
                         disabled={waitingPool.length < 4} 
                         style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
                         className="w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 hover:border-slate-300 hover:bg-slate-50 transition-all group active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus:ring-0"
@@ -247,7 +237,7 @@ export default function Quiz2() {
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center p-4">
-       {/* MOBİL TIKLAMA İZİ ENGELLEYİCİ STİL */}
+       {/* CSS RESET: iPhone Tıklama İzi Engelleyici */}
        <style>{`
          * {
            -webkit-tap-highlight-color: transparent !important;
@@ -277,8 +267,12 @@ export default function Quiz2() {
                     <h2 className="text-3xl font-extrabold text-slate-800 break-words leading-tight">{current.questionText}</h2>
                 </div>
 
-                {/* ŞIKLAR (İNGİLİZCE KELİMELER) */}
-                <div className="space-y-3 mt-6">
+                {/* ŞIKLAR (İNGİLİZCE KELİMELER) 
+                    NÜKLEER ÇÖZÜM: key={index} 
+                    Bu div, her soruda (index değiştiğinde) tamamen yok edilip yeniden oluşturulur.
+                    Bu sayede önceki sorudan kalan "tıklanmış" veya "hover" durumları ASLA kalmaz.
+                */}
+                <div className="space-y-3 mt-6" key={index}>
                     {current.options.map((opt, i) => {
                         let cls = "w-full p-4 rounded-xl text-left font-medium border-2 transition-all shadow-sm focus:outline-none focus:ring-0 select-none touch-manipulation ";
                         if (isAnswered) {
@@ -290,8 +284,8 @@ export default function Quiz2() {
                         }
                         return (
                             <button 
-                                key={`${index}-${i}`} 
-                                onClick={(e)=>handleAnswer(opt, e)} 
+                                key={`${index}-${i}`} // Buton key'i
+                                onClick={()=>handleAnswer(opt)} 
                                 disabled={isAnswered} 
                                 style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
                                 className={cls}
