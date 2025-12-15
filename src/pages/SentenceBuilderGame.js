@@ -268,7 +268,7 @@ export default function SentenceBuilderGame() {
              <div className="text-xs text-slate-400 font-bold mt-1">Maksimum: {maxScore}</div>
            </div>
            
-           <button onClick={() => setGameStatus("mode-selection")} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-xl flex items-center justify-center gap-2 mb-3 shadow-lg"><Layers className="w-5 h-5" /> Başka Mod Seç</button>
+           <button onClick={() => setGameStatus("mode-selection")} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-xl flex items-center justify-center gap-2 mb-3 shadow-lg">Başka Test Çöz</button>
            <button onClick={() => navigate("/")} className="w-full bg-white border-2 border-slate-200 text-slate-600 font-bold py-3 rounded-xl hover:bg-slate-50 flex items-center justify-center gap-2"><Home className="w-5 h-5" /> Ana Sayfa</button>
         </div>
       </div>
