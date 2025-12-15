@@ -11,9 +11,9 @@ import {
   Home, 
   Layers, 
   Puzzle, 
-  CheckCircle2,
-  Target,
-  ArrowRight // Tur geçişi için ikon
+  CheckCircle2, 
+  Target, 
+  ArrowRight
 } from "lucide-react";
 
 export default function WordMatchGame() {
@@ -33,6 +33,11 @@ export default function WordMatchGame() {
   const [matchedPairsInRound, setMatchedPairsInRound] = useState(0); // O turdaki eşleşme
   const [score, setScore] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false); 
+
+  // --- IPHONE FIX: TIKLAYINCA ODAĞI KALDIR (BLUR) ---
+  const handleBlur = (e) => {
+      if (e && e.currentTarget) e.currentTarget.blur();
+  };
 
   // --- KELİME HAVUZLARI ---
   const pools = useMemo(() => {
@@ -58,7 +63,8 @@ export default function WordMatchGame() {
   }, [getAllWords, knownWordIds, learningQueue]);
 
   // --- OYUNU BAŞLATMA ---
-  const startSession = (mode) => {
+  const startSession = (mode, e) => {
+    handleBlur(e); // Mobile Fix
     setGameMode(mode);
     let selectedPool = [];
 
@@ -86,8 +92,6 @@ export default function WordMatchGame() {
 
   // --- TUR HAZIRLAMA ---
   const setupRound = (roundNum, wordsList) => {
-      // Round 1: İlk 5 kelime (Index 0-5)
-      // Round 2: Son 5 kelime (Index 5-10)
       const startIdx = (roundNum - 1) * 5;
       const roundWords = wordsList.slice(startIdx, startIdx + 5);
 
@@ -123,7 +127,9 @@ export default function WordMatchGame() {
   };
 
   // --- KART TIKLAMA ---
-  const handleCardClick = (clickedCard) => {
+  const handleCardClick = (clickedCard, e) => {
+      handleBlur(e); // Mobile Fix: Tıklama odağını kaldır
+
       if (isProcessing || clickedCard.isMatched || selectedCards.find(c => c.id === clickedCard.id)) return;
 
       const newSelection = [...selectedCards, clickedCard];
@@ -152,8 +158,6 @@ export default function WordMatchGame() {
           addScore(newScore); // Anlık kaydet
           setScore(s => s + newScore);
           
-          // Eşleşme sayısını artır
-          // setState içinde callback kullanarak güncel değeri alıyoruz
           setMatchedPairsInRound(prevCount => {
               const currentCount = prevCount + 1;
               
@@ -168,7 +172,7 @@ export default function WordMatchGame() {
                           // Oyun Bitti
                           setGameStatus("finished");
                       }
-                  }, 800); // 0.8sn bekle geç
+                  }, 800); 
               }
               return currentCount;
           });
@@ -198,7 +202,8 @@ export default function WordMatchGame() {
       }
   };
 
-  const handleQuitEarly = () => {
+  const handleQuitEarly = (e) => {
+      handleBlur(e);
       setGameStatus("finished");
   };
 
@@ -209,9 +214,24 @@ export default function WordMatchGame() {
   if (gameStatus === "mode-selection") {
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
+            
+            {/* --- GLOBAL CSS FIX --- */}
+            <style>{`
+                * { -webkit-tap-highlight-color: transparent !important; }
+                
+                /* Sadece Mouse ile hover */
+                @media (hover: hover) {
+                    .btn-select:hover { border-color: #fb923c !important; background-color: #fff7ed !important; }
+                    .btn-learn:hover { border-color: #818cf8 !important; background-color: #eef2ff !important; }
+                    .btn-wait:hover { border-color: #cbd5e1 !important; background-color: #f8fafc !important; }
+                    .icon-btn:hover { background-color: #f1f5f9 !important; }
+                }
+                .menu-btn { transition: all 0.2s ease; }
+            `}</style>
+
             <div className="w-full max-w-sm space-y-6">
                 <div className="flex items-center justify-between">
-                    <button onClick={() => navigate("/")} className="p-2 bg-white rounded-full shadow-sm hover:bg-slate-100"><Home className="w-5 h-5 text-slate-600" /></button>
+                    <button onClick={() => navigate("/")} className="icon-btn p-2 bg-white rounded-full shadow-sm active:bg-slate-100 transition-colors"><Home className="w-5 h-5 text-slate-600" /></button>
                     <h2 className="text-xl font-bold text-slate-800">Eşleştirme</h2>
                     <div className="w-9"></div>
                 </div>
@@ -221,7 +241,7 @@ export default function WordMatchGame() {
                 </div>
                 
                 <div className="space-y-4">
-                    <button onClick={() => startSession('review')} disabled={pools.reviewPool.length < 10} className="w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 hover:border-orange-200 hover:bg-orange-50 transition-all group active:scale-95 disabled:opacity-60">
+                    <button onClick={(e) => startSession('review', e)} disabled={pools.reviewPool.length < 10} style={{ outline: 'none' }} className="menu-btn btn-select w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 active:scale-95 disabled:opacity-60 focus:outline-none focus:ring-0">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-4">
                                 <div className="bg-orange-100 p-3 rounded-xl text-orange-600"><RefreshCw className="w-8 h-8" /></div>
@@ -230,7 +250,7 @@ export default function WordMatchGame() {
                             <div className="text-2xl font-black text-orange-600">{pools.reviewPool.length}</div>
                         </div>
                     </button>
-                    <button onClick={() => startSession('learn')} disabled={pools.learnPool.length < 10} className="w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 hover:border-indigo-200 hover:bg-indigo-50 transition-all group active:scale-95 disabled:opacity-60">
+                    <button onClick={(e) => startSession('learn', e)} disabled={pools.learnPool.length < 10} style={{ outline: 'none' }} className="menu-btn btn-learn w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 active:scale-95 disabled:opacity-60 focus:outline-none focus:ring-0">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-4">
                                 <div className="bg-indigo-100 p-3 rounded-xl text-indigo-600"><BrainCircuit className="w-8 h-8" /></div>
@@ -239,7 +259,7 @@ export default function WordMatchGame() {
                             <div className="text-2xl font-black text-indigo-600">{pools.learnPool.length}</div>
                         </div>
                     </button>
-                    <button onClick={() => startSession('waiting')} disabled={pools.waitingPool.length < 10} className="w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 hover:border-slate-300 hover:bg-slate-50 transition-all group active:scale-95 disabled:opacity-60">
+                    <button onClick={(e) => startSession('waiting', e)} disabled={pools.waitingPool.length < 10} style={{ outline: 'none' }} className="menu-btn btn-wait w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 active:scale-95 disabled:opacity-60 focus:outline-none focus:ring-0">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-4">
                                 <div className="bg-slate-100 p-3 rounded-xl text-slate-500"><Hourglass className="w-8 h-8" /></div>
@@ -266,8 +286,8 @@ export default function WordMatchGame() {
              <div className="text-5xl font-extrabold text-blue-600 mt-2">{score}</div>
              <div className="text-xs text-slate-400 font-bold mt-1">Maksimum: {maxScore}</div>
            </div>
-           <button onClick={() => setGameStatus("mode-selection")} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-xl flex items-center justify-center gap-2 mb-3 shadow-lg"><Layers className="w-5 h-5" /> Başka Mod Seç</button>
-           <button onClick={() => navigate("/")} className="w-full bg-white border-2 border-slate-200 text-slate-600 font-bold py-3 rounded-xl hover:bg-slate-50 flex items-center justify-center gap-2"><Home className="w-5 h-5" /> Ana Sayfa</button>
+           <button onClick={() => setGameStatus("mode-selection")} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-xl flex items-center justify-center gap-2 mb-3 shadow-lg active:scale-95 transition-transform"><Layers className="w-5 h-5" /> Başka Mod Seç</button>
+           <button onClick={() => navigate("/")} className="w-full bg-white border-2 border-slate-200 text-slate-600 font-bold py-3 rounded-xl hover:bg-slate-50 flex items-center justify-center gap-2 active:scale-95 transition-transform"><Home className="w-5 h-5" /> Ana Sayfa</button>
         </div>
       </div>
     );
@@ -278,11 +298,24 @@ export default function WordMatchGame() {
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center p-4">
+       
+       {/* --- EŞLEŞTİRME OYUNU İÇİN MOBİL CSS --- */}
+       <style>{`
+            * { -webkit-tap-highlight-color: transparent !important; }
+            
+            /* Sadece Mouse ile hover */
+            @media (hover: hover) {
+                .match-card:hover { border-color: #93c5fd !important; } /* blue-300 */
+                .icon-btn:hover { background-color: #f1f5f9 !important; }
+            }
+            .match-card { transition: all 0.2s ease; }
+       `}</style>
+
        <div className="w-full max-w-md space-y-4 mt-2 h-full flex flex-col">
           
           {/* Header */}
           <div className="flex justify-between items-center">
-             <button onClick={handleQuitEarly} className="p-2 bg-white rounded-full active:bg-slate-100 shadow-sm transition-colors"><X className="w-5 h-5 text-slate-400"/></button>
+             <button onClick={handleQuitEarly} className="icon-btn p-2 bg-white rounded-full active:bg-slate-100 shadow-sm transition-colors"><X className="w-5 h-5 text-slate-400"/></button>
              <div className="flex items-center gap-2">
                  {/* Tur Göstergesi */}
                  <span className={`text-xs font-bold px-2 py-1 rounded-lg ${round===1 ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-400'}`}>Tur 1</span>
@@ -300,18 +333,18 @@ export default function WordMatchGame() {
                   return (
                       <button 
                         key={card.id}
-                        onClick={() => handleCardClick(card)}
+                        onClick={(e) => handleCardClick(card, e)}
                         disabled={card.isMatched}
-                        style={{ WebkitTapHighlightColor: 'transparent' }}
+                        style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
                         className={`
-                            h-20 w-full rounded-xl flex items-center justify-center text-center font-bold text-sm shadow-sm border-2 transition-all duration-200 px-2
+                            match-card h-20 w-full rounded-xl flex items-center justify-center text-center font-bold text-sm shadow-sm border-2 px-2 focus:outline-none focus:ring-0 select-none touch-manipulation
                             ${card.isMatched 
                                 ? "opacity-0 pointer-events-none scale-0" 
                                 : card.isWrong
                                     ? "bg-red-500 text-white border-red-700 animate-[shake_0.5s]" 
                                     : isSelected
                                         ? "bg-blue-100 border-blue-500 text-blue-700 -translate-y-1 shadow-md scale-105" 
-                                        : "bg-white border-slate-200 text-slate-700 hover:border-blue-300 active:scale-95" 
+                                        : "bg-white border-slate-200 text-slate-700 active:scale-95" 
                             }
                         `}
                       >
@@ -321,7 +354,7 @@ export default function WordMatchGame() {
               })}
           </div>
 
-          <button onClick={handleQuitEarly} className="w-full mt-6 text-center text-slate-400 hover:text-red-500 text-sm font-medium transition-colors">
+          <button onClick={handleQuitEarly} style={{ outline: 'none' }} className="w-full mt-6 text-center text-slate-400 hover:text-red-500 text-sm font-medium transition-colors focus:outline-none focus:ring-0">
             <Target className="w-4 h-4 inline-block mr-1 mb-0.5"/> Bitir (Puanı Al ve Çık)
           </button>
 
