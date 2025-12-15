@@ -66,15 +66,8 @@ export default function Quiz() {
 
   const { learnPool, reviewPool, waitingPool } = getWordPools();
 
-  // --- IPHONE FIX: FOCUS TEMİZLEME (BU ÇOK ÖNEMLİ) ---
-  const handleBlur = (e) => {
-      if (e && e.currentTarget) e.currentTarget.blur();
-  };
-
   // --- OYUN BAŞLATMA ---
-  const startQuiz = (mode, e) => {
-    handleBlur(e); // Tıklama izini hemen sil
-
+  const startQuiz = (mode) => {
     setGameMode(mode);
     let pool = [];
 
@@ -125,9 +118,7 @@ export default function Quiz() {
       }
   }, [index, gameStatus]);
 
-  const handleAnswer = (option, e) => {
-    handleBlur(e); // Şıklara basınca iz kalmasın
-
+  const handleAnswer = (option) => {
     if (isAnswered) return;
     setIsAnswered(true); 
     setSelected(option);
@@ -199,7 +190,7 @@ export default function Quiz() {
                 <div className="space-y-4">
                     {/* 1. TEKRAR MODU */}
                     <button 
-                        onClick={(e) => startQuiz('review', e)} 
+                        onClick={() => startQuiz('review')} 
                         disabled={reviewPool.length < 4}
                         style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
                         className="w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 hover:border-orange-200 hover:bg-orange-50 transition-all group active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus:ring-0"
@@ -220,7 +211,7 @@ export default function Quiz() {
 
                     {/* 2. ÖĞRENME MODU */}
                     <button 
-                        onClick={(e) => startQuiz('learn', e)} 
+                        onClick={() => startQuiz('learn')} 
                         disabled={learnPool.length < 4}
                         style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
                         className="w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 hover:border-indigo-200 hover:bg-indigo-50 transition-all group active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus:ring-0"
@@ -241,7 +232,7 @@ export default function Quiz() {
 
                     {/* 3. BEKLEME LİSTESİ */}
                     <button 
-                        onClick={(e) => startQuiz('waiting', e)} 
+                        onClick={() => startQuiz('waiting')} 
                         disabled={waitingPool.length < 4}
                         style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
                         className="w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 hover:border-slate-300 hover:bg-slate-50 transition-all group active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus:ring-0"
@@ -305,10 +296,30 @@ export default function Quiz() {
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center p-4">
-       {/* IPHONE FIX STYLE */}
+       
+       {/* --- KRİTİK ÇÖZÜM: MOBİL HOVER ENGELLEYİCİ --- */}
        <style>{`
          * {
            -webkit-tap-highlight-color: transparent !important;
+         }
+         
+         /* Sadece Mouse kullanan cihazlarda hover efekti göster */
+         @media (hover: hover) {
+            .quiz-option-btn:hover {
+                border-color: #a5b4fc !important; /* indigo-300 */
+                background-color: #eef2ff !important; /* indigo-50 */
+            }
+            .quiz-option-btn:active {
+                background-color: #e0e7ff !important; /* indigo-100 */
+            }
+         }
+
+         /* Buton Temel Stili */
+         .quiz-option-btn {
+            background-color: white;
+            border: 2px solid #e2e8f0; /* slate-200 */
+            color: #334155; /* slate-700 */
+            transition: all 0.2s ease;
          }
        `}</style>
 
@@ -336,46 +347,24 @@ export default function Quiz() {
                             <div className="bg-indigo-50 text-indigo-800 px-4 py-2 rounded-xl border border-indigo-100 flex items-center gap-2">
                                 <span className="text-sm italic">"{hintEng}"</span>
                                 
-                                {/* 1. İPUCU SES BUTONU (SÖZLÜK TARZI + BLUR) */}
+                                {/* 1. İPUCU SES BUTONU (DÜZENLENDİ: İZ YOK) */}
                                 <button 
-                                    onClick={(e) => {
-                                        handleBlur(e);
-                                        handleSpeak(hintEng, 'hint');
-                                    }}
-                                    style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
-                                    className={`
-                                        p-1.5 rounded-lg border flex items-center justify-center
-                                        focus:outline-none focus:ring-0
-                                        transition-colors duration-200
-                                        ${activeAudio === 'hint'
-                                            ? 'bg-indigo-600 text-white border-indigo-600'
-                                            : 'bg-white text-slate-400 border-slate-200 hover:bg-slate-50'
-                                        }
-                                    `}
+                                    onClick={() => handleSpeak(hintEng, 'hint')} 
+                                    style={{ outline: 'none' }}
+                                    className="p-1 bg-white rounded-full hover:bg-indigo-100 transition-colors focus:outline-none focus:ring-0" 
                                     title={activeAudio === 'hint' ? "Durdur" : "Oku"}
                                 >
-                                    {activeAudio === 'hint' ? <Square className="w-3 h-3 fill-current"/> : <Volume2 className="w-3 h-3"/>}
+                                    {activeAudio === 'hint' ? <Square className="w-3 h-3 text-red-500 fill-current"/> : <Volume2 className="w-3 h-3 text-indigo-500"/>}
                                 </button>
                                 
                                 {hintTr && (
                                     <button 
-                                        onClick={(e) => {
-                                            handleBlur(e);
-                                            setShowHintTr(!showHintTr);
-                                        }} 
-                                        style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
-                                        className={`
-                                            p-1.5 rounded-lg border flex items-center justify-center
-                                            focus:outline-none focus:ring-0
-                                            transition-colors duration-200
-                                            ${showHintTr 
-                                                ? "bg-indigo-100 text-indigo-600 border-indigo-200" 
-                                                : "bg-white text-slate-400 border-slate-200 hover:bg-slate-50"
-                                            }
-                                        `}
+                                        onClick={() => setShowHintTr(!showHintTr)} 
+                                        style={{ outline: 'none' }}
+                                        className={`p-1 rounded-full transition-colors focus:outline-none focus:ring-0 ${showHintTr ? "bg-indigo-200" : "bg-white hover:bg-indigo-100"}`} 
                                         title="Çeviri"
                                     >
-                                        <Languages className="w-3 h-3"/>
+                                        <Languages className="w-3 h-3 text-indigo-500"/>
                                     </button>
                                 )}
                             </div>
@@ -390,48 +379,43 @@ export default function Quiz() {
                     
                     <h2 className="text-4xl font-extrabold text-slate-800">{current.wordObj.word}</h2>
                     
-                    {/* 2. ANA KELİME SES BUTONU (SÖZLÜK TARZI + BLUR) */}
+                    {/* 2. ANA KELİME SES BUTONU (DÜZENLENDİ: İZ YOK) */}
                     <button 
-                        onClick={(e) => {
-                            handleBlur(e);
-                            handleSpeak(current.wordObj.word, 'main');
-                        }}
-                        style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
-                        className={`
-                            p-3 rounded-full border flex items-center justify-center mx-auto
-                            focus:outline-none focus:ring-0
-                            transition-colors duration-200
-                            ${activeAudio === 'main'
-                                ? 'bg-indigo-600 text-white border-indigo-600'
-                                : 'bg-slate-50 text-slate-500 border-slate-100 hover:bg-slate-100'
-                            }
-                        `}
+                        onClick={() => handleSpeak(current.wordObj.word, 'main')} 
+                        style={{ outline: 'none' }}
+                        className="mx-auto p-2 bg-slate-50 rounded-full text-indigo-500 hover:bg-indigo-100 transition-colors focus:outline-none focus:ring-0"
                         title={activeAudio === 'main' ? "Durdur" : "Oku"}
                     >
-                        {activeAudio === 'main' ? <Square className="w-6 h-6 fill-current"/> : <Volume2 className="w-6 h-6"/>}
+                        {activeAudio === 'main' ? <Square className="w-6 h-6 text-red-500 fill-current"/> : <Volume2 className="w-6 h-6"/>}
                     </button>
                 </div>
 
-                {/* ŞIKLAR */}
+                {/* ŞIKLAR (MEDYA SORGUSU İLE DÜZELTİLDİ) */}
                 <div className="space-y-3 mt-6">
                     {current.options.map((opt, i) => {
-                        let cls = "w-full p-4 rounded-xl text-left font-medium border-2 transition-all shadow-sm focus:outline-none focus:ring-0 select-none ";
+                        
+                        // Dinamik Class (Cevap rengi)
+                        let dynamicClass = "quiz-option-btn w-full p-4 rounded-xl text-left font-medium shadow-sm focus:outline-none focus:ring-0 select-none touch-manipulation";
+                        
                         if (isAnswered) {
-                            if (opt === current.correct) cls += "bg-green-100 border-green-500 text-green-700";
-                            else if (opt === selected) cls += "bg-red-100 border-red-500 text-red-700";
-                            else cls += "opacity-50";
-                        } else {
-                            cls += "bg-white border-slate-200 hover:border-indigo-300 active:bg-indigo-50"; // Hover efekti azaltıldı
+                            if (opt === current.correct) {
+                                dynamicClass = "w-full p-4 rounded-xl text-left font-medium shadow-sm border-2 bg-green-100 border-green-500 text-green-700";
+                            } else if (opt === selected) {
+                                dynamicClass = "w-full p-4 rounded-xl text-left font-medium shadow-sm border-2 bg-red-100 border-red-500 text-red-700";
+                            } else {
+                                dynamicClass = "w-full p-4 rounded-xl text-left font-medium shadow-sm border-2 bg-white border-slate-200 text-slate-400 opacity-50";
+                            }
                         }
+
                         return (
                             <button 
-                                    key={`${index}-${i}`} 
-                                    onClick={(e)=>handleAnswer(opt, e)} 
-                                    disabled={isAnswered} 
-                                    style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
-                                    className={cls}
+                                key={`${index}-${i}`} 
+                                onClick={()=>handleAnswer(opt)} 
+                                disabled={isAnswered} 
+                                style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
+                                className={dynamicClass}
                             >
-                                    {opt}
+                                {opt}
                             </button>
                         );
                     })}
