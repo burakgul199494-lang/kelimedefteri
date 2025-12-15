@@ -11,8 +11,7 @@ import {
   Lightbulb, 
   Home,
   Layers,
-  Square,
-  ArrowRight
+  ArrowRight // Eğer bu hata verirse yerine 'MoveRight' veya 'ChevronRight' deneyebiliriz
 } from "lucide-react";
 
 export default function GapFillingGame() {
@@ -43,7 +42,7 @@ export default function GapFillingGame() {
 
   // --- KELİME HAVUZLARI ---
   const getWordPools = () => {
-    const all = getAllWords();
+    const all = getAllWords() || []; // Hata önleyici
     const now = new Date();
 
     const validWords = all.filter(w => 
@@ -58,14 +57,14 @@ export default function GapFillingGame() {
     const learnPool = validWords.filter(w => !knownWordIds.includes(w.id) && !queueIds.includes(w.id));
     
     const reviewPool = validWords.filter(w => {
-        const q = learningQueue.find(item => item.wordId === w.id);
+        const q = learningQueue ? learningQueue.find(item => item.wordId === w.id) : null;
         const isDue = q && new Date(q.nextReview) <= now;
         const isKnown = knownWordIds.includes(w.id);
         return isDue || isKnown;
     });
 
     const waitingPool = validWords.filter(w => {
-        const q = learningQueue.find(item => item.wordId === w.id);
+        const q = learningQueue ? learningQueue.find(item => item.wordId === w.id) : null;
         return q && new Date(q.nextReview) > now;
     });
 
@@ -129,12 +128,16 @@ export default function GapFillingGame() {
       setShowHintTr(false);
     }
     return () => window.speechSynthesis.cancel();
-  }, [currentIndex, gameStatus]);
+  }, [currentIndex, gameStatus, questions]);
 
   const currentWordObj = questions[currentIndex];
+  // !!! GÜVENLİK KİLİDİ: Eğer oyun modunda ama veri yoksa Loading göster !!!
+  if (gameStatus === "playing" && !currentWordObj) {
+      return <div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin text-indigo-600 w-10 h-10"/></div>;
+  }
+
   const targetWord = currentWordObj?.word.trim() || "";
   
-  // Regex Düzeltmesi (Tam kelime)
   const getMaskedSentence = () => {
       if (!currentWordObj) return "";
       const regex = new RegExp(`\\b${currentWordObj.word}\\b`, "gi");
@@ -244,7 +247,6 @@ export default function GapFillingGame() {
                     <h1 className="text-3xl font-black text-slate-800 mb-2">Cümle Tamamla</h1>
                     <p className="text-slate-500">Cümledeki boşluğa uygun kelimeyi yaz.</p>
                 </div>
-                {/* Mod Butonları (Değişiklik Yok) */}
                 <div className="space-y-4">
                     <button onClick={() => startSession('review')} disabled={reviewPool.length === 0} className="w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 hover:border-orange-200 hover:bg-orange-50 transition-all group active:scale-95 disabled:opacity-60 flex items-center justify-between">
                         <div className="flex items-center gap-4"><div className="bg-orange-100 p-3 rounded-xl text-orange-600"><RefreshCw className="w-8 h-8" /></div><div className="text-left"><div className="font-bold text-xl text-slate-800">Tekrar Modu</div><div className="text-sm text-slate-500">Bilinen kelimeler</div></div></div>
@@ -319,9 +321,12 @@ export default function GapFillingGame() {
                    <button 
                        onClick={() => handleSpeak(currentWordObj.sentence, 'sentence')} 
                        style={{ WebkitTapHighlightColor: 'transparent' }}
-                       className="flex items-center justify-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-slate-600 font-bold hover:bg-slate-50 transition-colors focus:outline-none"
+                       className={`
+                         flex items-center justify-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-slate-600 font-bold hover:bg-slate-50 transition-colors focus:outline-none
+                         ${activeAudio === 'sentence' ? 'text-indigo-600 border-indigo-200 bg-indigo-50' : ''}
+                       `}
                    >
-                       {activeAudio === 'sentence' ? <Square className="w-4 h-4 text-red-500 fill-current"/> : <Volume2 className="w-4 h-4"/>}
+                       {activeAudio === 'sentence' ? <X className="w-4 h-4 text-red-500"/> : <Volume2 className="w-4 h-4"/>}
                        <span className="text-xs">Cümleyi Oku</span>
                    </button>
                </div>
@@ -332,15 +337,15 @@ export default function GapFillingGame() {
                     <div className="flex items-center justify-between gap-2 mb-2">
                         <span className="text-xs font-bold text-slate-400 uppercase flex items-center gap-1"><Lightbulb className="w-3 h-3"/> İpucu (Tanım)</span>
                         
-                        {/* BUTON GRUBU (Sözlük Tarzı) */}
+                        {/* BUTON GRUBU */}
                         <div className="flex gap-2">
                             {/* İpucu Ses Butonu (Sabit Beyaz) */}
                             <button 
                                 onClick={() => handleSpeak(englishDefinition, 'hint')} 
                                 style={{ WebkitTapHighlightColor: 'transparent' }}
-                                className="p-2 bg-white border border-slate-200 rounded-lg text-indigo-600 hover:bg-slate-50 focus:outline-none"
+                                className={`p-2 bg-white border border-slate-200 rounded-lg text-indigo-600 hover:bg-slate-50 focus:outline-none ${activeAudio === 'hint' ? 'border-indigo-300 bg-indigo-50' : ''}`}
                             >
-                                {activeAudio === 'hint' ? <Square className="w-4 h-4 text-red-500 fill-current"/> : <Volume2 className="w-4 h-4"/>}
+                                {activeAudio === 'hint' ? <X className="w-4 h-4 text-red-500"/> : <Volume2 className="w-4 h-4"/>}
                             </button>
 
                             {/* Çeviri Butonu (Toggle: Beyaz <-> Mavi) */}
@@ -394,7 +399,7 @@ export default function GapFillingGame() {
                           ? "opacity-0 pointer-events-none scale-90" 
                           : wrongAnimationId === item.id 
                               ? "bg-red-50 text-red-500 border-red-200 animate-[shake_0.5s_ease-in-out]" 
-                              : "bg-white text-slate-700 border-slate-200 active:scale-95 active:bg-slate-50"
+                              : "bg-white text-slate-700 border-slate-200 active:scale-95 active:bg-slate-50 hover:border-indigo-200"
                       }
                     `}
                   >
