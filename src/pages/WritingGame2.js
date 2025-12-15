@@ -40,10 +40,15 @@ export default function WritingGame2() {
   // Ses Durumu
   const [isPlaying, setIsPlaying] = useState(false);
 
+  // --- IPHONE FIX: FOCUS TEMİZLEME ---
+  const handleBlur = (e) => {
+      if (e && e.currentTarget) e.currentTarget.blur();
+  };
+
   // --- KELİME HAVUZLARI ---
   const getWordPools = () => {
     const all = getAllWords();
-    const validWords = all.filter(w => w.word && w.word.length > 0); // Sadece kelime olması yeterli
+    const validWords = all.filter(w => w.word && w.word.length > 0); 
     const now = new Date();
 
     const queueIds = learningQueue ? learningQueue.map(q => q.wordId) : [];
@@ -74,7 +79,8 @@ export default function WritingGame2() {
   const { learnPool, reviewPool, waitingPool } = getWordPools();
 
   // --- OYUN BAŞLATMA ---
-  const startSession = (mode) => {
+  const startSession = (mode, e) => {
+    handleBlur(e); // Mobile Fix
     setGameMode(mode);
     let selectedPool = [];
 
@@ -106,7 +112,6 @@ export default function WritingGame2() {
 
   // --- SORU YÜKLEME ---
   useEffect(() => {
-    // Soru değişince sesi durdur
     window.speechSynthesis.cancel();
     setIsPlaying(false);
 
@@ -126,9 +131,6 @@ export default function WritingGame2() {
       setHintCount(0);
       setMistakeCount(0); 
       setCurrentWordPoints(5); 
-      
-      // Soru yüklenince otomatik bir kere oku (Opsiyonel, kullanıcı butona basınca da okuyabilir)
-      // setTimeout(() => handleSpeak(word), 500); 
     }
     
     return () => window.speechSynthesis.cancel();
@@ -160,7 +162,7 @@ export default function WritingGame2() {
 
   // --- HARF TIKLAMA VE HATA KONTROLÜ ---
   const handleLetterClick = (letterObj, e) => {
-    if (e && e.currentTarget) e.currentTarget.blur();
+    handleBlur(e); // Mobile Fix: Focus temizle
 
     if (isWordComplete || letterObj.isUsed) return;
 
@@ -210,7 +212,7 @@ export default function WritingGame2() {
 
   // --- İPUCU KULLANIMI ---
   const handleHint = (e) => {
-    if (e && e.currentTarget) e.currentTarget.blur();
+    handleBlur(e); // Mobile Fix
     if (isWordComplete) return;
 
     const newHintCount = hintCount + 1;
@@ -249,7 +251,8 @@ export default function WritingGame2() {
     }, 1200);
   };
 
-  const handleQuitEarly = () => {
+  const handleQuitEarly = (e) => {
+      handleBlur(e);
       setGameStatus("finished");
   };
 
@@ -259,11 +262,24 @@ export default function WritingGame2() {
   if (gameStatus === "mode-selection") {
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
+            
+            {/* --- GLOBAL CSS FIX --- */}
+            <style>{`
+                * { -webkit-tap-highlight-color: transparent !important; }
+                
+                /* Sadece Mouse ile hover */
+                @media (hover: hover) {
+                    .btn-select:hover { border-color: #fb923c !important; background-color: #fff7ed !important; }
+                    .btn-learn:hover { border-color: #818cf8 !important; background-color: #eef2ff !important; }
+                    .btn-wait:hover { border-color: #cbd5e1 !important; background-color: #f8fafc !important; }
+                    .icon-btn:hover { background-color: #f1f5f9 !important; }
+                }
+                .menu-btn { transition: all 0.2s ease; }
+            `}</style>
+
             <div className="w-full max-w-sm space-y-6">
                 <div className="flex items-center justify-between">
-                    <button onClick={() => navigate("/")} className="p-2 bg-white rounded-full shadow-sm hover:bg-slate-100">
-                    <Home className="w-5 h-5 text-slate-600" />
-                    </button>
+                    <button onClick={() => navigate("/")} className="icon-btn p-2 bg-white rounded-full shadow-sm active:bg-slate-100 transition-colors"><Home className="w-5 h-5 text-slate-600" /></button>
                     <h2 className="text-xl font-bold text-slate-800">Dinle & Yaz</h2>
                     <div className="w-9"></div>
                 </div>
@@ -275,7 +291,7 @@ export default function WritingGame2() {
 
                 <div className="space-y-4">
                     {/* Tekrar Modu */}
-                    <button onClick={() => startSession('review')} disabled={reviewPool.length === 0} className="w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 hover:border-orange-200 hover:bg-orange-50 transition-all group active:scale-95 disabled:opacity-60">
+                    <button onClick={(e) => startSession('review', e)} disabled={reviewPool.length === 0} style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }} className="menu-btn btn-select w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 active:scale-95 disabled:opacity-60 focus:outline-none focus:ring-0">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-4">
                                 <div className="bg-orange-100 p-3 rounded-xl text-orange-600"><RefreshCw className="w-8 h-8" /></div>
@@ -286,7 +302,7 @@ export default function WritingGame2() {
                     </button>
 
                     {/* Öğrenme Modu */}
-                    <button onClick={() => startSession('learn')} disabled={learnPool.length === 0} className="w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 hover:border-indigo-200 hover:bg-indigo-50 transition-all group active:scale-95 disabled:opacity-60">
+                    <button onClick={(e) => startSession('learn', e)} disabled={learnPool.length === 0} style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }} className="menu-btn btn-learn w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 active:scale-95 disabled:opacity-60 focus:outline-none focus:ring-0">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-4">
                                 <div className="bg-indigo-100 p-3 rounded-xl text-indigo-600"><BrainCircuit className="w-8 h-8" /></div>
@@ -297,7 +313,7 @@ export default function WritingGame2() {
                     </button>
 
                     {/* Bekleme Modu */}
-                    <button onClick={() => startSession('waiting')} disabled={waitingPool.length === 0} className="w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 hover:border-slate-300 hover:bg-slate-50 transition-all group active:scale-95 disabled:opacity-60">
+                    <button onClick={(e) => startSession('waiting', e)} disabled={waitingPool.length === 0} style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }} className="menu-btn btn-wait w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 active:scale-95 disabled:opacity-60 focus:outline-none focus:ring-0">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-4">
                                 <div className="bg-slate-100 p-3 rounded-xl text-slate-500"><Hourglass className="w-8 h-8" /></div>
@@ -331,8 +347,8 @@ export default function WritingGame2() {
              <div className="text-5xl font-extrabold text-indigo-600 mt-2">{score}</div>
              <div className="text-xs text-slate-400 font-bold">Maksimum: {max}</div>
            </div>
-           <button onClick={() => setGameStatus("mode-selection")} className="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-200">Başka Test Çöz</button>
-           <button onClick={() => navigate("/")} className="w-full bg-white border-2 border-slate-200 text-slate-600 font-bold py-3 rounded-xl hover:bg-slate-50">Ana Sayfa</button>
+           <button onClick={() => setGameStatus("mode-selection")} className="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-200 active:scale-95 transition-transform">Başka Test Çöz</button>
+           <button onClick={() => navigate("/")} className="w-full bg-white border-2 border-slate-200 text-slate-600 font-bold py-3 rounded-xl hover:bg-slate-50 active:scale-95 transition-transform">Ana Sayfa</button>
         </div>
       </div>
     );
@@ -345,6 +361,22 @@ export default function WritingGame2() {
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center p-4">
+       
+       {/* --- MOBİL CSS --- */}
+       <style>{`
+         * {
+           -webkit-tap-highlight-color: transparent !important;
+         }
+         
+         @media (hover: hover) {
+            .audio-btn:hover { background-color: #e9d5ff !important; } /* purple-200 */
+            .hint-btn:hover { background-color: #fef3c7 !important; } /* amber-200 */
+            .letter-btn:hover { border-color: #c084fc !important; color: #9333ea !important; }
+         }
+
+         .game-btn { transition: all 0.2s ease; }
+       `}</style>
+
        <div className="w-full max-w-md space-y-4 mt-2">
           
           {/* Header */}
@@ -364,9 +396,13 @@ export default function WritingGame2() {
              {/* ORTA SES BUTONU */}
              <div className="flex-1 flex flex-col items-center justify-center gap-4 py-4">
                 <button 
-                    onClick={() => handleSpeak(targetWord)}
-                    className={`w-28 h-28 rounded-full flex items-center justify-center shadow-xl transition-all active:scale-95
-                        ${isPlaying ? "bg-red-100 text-red-500 animate-pulse" : "bg-purple-100 text-purple-600 hover:bg-purple-200"}
+                    onClick={(e) => {
+                        handleBlur(e);
+                        handleSpeak(targetWord);
+                    }}
+                    style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
+                    className={`audio-btn w-28 h-28 rounded-full flex items-center justify-center shadow-xl transition-all active:scale-95 focus:outline-none focus:ring-0
+                        ${isPlaying ? "bg-red-100 text-red-500 animate-pulse" : "bg-purple-100 text-purple-600"}
                     `}
                 >
                     {isPlaying ? <Square className="w-12 h-12 fill-current"/> : <Volume2 className="w-14 h-14"/>}
@@ -402,15 +438,14 @@ export default function WritingGame2() {
                     onClick={(e) => handleLetterClick(item, e)}
                     disabled={item.isUsed || isWordComplete}
                     style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
-                    className={`
+                    className={`letter-btn
                       w-10 h-10 md:w-11 md:h-11 rounded-xl font-bold text-lg shadow-[0_3px_0_rgb(0,0,0,0.1)] 
-                      active:bg-purple-100 active:border-purple-300 active:text-purple-600 active:shadow-none active:translate-y-[2px]
                       transition-all duration-75 select-none touch-manipulation focus:outline-none focus:ring-0
                       ${item.isUsed 
                           ? "opacity-0 pointer-events-none scale-0" 
                           : wrongAnimationId === item.id 
                               ? "bg-red-500 text-white shadow-none animate-[shake_0.5s_ease-in-out]" 
-                              : "bg-white border-2 border-slate-200 text-slate-700"
+                              : "bg-white border-2 border-slate-200 text-slate-700 active:bg-purple-100 active:border-purple-300 active:text-purple-600 active:shadow-none active:translate-y-[2px]"
                       }
                     `}
                   >
@@ -424,8 +459,8 @@ export default function WritingGame2() {
                 <button 
                   onClick={handleHint} 
                   disabled={isWordComplete}
-                  style={{ WebkitTapHighlightColor: 'transparent' }}
-                  className="flex items-center gap-2 px-5 py-3 bg-amber-100 text-amber-700 rounded-2xl font-bold active:bg-amber-200 transition-colors active:scale-95 disabled:opacity-50 focus:outline-none w-full justify-center"
+                  style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
+                  className="hint-btn flex items-center gap-2 px-5 py-3 bg-amber-100 text-amber-700 rounded-2xl font-bold active:bg-amber-200 transition-colors active:scale-95 disabled:opacity-50 focus:outline-none focus:ring-0 w-full justify-center"
                 >
                   <Lightbulb className="w-5 h-5"/> 
                   <span className="text-xs ml-1 flex flex-col items-start leading-none">
@@ -437,7 +472,7 @@ export default function WritingGame2() {
 
           </div>
 
-          <button onClick={handleQuitEarly} className="w-full text-center text-slate-400 hover:text-red-500 text-sm font-medium transition-colors">
+          <button onClick={handleQuitEarly} style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }} className="w-full text-center text-slate-400 hover:text-red-500 text-sm font-medium transition-colors focus:outline-none focus:ring-0">
             Bitir (Puanı Al ve Çık)
           </button>
 
