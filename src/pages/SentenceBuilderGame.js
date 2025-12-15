@@ -210,7 +210,7 @@ export default function SentenceBuilderGame() {
                     <div className="w-9"></div>
                 </div>
                 <div className="text-center py-6">
-                    <h1 className="text-3xl font-black text-slate-800 mb-2">Sırala ve Kur</h1>
+                    <h1 className="text-3xl font-black text-slate-800 mb-2">Doğru Sıralayabilir Misin?</h1>
                     <p className="text-slate-500">Kelimeleri sırayla seçerek cümleyi oluştur.</p>
                 </div>
                 
@@ -219,7 +219,7 @@ export default function SentenceBuilderGame() {
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-4">
                                 <div className="bg-orange-100 p-3 rounded-xl text-orange-600"><RefreshCw className="w-8 h-8" /></div>
-                                <div className="text-left"><div className="font-bold text-xl text-slate-800">Tekrar Modu</div><div className="text-sm text-slate-500">Mezun cümleler</div></div>
+                                <div className="text-left"><div className="font-bold text-xl text-slate-800">Tekrar Modu</div><div className="text-sm text-slate-500">Öğrendiklerini Pekiştir</div></div>
                             </div>
                             <div className="text-2xl font-black text-orange-600">{pools.reviewPool.length}</div>
                         </div>
@@ -228,7 +228,7 @@ export default function SentenceBuilderGame() {
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-4">
                                 <div className="bg-indigo-100 p-3 rounded-xl text-indigo-600"><BrainCircuit className="w-8 h-8" /></div>
-                                <div className="text-left"><div className="font-bold text-xl text-slate-800">Öğrenme Modu</div><div className="text-sm text-slate-500">Yeni cümleler</div></div>
+                                <div className="text-left"><div className="font-bold text-xl text-slate-800">Öğrenme Modu</div><div className="text-sm text-slate-500">Yeni Kelimeler</div></div>
                             </div>
                             <div className="text-2xl font-black text-indigo-600">{pools.learnPool.length}</div>
                         </div>
@@ -237,7 +237,7 @@ export default function SentenceBuilderGame() {
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-4">
                                 <div className="bg-slate-100 p-3 rounded-xl text-slate-500"><Hourglass className="w-8 h-8" /></div>
-                                <div className="text-left"><div className="font-bold text-xl text-slate-700">Bekleme Listesi</div><div className="text-sm text-slate-400">Zamanı gelmeyenler</div></div>
+                                <div className="text-left"><div className="font-bold text-xl text-slate-700">Bekleme Listesi</div><div className="text-sm text-slate-400">Henüz Zamanı Gelmeyen Kelimeler</div></div>
                             </div>
                             <div className="text-2xl font-black text-slate-500">{pools.waitingPool.length}</div>
                         </div>
