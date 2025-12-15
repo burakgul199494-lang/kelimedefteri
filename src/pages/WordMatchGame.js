@@ -280,13 +280,13 @@ export default function WordMatchGame() {
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
         <div className="bg-white p-8 rounded-3xl shadow-xl max-w-sm w-full text-center space-y-6">
            <div className="bg-green-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto animate-bounce"><Trophy className="w-10 h-10 text-green-600"/></div>
-           <h2 className="text-2xl font-bold text-slate-800">Tebrikler!</h2>
+           <h2 className="text-2xl font-bold text-slate-800">Bitti</h2>
            <div className="py-6 bg-slate-50 rounded-2xl border border-slate-100">
              <div className="text-sm text-slate-400 font-bold uppercase">Toplam Puan</div>
              <div className="text-5xl font-extrabold text-blue-600 mt-2">{score}</div>
              <div className="text-xs text-slate-400 font-bold mt-1">Maksimum: {maxScore}</div>
            </div>
-           <button onClick={() => setGameStatus("mode-selection")} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-xl flex items-center justify-center gap-2 mb-3 shadow-lg active:scale-95 transition-transform"><Layers className="w-5 h-5" /> Başka Mod Seç</button>
+           <button onClick={() => setGameStatus("mode-selection")} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-xl flex items-center justify-center gap-2 mb-3 shadow-lg active:scale-95 transition-transform">Başka Test Çöz</button>
            <button onClick={() => navigate("/")} className="w-full bg-white border-2 border-slate-200 text-slate-600 font-bold py-3 rounded-xl hover:bg-slate-50 flex items-center justify-center gap-2 active:scale-95 transition-transform"><Home className="w-5 h-5" /> Ana Sayfa</button>
         </div>
       </div>
@@ -355,7 +355,7 @@ export default function WordMatchGame() {
           </div>
 
           <button onClick={handleQuitEarly} style={{ outline: 'none' }} className="w-full mt-6 text-center text-slate-400 hover:text-red-500 text-sm font-medium transition-colors focus:outline-none focus:ring-0">
-            <Target className="w-4 h-4 inline-block mr-1 mb-0.5"/> Bitir (Puanı Al ve Çık)
+            Bitir (Puanı Al ve Çık)
           </button>
 
           <style jsx>{`
