@@ -205,7 +205,7 @@ export default function Game() {
                   <div className="bg-orange-100 p-3 rounded-xl text-orange-600"><RotateCcw className="w-8 h-8" /></div>
                   <div className="text-left">
                     <div className="font-bold text-xl text-slate-800">Tekrar Modu</div>
-                    <div className="text-sm text-slate-500">Öğrendiklerini (Mezunları) pekiştir</div>
+                    <div className="text-sm text-slate-500">Öğrendiklerini Pekiştir</div>
                   </div>
                 </div>
                 <div className="text-2xl font-black text-orange-600">{pools.reviewPool.length}</div>
@@ -223,7 +223,7 @@ export default function Game() {
                   <div className="bg-indigo-100 p-3 rounded-xl text-indigo-600"><Brain className="w-8 h-8" /></div>
                   <div className="text-left">
                     <div className="font-bold text-xl text-slate-800">Öğrenme Modu</div>
-                    <div className="text-sm text-slate-500">Yeni ve zamanı gelen kelimeler</div>
+                    <div className="text-sm text-slate-500">Yeni Kelimeler</div>
                   </div>
                 </div>
                 <div className="text-2xl font-black text-indigo-600">{pools.learnPool.length}</div>
@@ -241,7 +241,7 @@ export default function Game() {
                   <div className="bg-slate-100 p-3 rounded-xl text-slate-500"><Hourglass className="w-8 h-8" /></div>
                   <div className="text-left">
                     <div className="font-bold text-xl text-slate-700">Bekleme Listesi</div>
-                    <div className="text-sm text-slate-400">Henüz zamanı gelmeyenler</div>
+                    <div className="text-sm text-slate-400">Henüz Zamanı Gelmeyen Kelimeler</div>
                   </div>
                 </div>
                 <div className="text-2xl font-black text-slate-500">{pools.waitingPool.length}</div>
