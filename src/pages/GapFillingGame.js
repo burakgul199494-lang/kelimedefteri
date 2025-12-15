@@ -144,9 +144,12 @@ export default function GapFillingGame() {
   const currentWordObj = questions[currentIndex];
   const targetWord = currentWordObj?.word.trim() || "";
   
+  // --- DÜZELTİLEN FONKSİYON ---
   const getMaskedSentence = () => {
       if (!currentWordObj) return "";
-      const regex = new RegExp(currentWordObj.word, "gi");
+      // \\b kelime sınırını ifade eder. 
+      // Böylece 'a' kelimesini ararken 'want' içindeki 'a'yı bulmaz.
+      const regex = new RegExp(`\\b${currentWordObj.word}\\b`, "gi");
       return currentWordObj.sentence.replace(regex, "________");
   };
 
@@ -216,7 +219,7 @@ export default function GapFillingGame() {
           setTimeout(() => {
               setCompletedLetters(targetWord.split('')); 
               setIsWordComplete(true);
-              handleSpeak(targetWord, 'word'); // Kelime bitince oku
+              handleSpeak(targetWord, 'word'); 
               
               setTimeout(() => {
                   if (currentIndex + 1 < questions.length) {
@@ -254,7 +257,6 @@ export default function GapFillingGame() {
     setIsWordComplete(true);
     handleSpeak(targetWord, 'word'); 
     
-    // ANLIK PUAN EKLEME BURADA YAPILIYOR
     if (currentWordPoints > 0) {
         addScore(currentWordPoints);
         setScore(s => s + currentWordPoints);
@@ -269,10 +271,7 @@ export default function GapFillingGame() {
     }, 1200);
   };
 
-  // --- DÜZELTİLEN YER ---
   const handleQuitEarly = () => {
-      // Buradaki addScore(score) kaldırıldı.
-      // Puanlar handleWordComplete içinde zaten eklendi.
       setGameStatus("finished");
   };
 
