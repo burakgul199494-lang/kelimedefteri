@@ -181,12 +181,12 @@ export default function Quiz() {
                     <button onClick={() => navigate("/")} className="p-2 bg-white rounded-full shadow-sm hover:bg-slate-100">
                       <Home className="w-5 h-5 text-slate-600" />
                     </button>
-                    <h2 className="text-xl font-bold text-slate-800">Quiz Zamanı!</h2>
+                    <h2 className="text-xl font-bold text-slate-800">Quiz</h2>
                     <div className="w-9"></div>
                 </div>
                 <div className="text-center py-6">
                     <h1 className="text-3xl font-black text-slate-800 mb-2">Nasıl Test Edelim?</h1>
-                    <p className="text-slate-500">Hangi kelimelerle kendini denemek istersin?</p>
+                    <p className="text-slate-500">Türkçesini bul.</p>
                 </div>
                 <div className="space-y-4">
                     {/* Butonlara stil bloğu aşağıda etki edecek */}
@@ -198,13 +198,13 @@ export default function Quiz() {
                     </button>
                     <button onClick={(e) => startQuiz('learn', e)} disabled={learnPool.length < 4} style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }} className="w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 hover:border-indigo-200 hover:bg-indigo-50 transition-all group active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus:ring-0">
                         <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-4"><div className="bg-indigo-100 p-3 rounded-xl text-indigo-600 group-hover:bg-indigo-200 transition-colors"><BrainCircuit className="w-8 h-8" /></div><div className="text-left"><div className="font-bold text-xl text-slate-800">Öğrenme Modu</div><div className="text-sm text-slate-500">Yeni kelimelerle test</div></div></div>
+                            <div className="flex items-center gap-4"><div className="bg-indigo-100 p-3 rounded-xl text-indigo-600 group-hover:bg-indigo-200 transition-colors"><BrainCircuit className="w-8 h-8" /></div><div className="text-left"><div className="font-bold text-xl text-slate-800">Öğrenme Modu</div><div className="text-sm text-slate-500">Yeni Kelimeler</div></div></div>
                             <div className="text-2xl font-black text-indigo-600">{learnPool.length}</div>
                         </div>
                     </button>
                     <button onClick={(e) => startQuiz('waiting', e)} disabled={waitingPool.length < 4} style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }} className="w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 hover:border-slate-300 hover:bg-slate-50 transition-all group active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus:ring-0">
                         <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-4"><div className="bg-slate-100 p-3 rounded-xl text-slate-500 group-hover:bg-slate-200 transition-colors"><Hourglass className="w-8 h-8" /></div><div className="text-left"><div className="font-bold text-xl text-slate-700">Bekleme Listesi</div><div className="text-sm text-slate-400">Gelecekte sorulacaklar</div></div></div>
+                            <div className="flex items-center gap-4"><div className="bg-slate-100 p-3 rounded-xl text-slate-500 group-hover:bg-slate-200 transition-colors"><Hourglass className="w-8 h-8" /></div><div className="text-left"><div className="font-bold text-xl text-slate-700">Bekleme Listesi</div><div className="text-sm text-slate-400">Henüz Zamanı Gelmeyen Kelimeler</div></div></div>
                             <div className="text-2xl font-black text-slate-500">{waitingPool.length}</div>
                         </div>
                     </button>
