@@ -19,42 +19,33 @@ export default function Quiz2() {
 
   // --- IPHONE FIX: Tıklanınca odağı kaldır (Blur) ---
   const handleBlur = (e) => {
+      // e.target yerine e.currentTarget kullanmak daha güvenlidir
       if (e && e.currentTarget) e.currentTarget.blur();
   };
 
-  // --- KELİME HAVUZLARI (SRS MANTIĞI İLE DÜZELTİLDİ) ---
+  // --- KELİME HAVUZLARI ---
   const getWordPools = () => {
     const all = getAllWords();
-    // Tanımı olan geçerli kelimeler (Ters quiz için anlam şart)
     const validWords = all.filter(w => w.definitions && w.definitions[0]?.meaning);
     const now = new Date();
 
-    // Kuyruktaki kelimelerin ID'leri
     const queueIds = learningQueue ? learningQueue.map(q => q.wordId) : [];
 
-    // 1. ÖĞRENME MODU (Kalanlar)
-    // Kural: Öğrenilenlerde YOK --VE-- Kuyrukta YOK (Yepyeni kelimeler)
+    // 1. ÖĞRENME MODU
     const learnPool = validWords.filter(w => 
         !knownWordIds.includes(w.id) && 
         !queueIds.includes(w.id)
     );
 
-    // 2. TEKRAR MODU (Sırası Gelenler + MEZUNLAR)
-    // Kural: (Kuyrukta VAR ve Zamanı Gelmiş) --VEYA-- (Zaten Öğrenilmiş/Mezun)
+    // 2. TEKRAR MODU
     const reviewPool = validWords.filter(w => {
         const qItem = learningQueue ? learningQueue.find(item => item.wordId === w.id) : null;
-        
-        // A) Kuyrukta ve zamanı gelmiş (SRS Tekrarı)
         const isDue = qItem && new Date(qItem.nextReview) <= now;
-        
-        // B) Zaten tamamen öğrenilmiş (Mezun Tekrarı)
         const isKnown = knownWordIds.includes(w.id);
-
         return isDue || isKnown;
     });
 
-    // 3. BEKLEME LİSTESİ (Gelecekteki Tekrarlar)
-    // Kural: Kuyrukta VAR --VE-- Zamanı GELECEKTE
+    // 3. BEKLEME LİSTESİ
     const waitingPool = validWords.filter(w => {
         const qItem = learningQueue ? learningQueue.find(item => item.wordId === w.id) : null;
         return qItem && new Date(qItem.nextReview) > now;
@@ -81,18 +72,12 @@ export default function Quiz2() {
       return;
     }
 
-    // Soruları Oluştur
     const selectedWords = [...pool].sort(() => 0.5 - Math.random()).slice(0, 20);
     const allValidWords = getAllWords().filter(w => w.definitions && w.definitions[0]?.meaning);
 
     const generated = selectedWords.map(target => {
-      // TERS MANTIK: Doğru cevap İngilizce kelimenin kendisi
       const correct = target.word;
-      
-      // Soru Metni: Kelimenin Türkçe anlamı
       const questionText = target.definitions[0].meaning;
-
-      // Şıklar: Diğer İngilizce kelimeler
       const others = allValidWords
         .filter(w => w.id !== target.id)
         .sort(() => 0.5 - Math.random())
@@ -118,8 +103,11 @@ export default function Quiz2() {
       setIsAnswered(false);
   }, [index]);
 
+  // --- CEVAP VERME (BURASI DÜZELTİLDİ) ---
   const handleAnswer = (option, e) => {
-    handleBlur(e); // Mobile Fix: Focus temizle
+    // BURASI KRİTİK: Butonun odağını (focus) anında kaldırıyoruz.
+    // e.target değil e.currentTarget kullanıyoruz.
+    if(e && e.currentTarget) e.currentTarget.blur();
 
     if (isAnswered) return;
     setIsAnswered(true); 
@@ -259,7 +247,7 @@ export default function Quiz2() {
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center p-4">
-       {/* MOBİL TIKLAMA İZİ ENGELLEYİCİ */}
+       {/* MOBİL TIKLAMA İZİ ENGELLEYİCİ STİL */}
        <style>{`
          * {
            -webkit-tap-highlight-color: transparent !important;
@@ -270,7 +258,7 @@ export default function Quiz2() {
           
           {/* HEADER */}
           <div className="flex justify-between items-center">
-             <button onClick={handleQuitEarly}><X className="w-6 h-6 text-slate-400"/></button>
+             <button onClick={handleQuitEarly} className="p-2 rounded-full active:bg-slate-100 transition-colors"><X className="w-6 h-6 text-slate-400"/></button>
              <div className="font-bold text-indigo-600">
                 {gameMode === 'review' ? 'Tekrar' : gameMode === 'learn' ? 'Öğrenme' : 'Bekleme'}: {index+1} / {questions.length}
              </div>
@@ -292,7 +280,6 @@ export default function Quiz2() {
                 {/* ŞIKLAR (İNGİLİZCE KELİMELER) */}
                 <div className="space-y-3 mt-6">
                     {current.options.map((opt, i) => {
-                        // SENİN ORİJİNAL KODUNDAKİ STİL MANTIĞI + FOCUS FIX
                         let cls = "w-full p-4 rounded-xl text-left font-medium border-2 transition-all shadow-sm focus:outline-none focus:ring-0 select-none touch-manipulation ";
                         if (isAnswered) {
                             if (opt === current.correct) cls += "bg-green-100 border-green-500 text-green-700";
