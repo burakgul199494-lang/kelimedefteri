@@ -192,7 +192,7 @@ export default function Quiz() {
                     {/* Butonlara stil bloğu aşağıda etki edecek */}
                     <button onClick={(e) => startQuiz('review', e)} disabled={reviewPool.length < 4} style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }} className="w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 hover:border-orange-200 hover:bg-orange-50 transition-all group active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus:ring-0">
                         <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-4"><div className="bg-orange-100 p-3 rounded-xl text-orange-600 group-hover:bg-orange-200 transition-colors"><RefreshCw className="w-8 h-8" /></div><div className="text-left"><div className="font-bold text-xl text-slate-800">Tekrar Modu</div><div className="text-sm text-slate-500">Öğrendiklerini pekiştir</div></div></div>
+                            <div className="flex items-center gap-4"><div className="bg-orange-100 p-3 rounded-xl text-orange-600 group-hover:bg-orange-200 transition-colors"><RefreshCw className="w-8 h-8" /></div><div className="text-left"><div className="font-bold text-xl text-slate-800">Tekrar Modu</div><div className="text-sm text-slate-500">Öğrendiklerini Pekiştir</div></div></div>
                             <div className="text-2xl font-black text-orange-600">{reviewPool.length}</div>
                         </div>
                     </button>
