@@ -346,7 +346,7 @@ export default function GapFillingGame() {
   // ===========================
   if (gameStatus === "finished") {
     const maxScore = questions.length * 5;
-    let modeTitle = "Oturum Tamamlandı!";
+    let modeTitle = "Bitti";
     if (gameMode === "learn") modeTitle = "Bitti";
     if (gameMode === "review") modeTitle = "Bitti";
 
