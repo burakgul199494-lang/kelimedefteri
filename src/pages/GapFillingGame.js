@@ -5,6 +5,7 @@ import {
   X, 
   Trophy, 
   Loader2, 
+  Target, 
   Quote, 
   Volume2, 
   Languages, 
@@ -14,8 +15,7 @@ import {
   Hourglass, 
   Home,
   Layers,
-  Square,
-  ArrowRight // Eğer bu hata verirse 'MoveRight' olarak değiştirin
+  Square // Durdurma ikonu
 } from "lucide-react";
 
 export default function GapFillingGame() {
@@ -46,7 +46,7 @@ export default function GapFillingGame() {
 
   // --- KELİME HAVUZLARI ---
   const getWordPools = () => {
-    const all = getAllWords() || []; // Hata önleyici
+    const all = getAllWords();
     const now = new Date();
 
     const validWords = all.filter(w => 
@@ -139,28 +139,16 @@ export default function GapFillingGame() {
     }
 
     return () => window.speechSynthesis.cancel();
-  }, [currentIndex, gameStatus, questions]);
+  }, [currentIndex, gameStatus]);
 
   const currentWordObj = questions[currentIndex];
-
-  // !!! GÜVENLİK KİLİDİ: Veri hazır değilse yükleniyor göster (BEYAZ EKRANI ÖNLER) !!!
-  if (gameStatus === "playing" && !currentWordObj) {
-      return (
-        <div className="min-h-screen flex items-center justify-center bg-slate-50">
-            <div className="flex flex-col items-center gap-4">
-                <Loader2 className="animate-spin text-indigo-600 w-10 h-10"/>
-                <p className="text-slate-500 font-medium">Soru yükleniyor...</p>
-            </div>
-        </div>
-      );
-  }
-
   const targetWord = currentWordObj?.word.trim() || "";
   
-  // --- MASK LE ME (Regex Düzeltildi: Sadece tam kelime) ---
+  // --- DÜZELTİLEN FONKSİYON ---
   const getMaskedSentence = () => {
       if (!currentWordObj) return "";
-      // \\b kelime sınırını ifade eder. 'want' içindeki 'a'yı eşleştirmez.
+      // \\b kelime sınırını ifade eder. 
+      // Böylece 'a' kelimesini ararken 'want' içindeki 'a'yı bulmaz.
       const regex = new RegExp(`\\b${currentWordObj.word}\\b`, "gi");
       return currentWordObj.sentence.replace(regex, "________");
   };
@@ -288,9 +276,8 @@ export default function GapFillingGame() {
   };
 
   // ===========================
-  // === UI RENDER ===
+  // === MOD SEÇİM EKRANI ===
   // ===========================
-
   if (gameStatus === "mode-selection") {
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
@@ -403,100 +390,92 @@ export default function GapFillingGame() {
           <div className="bg-white p-6 rounded-3xl shadow-xl border border-slate-100 text-center space-y-6 relative overflow-hidden min-h-[450px] flex flex-col justify-between">
              <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-blue-400 to-cyan-400"></div>
              
-             {/* 1. SORU (CÜMLE) KISMI */}
-             <div className="space-y-4 mt-2">
-               <div className="flex justify-center"><div className="bg-blue-50 p-3 rounded-full"><Quote className="w-6 h-6 text-blue-400"/></div></div>
+             {/* SORU (CÜMLE) */}
+             <div className="space-y-3 mt-2">
+               <div className="flex justify-center">
+                   <div className="bg-blue-50 p-3 rounded-full"><Quote className="w-6 h-6 text-blue-400"/></div>
+               </div>
                
-               {/* Cümle ve Cümle Okuma Butonu */}
-               <div className="flex flex-col items-center gap-3">
-                   <h2 className="text-xl font-medium text-slate-700 leading-relaxed font-serif italic px-2">
+               {/* --- CÜMLE VE SES BUTONU --- */}
+               <div className="flex flex-col items-center gap-2">
+                   <h2 className="text-xl font-medium text-slate-700 leading-relaxed font-serif italic">
                        {getMaskedSentence()}
                    </h2>
-                   
-                   {/* CÜMLE OKUMA BUTONU (SÖZLÜK TARZI: SABİT BEYAZ, SADECE İKON RENKLENİR) */}
+                   {/* Cümle Okuma Butonu */}
                    <button 
                        onClick={() => handleSpeak(currentWordObj.sentence, 'sentence')} 
-                       style={{ WebkitTapHighlightColor: 'transparent' }}
-                       className="p-3 bg-white border border-slate-200 rounded-full hover:bg-slate-50 transition-colors shadow-sm focus:outline-none"
-                       title="Cümleyi Oku"
+                       className="p-1.5 bg-blue-50 text-blue-500 rounded-full hover:bg-blue-100 transition-colors"
+                       title={activeAudio === 'sentence' ? "Durdur" : "Cümleyi Oku"}
                    >
-                       {/* Aktifken kırmızı stop ikonu, değilse gri volume ikonu */}
-                       {activeAudio === 'sentence' ? <Square className="w-5 h-5 text-red-500 fill-current"/> : <Volume2 className="w-5 h-5 text-slate-600"/>}
+                       {activeAudio === 'sentence' ? <Square className="w-4 h-4 text-red-500 fill-current"/> : <Volume2 className="w-4 h-4"/>}
                    </button>
                </div>
                
-               {/* İPUCU KUTUSU (Sözlükteki gibi) */}
+               {/* İPUCU KUTUSU */}
                {englishDefinition && (
-                 <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 text-sm text-slate-600 mt-2 text-left shadow-sm">
-                    <div className="flex items-center justify-between gap-2 mb-2">
-                        <span className="text-xs font-bold text-slate-400 uppercase flex items-center gap-1"><Lightbulb className="w-3 h-3"/> İpucu (Tanım)</span>
-                        
-                        <div className="flex gap-2">
-                            {/* İPUCU SES BUTONU (SÖZLÜK TARZI: SABİT BEYAZ) */}
+                 <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 text-sm text-slate-600 mt-2">
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                        <span className="text-xs font-bold text-slate-400 uppercase">Tanım (İpucu)</span>
+                        <div className="flex gap-1">
+                            {/* İpucu Ses Butonu */}
                             <button 
                                 onClick={() => handleSpeak(englishDefinition, 'hint')} 
-                                style={{ WebkitTapHighlightColor: 'transparent' }}
-                                className="p-2 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors focus:outline-none shadow-sm"
+                                className="p-1 bg-white border rounded-lg hover:bg-blue-50 text-blue-600"
+                                title={activeAudio === 'hint' ? "Durdur" : "Oku"}
                             >
-                                {activeAudio === 'hint' ? <Square className="w-4 h-4 text-red-500 fill-current"/> : <Volume2 className="w-4 h-4 text-slate-600"/>}
+                                {activeAudio === 'hint' ? <Square className="w-3 h-3 text-red-500 fill-current"/> : <Volume2 className="w-3 h-3"/>}
                             </button>
-
-                            {/* ÇEVİRİ BUTONU (TOGGLE: BEYAZ <-> MAVİ) */}
+                            
                             {turkishDefinition && (
-                                <button 
-                                  onClick={() => setShowHintTr(!showHintTr)} 
-                                  style={{ WebkitTapHighlightColor: 'transparent' }}
-                                  className={`p-2 border rounded-lg transition-colors focus:outline-none shadow-sm 
-                                    ${showHintTr 
-                                        ? "bg-indigo-100 border-indigo-200 text-indigo-600" 
-                                        : "bg-white border-slate-200 text-slate-400 hover:text-indigo-600 hover:bg-slate-50"
-                                    }`}
-                                >
-                                    <Languages className="w-4 h-4"/>
+                                <button onClick={() => setShowHintTr(!showHintTr)} className={`p-1 border rounded-lg hover:bg-indigo-50 ${showHintTr ? "bg-indigo-100 text-indigo-600" : "bg-white text-indigo-600"}`}>
+                                    <Languages className="w-3 h-3"/>
                                 </button>
                             )}
                         </div>
                     </div>
-                    <p className="italic text-slate-600">"{englishDefinition}"</p>
+                    <p className="italic">"{englishDefinition}"</p>
                     {showHintTr && turkishDefinition && <div className="mt-2 pt-2 border-t border-slate-200 text-indigo-700 font-medium text-xs animate-in fade-in">TR: {turkishDefinition}</div>}
                  </div>
                )}
              </div>
 
-             {/* 2. YAZILAN HARFLER (Input Alanı) */}
-             <div className="flex flex-wrap justify-center gap-1.5 min-h-[50px] items-end content-center my-2">
+             {/* YAZI ALANI */}
+             <div className="flex flex-wrap justify-center gap-1 min-h-[60px] items-end content-center">
                 {targetWord.split('').map((_, idx) => {
                   const char = completedLetters[idx];
+                  const isFilled = char !== undefined;
                   return (
                     <div 
                       key={idx} 
                       className={`
-                        w-8 h-10 md:w-10 md:h-12 flex items-center justify-center font-bold border-b-2 rounded-t-lg transition-all text-xl
-                        ${char ? "border-indigo-500 text-indigo-700 bg-indigo-50" : "border-slate-300 bg-slate-50 text-transparent"}
+                        ${styles.box} ${styles.text} 
+                        flex items-center justify-center font-bold border-b-4 rounded-t-lg transition-all
+                        ${isFilled ? "border-blue-500 text-blue-700 bg-blue-50 translate-y-0" : "border-slate-200 bg-slate-50 text-transparent"}
                       `}
                     >
-                      {char || "_"}
+                      {char}
                     </div>
                   );
                 })}
              </div>
 
-             {/* 3. KARIŞIK HARFLER (YENİ SÖZLÜK BUTON STİLİ: SADE, İZSİZ) */}
-             <div className="flex flex-wrap justify-center gap-2 content-center">
+             {/* KARIŞIK HARFLER (BUTONLAR) */}
+             <div key={currentIndex} className="flex flex-wrap justify-center gap-2 content-center">
                 {shuffledLetters.map((item) => (
                   <button
                     key={item.id}
-                    onClick={() => handleLetterClick(item)}
+                    onClick={(e) => handleLetterClick(item, e)}
                     disabled={item.isUsed || isWordComplete}
                     style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
                     className={`
-                      w-11 h-12 md:w-12 md:h-14 rounded-xl font-bold text-lg border transition-all duration-100 select-none
-                      flex items-center justify-center outline-none focus:outline-none focus:ring-0
+                      w-10 h-10 md:w-11 md:h-11 rounded-xl font-bold text-lg shadow-[0_3px_0_rgb(0,0,0,0.1)] 
+                      active:bg-blue-100 active:border-blue-300 active:text-blue-600 active:shadow-none active:translate-y-[2px]
+                      transition-all duration-75 select-none touch-manipulation focus:outline-none focus:ring-0
                       ${item.isUsed 
-                          ? "opacity-0 pointer-events-none scale-90" 
+                          ? "opacity-0 pointer-events-none scale-0" 
                           : wrongAnimationId === item.id 
-                              ? "bg-red-50 text-red-500 border-red-200 animate-[shake_0.5s_ease-in-out]" 
-                              : "bg-white text-slate-700 border-slate-200 shadow-sm active:bg-slate-50 active:scale-95 hover:border-indigo-200 hover:text-indigo-600"
+                              ? "bg-red-500 text-white shadow-none animate-[shake_0.5s_ease-in-out]" 
+                              : "bg-white border-2 border-slate-200 text-slate-700"
                       }
                     `}
                   >
@@ -505,29 +484,26 @@ export default function GapFillingGame() {
                 ))}
              </div>
 
-             {/* 4. ALT KISIM (İPUCU BUTONU) */}
-             <div className="flex items-center justify-center pt-2 mt-auto">
+             {/* KONTROL BUTONLARI (İpucu) */}
+             <div className="flex items-center justify-center gap-4 pt-4 border-t border-slate-100 mt-auto">
                 <button 
                   onClick={handleHint} 
                   disabled={isWordComplete}
                   style={{ WebkitTapHighlightColor: 'transparent' }}
-                  className="flex items-center gap-2 px-6 py-3 text-amber-600 font-bold hover:bg-amber-50 rounded-full transition-colors active:scale-95 disabled:opacity-50"
+                  className="flex items-center gap-2 px-5 py-3 bg-amber-100 text-amber-700 rounded-2xl font-bold active:bg-amber-200 transition-colors active:scale-95 disabled:opacity-50 focus:outline-none"
                 >
                   <Lightbulb className="w-5 h-5"/> 
-                  <span className="text-sm">İpucu ({hintCount === 0 ? "5p" : hintCount === 1 ? "2p" : "0p"})</span>
+                  <span className="text-xs ml-1 flex flex-col items-start leading-none">
+                      <span>İpucu ({hintCount === 0 ? "5p" : hintCount === 1 ? "2p" : "0p"})</span>
+                      <span className="text-[9px] text-amber-600/80">Hata: {mistakeCount}/2</span>
+                  </span>
                 </button>
              </div>
 
           </div>
 
-          {/* BİTİR VE ÇIK BUTONU (SÖZLÜK TARZI: SADE) */}
-          <button 
-            onClick={handleQuitEarly} 
-            style={{ WebkitTapHighlightColor: 'transparent' }}
-            className="w-full py-4 bg-indigo-50 text-indigo-600 font-bold rounded-xl flex items-center justify-center gap-2 hover:bg-indigo-100 transition-colors active:scale-95"
-          >
-            <ArrowRight className="w-5 h-5"/>
-            Bitir (Puanı Al ve Çık)
+          <button onClick={handleQuitEarly} className="w-full text-center text-slate-400 hover:text-red-500 text-sm font-medium transition-colors">
+            Bitir ve Çık
           </button>
 
           <style jsx>{`
