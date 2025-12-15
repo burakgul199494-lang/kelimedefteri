@@ -333,9 +333,9 @@ export default function WritingGame2() {
   // ===========================
   if (gameStatus === "finished") {
     const max = questions.length * 5;
-    let modeTitle = "Test Tamamlandı!";
-    if (gameMode === "learn") modeTitle = "Dinleme Testi Bitti";
-    if (gameMode === "review") modeTitle = "Dinleme Testi Bitti";
+    let modeTitle = "Bitti";
+    if (gameMode === "learn") modeTitle = "Bitti";
+    if (gameMode === "review") modeTitle = "Bitti";
 
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
