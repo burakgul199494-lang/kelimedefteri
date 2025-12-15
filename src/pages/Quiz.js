@@ -66,8 +66,15 @@ export default function Quiz() {
 
   const { learnPool, reviewPool, waitingPool } = getWordPools();
 
+  // --- IPHONE FIX: FOCUS TEMİZLEME (BU ÇOK ÖNEMLİ) ---
+  const handleBlur = (e) => {
+      if (e && e.currentTarget) e.currentTarget.blur();
+  };
+
   // --- OYUN BAŞLATMA ---
-  const startQuiz = (mode) => {
+  const startQuiz = (mode, e) => {
+    handleBlur(e); // Tıklama izini hemen sil
+
     setGameMode(mode);
     let pool = [];
 
@@ -118,13 +125,8 @@ export default function Quiz() {
       }
   }, [index, gameStatus]);
 
-  // --- IPHONE FIX: FOCUS TEMİZLEME ---
-  const handleBlur = (e) => {
-      if (e && e.currentTarget) e.currentTarget.blur();
-  };
-
   const handleAnswer = (option, e) => {
-    handleBlur(e); // Mobile Fix
+    handleBlur(e); // Şıklara basınca iz kalmasın
 
     if (isAnswered) return;
     setIsAnswered(true); 
@@ -197,9 +199,10 @@ export default function Quiz() {
                 <div className="space-y-4">
                     {/* 1. TEKRAR MODU */}
                     <button 
-                        onClick={() => startQuiz('review')} 
+                        onClick={(e) => startQuiz('review', e)} 
                         disabled={reviewPool.length < 4}
-                        className="w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 hover:border-orange-200 hover:bg-orange-50 transition-all group active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
+                        style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
+                        className="w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 hover:border-orange-200 hover:bg-orange-50 transition-all group active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus:ring-0"
                     >
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-4">
@@ -217,9 +220,10 @@ export default function Quiz() {
 
                     {/* 2. ÖĞRENME MODU */}
                     <button 
-                        onClick={() => startQuiz('learn')} 
+                        onClick={(e) => startQuiz('learn', e)} 
                         disabled={learnPool.length < 4}
-                        className="w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 hover:border-indigo-200 hover:bg-indigo-50 transition-all group active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
+                        style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
+                        className="w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 hover:border-indigo-200 hover:bg-indigo-50 transition-all group active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus:ring-0"
                     >
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-4">
@@ -237,9 +241,10 @@ export default function Quiz() {
 
                     {/* 3. BEKLEME LİSTESİ */}
                     <button 
-                        onClick={() => startQuiz('waiting')} 
+                        onClick={(e) => startQuiz('waiting', e)} 
                         disabled={waitingPool.length < 4}
-                        className="w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 hover:border-slate-300 hover:bg-slate-50 transition-all group active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
+                        style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
+                        className="w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 hover:border-slate-300 hover:bg-slate-50 transition-all group active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus:ring-0"
                     >
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-4">
@@ -331,17 +336,25 @@ export default function Quiz() {
                             <div className="bg-indigo-50 text-indigo-800 px-4 py-2 rounded-xl border border-indigo-100 flex items-center gap-2">
                                 <span className="text-sm italic">"{hintEng}"</span>
                                 
-                                {/* 1. İPUCU SES BUTONU (DÜZENLENDİ: BLUR) */}
+                                {/* 1. İPUCU SES BUTONU (SÖZLÜK TARZI + BLUR) */}
                                 <button 
                                     onClick={(e) => {
                                         handleBlur(e);
                                         handleSpeak(hintEng, 'hint');
                                     }}
-                                    style={{ outline: 'none' }}
-                                    className="p-1 bg-white rounded-full hover:bg-indigo-100 transition-colors focus:outline-none focus:ring-0" 
+                                    style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
+                                    className={`
+                                        p-1.5 rounded-lg border flex items-center justify-center
+                                        focus:outline-none focus:ring-0
+                                        transition-colors duration-200
+                                        ${activeAudio === 'hint'
+                                            ? 'bg-indigo-600 text-white border-indigo-600'
+                                            : 'bg-white text-slate-400 border-slate-200 hover:bg-slate-50'
+                                        }
+                                    `}
                                     title={activeAudio === 'hint' ? "Durdur" : "Oku"}
                                 >
-                                    {activeAudio === 'hint' ? <Square className="w-3 h-3 text-red-500 fill-current"/> : <Volume2 className="w-3 h-3 text-indigo-500"/>}
+                                    {activeAudio === 'hint' ? <Square className="w-3 h-3 fill-current"/> : <Volume2 className="w-3 h-3"/>}
                                 </button>
                                 
                                 {hintTr && (
@@ -350,11 +363,19 @@ export default function Quiz() {
                                             handleBlur(e);
                                             setShowHintTr(!showHintTr);
                                         }} 
-                                        style={{ outline: 'none' }}
-                                        className={`p-1 rounded-full transition-colors focus:outline-none focus:ring-0 ${showHintTr ? "bg-indigo-200" : "bg-white hover:bg-indigo-100"}`} 
+                                        style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
+                                        className={`
+                                            p-1.5 rounded-lg border flex items-center justify-center
+                                            focus:outline-none focus:ring-0
+                                            transition-colors duration-200
+                                            ${showHintTr 
+                                                ? "bg-indigo-100 text-indigo-600 border-indigo-200" 
+                                                : "bg-white text-slate-400 border-slate-200 hover:bg-slate-50"
+                                            }
+                                        `}
                                         title="Çeviri"
                                     >
-                                        <Languages className="w-3 h-3 text-indigo-500"/>
+                                        <Languages className="w-3 h-3"/>
                                     </button>
                                 )}
                             </div>
@@ -369,20 +390,29 @@ export default function Quiz() {
                     
                     <h2 className="text-4xl font-extrabold text-slate-800">{current.wordObj.word}</h2>
                     
-                    {/* 2. ANA KELİME SES BUTONU (DÜZENLENDİ: BLUR) */}
+                    {/* 2. ANA KELİME SES BUTONU (SÖZLÜK TARZI + BLUR) */}
                     <button 
                         onClick={(e) => {
                             handleBlur(e);
                             handleSpeak(current.wordObj.word, 'main');
                         }}
-                        style={{ outline: 'none' }}
-                        className="mx-auto p-2 bg-slate-50 rounded-full text-indigo-500 hover:bg-indigo-100 transition-colors focus:outline-none focus:ring-0"
+                        style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
+                        className={`
+                            p-3 rounded-full border flex items-center justify-center mx-auto
+                            focus:outline-none focus:ring-0
+                            transition-colors duration-200
+                            ${activeAudio === 'main'
+                                ? 'bg-indigo-600 text-white border-indigo-600'
+                                : 'bg-slate-50 text-slate-500 border-slate-100 hover:bg-slate-100'
+                            }
+                        `}
                         title={activeAudio === 'main' ? "Durdur" : "Oku"}
                     >
-                        {activeAudio === 'main' ? <Square className="w-6 h-6 text-red-500 fill-current"/> : <Volume2 className="w-6 h-6"/>}
+                        {activeAudio === 'main' ? <Square className="w-6 h-6 fill-current"/> : <Volume2 className="w-6 h-6"/>}
                     </button>
                 </div>
 
+                {/* ŞIKLAR */}
                 <div className="space-y-3 mt-6">
                     {current.options.map((opt, i) => {
                         let cls = "w-full p-4 rounded-xl text-left font-medium border-2 transition-all shadow-sm focus:outline-none focus:ring-0 select-none ";
@@ -391,7 +421,7 @@ export default function Quiz() {
                             else if (opt === selected) cls += "bg-red-100 border-red-500 text-red-700";
                             else cls += "opacity-50";
                         } else {
-                            cls += "bg-white border-slate-200 hover:border-indigo-300 hover:bg-indigo-50 active:bg-indigo-50";
+                            cls += "bg-white border-slate-200 hover:border-indigo-300 active:bg-indigo-50"; // Hover efekti azaltıldı
                         }
                         return (
                             <button 
@@ -409,7 +439,7 @@ export default function Quiz() {
               </>
           )}
 
-          <button onClick={handleQuitEarly} className="w-full mt-6 flex items-center justify-center gap-2 text-slate-400 hover:text-red-500 transition-colors text-sm font-medium mx-auto">
+          <button onClick={handleQuitEarly} style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }} className="w-full mt-6 flex items-center justify-center gap-2 text-slate-400 hover:text-red-500 transition-colors text-sm font-medium mx-auto focus:outline-none focus:ring-0">
             Bitir (Puanı Al ve Çık)
           </button>
 
