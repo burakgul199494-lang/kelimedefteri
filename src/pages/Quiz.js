@@ -30,8 +30,7 @@ export default function Quiz() {
   
   const [showHintTr, setShowHintTr] = useState(false);
   
-  // --- SES TAKİBİ (DÜZELTİLDİ) ---
-  // null = hiçbiri çalmıyor, 'main' = ana kelime, 'hint' = ipucu
+  // --- SES TAKİBİ ---
   const [activeAudio, setActiveAudio] = useState(null);
 
   // --- KELİME HAVUZLARI ---
@@ -119,8 +118,13 @@ export default function Quiz() {
       }
   }, [index, gameStatus]);
 
+  // --- IPHONE FIX: FOCUS TEMİZLEME ---
+  const handleBlur = (e) => {
+      if (e && e.currentTarget) e.currentTarget.blur();
+  };
+
   const handleAnswer = (option, e) => {
-    if(e && e.target) e.target.blur();
+    handleBlur(e); // Mobile Fix
 
     if (isAnswered) return;
     setIsAnswered(true); 
@@ -148,16 +152,14 @@ export default function Quiz() {
       setGameStatus("finished"); 
   };
 
-  // --- SES FONKSİYONU (ID İLE AYRIŞTIRMA) ---
+  // --- SES FONKSİYONU ---
   const handleSpeak = (txt, id) => { 
     if(!txt) return;
 
-    // Eğer tıklanan buton zaten çalıyorsa -> DURDUR
     if (activeAudio === id) {
         window.speechSynthesis.cancel();
         setActiveAudio(null);
     } else {
-        // Başka bir şey çalıyorsa önce onu sustur, sonra yeniyi çal
         window.speechSynthesis.cancel();
         
         const u = new SpeechSynthesisUtterance(txt); 
@@ -167,7 +169,7 @@ export default function Quiz() {
         u.onerror = () => setActiveAudio(null);
 
         window.speechSynthesis.speak(u); 
-        setActiveAudio(id); // Hangi butonun çaldığını kaydet ('hint' veya 'main')
+        setActiveAudio(id); 
     }
   };
 
@@ -298,6 +300,13 @@ export default function Quiz() {
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center p-4">
+       {/* IPHONE FIX STYLE */}
+       <style>{`
+         * {
+           -webkit-tap-highlight-color: transparent !important;
+         }
+       `}</style>
+
        <div className="w-full max-w-md space-y-6 mt-4">
           
           <div className="flex justify-between items-center">
@@ -322,10 +331,14 @@ export default function Quiz() {
                             <div className="bg-indigo-50 text-indigo-800 px-4 py-2 rounded-xl border border-indigo-100 flex items-center gap-2">
                                 <span className="text-sm italic">"{hintEng}"</span>
                                 
-                                {/* 1. İPUCU SES BUTONU */}
+                                {/* 1. İPUCU SES BUTONU (DÜZENLENDİ: BLUR) */}
                                 <button 
-                                    onClick={() => handleSpeak(hintEng, 'hint')} // 'hint' ID'si
-                                    className="p-1 bg-white rounded-full hover:bg-indigo-100 transition-colors" 
+                                    onClick={(e) => {
+                                        handleBlur(e);
+                                        handleSpeak(hintEng, 'hint');
+                                    }}
+                                    style={{ outline: 'none' }}
+                                    className="p-1 bg-white rounded-full hover:bg-indigo-100 transition-colors focus:outline-none focus:ring-0" 
                                     title={activeAudio === 'hint' ? "Durdur" : "Oku"}
                                 >
                                     {activeAudio === 'hint' ? <Square className="w-3 h-3 text-red-500 fill-current"/> : <Volume2 className="w-3 h-3 text-indigo-500"/>}
@@ -333,8 +346,12 @@ export default function Quiz() {
                                 
                                 {hintTr && (
                                     <button 
-                                        onClick={() => setShowHintTr(!showHintTr)} 
-                                        className={`p-1 rounded-full transition-colors ${showHintTr ? "bg-indigo-200" : "bg-white hover:bg-indigo-100"}`} 
+                                        onClick={(e) => {
+                                            handleBlur(e);
+                                            setShowHintTr(!showHintTr);
+                                        }} 
+                                        style={{ outline: 'none' }}
+                                        className={`p-1 rounded-full transition-colors focus:outline-none focus:ring-0 ${showHintTr ? "bg-indigo-200" : "bg-white hover:bg-indigo-100"}`} 
                                         title="Çeviri"
                                     >
                                         <Languages className="w-3 h-3 text-indigo-500"/>
@@ -352,10 +369,14 @@ export default function Quiz() {
                     
                     <h2 className="text-4xl font-extrabold text-slate-800">{current.wordObj.word}</h2>
                     
-                    {/* 2. ANA KELİME SES BUTONU */}
+                    {/* 2. ANA KELİME SES BUTONU (DÜZENLENDİ: BLUR) */}
                     <button 
-                        onClick={() => handleSpeak(current.wordObj.word, 'main')} // 'main' ID'si
-                        className="mx-auto p-2 bg-slate-50 rounded-full text-indigo-500 hover:bg-indigo-100 transition-colors"
+                        onClick={(e) => {
+                            handleBlur(e);
+                            handleSpeak(current.wordObj.word, 'main');
+                        }}
+                        style={{ outline: 'none' }}
+                        className="mx-auto p-2 bg-slate-50 rounded-full text-indigo-500 hover:bg-indigo-100 transition-colors focus:outline-none focus:ring-0"
                         title={activeAudio === 'main' ? "Durdur" : "Oku"}
                     >
                         {activeAudio === 'main' ? <Square className="w-6 h-6 text-red-500 fill-current"/> : <Volume2 className="w-6 h-6"/>}
@@ -364,7 +385,7 @@ export default function Quiz() {
 
                 <div className="space-y-3 mt-6">
                     {current.options.map((opt, i) => {
-                        let cls = "w-full p-4 rounded-xl text-left font-medium border-2 transition-all shadow-sm ";
+                        let cls = "w-full p-4 rounded-xl text-left font-medium border-2 transition-all shadow-sm focus:outline-none focus:ring-0 select-none ";
                         if (isAnswered) {
                             if (opt === current.correct) cls += "bg-green-100 border-green-500 text-green-700";
                             else if (opt === selected) cls += "bg-red-100 border-red-500 text-red-700";
@@ -377,6 +398,7 @@ export default function Quiz() {
                                     key={`${index}-${i}`} 
                                     onClick={(e)=>handleAnswer(opt, e)} 
                                     disabled={isAnswered} 
+                                    style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
                                     className={cls}
                             >
                                     {opt}
