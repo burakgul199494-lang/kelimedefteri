@@ -240,13 +240,13 @@ export default function WritingGame() {
                     <button onClick={() => navigate("/")} className="p-2 bg-white rounded-full shadow-sm hover:bg-slate-100">
                     <Home className="w-5 h-5 text-slate-600" />
                     </button>
-                    <h2 className="text-xl font-bold text-slate-800">Yazma Alıştırması</h2>
+                    <h2 className="text-xl font-bold text-slate-800">Yazma</h2>
                     <div className="w-9"></div>
                 </div>
 
                 <div className="text-center py-6">
-                    <h1 className="text-3xl font-black text-slate-800 mb-2">Nasıl Çalışalım?</h1>
-                    <p className="text-slate-500">Bugünkü hedefini seç ve kelimeleri yazmaya başla.</p>
+                    <h1 className="text-3xl font-black text-slate-800 mb-2">Nasıl Test Edelim?</h1>
+                    <p className="text-slate-500">Türkçesi Verilen İngilizce Kelimeyi Yaz.</p>
                 </div>
 
                 <div className="space-y-4">
@@ -266,7 +266,7 @@ export default function WritingGame() {
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-4">
                                 <div className="bg-indigo-100 p-3 rounded-xl text-indigo-600"><BrainCircuit className="w-8 h-8" /></div>
-                                <div className="text-left"><div className="font-bold text-xl text-slate-800">Öğrenme Modu</div><div className="text-sm text-slate-500">Yeni kelimeler yaz</div></div>
+                                <div className="text-left"><div className="font-bold text-xl text-slate-800">Öğrenme Modu</div><div className="text-sm text-slate-500">Yeni Kelimeler</div></div>
                             </div>
                             <div className="text-2xl font-black text-indigo-600">{learnPool.length}</div>
                         </div>
@@ -277,7 +277,7 @@ export default function WritingGame() {
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-4">
                                 <div className="bg-slate-100 p-3 rounded-xl text-slate-500"><Hourglass className="w-8 h-8" /></div>
-                                <div className="text-left"><div className="font-bold text-xl text-slate-700">Bekleme Listesi</div><div className="text-sm text-slate-400">Gelecekteki kelimeler</div></div>
+                                <div className="text-left"><div className="font-bold text-xl text-slate-700">Bekleme Listesi</div><div className="text-sm text-slate-400">Henüz Zamanı Gelmeyen Kelimeler</div></div>
                             </div>
                             <div className="text-2xl font-black text-slate-500">{waitingPool.length}</div>
                         </div>
