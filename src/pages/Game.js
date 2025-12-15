@@ -406,7 +406,7 @@ export default function Game() {
         )}
 
         <button onClick={handleQuitEarly} className="icon-btn mt-6 flex items-center justify-center gap-2 text-slate-400 p-2 rounded-full active:bg-slate-100 transition-colors text-sm font-medium mx-auto focus:outline-none">
-          <Target className="w-4 h-4" /> Bitir
+          Bitir (Puanı Al ve Çık)
         </button>
       </div>
     </div>
