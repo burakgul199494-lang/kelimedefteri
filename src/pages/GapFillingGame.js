@@ -144,11 +144,9 @@ export default function GapFillingGame() {
   const currentWordObj = questions[currentIndex];
   const targetWord = currentWordObj?.word.trim() || "";
   
-  // --- DÜZELTİLEN FONKSİYON ---
+  // --- DÜZELTİLEN FONKSİYON (REGEX) ---
   const getMaskedSentence = () => {
       if (!currentWordObj) return "";
-      // \\b kelime sınırını ifade eder. 
-      // Böylece 'a' kelimesini ararken 'want' içindeki 'a'yı bulmaz.
       const regex = new RegExp(`\\b${currentWordObj.word}\\b`, "gi");
       return currentWordObj.sentence.replace(regex, "________");
   };
@@ -396,18 +394,24 @@ export default function GapFillingGame() {
                    <div className="bg-blue-50 p-3 rounded-full"><Quote className="w-6 h-6 text-blue-400"/></div>
                </div>
                
-               {/* --- CÜMLE VE SES BUTONU --- */}
+               {/* --- CÜMLE VE SES BUTONU (DÜZENLENDİ: İZ BIRAKMAYAN SÖZLÜK BUTONU) --- */}
                <div className="flex flex-col items-center gap-2">
                    <h2 className="text-xl font-medium text-slate-700 leading-relaxed font-serif italic">
                        {getMaskedSentence()}
                    </h2>
                    {/* Cümle Okuma Butonu */}
                    <button 
-                       onClick={() => handleSpeak(currentWordObj.sentence, 'sentence')} 
-                       className="p-1.5 bg-blue-50 text-blue-500 rounded-full hover:bg-blue-100 transition-colors"
+                       onClick={() => handleSpeak(currentWordObj.sentence, 'sentence')}
+                       style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
+                       className={`
+                         p-2 rounded-full border flex items-center justify-center
+                         focus:outline-none focus:ring-0 select-none touch-manipulation
+                         transition-colors duration-200
+                         ${activeAudio === 'sentence' ? 'bg-indigo-50 border-indigo-200 text-indigo-600' : 'bg-blue-50 text-blue-500 border-transparent hover:bg-blue-100'}
+                       `}
                        title={activeAudio === 'sentence' ? "Durdur" : "Cümleyi Oku"}
                    >
-                       {activeAudio === 'sentence' ? <Square className="w-4 h-4 text-red-500 fill-current"/> : <Volume2 className="w-4 h-4"/>}
+                       {activeAudio === 'sentence' ? <Square className="w-4 h-4 fill-current"/> : <Volume2 className="w-4 h-4"/>}
                    </button>
                </div>
                
@@ -417,17 +421,33 @@ export default function GapFillingGame() {
                     <div className="flex items-center justify-between gap-2 mb-1">
                         <span className="text-xs font-bold text-slate-400 uppercase">Tanım (İpucu)</span>
                         <div className="flex gap-1">
-                            {/* İpucu Ses Butonu */}
+                            {/* İpucu Ses Butonu (DÜZENLENDİ: İZ BIRAKMAYAN) */}
                             <button 
-                                onClick={() => handleSpeak(englishDefinition, 'hint')} 
-                                className="p-1 bg-white border rounded-lg hover:bg-blue-50 text-blue-600"
+                                onClick={() => handleSpeak(englishDefinition, 'hint')}
+                                style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
+                                className={`
+                                  p-1.5 rounded-lg border flex items-center justify-center
+                                  focus:outline-none focus:ring-0 select-none touch-manipulation
+                                  transition-colors duration-200
+                                  ${activeAudio === 'hint' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-blue-600 border-slate-200 hover:bg-blue-50'}
+                                `}
                                 title={activeAudio === 'hint' ? "Durdur" : "Oku"}
                             >
-                                {activeAudio === 'hint' ? <Square className="w-3 h-3 text-red-500 fill-current"/> : <Volume2 className="w-3 h-3"/>}
+                                {activeAudio === 'hint' ? <Square className="w-3 h-3 fill-current"/> : <Volume2 className="w-3 h-3"/>}
                             </button>
                             
+                            {/* Çeviri Butonu (DÜZENLENDİ: İZ BIRAKMAYAN) */}
                             {turkishDefinition && (
-                                <button onClick={() => setShowHintTr(!showHintTr)} className={`p-1 border rounded-lg hover:bg-indigo-50 ${showHintTr ? "bg-indigo-100 text-indigo-600" : "bg-white text-indigo-600"}`}>
+                                <button 
+                                  onClick={() => setShowHintTr(!showHintTr)} 
+                                  style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
+                                  className={`
+                                    p-1.5 rounded-lg border flex items-center justify-center
+                                    focus:outline-none focus:ring-0 select-none touch-manipulation
+                                    transition-colors duration-200
+                                    ${showHintTr ? "bg-indigo-100 text-indigo-600 border-indigo-200" : "bg-white text-indigo-600 border-slate-200 hover:bg-indigo-50"}
+                                  `}
+                                >
                                     <Languages className="w-3 h-3"/>
                                 </button>
                             )}
@@ -459,7 +479,7 @@ export default function GapFillingGame() {
                 })}
              </div>
 
-             {/* KARIŞIK HARFLER (BUTONLAR) */}
+             {/* KARIŞIK HARFLER (BUTONLAR) - DÜZENLENDİ: İZ BIRAKMAYAN */}
              <div key={currentIndex} className="flex flex-wrap justify-center gap-2 content-center">
                 {shuffledLetters.map((item) => (
                   <button
@@ -469,13 +489,13 @@ export default function GapFillingGame() {
                     style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
                     className={`
                       w-10 h-10 md:w-11 md:h-11 rounded-xl font-bold text-lg shadow-[0_3px_0_rgb(0,0,0,0.1)] 
-                      active:bg-blue-100 active:border-blue-300 active:text-blue-600 active:shadow-none active:translate-y-[2px]
-                      transition-all duration-75 select-none touch-manipulation focus:outline-none focus:ring-0
+                      focus:outline-none focus:ring-0 select-none touch-manipulation
+                      transition-all duration-75 
                       ${item.isUsed 
                           ? "opacity-0 pointer-events-none scale-0" 
                           : wrongAnimationId === item.id 
                               ? "bg-red-500 text-white shadow-none animate-[shake_0.5s_ease-in-out]" 
-                              : "bg-white border-2 border-slate-200 text-slate-700"
+                              : "bg-white border-2 border-slate-200 text-slate-700 active:bg-blue-100 active:border-blue-300 active:text-blue-600 active:shadow-none active:translate-y-[2px]"
                       }
                     `}
                   >
@@ -484,13 +504,13 @@ export default function GapFillingGame() {
                 ))}
              </div>
 
-             {/* KONTROL BUTONLARI (İpucu) */}
+             {/* KONTROL BUTONLARI (İpucu) - DÜZENLENDİ: İZ BIRAKMAYAN */}
              <div className="flex items-center justify-center gap-4 pt-4 border-t border-slate-100 mt-auto">
                 <button 
                   onClick={handleHint} 
                   disabled={isWordComplete}
-                  style={{ WebkitTapHighlightColor: 'transparent' }}
-                  className="flex items-center gap-2 px-5 py-3 bg-amber-100 text-amber-700 rounded-2xl font-bold active:bg-amber-200 transition-colors active:scale-95 disabled:opacity-50 focus:outline-none"
+                  style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
+                  className="flex items-center gap-2 px-5 py-3 bg-amber-100 text-amber-700 rounded-2xl font-bold active:bg-amber-200 transition-colors active:scale-95 disabled:opacity-50 focus:outline-none focus:ring-0 select-none touch-manipulation"
                 >
                   <Lightbulb className="w-5 h-5"/> 
                   <span className="text-xs ml-1 flex flex-col items-start leading-none">
@@ -502,7 +522,7 @@ export default function GapFillingGame() {
 
           </div>
 
-          <button onClick={handleQuitEarly} className="w-full text-center text-slate-400 hover:text-red-500 text-sm font-medium transition-colors">
+          <button onClick={handleQuitEarly} style={{ WebkitTapHighlightColor: 'transparent' }} className="w-full text-center text-slate-400 hover:text-red-500 text-sm font-medium transition-colors focus:outline-none">
             Bitir ve Çık
           </button>
 
