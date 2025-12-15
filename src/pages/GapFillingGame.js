@@ -22,31 +22,6 @@ export default function GapFillingGame() {
   const { getAllWords, knownWordIds, learningQueue, addScore } = useData();
   const navigate = useNavigate();
 
-const ActionButton = ({ icon: Icon, onClick, isActive, title }) => (
-  <button
-    onClick={onClick}
-    title={title}
-    style={{ WebkitTapHighlightColor: "transparent", outline: "none" }}
-    className={`
-      p-2 rounded-full border flex items-center justify-center
-      focus:outline-none focus:ring-0
-      transition-colors duration-200
-      ${isActive
-        ? "bg-indigo-600 text-white border-indigo-600"
-        : "bg-white text-slate-400 border-slate-200"}
-    `}
-  >
-    <Icon className="w-4 h-4 fill-current" />
-  </button>
-);
-
-
-
-
-
-
-  
-
   // --- OYUN STATE'LERİ ---
   const [gameMode, setGameMode] = useState(null);
   const [gameStatus, setGameStatus] = useState("mode-selection"); 
@@ -427,12 +402,11 @@ const ActionButton = ({ icon: Icon, onClick, isActive, title }) => (
                        {getMaskedSentence()}
                    </h2>
                    {/* Cümle Okuma Butonu */}
-                   <ActionButton
-  icon={activeAudio === "sentence" ? Square : Volume2}
-  onClick={() => handleSpeak(currentWordObj.sentence, "sentence")}
-  isActive={activeAudio === "sentence"}
-  title={activeAudio === "sentence" ? "Durdur" : "Cümleyi Oku"}
-/>
+                   <button 
+                       onClick={() => handleSpeak(currentWordObj.sentence, 'sentence')} 
+                       className="p-1.5 bg-blue-50 text-blue-500 rounded-full hover:bg-blue-100 transition-colors"
+                       title={activeAudio === 'sentence' ? "Durdur" : "Cümleyi Oku"}
+                   >
                        {activeAudio === 'sentence' ? <Square className="w-4 h-4 text-red-500 fill-current"/> : <Volume2 className="w-4 h-4"/>}
                    </button>
                </div>
