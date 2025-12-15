@@ -5,7 +5,6 @@ import {
   X, 
   Trophy, 
   Loader2, 
-  Target, 
   Quote, 
   Volume2, 
   Languages, 
@@ -15,7 +14,7 @@ import {
   Hourglass, 
   Home,
   Layers,
-  Square // Durdurma ikonu
+  Square
 } from "lucide-react";
 
 export default function GapFillingGame() {
@@ -144,11 +143,10 @@ export default function GapFillingGame() {
   const currentWordObj = questions[currentIndex];
   const targetWord = currentWordObj?.word.trim() || "";
   
-  // --- DÜZELTİLEN FONKSİYON ---
+  // --- MASK LE ME (DÜZELTİLMİŞ: SADECE TAM KELİME) ---
   const getMaskedSentence = () => {
       if (!currentWordObj) return "";
-      // \\b kelime sınırını ifade eder. 
-      // Böylece 'a' kelimesini ararken 'want' içindeki 'a'yı bulmaz.
+      // \\b word boundary kullanarak sadece tam kelimeyi hedefler
       const regex = new RegExp(`\\b${currentWordObj.word}\\b`, "gi");
       return currentWordObj.sentence.replace(regex, "________");
   };
@@ -188,6 +186,7 @@ export default function GapFillingGame() {
 
   // --- HARF TIKLAMA ---
   const handleLetterClick = (letterObj, e) => {
+    // Tıklanınca odağı kaldır (Focus izini siler)
     if (e && e.currentTarget) e.currentTarget.blur();
 
     if (isWordComplete || letterObj.isUsed) return;
@@ -404,7 +403,7 @@ export default function GapFillingGame() {
                    {/* Cümle Okuma Butonu */}
                    <button 
                        onClick={() => handleSpeak(currentWordObj.sentence, 'sentence')} 
-                       className="p-1.5 bg-blue-50 text-blue-500 rounded-full hover:bg-blue-100 transition-colors"
+                       className="p-1.5 bg-blue-50 text-blue-500 rounded-full hover:bg-blue-100 transition-colors focus:outline-none focus:ring-0"
                        title={activeAudio === 'sentence' ? "Durdur" : "Cümleyi Oku"}
                    >
                        {activeAudio === 'sentence' ? <Square className="w-4 h-4 text-red-500 fill-current"/> : <Volume2 className="w-4 h-4"/>}
@@ -420,14 +419,14 @@ export default function GapFillingGame() {
                             {/* İpucu Ses Butonu */}
                             <button 
                                 onClick={() => handleSpeak(englishDefinition, 'hint')} 
-                                className="p-1 bg-white border rounded-lg hover:bg-blue-50 text-blue-600"
+                                className="p-1 bg-white border rounded-lg hover:bg-blue-50 text-blue-600 focus:outline-none focus:ring-0"
                                 title={activeAudio === 'hint' ? "Durdur" : "Oku"}
                             >
                                 {activeAudio === 'hint' ? <Square className="w-3 h-3 text-red-500 fill-current"/> : <Volume2 className="w-3 h-3"/>}
                             </button>
                             
                             {turkishDefinition && (
-                                <button onClick={() => setShowHintTr(!showHintTr)} className={`p-1 border rounded-lg hover:bg-indigo-50 ${showHintTr ? "bg-indigo-100 text-indigo-600" : "bg-white text-indigo-600"}`}>
+                                <button onClick={() => setShowHintTr(!showHintTr)} className={`p-1 border rounded-lg hover:bg-indigo-50 focus:outline-none focus:ring-0 ${showHintTr ? "bg-indigo-100 text-indigo-600" : "bg-white text-indigo-600"}`}>
                                     <Languages className="w-3 h-3"/>
                                 </button>
                             )}
@@ -459,7 +458,7 @@ export default function GapFillingGame() {
                 })}
              </div>
 
-             {/* KARIŞIK HARFLER (BUTONLAR) */}
+             {/* KARIŞIK HARFLER (BUTONLAR - YENİ İZSİZ TASARIM) */}
              <div key={currentIndex} className="flex flex-wrap justify-center gap-2 content-center">
                 {shuffledLetters.map((item) => (
                   <button
@@ -468,14 +467,15 @@ export default function GapFillingGame() {
                     disabled={item.isUsed || isWordComplete}
                     style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
                     className={`
-                      w-10 h-10 md:w-11 md:h-11 rounded-xl font-bold text-lg shadow-[0_3px_0_rgb(0,0,0,0.1)] 
-                      active:bg-blue-100 active:border-blue-300 active:text-blue-600 active:shadow-none active:translate-y-[2px]
-                      transition-all duration-75 select-none touch-manipulation focus:outline-none focus:ring-0
+                      w-10 h-10 md:w-12 md:h-12 rounded-xl font-bold text-xl
+                      bg-white text-slate-700 border-2 border-slate-200 border-b-4 
+                      transition-all duration-75 select-none touch-manipulation
+                      outline-none focus:outline-none focus:ring-0
                       ${item.isUsed 
                           ? "opacity-0 pointer-events-none scale-0" 
                           : wrongAnimationId === item.id 
-                              ? "bg-red-500 text-white shadow-none animate-[shake_0.5s_ease-in-out]" 
-                              : "bg-white border-2 border-slate-200 text-slate-700"
+                              ? "bg-red-500 text-white border-red-700 border-b-4 animate-[shake_0.5s_ease-in-out]" 
+                              : "active:border-b-0 active:translate-y-1 hover:border-blue-300"
                       }
                     `}
                   >
@@ -490,7 +490,7 @@ export default function GapFillingGame() {
                   onClick={handleHint} 
                   disabled={isWordComplete}
                   style={{ WebkitTapHighlightColor: 'transparent' }}
-                  className="flex items-center gap-2 px-5 py-3 bg-amber-100 text-amber-700 rounded-2xl font-bold active:bg-amber-200 transition-colors active:scale-95 disabled:opacity-50 focus:outline-none"
+                  className="flex items-center gap-2 px-5 py-3 bg-amber-100 text-amber-700 rounded-2xl font-bold active:bg-amber-200 transition-colors active:scale-95 disabled:opacity-50 focus:outline-none focus:ring-0"
                 >
                   <Lightbulb className="w-5 h-5"/> 
                   <span className="text-xs ml-1 flex flex-col items-start leading-none">
