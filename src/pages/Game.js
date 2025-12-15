@@ -22,60 +22,52 @@ export default function Game() {
   const navigate = useNavigate();
 
   // --- STATE'LER ---
-  const [gameStage, setGameStage] = useState("selection"); // selection, playing, summary
+  const [gameStage, setGameStage] = useState("selection");
   const [sessionWords, setSessionWords] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [swipeDirection, setSwipeDirection] = useState(null);
   const [stats, setStats] = useState({ learned: 0, review: 0, mastered: 0 });
-  const [activeMode, setActiveMode] = useState(null); // 'learn', 'review', 'waiting'
+  const [activeMode, setActiveMode] = useState(null);
 
-  // Modallar için State'ler
-  const [showMasterConfirm, setShowMasterConfirm] = useState(false); // Ezberledim onayı
-  const [showResetConfirm, setShowResetConfirm] = useState(false);   // Sıfırlama (Bilmiyorum) onayı
+  // Modallar
+  const [showMasterConfirm, setShowMasterConfirm] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   const POINTS_PER_CARD = 5;
 
-  // --- IPHONE FIX: TIKLAYINCA ODAĞI KALDIR (BLUR) ---
+  // --- KRİTİK FONKSİYON: ODAĞI HEMEN KALDIR ---
+  // Bu fonksiyon, tıklama biter bitmez butonu "seçilmemiş" hale getirir.
   const handleBlur = (e) => {
       if (e && e.currentTarget) e.currentTarget.blur();
   };
 
-  // --------------------------
   // --- KELİME HAVUZLARI ---
-  // --------------------------
   const pools = useMemo(() => {
     const all = getAllWords();
     const now = new Date();
-
     const getQueueItem = (id) => learningQueue ? learningQueue.find(q => q.wordId === id) : null;
 
-    // 1. BEKLEME LİSTESİ (Waiting Pool)
     const waitingPool = all.filter(w => {
         const q = getQueueItem(w.id);
         return q && new Date(q.nextReview) > now;
     });
 
-    // 2. TEKRAR MODU (Review Pool - Sadece Mezunlar)
     const reviewPool = all.filter(w => knownWordIds.includes(w.id));
 
-    // 3. ÖĞRENME MODU (Learn Pool - Yeni + Süresi Gelenler)
     const learnPool = all.filter(w => {
         if (knownWordIds.includes(w.id)) return false;
         const q = getQueueItem(w.id);
-        if (!q) return true; // Level 0
-        if (new Date(q.nextReview) <= now) return true; // Süresi dolmuş
+        if (!q) return true;
+        if (new Date(q.nextReview) <= now) return true;
         return false;
     });
 
     return { learnPool, reviewPool, waitingPool };
   }, [getAllWords, knownWordIds, learningQueue]);
 
-  // --------------------------
-  // --- OTURUMU BAŞLAT ---
-  // --------------------------
+  // --- OTURUM BAŞLATMA ---
   const startSession = (mode, e) => {
     handleBlur(e); // Mobile Fix
-
     setActiveMode(mode);
     let selectedPool = [];
 
@@ -88,7 +80,6 @@ export default function Game() {
       return;
     }
 
-    // Karıştır ve ilk 20'yi al
     const shuffled = [...selectedPool].sort(() => 0.5 - Math.random());
     setSessionWords(shuffled.slice(0, 20));
     setCurrentIndex(0);
@@ -96,13 +87,11 @@ export default function Game() {
     setGameStage("playing");
   };
 
-  // --------------------------
-  // --- CEVAPLAMA FONKSİYONU ---
-  // --------------------------
-  const handleAnswerAction = async (dir, type) => {
+  // --- CEVAPLAMA ---
+  const handleAnswerAction = async (dir, type, e) => {
+    handleBlur(e); // Mobile Fix
     if (currentIndex >= sessionWords.length) return;
 
-    // --- BEKLEME MODU İÇİN GÜVENLİK KONTROLÜ ---
     if (activeMode === 'waiting' && type === 'dont_know') {
         setShowResetConfirm(true); 
         return;
@@ -112,23 +101,15 @@ export default function Game() {
     const currentWord = sessionWords[currentIndex];
 
     setTimeout(async () => {
-      // --- TEKRAR MODU İÇİN ÖZEL DURUM (PASİF GEÇİŞ) ---
       if (activeMode === 'review') {
           setStats((p) => ({ ...p, review: p.review + 1 }));
       } else {
-          // --- DİĞER MODLARDA SRS ÇALIŞTIR ---
           await handleSmartLearn(currentWord.id, type);
-
-          if (type === "know") {
-            setStats((p) => ({ ...p, learned: p.learned + 1 }));
-          } else if (type === "dont_know") {
-            setStats((p) => ({ ...p, review: p.review + 1 })); 
-          } else if (type === "master") {
-            setStats((p) => ({ ...p, mastered: p.mastered + 1, learned: p.learned + 1 }));
-          }
+          if (type === "know") setStats((p) => ({ ...p, learned: p.learned + 1 }));
+          else if (type === "dont_know") setStats((p) => ({ ...p, review: p.review + 1 })); 
+          else if (type === "master") setStats((p) => ({ ...p, mastered: p.mastered + 1, learned: p.learned + 1 }));
       }
 
-      // Sonraki Soru
       if (currentIndex + 1 < sessionWords.length) {
         setCurrentIndex((p) => p + 1);
         setSwipeDirection(null);
@@ -143,30 +124,18 @@ export default function Game() {
     }, 300);
   };
 
-  // ----------------------------
   // --- MODAL İŞLEMLERİ ---
-  // ----------------------------
-  const handleMasterClick = (e) => {
-      handleBlur(e);
-      setShowMasterConfirm(true);
-  };
+  const handleMasterClick = (e) => { handleBlur(e); setShowMasterConfirm(true); };
+  const confirmMastery = (e) => { handleBlur(e); setShowMasterConfirm(false); handleAnswerAction("up", "master", e); };
   
-  const confirmMastery = (e) => {
-    handleBlur(e);
-    setShowMasterConfirm(false);
-    handleAnswerAction("up", "master");
-  };
-
   const confirmReset = (e) => {
       handleBlur(e);
       setShowResetConfirm(false);
       setSwipeDirection("left");
       const currentWord = sessionWords[currentIndex];
-      
       setTimeout(async () => {
           await handleSmartLearn(currentWord.id, "dont_know");
           setStats((p) => ({ ...p, review: p.review + 1 }));
-          
           if (currentIndex + 1 < sessionWords.length) {
               setCurrentIndex((p) => p + 1);
               setSwipeDirection(null);
@@ -178,12 +147,8 @@ export default function Game() {
       }, 300);
   };
 
-  const closeModal = (e) => {
-      handleBlur(e);
-      setShowMasterConfirm(false);
-      setShowResetConfirm(false);
-  };
-
+  const closeModal = (e) => { handleBlur(e); setShowMasterConfirm(false); setShowResetConfirm(false); };
+  
   const handleQuitEarly = (e) => {
     handleBlur(e);
     if(activeMode !== 'review') {
@@ -194,28 +159,31 @@ export default function Game() {
   };
 
   // ===========================
-  // === SEÇİM EKRANI (DÜZENLENDİ) ===
+  // === SEÇİM EKRANI ===
   // ===========================
   if (gameStage === "selection") {
     return (
       <div className="min-h-screen bg-slate-50 p-6 flex flex-col items-center">
         
-        {/* --- GLOBAL CSS FIX --- */}
+        {/* --- GLOBAL CSS: HOVER SADECE MOUSE İLE ÇALIŞIR --- */}
         <style>{`
             * { -webkit-tap-highlight-color: transparent !important; }
             
-            /* Sadece Mouse ile hover efekti */
+            /* Ortak Buton Geçişleri */
+            .game-btn { transition: transform 0.1s ease, background-color 0.2s ease, border-color 0.2s ease; }
+
+            /* Masaüstü Hover Efektleri (Telefonda ÇALIŞMAZ) */
             @media (hover: hover) {
-                .btn-select:hover { border-color: #fb923c !important; background-color: #fff7ed !important; } /* orange */
-                .btn-learn:hover { border-color: #818cf8 !important; background-color: #eef2ff !important; } /* indigo */
-                .btn-wait:hover { border-color: #cbd5e1 !important; background-color: #f8fafc !important; } /* slate */
+                .btn-select:hover { border-color: #fb923c !important; background-color: #fff7ed !important; }
+                .btn-learn:hover { border-color: #818cf8 !important; background-color: #eef2ff !important; }
+                .btn-wait:hover { border-color: #cbd5e1 !important; background-color: #f8fafc !important; }
+                .icon-btn:hover { background-color: #f1f5f9 !important; }
             }
-            .menu-btn { transition: all 0.2s ease; }
         `}</style>
 
         <div className="w-full max-w-md space-y-6">
           <div className="flex items-center justify-between">
-            <button onClick={() => navigate("/")} className="p-2 bg-white rounded-full shadow-sm hover:bg-slate-100"><Home className="w-5 h-5 text-slate-600" /></button>
+            <button onClick={() => navigate("/")} className="icon-btn p-2 bg-white rounded-full shadow-sm active:bg-slate-100 transition-colors"><Home className="w-5 h-5 text-slate-600" /></button>
             <h2 className="text-xl font-bold text-slate-800">Flash Kartlar</h2>
             <div className="w-9"></div>
           </div>
@@ -226,17 +194,15 @@ export default function Game() {
           
           <div className="space-y-4">
             
-            {/* 1. TEKRAR MODU (En Üstte) */}
+            {/* 1. TEKRAR MODU */}
             <button 
               onClick={(e) => startSession("review", e)}
               disabled={pools.reviewPool.length === 0}
-              className="menu-btn btn-select w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 transition-all group active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus:ring-0"
+              className="game-btn btn-select w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 active:scale-95 disabled:opacity-60 focus:outline-none"
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  <div className="bg-orange-100 p-3 rounded-xl text-orange-600 group-hover:bg-orange-200 transition-colors">
-                    <RotateCcw className="w-8 h-8" />
-                  </div>
+                  <div className="bg-orange-100 p-3 rounded-xl text-orange-600"><RotateCcw className="w-8 h-8" /></div>
                   <div className="text-left">
                     <div className="font-bold text-xl text-slate-800">Tekrar Modu</div>
                     <div className="text-sm text-slate-500">Öğrendiklerini (Mezunları) pekiştir</div>
@@ -246,17 +212,15 @@ export default function Game() {
               </div>
             </button>
 
-            {/* 2. ÖĞRENME MODU (Ortada) */}
+            {/* 2. ÖĞRENME MODU */}
             <button 
               onClick={(e) => startSession("learn", e)}
               disabled={pools.learnPool.length === 0}
-              className="menu-btn btn-learn w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 transition-all group active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus:ring-0"
+              className="game-btn btn-learn w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 active:scale-95 disabled:opacity-60 focus:outline-none"
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  <div className="bg-indigo-100 p-3 rounded-xl text-indigo-600 group-hover:bg-indigo-200 transition-colors">
-                    <Brain className="w-8 h-8" />
-                  </div>
+                  <div className="bg-indigo-100 p-3 rounded-xl text-indigo-600"><Brain className="w-8 h-8" /></div>
                   <div className="text-left">
                     <div className="font-bold text-xl text-slate-800">Öğrenme Modu</div>
                     <div className="text-sm text-slate-500">Yeni ve zamanı gelen kelimeler</div>
@@ -266,17 +230,15 @@ export default function Game() {
               </div>
             </button>
 
-            {/* 3. BEKLEME LİSTESİ (En Altta) */}
+            {/* 3. BEKLEME LİSTESİ */}
             <button 
               onClick={(e) => startSession("waiting", e)}
               disabled={pools.waitingPool.length === 0}
-              className="menu-btn btn-wait w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 transition-all group active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus:ring-0"
+              className="game-btn btn-wait w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 active:scale-95 disabled:opacity-60 focus:outline-none"
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  <div className="bg-slate-100 p-3 rounded-xl text-slate-500 group-hover:bg-slate-200 transition-colors">
-                    <Hourglass className="w-8 h-8" />
-                  </div>
+                  <div className="bg-slate-100 p-3 rounded-xl text-slate-500"><Hourglass className="w-8 h-8" /></div>
                   <div className="text-left">
                     <div className="font-bold text-xl text-slate-700">Bekleme Listesi</div>
                     <div className="text-sm text-slate-400">Henüz zamanı gelmeyenler</div>
@@ -311,8 +273,8 @@ export default function Game() {
             {stats.mastered > 0 && <div><div className="text-3xl font-bold text-blue-500">{stats.mastered}</div><div className="text-xs text-slate-500 font-bold uppercase">Full Ezber</div></div>}
             <div><div className="text-3xl font-bold text-orange-500">{stats.review}</div><div className="text-xs text-slate-500 font-bold uppercase">Görülen</div></div>
           </div>
-          <button onClick={() => setGameStage("selection")} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-xl flex items-center justify-center gap-2 mb-3"><Layers className="w-5 h-5" /> Başka Mod Seç</button>
-          <button onClick={() => navigate("/")} className="w-full bg-white border border-slate-200 text-slate-600 font-bold py-3 px-6 rounded-xl hover:bg-slate-50 flex items-center justify-center gap-2"><Home className="w-5 h-5" /> Ana Sayfa</button>
+          <button onClick={() => setGameStage("selection")} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-xl flex items-center justify-center gap-2 mb-3 active:scale-95 transition-transform"><Layers className="w-5 h-5" /> Başka Mod Seç</button>
+          <button onClick={() => navigate("/")} className="w-full bg-white border border-slate-200 text-slate-600 font-bold py-3 px-6 rounded-xl hover:bg-slate-50 flex items-center justify-center gap-2 active:scale-95 transition-transform"><Home className="w-5 h-5" /> Ana Sayfa</button>
         </div>
       </div>
     );
@@ -327,7 +289,7 @@ export default function Game() {
   return (
     <div className="flex flex-col min-h-screen bg-slate-100 overflow-hidden relative">
       
-      {/* --- GLOBAL CSS FIX (KART EKRANI İÇİN) --- */}
+      {/* --- OYUN BUTONLARI İÇİN ÖZEL CSS --- */}
       <style>{`
             * { -webkit-tap-highlight-color: transparent !important; }
             
@@ -337,8 +299,9 @@ export default function Game() {
                 .btn-green:hover { background-color: #f0fdf4 !important; border-color: #dcfce7 !important; }
                 .btn-blue:hover { background-color: #eff6ff !important; border-color: #dbeafe !important; }
                 .btn-white:hover { background-color: #f8fafc !important; }
+                .icon-btn:hover { background-color: #f1f5f9 !important; }
             }
-            .game-btn { transition: all 0.2s ease; }
+            .game-btn { transition: transform 0.1s ease, background-color 0.2s ease; }
       `}</style>
 
       {/* --- EZBERLEDİM ONAY MODALI --- */}
@@ -349,8 +312,8 @@ export default function Game() {
             <h3 className="text-xl font-bold text-slate-800 mb-2">Ezberledim!</h3>
             <p className="text-slate-500 mb-6">Bu kelimeyi tamamen öğrendiğin kelimeler listesine taşıyacağım. Emin misin?</p>
             <div className="flex gap-3">
-              <button onClick={closeModal} className="flex-1 py-3 px-4 border border-slate-200 rounded-xl font-bold text-slate-600 hover:bg-slate-50">İptal</button>
-              <button onClick={confirmMastery} className="flex-1 py-3 px-4 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700">Evet, Ezberledim</button>
+              <button onClick={closeModal} style={{ WebkitTapHighlightColor: 'transparent' }} className="flex-1 py-3 px-4 border border-slate-200 rounded-xl font-bold text-slate-600 active:bg-slate-50 focus:outline-none">İptal</button>
+              <button onClick={confirmMastery} style={{ WebkitTapHighlightColor: 'transparent' }} className="flex-1 py-3 px-4 bg-blue-600 text-white rounded-xl font-bold active:bg-blue-700 focus:outline-none">Evet, Ezberledim</button>
             </div>
           </div>
         </div>
@@ -364,8 +327,8 @@ export default function Game() {
             <h3 className="text-xl font-bold text-slate-800 mb-2">Dikkat!</h3>
             <p className="text-slate-500 mb-6">Bu kelimeyi "Bilmiyorum" olarak işaretlersen seviyesi sıfırlanacak ve "Öğreneceğim" listesine geri gönderilecek. Emin misin?</p>
             <div className="flex gap-3">
-              <button onClick={closeModal} className="flex-1 py-3 px-4 border border-slate-200 rounded-xl font-bold text-slate-600 hover:bg-slate-50">İptal</button>
-              <button onClick={confirmReset} className="flex-1 py-3 px-4 bg-orange-600 text-white rounded-xl font-bold hover:bg-orange-700">Evet, Sıfırla</button>
+              <button onClick={closeModal} style={{ WebkitTapHighlightColor: 'transparent' }} className="flex-1 py-3 px-4 border border-slate-200 rounded-xl font-bold text-slate-600 active:bg-slate-50 focus:outline-none">İptal</button>
+              <button onClick={confirmReset} style={{ WebkitTapHighlightColor: 'transparent' }} className="flex-1 py-3 px-4 bg-orange-600 text-white rounded-xl font-bold active:bg-orange-700 focus:outline-none">Evet, Sıfırla</button>
             </div>
           </div>
         </div>
@@ -375,7 +338,7 @@ export default function Game() {
       <div className="bg-white shadow-sm p-4 z-10">
         <div className="max-w-md mx-auto">
           <div className="flex justify-between items-center mb-2">
-            <button onClick={handleQuitEarly} className="text-slate-400 hover:text-slate-700"><X className="w-6 h-6" /></button>
+            <button onClick={handleQuitEarly} className="icon-btn text-slate-400 p-2 rounded-full active:bg-slate-100 transition-colors"><X className="w-6 h-6" /></button>
             <div className="flex items-center gap-2">
               <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-1 rounded-full font-bold border border-slate-200">
                  {activeMode === 'learn' ? 'Öğrenme' : activeMode === 'review' ? 'Tekrar' : 'Bekleme'} Modu
@@ -400,44 +363,33 @@ export default function Game() {
         )}
       </div>
 
-      {/* BUTONLAR (DÜZENLENDİ: HOVER CLASSES REMOVED + CUSTOM CSS) */}
+      {/* BUTONLAR (TAM MOBİL UYUMLU) */}
       <div className="pb-10 px-6 max-w-md mx-auto w-full">
         {activeMode === 'review' ? (
-            // --- TEKRAR MODU İÇİN TEK BUTON ---
             <button 
-                onClick={(e) => {
-                    handleBlur(e);
-                    handleAnswerAction("right", "review_pass");
-                }}
+                onClick={(e) => handleAnswerAction("right", "review_pass", e)}
                 style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
-                className="game-btn btn-white w-full bg-white border-2 border-slate-200 text-slate-600 font-bold py-4 rounded-2xl shadow-sm flex items-center justify-center gap-2 active:scale-95 transition-transform focus:outline-none focus:ring-0"
+                className="game-btn btn-white w-full bg-white border-2 border-slate-200 text-slate-600 font-bold py-4 rounded-2xl shadow-sm flex items-center justify-center gap-2 active:scale-95 focus:outline-none"
             >
                 <span>Sıradaki Kelime</span>
                 <ArrowRight className="w-5 h-5" />
             </button>
         ) : (
-            // --- DİĞER MODLAR İÇİN 3 BUTON ---
             <div className="flex gap-3 justify-center">
               <button 
-                onClick={(e) => {
-                    handleBlur(e);
-                    handleAnswerAction("left", "dont_know");
-                }} 
+                onClick={(e) => handleAnswerAction("left", "dont_know", e)} 
                 disabled={!!swipeDirection || showMasterConfirm || showResetConfirm} 
                 style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
-                className="game-btn btn-orange flex-1 bg-white border-2 border-orange-100 text-orange-500 font-bold py-4 rounded-2xl shadow-sm flex flex-col items-center gap-1 active:scale-95 transition-transform focus:outline-none focus:ring-0"
+                className="game-btn btn-orange flex-1 bg-white border-2 border-orange-100 text-orange-500 font-bold py-4 rounded-2xl shadow-sm flex flex-col items-center gap-1 active:scale-95 focus:outline-none"
               >
                 <X className="w-6 h-6" /><span className="text-sm">Bilmiyorum</span>
               </button>
               
               <button 
-                onClick={(e) => {
-                    handleBlur(e);
-                    handleAnswerAction("right", "know");
-                }} 
+                onClick={(e) => handleAnswerAction("right", "know", e)} 
                 disabled={!!swipeDirection || showMasterConfirm || showResetConfirm} 
                 style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
-                className="game-btn btn-green flex-1 bg-white border-2 border-green-100 text-green-600 font-bold py-4 rounded-2xl shadow-sm flex flex-col items-center gap-1 active:scale-95 transition-transform focus:outline-none focus:ring-0"
+                className="game-btn btn-green flex-1 bg-white border-2 border-green-100 text-green-600 font-bold py-4 rounded-2xl shadow-sm flex flex-col items-center gap-1 active:scale-95 focus:outline-none"
               >
                 <Check className="w-6 h-6" /><span className="text-sm">Biliyorum</span>
               </button>
@@ -446,14 +398,14 @@ export default function Game() {
                 onClick={(e) => handleMasterClick(e)} 
                 disabled={!!swipeDirection || showMasterConfirm || showResetConfirm} 
                 style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
-                className="game-btn btn-blue flex-1 bg-white border-2 border-blue-100 text-blue-600 font-bold py-4 rounded-2xl shadow-sm flex flex-col items-center gap-1 active:scale-95 transition-transform focus:outline-none focus:ring-0"
+                className="game-btn btn-blue flex-1 bg-white border-2 border-blue-100 text-blue-600 font-bold py-4 rounded-2xl shadow-sm flex flex-col items-center gap-1 active:scale-95 focus:outline-none"
               >
                 <CheckCheck className="w-6 h-6" /><span className="text-sm">Ezberledim</span>
               </button>
             </div>
         )}
 
-        <button onClick={handleQuitEarly} style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }} className="mt-6 flex items-center justify-center gap-2 text-slate-400 hover:text-red-500 transition-colors text-sm font-medium mx-auto focus:outline-none focus:ring-0">
+        <button onClick={handleQuitEarly} className="icon-btn mt-6 flex items-center justify-center gap-2 text-slate-400 p-2 rounded-full active:bg-slate-100 transition-colors text-sm font-medium mx-auto focus:outline-none">
           <Target className="w-4 h-4" /> Bitir
         </button>
       </div>
