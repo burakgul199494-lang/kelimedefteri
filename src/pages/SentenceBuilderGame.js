@@ -252,9 +252,9 @@ export default function SentenceBuilderGame() {
     // Soru sayısı * 10 puan
     const maxScore = questions.length * 10;
     
-    let modeTitle = "Oturum Tamamlandı!";
-    if (gameMode === "learn") modeTitle = "Yeni Cümleler Tamamlandı";
-    if (gameMode === "review") modeTitle = "Tekrar Tamamlandı";
+    let modeTitle = "Bitti";
+    if (gameMode === "learn") modeTitle = "Bitti";
+    if (gameMode === "review") modeTitle = "Bitti";
 
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
@@ -364,7 +364,7 @@ export default function SentenceBuilderGame() {
 
           {/* BİTİR VE ÇIK */}
           <button onClick={handleQuitEarly} className="w-full mt-6 text-center text-slate-400 hover:text-red-500 text-sm font-medium transition-colors">
-            <Target className="w-4 h-4 inline-block mr-1 mb-0.5"/> Bitir (Puanı Al ve Çık)
+            Bitir (Puanı Al ve Çık)
           </button>
 
           <style jsx>{`
