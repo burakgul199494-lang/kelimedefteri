@@ -1,24 +1,25 @@
 import React, { useState, useEffect } from "react";
-import { Volume2, Square, RotateCw, Quote } from "lucide-react";
+import { Volume2, Square, Languages, Tag } from "lucide-react";
 
-export default function WordCard({ wordObj }) {
-  const [isFlipped, setIsFlipped] = useState(false);
+const WordCard = ({ wordObj }) => {
+  const [visibleDefTranslations, setVisibleDefTranslations] = useState({});
+  const [showSentenceTranslation, setShowSentenceTranslation] = useState(false);
   const [playingText, setPlayingText] = useState(null);
 
-  // 1. Kelime değişince resetle & Temizlik
+  // --- 1. SES & RESET ---
   useEffect(() => {
     window.speechSynthesis.cancel();
     setPlayingText(null);
-    setIsFlipped(false);
-
-    return () => {
-      window.speechSynthesis.cancel();
-    };
+    setVisibleDefTranslations({});
+    setShowSentenceTranslation(false);
+    return () => window.speechSynthesis.cancel();
   }, [wordObj]);
 
-  // 2. Ses Fonksiyonu
-  const toggleSpeak = (e, text) => {
-    e.stopPropagation();
+  const toggleSpeak = (text, e) => {
+    if (e) {
+        e.stopPropagation();
+        e.currentTarget.blur(); // IPHONE FIX: ODAĞI KALDIR
+    }
     if (!text) return;
 
     if (playingText === text) {
@@ -36,176 +37,230 @@ export default function WordCard({ wordObj }) {
     }
   };
 
-  const handleFlip = () => setIsFlipped(!isFlipped);
+  const toggleDefTranslation = (index, e) => {
+    if (e) {
+        e.stopPropagation();
+        e.currentTarget.blur(); // IPHONE FIX
+    }
+    setVisibleDefTranslations((prev) => ({ ...prev, [index]: !prev[index] }));
+  };
 
-  const mainDefinition = wordObj.definitions && wordObj.definitions[0];
+  const toggleSentenceTranslation = (e) => {
+    if (e) {
+        e.stopPropagation();
+        e.currentTarget.blur(); // IPHONE FIX
+    }
+    setShowSentenceTranslation(!showSentenceTranslation);
+  };
+
+  const getShortType = (t) => {
+    const map = { noun: "n.", verb: "v.", adjective: "adj.", adverb: "adv.", prep: "prep.", pronoun: "pron.", conj: "conj.", article: "art.", other: "other" };
+    return map[t] || t;
+  };
+
+  // --- 2. ORTAK BUTON BİLEŞENİ (MOBİL UYUMLU) ---
+  const ActionButton = ({ icon: Icon, onClick, isActive, title }) => (
+    <button
+      onClick={onClick}
+      title={title}
+      // 1. Tıklama izini sil
+      style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
+      className={`
+        word-card-btn p-2 rounded-full border flex items-center justify-center shrink-0
+        focus:outline-none focus:ring-0 select-none touch-manipulation
+        transition-colors duration-200
+        ${isActive 
+          ? 'bg-indigo-600 text-white border-indigo-600' // Aktif (Çalıyorsa)
+          : 'bg-white text-slate-400 border-slate-200'   // Pasif
+        }
+      `}
+    >
+      <Icon className="w-3.5 h-3.5 fill-current" />
+    </button>
+  );
+
+  // --- 3. GRAMER SATIRI ---
+  const FeatureRow = ({ label, value }) => {
+    if (!value) return null;
+    const isPlaying = playingText === value;
+
+    return (
+      <div className="flex items-center justify-between py-2 border-b border-slate-50 last:border-0">
+        <div className="flex items-center gap-3 flex-1 mr-2 min-w-0">
+          <span className="text-[10px] font-bold text-slate-400 uppercase min-w-[24px] shrink-0">
+            {label}
+          </span>
+          <span className="text-sm font-semibold text-slate-700 break-words leading-tight">
+            {value}
+          </span>
+        </div>
+        <div className="shrink-0">
+          <ActionButton 
+            icon={isPlaying ? Square : Volume2} 
+            onClick={(e) => toggleSpeak(value, e)} 
+            isActive={isPlaying} 
+          />
+        </div>
+      </div>
+    );
+  };
 
   return (
-    <div 
-      onClick={handleFlip} 
-      className="w-full cursor-pointer font-sans [perspective:1000px]"
-    >
-      <div className="relative w-full transition-all duration-500 ease-in-out [transform-style:preserve-3d]">
-        
-        {/* ============================== */}
-        {/* === ÖN YÜZ (SADELEŞTİRİLMİŞ İNGİLİZCE) === */}
-        {/* ============================== */}
-        <div 
-          className={`
-            w-full bg-white rounded-3xl shadow-2xl flex flex-col overflow-hidden border border-slate-100 
-            transition-all duration-500 ease-in-out
-            [backface-visibility:hidden]
-            ${
-              isFlipped 
-                ? "absolute top-0 left-0 opacity-0 pointer-events-none [transform:rotateY(180deg)]" 
-                : "relative opacity-100 z-10 [transform:rotateY(0deg)] min-h-[400px]"
+    <div className="relative w-full max-w-sm bg-white rounded-3xl shadow-lg p-6 text-center border border-slate-100 mb-6 mx-auto transition-shadow duration-300">
+      
+      {/* MOBİL HOVER FIX STİLİ */}
+      <style>{`
+        /* Sadece Mouse varsa hover çalışsın */
+        @media (hover: hover) {
+            .word-card-btn:hover {
+                border-color: #a5b4fc !important; /* indigo-300 */
+                background-color: #eef2ff !important; /* indigo-50 */
+                color: #4f46e5 !important; /* indigo-600 */
             }
-          `}
-        >
-          
-          {/* HERO BÖLÜMÜ */}
-          <div className="relative bg-gradient-to-br from-indigo-600 to-violet-700 p-6 flex flex-col items-center justify-center min-h-[160px] text-center shrink-0">
-            <div className="absolute top-0 left-0 w-full h-full opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
-            
-            <div className="relative z-10 w-full flex items-center justify-center gap-4">
-              <h1 className="text-5xl font-black text-white tracking-tight drop-shadow-md break-words">
-                {wordObj.word}
-              </h1>
-              <button
-                onClick={(e) => toggleSpeak(e, wordObj.word)}
-                className="flex items-center justify-center p-3 bg-white/20 hover:bg-white text-white hover:text-indigo-600 rounded-full backdrop-blur-md transition-all active:scale-90 shrink-0 focus:outline-none"
-              >
-                {playingText === wordObj.word ? <Square className="w-6 h-6 fill-current" /> : <Volume2 className="w-6 h-6" />}
-              </button>
-            </div>
-          </div>
+            /* Aktifken hover edilirse */
+            .word-card-btn[class*="bg-indigo-600"]:hover {
+                background-color: #4338ca !important; /* indigo-700 */
+                border-color: #4338ca !important;
+                color: white !important;
+            }
+        }
+      `}</style>
 
-          {/* İÇERİK GÖVDESİ */}
-          <div className="flex-1 flex flex-col p-6 gap-5 bg-slate-50/50 justify-center">
+      {/* 1. KELİME BAŞLIĞI */}
+      <div className="flex items-center justify-center gap-4 mb-6 mt-2">
+        <h2 className="text-4xl font-extrabold text-slate-800 break-words leading-tight text-left">
+            {wordObj.word}
+        </h2>
+        <div className="scale-110 shrink-0"> 
+            <ActionButton 
+                icon={playingText === wordObj.word ? Square : Volume2}
+                onClick={(e) => toggleSpeak(wordObj.word, e)}
+                isActive={playingText === wordObj.word}
+            />
+        </div>
+      </div>
+
+      {/* 2. TANIMLAR */}
+      <div className="space-y-4 text-left">
+        {wordObj.definitions.map((def, idx) => (
+          <div key={idx} className={`p-4 rounded-2xl border transition-colors ${idx === 0 ? "bg-indigo-50/50 border-indigo-100" : "bg-slate-50/50 border-slate-100"}`}>
             
-            {/* 1. Tek Tanım (Definition) */}
-            {mainDefinition && (
-              <div className={`relative p-5 rounded-2xl border bg-white border-indigo-100 shadow-sm`}>
-                <div className="flex justify-between items-center mb-3">
-                  <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-600">
-                    Definition
-                  </span>
+            {/* Tür & Kelime Anlamı */}
+            <div className="flex flex-wrap items-baseline gap-2 mb-2">
+              <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded ${idx === 0 ? "bg-indigo-200 text-indigo-700" : "bg-slate-200 text-slate-600"}`}>
+                {getShortType(def.type)}
+              </span>
+              <span className={`font-bold text-lg leading-tight ${idx === 0 ? "text-indigo-900" : "text-slate-700"}`}>
+                {def.meaning}
+              </span>
+            </div>
+
+            {/* İngilizce Açıklama ve Butonlar */}
+            {def.engExplanation && (
+              <div className="pl-3 border-l-2 border-indigo-200/50">
+                <div className="flex items-start justify-between gap-3">
+                  <p className={`text-sm italic font-medium leading-relaxed ${idx === 0 ? "text-indigo-600/80" : "text-slate-500"}`}>
+                    "{def.engExplanation}"
+                  </p>
                   
-                  {/* DÜZELTME 1: Buton diğerleriyle aynı stile getirildi (Arkaplan + Yuvarlak) */}
-                  <button
-                    onClick={(e) => toggleSpeak(e, mainDefinition.engExplanation)}
-                    className={`flex items-center justify-center p-2 rounded-full focus:outline-none transition-colors ${
-                      playingText === mainDefinition.engExplanation 
-                        ? 'bg-indigo-600 text-white shadow-md' 
-                        : 'bg-indigo-50 text-indigo-500 hover:bg-indigo-100'
-                    }`}
-                  >
-                     {playingText === mainDefinition.engExplanation ? <Square className="w-4 h-4 fill-current" /> : <Volume2 className="w-4 h-4" />}
-                  </button>
+                  {/* BUTON GRUBU */}
+                  <div className="flex gap-1.5 shrink-0 mt-0.5">
+                    <ActionButton 
+                        icon={playingText === def.engExplanation ? Square : Volume2} 
+                        onClick={(e) => toggleSpeak(def.engExplanation, e)} 
+                        isActive={playingText === def.engExplanation} 
+                    />
+                    <ActionButton 
+                        icon={Languages} 
+                        onClick={(e) => toggleDefTranslation(idx, e)} 
+                        isActive={visibleDefTranslations[idx]} 
+                    />
+                  </div>
                 </div>
-                <p className="text-slate-700 font-medium text-lg leading-relaxed">
-                  "{mainDefinition.engExplanation || 'No definition.'}"
-                </p>
+                
+                {/* Gizli Türkçe Açıklama */}
+                {visibleDefTranslations[idx] && (
+                  <div className="mt-3 pt-2 border-t border-indigo-200/30 animate-in fade-in slide-in-from-top-1">
+                      <p className="text-xs text-indigo-800 font-medium bg-white/60 p-2 rounded-lg border border-indigo-100">
+                        {def.trExplanation ? `TR: ${def.trExplanation}` : <span className="text-slate-400 italic font-normal">Sistemde çeviri bulunamadı.</span>}
+                      </p>
+                  </div>
+                )}
               </div>
             )}
-
-            {/* 2. Örnek Cümle (DÜZELTME 2: Flexbox ile Hizalama) */}
-            <div className="relative bg-white p-5 rounded-2xl border border-indigo-100 shadow-sm group/sentence flex items-center gap-4">
-               {/* Tırnak İkonu */}
-               <div className="shrink-0 self-start mt-1">
-                 <Quote className="w-5 h-5 text-indigo-200 fill-indigo-50" />
-               </div>
-
-               {/* Cümle Metni */}
-               <div className="flex-1">
-                 <p className="text-slate-600 italic text-base leading-relaxed font-medium">
-                   "{wordObj.sentence}"
-                 </p>
-               </div>
-               
-               {/* Ses Butonu (Artık sağda, ortalı ve sabit) */}
-               <button
-                  onClick={(e) => toggleSpeak(e, wordObj.sentence)}
-                  className={`flex items-center justify-center shrink-0 p-2 rounded-full transition-all focus:outline-none ${
-                    playingText === wordObj.sentence
-                      ? 'bg-indigo-600 text-white shadow-md'
-                      : 'bg-indigo-50 text-indigo-500 hover:bg-indigo-100'
-                  }`}
-                >
-                  {playingText === wordObj.sentence ? <Square className="w-4 h-4 fill-current" /> : <Volume2 className="w-4 h-4" />}
-                </button>
-            </div>
-            
           </div>
-
-          {/* Footer Uyarısı */}
-          <div className="py-3 bg-white border-t border-slate-100 flex justify-center items-center text-xs text-slate-400 font-semibold gap-1 mt-auto rounded-b-3xl">
-            <RotateCw className="w-3 h-3 animate-spin-slow" />
-            <span>Türkçesi için dokun</span>
-          </div>
-
-        </div>
-
-        {/* ============================== */}
-        {/* === ARKA YÜZ (SADELEŞTİRİLMİŞ TÜRKÇE) === */}
-        {/* ============================== */}
-        <div 
-          className={`
-            w-full bg-slate-900 rounded-3xl shadow-2xl flex flex-col overflow-hidden border border-slate-700
-            transition-all duration-500 ease-in-out
-            [backface-visibility:hidden]
-            ${
-              isFlipped 
-                ? "relative opacity-100 z-10 [transform:rotateY(0deg)] min-h-[400px]" 
-                : "absolute top-0 left-0 opacity-0 pointer-events-none [transform:rotateY(-180deg)]"
-            }
-          `}
-        >
-          
-          {/* Header */}
-          <div className="p-6 bg-slate-800 border-b border-slate-700/50 text-center shrink-0">
-            <span className="text-xs font-bold text-indigo-400 uppercase tracking-[0.2em] mb-2 block">Türkçe Karşılığı</span>
-            <div className="w-12 h-1 bg-indigo-500 mx-auto rounded-full"></div>
-          </div>
-
-          {/* Ana İçerik */}
-          <div className="flex-1 p-6 flex flex-col items-center justify-center text-center gap-6">
-             {mainDefinition && (
-                <div>
-                   <h3 className="text-3xl font-bold text-white mb-3">
-                     {mainDefinition.meaning}
-                   </h3>
-                   {mainDefinition.trExplanation && (
-                     <p className="text-slate-400 text-sm leading-relaxed max-w-xs mx-auto border-t border-slate-700 pt-3">
-                       {mainDefinition.trExplanation}
-                     </p>
-                   )}
-                </div>
-             )}
-          </div>
-
-          {/* Footer Çeviri */}
-          <div className="bg-slate-800/50 p-6 backdrop-blur-sm border-t border-slate-700 mt-auto">
-            {wordObj.sentence_tr && (
-               <div className="bg-slate-800 p-4 rounded-xl border border-slate-700 relative">
-                  <div className="absolute -top-2.5 left-4 bg-slate-700 px-2 py-0.5 rounded text-[10px] text-indigo-300 font-bold uppercase">Çeviri</div>
-                  <p className="text-slate-300 italic text-sm">"{wordObj.sentence_tr}"</p>
-               </div>
-            )}
-             <div className="mt-4 flex justify-center items-center text-xs text-slate-500 font-semibold gap-1">
-              <RotateCw className="w-3 h-3" />
-              <span>İngilizceye dön</span>
-            </div>
-          </div>
-
-        </div>
-
+        ))}
       </div>
-      
-      <style jsx>{`
-        .animate-spin-slow { animation: spin 3s linear infinite; }
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-      `}</style>
+
+      {/* 3. GRAMER TABLOSU */}
+      {(wordObj.plural || wordObj.v2 || wordObj.v3 || wordObj.vIng || wordObj.thirdPerson) && (
+        <div className="bg-white p-4 rounded-2xl border border-slate-200 text-left mt-4 shadow-sm">
+          <div className="text-[10px] uppercase tracking-wide text-slate-400 font-bold mb-2 border-b border-slate-100 pb-1">Fiil & İsim Çekimleri</div>
+          <div className="grid grid-cols-1 gap-y-1">
+            <FeatureRow label="Pl." value={wordObj.plural} />
+            <FeatureRow label="3rd" value={wordObj.thirdPerson} />
+            <FeatureRow label="V2" value={wordObj.v2} />
+            <FeatureRow label="V3" value={wordObj.v3} />
+            <FeatureRow label="Ing" value={wordObj.vIng} />
+          </div>
+        </div>
+      )}
+
+      {(wordObj.advLy || wordObj.compEr || wordObj.superEst) && (
+          <div className="bg-orange-50/50 p-4 rounded-2xl border border-orange-100 text-left mt-2">
+              <div className="text-[10px] uppercase tracking-wide text-orange-400 font-bold mb-2 border-b border-orange-100 pb-1">Sıfat & Zarf Halleri</div>
+              <div className="grid grid-cols-1 gap-y-1">
+                  <FeatureRow label="Adv." value={wordObj.advLy} />
+                  <FeatureRow label="Comp." value={wordObj.compEr} />
+                  <FeatureRow label="Super." value={wordObj.superEst} />
+              </div>
+          </div>
+      )}
+
+      {/* 4. ÖRNEK CÜMLE */}
+      <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 mt-4">
+        <div className="flex items-center justify-between mb-3">
+          <div className="text-xs uppercase tracking-wide text-slate-400 font-bold">Örnek Cümle</div>
+          
+          {/* BUTON GRUBU */}
+          <div className="flex gap-1.5 shrink-0">
+             <ActionButton 
+                  icon={playingText === wordObj.sentence ? Square : Volume2} 
+                  onClick={(e) => toggleSpeak(wordObj.sentence, e)} 
+                  isActive={playingText === wordObj.sentence} 
+             />
+             <ActionButton 
+                icon={Languages} 
+                onClick={toggleSentenceTranslation} 
+                isActive={showSentenceTranslation} 
+             />
+          </div>
+        </div>
+        <p className="text-base text-slate-600 italic leading-relaxed text-left">"{wordObj.sentence}"</p>
+        
+        {/* Gizli Cümle Çevirisi */}
+        {showSentenceTranslation && (
+          <div className="mt-3 pt-2 border-t border-slate-200 animate-in fade-in slide-in-from-top-1 text-left">
+              <p className="text-slate-800 text-sm font-medium bg-white p-2 rounded-lg border border-slate-100">
+                 {wordObj.sentence_tr ? `TR: ${wordObj.sentence_tr}` : <span className="text-slate-400 italic font-normal">Sistemde çeviri bulunamadı.</span>}
+              </p>
+          </div>
+        )}
+      </div>
+
+      {/* 5. ETİKETLER */}
+      {wordObj.tags && Array.isArray(wordObj.tags) && wordObj.tags.length > 0 && (
+          <div className="flex flex-wrap gap-2 mt-4 justify-center">
+              {wordObj.tags.map((tag, i) => (
+                  <span key={i} className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-1 rounded-full flex items-center gap-1 border border-slate-200">
+                      <Tag className="w-3 h-3 opacity-50"/> {tag}
+                  </span>
+              ))}
+          </div>
+      )}
+
     </div>
   );
-}
+};
+
+export default WordCard;
