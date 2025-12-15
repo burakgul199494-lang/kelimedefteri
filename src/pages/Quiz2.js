@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useData } from "../context/DataContext";
 import { useNavigate } from "react-router-dom";
-import { X, Trophy, Loader2, Home, RefreshCw, BrainCircuit, Hourglass, Target } from "lucide-react";
+import { X, Trophy, Loader2, Home, RefreshCw, BrainCircuit, Hourglass } from "lucide-react";
 
 export default function Quiz2() {
   const { getAllWords, knownWordIds, learningQueue, addScore } = useData();
@@ -16,6 +16,11 @@ export default function Quiz2() {
   const [isAnswered, setIsAnswered] = useState(false);
   const [gameStatus, setGameStatus] = useState("mode-selection");
   const [isTransitioning, setIsTransitioning] = useState(false);
+
+  // --- IPHONE FIX: Tıklanınca odağı kaldır (Blur) ---
+  const handleBlur = (e) => {
+      if (e && e.currentTarget) e.currentTarget.blur();
+  };
 
   // --- KELİME HAVUZLARI (SRS MANTIĞI İLE DÜZELTİLDİ) ---
   const getWordPools = () => {
@@ -61,7 +66,9 @@ export default function Quiz2() {
   const { learnPool, reviewPool, waitingPool } = getWordPools();
 
   // --- OYUN BAŞLATMA ---
-  const startQuiz = (mode) => {
+  const startQuiz = (mode, e) => {
+    handleBlur(e); // Mobile Fix: Tıklama izini sil
+
     setGameMode(mode);
     let pool = [];
 
@@ -112,7 +119,7 @@ export default function Quiz2() {
   }, [index]);
 
   const handleAnswer = (option, e) => {
-    if(e && e.target) e.target.blur(); // Mobilde focus kalmasını önler
+    handleBlur(e); // Mobile Fix: Focus temizle
 
     if (isAnswered) return;
     setIsAnswered(true); 
@@ -163,7 +170,12 @@ export default function Quiz2() {
 
                 <div className="space-y-4">
                     {/* Tekrar Modu */}
-                    <button onClick={() => startQuiz('review')} disabled={reviewPool.length < 4} className="w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 hover:border-orange-200 hover:bg-orange-50 transition-all group active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed">
+                    <button 
+                        onClick={(e) => startQuiz('review', e)} 
+                        disabled={reviewPool.length < 4} 
+                        style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
+                        className="w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 hover:border-orange-200 hover:bg-orange-50 transition-all group active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus:ring-0"
+                    >
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-4">
                                 <div className="bg-orange-100 p-3 rounded-xl text-orange-600 group-hover:bg-orange-200 transition-colors"><RefreshCw className="w-8 h-8" /></div>
@@ -174,7 +186,12 @@ export default function Quiz2() {
                     </button>
 
                     {/* Öğrenme Modu */}
-                    <button onClick={() => startQuiz('learn')} disabled={learnPool.length < 4} className="w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 hover:border-indigo-200 hover:bg-indigo-50 transition-all group active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed">
+                    <button 
+                        onClick={(e) => startQuiz('learn', e)} 
+                        disabled={learnPool.length < 4} 
+                        style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
+                        className="w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 hover:border-indigo-200 hover:bg-indigo-50 transition-all group active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus:ring-0"
+                    >
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-4">
                                 <div className="bg-indigo-100 p-3 rounded-xl text-indigo-600 group-hover:bg-indigo-200 transition-colors"><BrainCircuit className="w-8 h-8" /></div>
@@ -185,7 +202,12 @@ export default function Quiz2() {
                     </button>
 
                     {/* Bekleme Modu */}
-                    <button onClick={() => startQuiz('waiting')} disabled={waitingPool.length < 4} className="w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 hover:border-slate-300 hover:bg-slate-50 transition-all group active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed">
+                    <button 
+                        onClick={(e) => startQuiz('waiting', e)} 
+                        disabled={waitingPool.length < 4} 
+                        style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
+                        className="w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 hover:border-slate-300 hover:bg-slate-50 transition-all group active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus:ring-0"
+                    >
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-4">
                                 <div className="bg-slate-100 p-3 rounded-xl text-slate-500 group-hover:bg-slate-200 transition-colors"><Hourglass className="w-8 h-8" /></div>
@@ -237,6 +259,13 @@ export default function Quiz2() {
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center p-4">
+       {/* MOBİL TIKLAMA İZİ ENGELLEYİCİ */}
+       <style>{`
+         * {
+           -webkit-tap-highlight-color: transparent !important;
+         }
+       `}</style>
+
        <div className="w-full max-w-md space-y-6 mt-4">
           
           {/* HEADER */}
@@ -263,8 +292,8 @@ export default function Quiz2() {
                 {/* ŞIKLAR (İNGİLİZCE KELİMELER) */}
                 <div className="space-y-3 mt-6">
                     {current.options.map((opt, i) => {
-                        // SENİN ORİJİNAL KODUNDAKİ STİL MANTIĞI
-                        let cls = "w-full p-4 rounded-xl text-left font-medium border-2 transition-all shadow-sm ";
+                        // SENİN ORİJİNAL KODUNDAKİ STİL MANTIĞI + FOCUS FIX
+                        let cls = "w-full p-4 rounded-xl text-left font-medium border-2 transition-all shadow-sm focus:outline-none focus:ring-0 select-none touch-manipulation ";
                         if (isAnswered) {
                             if (opt === current.correct) cls += "bg-green-100 border-green-500 text-green-700";
                             else if (opt === selected) cls += "bg-red-100 border-red-500 text-red-700";
@@ -277,6 +306,7 @@ export default function Quiz2() {
                                 key={`${index}-${i}`} 
                                 onClick={(e)=>handleAnswer(opt, e)} 
                                 disabled={isAnswered} 
+                                style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
                                 className={cls}
                             >
                                 {opt}
@@ -287,7 +317,7 @@ export default function Quiz2() {
               </>
           )}
 
-          <button onClick={handleQuitEarly} className="w-full mt-6 flex items-center justify-center gap-2 text-slate-400 hover:text-red-500 transition-colors text-sm font-medium mx-auto">
+          <button onClick={handleQuitEarly} style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }} className="w-full mt-6 flex items-center justify-center gap-2 text-slate-400 hover:text-red-500 transition-colors text-sm font-medium mx-auto focus:outline-none focus:ring-0">
             Bitir (Puanı Al ve Çık)
           </button>
 
