@@ -308,9 +308,9 @@ export default function Pronunciation() {
     const maxScore = sessionWords.length * 10;
     
     let modeTitle = "Oturum Tamamlandı!";
-    if (activeMode === 'learn') modeTitle = "Öğrenme Modu Bitti";
-    if (activeMode === 'review') modeTitle = "Tekrar Modu Bitti";
-    if (activeMode === 'waiting') modeTitle = "Bekleme Modu Bitti";
+    if (activeMode === 'learn') modeTitle = "Bitti";
+    if (activeMode === 'review') modeTitle = "Bitti";
+    if (activeMode === 'waiting') modeTitle = "Bitti";
 
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
@@ -328,7 +328,7 @@ export default function Pronunciation() {
                 onClick={() => setGameStage("selection")} 
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-xl flex items-center justify-center gap-2 mb-3 shadow-lg shadow-blue-200"
            >
-                <Layers className="w-5 h-5" /> Başka Mod Seç
+                Başka Test Çöz
            </button>
            
            <button 
@@ -446,7 +446,7 @@ export default function Pronunciation() {
 
            {/* BİTİR VE ÇIK BUTONU */}
            <button onClick={handleQuitEarly} style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }} className="w-full mt-6 flex items-center justify-center gap-2 text-slate-400 hover:text-red-500 transition-colors text-sm font-medium mx-auto focus:outline-none focus:ring-0">
-               <Target className="w-4 h-4" /> Bitir (Puanı Al ve Çık)
+               Bitir (Puanı Al ve Çık)
            </button>
 
        </div>
