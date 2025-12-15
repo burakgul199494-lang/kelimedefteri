@@ -238,7 +238,7 @@ export default function Pronunciation() {
                     <button onClick={() => navigate("/")} className="p-2 bg-white rounded-full shadow-sm hover:bg-slate-100">
                     <Home className="w-5 h-5 text-slate-600" />
                     </button>
-                    <h2 className="text-xl font-bold text-slate-800">Telaffuz Koçu</h2>
+                    <h2 className="text-xl font-bold text-slate-800">Telaffuz</h2>
                     <div className="w-9"></div>
                 </div>
 
@@ -258,7 +258,7 @@ export default function Pronunciation() {
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-4">
                                 <div className="bg-orange-100 p-3 rounded-xl text-orange-600"><RefreshCw className="w-8 h-8" /></div>
-                                <div className="text-left"><div className="font-bold text-xl text-slate-800">Tekrar Modu</div><div className="text-sm text-slate-500">Bilinen kelimeleri oku</div></div>
+                                <div className="text-left"><div className="font-bold text-xl text-slate-800">Tekrar Modu</div><div className="text-sm text-slate-500">Öğrendiklerini Pekiştir</div></div>
                             </div>
                             <div className="text-2xl font-black text-orange-600">{reviewPool.length}</div>
                         </div>
@@ -274,7 +274,7 @@ export default function Pronunciation() {
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-4">
                                 <div className="bg-indigo-100 p-3 rounded-xl text-indigo-600"><Brain className="w-8 h-8" /></div>
-                                <div className="text-left"><div className="font-bold text-xl text-slate-800">Öğrenme Modu</div><div className="text-sm text-slate-500">Yeni kelimeler oku</div></div>
+                                <div className="text-left"><div className="font-bold text-xl text-slate-800">Öğrenme Modu</div><div className="text-sm text-slate-500">Yeni Kelimeler</div></div>
                             </div>
                             <div className="text-2xl font-black text-indigo-600">{learnPool.length}</div>
                         </div>
@@ -290,7 +290,7 @@ export default function Pronunciation() {
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-4">
                                 <div className="bg-slate-100 p-3 rounded-xl text-slate-500"><Hourglass className="w-8 h-8" /></div>
-                                <div className="text-left"><div className="font-bold text-xl text-slate-700">Bekleme Listesi</div><div className="text-sm text-slate-400">Gelecekteki kelimeler</div></div>
+                                <div className="text-left"><div className="font-bold text-xl text-slate-700">Bekleme Listesi</div><div className="text-sm text-slate-400">Henüz Zamanı Gelmeyen Kelimeler</div></div>
                             </div>
                             <div className="text-2xl font-black text-slate-500">{waitingPool.length}</div>
                         </div>
