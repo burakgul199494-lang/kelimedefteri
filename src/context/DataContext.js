@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import { 
   doc, getDoc, setDoc, updateDoc, arrayUnion, arrayRemove, 
-  collection, getDocs, deleteDoc, addDoc, increment, onSnapshot, query, orderBy, limit, writeBatch 
+  collection, deleteDoc, addDoc, increment, onSnapshot, query, orderBy, limit, writeBatch 
 } from "firebase/firestore";
 import { auth, db, appId, ADMIN_EMAILS } from "../services/firebase";
 
@@ -15,6 +15,7 @@ export const DataProvider = ({ children }) => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  // Veriler
   const [knownWordIds, setKnownWordIds] = useState([]);
   const [customWords, setCustomWords] = useState([]);
   const [deletedWordIds, setDeletedWordIds] = useState([]);
@@ -22,6 +23,112 @@ export const DataProvider = ({ children }) => {
   const [streak, setStreak] = useState(0);
   const [learningQueue, setLearningQueue] = useState([]);
   const [leaderboardData, setLeaderboardData] = useState([]);
+
+  // --- 1. SİSTEM KELİMELERİNİ CANLI DİNLE (TÜM KULLANICILAR İÇİN) ---
+  useEffect(() => {
+    const systemWordsRef = collection(db, "artifacts", appId, "system_words");
+    
+    // onSnapshot: Veritabanında değişiklik olduğu an tetiklenir
+    const unsubscribe = onSnapshot(systemWordsRef, (snapshot) => {
+        const sysWords = [];
+        snapshot.forEach((doc) => {
+            sysWords.push({ ...doc.data(), id: doc.id, source: "system" });
+        });
+        setDynamicSystemWords(sysWords);
+    }, (error) => {
+        console.error("Sistem kelimeleri alınamadı:", error);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // --- 2. KULLANICI OTURUMU VE PROFİLİNİ CANLI DİNLE ---
+  useEffect(() => {
+    const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      
+      if (currentUser) {
+        if (ADMIN_EMAILS.includes(currentUser.email)) setIsAdmin(true);
+        else setIsAdmin(false);
+        // Kullanıcı geldi, verilerini dinlemeye başla (Aşağıdaki useEffect çalışacak)
+      } else {
+        // Çıkış yapıldı, temizle
+        setIsAdmin(false);
+        setLoading(false); 
+        setKnownWordIds([]); setCustomWords([]); setDeletedWordIds([]); 
+        setLearningQueue([]); setStreak(0);
+      }
+    });
+    return () => unsubscribeAuth();
+  }, []);
+
+  // --- 3. KULLANICIYA ÖZEL VERİLERİ (KELİMELER + PROFİL) DİNLE ---
+  useEffect(() => {
+    if (!user) return;
+
+    // A) Kullanıcının eklediği kelimeler (Custom Words)
+    const userWordsRef = collection(db, "artifacts", appId, "users", user.uid, "words");
+    const unsubUserWords = onSnapshot(userWordsRef, (snapshot) => {
+        const usrWords = [];
+        snapshot.forEach((doc) => {
+            usrWords.push({ ...doc.data(), id: doc.id, source: "user" });
+        });
+        setCustomWords(usrWords);
+    });
+
+    // B) Kullanıcı Profili (İlerleme, Bilinenler, Silinenler, Streak)
+    const userProfileRef = doc(db, "artifacts", appId, "users", user.uid, "vocab_game", "progress");
+    const unsubProfile = onSnapshot(userProfileRef, async (docSnap) => {
+        if (docSnap.exists()) {
+            const data = docSnap.data();
+            setKnownWordIds(data.known_ids || []);
+            setDeletedWordIds(data.deleted_ids || []);
+            setLearningQueue(data.learning_queue || []);
+            
+            // Streak Hesaplama (Canlı veri geldiğinde kontrol et)
+            let currentStreak = data.streak || 0;
+            const todayStr = new Date().toISOString().split("T")[0];
+            const lastVisit = data.last_visit_date;
+
+            if (lastVisit !== todayStr) {
+                const yesterday = new Date(); 
+                yesterday.setDate(yesterday.getDate() - 1);
+                const yesterdayStr = yesterday.toISOString().split("T")[0];
+                
+                // Eğer dün girdiysen artır, yoksa 1'e çek
+                if (lastVisit === yesterdayStr) currentStreak += 1; 
+                else currentStreak = 1;
+
+                // Veritabanını güncelle (Bu işlem snapshot'ı tekrar tetikler ama tarih aynı olduğu için loop'a girmez)
+                await updateDoc(userProfileRef, { last_visit_date: todayStr, streak: currentStreak });
+            }
+            setStreak(currentStreak);
+        } else {
+            // Profil yoksa oluştur
+            const todayStr = new Date().toISOString().split("T")[0];
+            await setDoc(userProfileRef, { 
+                last_visit_date: todayStr, 
+                streak: 1, 
+                known_ids: [], 
+                deleted_ids: [], 
+                learning_queue: [] 
+            }, { merge: true });
+            setStreak(1);
+        }
+        setLoading(false); // Veriler yüklendi
+    });
+
+    // C) Liderlik Tablosu Dinleme
+    const unsubLeaderboard = subscribeToLeaderboard();
+
+    return () => {
+        unsubUserWords();
+        unsubProfile();
+        if(unsubLeaderboard) unsubLeaderboard();
+    };
+  }, [user]); // User değiştiğinde (giriş/çıkış) yeniden çalış
+
+  // --- YARDIMCI FONKSİYONLAR ---
 
   const getCurrentWeekKey = () => {
     const d = new Date();
@@ -31,121 +138,14 @@ export const DataProvider = ({ children }) => {
     return monday.toISOString().slice(0, 10);
   };
 
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-      if (currentUser && ADMIN_EMAILS.includes(currentUser.email)) setIsAdmin(true);
-      else setIsAdmin(false);
-      if (!currentUser) {
-        setLoading(false); 
-        setKnownWordIds([]); setCustomWords([]); setDeletedWordIds([]); 
-        setDynamicSystemWords([]); setLearningQueue([]); setStreak(0);
-      }
-    });
-    return () => unsubscribe();
-  }, []);
-
-  useEffect(() => {
-    if (user) { 
-        loadAllData();
-        subscribeToLeaderboard(); 
-    }
-  }, [user]);
-
-  const loadAllData = async () => {
-    if (!user) return;
-    setLoading(true);
-    try {
-        const systemWordsRef = collection(db, "artifacts", appId, "system_words");
-        const userWordsRef = collection(db, "artifacts", appId, "users", user.uid, "words");
-        const userProfileRef = doc(db, "artifacts", appId, "users", user.uid, "vocab_game", "progress");
-
-        const [systemSnapshot, userWordsSnapshot, docSnap] = await Promise.all([
-            getDocs(systemWordsRef),
-            getDocs(userWordsRef),
-            getDoc(userProfileRef)
-        ]);
-
-        const sysWords = [];
-        const sysWordSet = new Set();
-        systemSnapshot.forEach((doc) => {
-            const d = doc.data();
-            sysWords.push({ ...d, id: doc.id, source: "system" });
-            if(d.word) sysWordSet.add(d.word.toLowerCase().trim());
-        });
-        setDynamicSystemWords(sysWords);
-
-        const usrWords = [];
-        userWordsSnapshot.forEach(doc => {
-            usrWords.push({ ...doc.data(), id: doc.id, source: "user" });
-        });
-        setCustomWords(usrWords);
-
-        let currentDeleted = [];
-        let currentKnown = [];
-        let currentQueue = [];
-        let currentStreak = 0;
-
-        if (docSnap.exists()) {
-            const data = docSnap.data();
-            currentDeleted = data.deleted_ids || [];
-            currentKnown = data.known_ids || [];
-            currentQueue = data.learning_queue || [];
-            currentStreak = data.streak || 0;
-
-            const todayStr = new Date().toISOString().split("T")[0];
-            const lastVisit = data.last_visit_date;
-            if (lastVisit !== todayStr) {
-                const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
-                const yesterdayStr = yesterday.toISOString().split("T")[0];
-                if (lastVisit === yesterdayStr) currentStreak += 1; else currentStreak = 1;
-                setDoc(userProfileRef, { last_visit_date: todayStr, streak: currentStreak }, { merge: true });
-            }
-        } else {
-            const todayStr = new Date().toISOString().split("T")[0];
-            setDoc(userProfileRef, { last_visit_date: todayStr, streak: 1 }, { merge: true });
-            currentStreak = 1;
-        }
-
-        let newDeletedIds = [...currentDeleted];
-        let dirty = false;
-
-        usrWords.forEach(uWord => {
-            if (sysWordSet.has(uWord.word.toLowerCase().trim())) {
-                const uIdStr = String(uWord.id);
-                if (!currentDeleted.includes(uIdStr)) {
-                    newDeletedIds.push(uIdStr);
-                    dirty = true;
-                }
-            }
-        });
-
-        if (dirty) {
-            updateDoc(userProfileRef, { deleted_ids: newDeletedIds });
-            currentDeleted = newDeletedIds;
-        }
-
-        setDeletedWordIds(currentDeleted);
-        setKnownWordIds(currentKnown);
-        setLearningQueue(currentQueue);
-        setStreak(currentStreak);
-
-    } catch (e) {
-        console.error("Veri yükleme hatası:", e);
-    } finally {
-        setLoading(false);
-    }
-  };
-
   const subscribeToLeaderboard = () => {
       const weekKey = getCurrentWeekKey(); 
       const q = query(collection(db, "artifacts", appId, "weekly_scores", weekKey, "users"), orderBy("score", "desc"), limit(50));
-      const unsubscribe = onSnapshot(q, (snapshot) => {
+      return onSnapshot(q, (snapshot) => {
           const leaders = [];
           snapshot.forEach((doc) => { leaders.push({ ...doc.data(), id: doc.id }); });
           setLeaderboardData(leaders);
       });
-      return unsubscribe;
   };
 
   const addScore = async (points) => {
@@ -194,60 +194,46 @@ export const DataProvider = ({ children }) => {
     return [...systemDeleted, ...customDeleted].sort((a, b) => a.word.localeCompare(b.word));
   };
 
-  // ----------------------------------------------------------------
- // ----------------------------------------------------------------
-  // --- HANDLE SMART LEARN (SENİN MANTIĞINA GÖRE GÜNCELLENDİ) ---
+  // --- OYUN İÇİ AKSİYONLAR ---
+
   const handleSmartLearn = async (wordId, action) => {
     try {
         const userRef = doc(db, "artifacts", appId, "users", user.uid, "vocab_game", "progress");
         const now = new Date();
 
-        // 1. EZBERLEDİM -> Direkt Mezun
         if (action === "master") {
             await addToKnown(wordId);
             return;
         }
 
-        // Mevcut seviyeyi bul
         const currentItem = learningQueue.find(q => String(q.wordId) === String(wordId));
         const currentLevel = currentItem ? (currentItem.level || 0) : 0;
-
-        // İşlem başlayınca kelimeyi kuyruktan siliyoruz (yeni haliyle ekleyeceğiz)
         let newQueue = learningQueue.filter(q => String(q.wordId) !== String(wordId));
 
         if (action === "know") {
             if (knownWordIds.includes(wordId)) return;
 
             if (currentLevel === 0) {
-                // 0 -> 1 (Bekleme: 24 Saat)
                 const nextDate = new Date();
-                nextDate.setDate(now.getDate() + 1); // +1 Gün
+                nextDate.setDate(now.getDate() + 1); 
                 newQueue.push({ wordId, level: 1, nextReview: nextDate.toISOString() });
-
             } else if (currentLevel === 1) {
-                // 1 -> 2 (Bekleme: 48 Saat)
                 const nextDate = new Date();
-                nextDate.setDate(now.getDate() + 2); // +2 Gün
+                nextDate.setDate(now.getDate() + 2); 
                 newQueue.push({ wordId, level: 2, nextReview: nextDate.toISOString() });
-
             } else if (currentLevel >= 2) {
-                // 2 -> 3 (MEZUN OLDU -> Öğrendiklerime Git)
                 await addToKnown(wordId);
-                return; // Kuyruğa ekleme yapmıyoruz, bitti.
+                return; 
             }
         } 
         else if (action === "dont_know") {
-            // Bilmiyorum dersen; Öğrenilenlerden çıkar, kuyruktan çıkar.
-            // Böylece "Öğreneceğim" (Level 0) havuzuna düşer.
             if (knownWordIds.includes(wordId)) {
                 await removeFromKnown(wordId);
             }
-            // newQueue'ya ekleme yapmıyoruz.
         }
 
-        // Veritabanını Güncelle
         await updateDoc(userRef, { learning_queue: newQueue });
-        setLearningQueue(newQueue);
+        // setLearningQueue'yu manuel çağırmıyoruz, onSnapshot güncelleyecek.
 
     } catch (e) {
         console.error("Hata:", e);
@@ -258,9 +244,7 @@ export const DataProvider = ({ children }) => {
     const normalizedInput = wordData.word.toLowerCase().trim();
     const allWords = getAllWords();
     if (allWords.some(w => w.word.toLowerCase() === normalizedInput)) return { success: false, message: "Zaten mevcut!" };
-    const deletedList = getDeletedWords();
-    if (deletedList.some(w => w.word.toLowerCase() === normalizedInput)) return { success: false, message: "Çöp kutusunda var!" };
-
+    
     const newId = Date.now().toString();
     const newWord = {
       id: newId, 
@@ -277,7 +261,6 @@ export const DataProvider = ({ children }) => {
     try {
       const wordRef = doc(db, "artifacts", appId, "users", user.uid, "words", newId);
       await setDoc(wordRef, newWord);
-      setCustomWords((prev) => [...prev, newWord]);
       return { success: true };
     } catch (e) { return { success: false, message: "Hata" }; }
   };
@@ -287,7 +270,6 @@ export const DataProvider = ({ children }) => {
       const userRef = doc(db, "artifacts", appId, "users", user.uid, "vocab_game", "progress");
       const newQueue = learningQueue.filter(q => String(q.wordId) !== String(wordId));
       await setDoc(userRef, { deleted_ids: arrayUnion(wordId), known_ids: arrayRemove(wordId), learning_queue: newQueue }, { merge: true });
-      setDeletedWordIds(prev => [...prev, wordId]); setKnownWordIds(prev => prev.filter(id => String(id) !== String(wordId))); setLearningQueue(newQueue);
     } catch (e) { console.error(e); }
   };
 
@@ -295,22 +277,23 @@ export const DataProvider = ({ children }) => {
      try {
        const isCustom = customWords.find((w) => String(w.id) === String(originalId));
        const isKnown = knownWordIds.includes(originalId);
+       
        if (isCustom) {
          const updatedWord = { ...isCustom, ...newData, source: "user" };
          const wordRef = doc(db, "artifacts", appId, "users", user.uid, "words", String(originalId));
          await updateDoc(wordRef, updatedWord);
-         setCustomWords((prev) => prev.map((w) => (String(w.id) === String(originalId) ? updatedWord : w)));
        } else {
          const userRef = doc(db, "artifacts", appId, "users", user.uid, "vocab_game", "progress");
          await setDoc(userRef, { deleted_ids: arrayUnion(originalId) }, { merge: true });
+         
          const newId = Date.now().toString();
          const newCustomWord = { ...newData, id: newId, source: "user" };
          const wordRef = doc(db, "artifacts", appId, "users", user.uid, "words", newId);
          await setDoc(wordRef, newCustomWord);
-         setDeletedWordIds((prev) => [...prev, originalId]); setCustomWords((prev) => [...prev, newCustomWord]);
+         
          if (isKnown) {
-           await updateDoc(userRef, { known_ids: arrayRemove(originalId) }); await updateDoc(userRef, { known_ids: arrayUnion(newCustomWord.id) });
-           setKnownWordIds((prev) => prev.filter(id => String(id) !== String(originalId)).concat(newCustomWord.id));
+           await updateDoc(userRef, { known_ids: arrayRemove(originalId) }); 
+           await updateDoc(userRef, { known_ids: arrayUnion(newCustomWord.id) });
          }
        }
      } catch (e) { console.error(e); }
@@ -319,9 +302,13 @@ export const DataProvider = ({ children }) => {
   const addToKnown = async (wordId) => {
      try {
        const userRef = doc(db, "artifacts", appId, "users", user.uid, "vocab_game", "progress");
+       // Queue'dan silmeyi de DB üzerinden yapıyoruz ki temiz olsun
+       // Ancak arrayRemove nesne ile zor olduğu için tüm queue'yu okuyup filtreleyip yazmak en garantisi
+       // handleSmartLearn zaten queue'yu temizleyip gönderiyor. Burada sadece Known eklesek yeterli ama queue'yu temizlemek de iyi.
+       // Basitlik için sadece Known ekleyelim, queue handleSmartLearn ile yönetiliyor genelde.
+       // Eğer direkt flash karttan eklendiyse queue'dan düşmesi lazım.
        const newQueue = learningQueue.filter(q => String(q.wordId) !== String(wordId));
        await updateDoc(userRef, { known_ids: arrayUnion(wordId), learning_queue: newQueue });
-       setKnownWordIds(prev => [...prev, wordId]); setLearningQueue(newQueue);
      } catch(e) { console.error(e); }
   };
 
@@ -329,7 +316,6 @@ export const DataProvider = ({ children }) => {
     try {
       const userRef = doc(db, "artifacts", appId, "users", user.uid, "vocab_game", "progress");
       await updateDoc(userRef, { known_ids: arrayRemove(wordId) });
-      setKnownWordIds((prev) => prev.filter((id) => String(id) !== String(wordId)));
     } catch (e) { console.error(e); }
   };
 
@@ -339,7 +325,6 @@ export const DataProvider = ({ children }) => {
      try {
        const userRef = doc(db, "artifacts", appId, "users", user.uid, "vocab_game", "progress");
        await updateDoc(userRef, { deleted_ids: arrayRemove(wordObj.id) });
-       setDeletedWordIds((prev) => prev.filter((id) => String(id) !== String(wordObj.id)));
      } catch(e) { console.error(e); }
   };
 
@@ -352,8 +337,6 @@ export const DataProvider = ({ children }) => {
        
        const wordRef = doc(db, "artifacts", appId, "users", user.uid, "words", String(wordObj.id));
        await deleteDoc(wordRef);
-
-       setCustomWords(prev => prev.filter(w => String(w.id) !== String(wordObj.id))); setDeletedWordIds(prev => prev.filter(id => String(id) !== String(wordObj.id))); setLearningQueue(newQueue);
      } catch(e) { console.error(e); }
   };
 
@@ -373,8 +356,6 @@ export const DataProvider = ({ children }) => {
         const weekKey = getCurrentWeekKey();
         const leaderboardRef = doc(db, "artifacts", appId, "weekly_scores", weekKey, "users", user.uid);
         await deleteDoc(leaderboardRef);
-
-        setKnownWordIds([]); setCustomWords([]); setDeletedWordIds([]); setLearningQueue([]); setStreak(1);
       } catch(e) { console.error(e); }
   };
 
@@ -390,15 +371,7 @@ export const DataProvider = ({ children }) => {
         source: "system", 
         createdAt: new Date() 
       };
-      const docRef = await addDoc(collection(db, "artifacts", appId, "system_words"), newWord);
-      setDynamicSystemWords(prev => [...prev, { ...newWord, id: docRef.id }]);
-
-      const conflictingCustom = customWords.find(w => w.word.toLowerCase() === normalizedInput);
-      if (conflictingCustom) {
-          const userRef = doc(db, "artifacts", appId, "users", user.uid, "vocab_game", "progress");
-          await setDoc(userRef, { deleted_ids: arrayUnion(conflictingCustom.id) }, { merge: true });
-          setDeletedWordIds(prev => [...prev, conflictingCustom.id]);
-      }
+      await addDoc(collection(db, "artifacts", appId, "system_words"), newWord);
       return { success: true };
     } catch (e) { return { success: false, message: e.message }; }
   };
@@ -407,7 +380,6 @@ export const DataProvider = ({ children }) => {
       if(!window.confirm("Silmek istediğine emin misin?")) return;
       try {
           await deleteDoc(doc(db, "artifacts", appId, "system_words", wordId));
-          setDynamicSystemWords(prev => prev.filter(w => String(w.id) !== String(wordId)));
       } catch(e) { console.error(e); }
   };
 
@@ -415,7 +387,6 @@ export const DataProvider = ({ children }) => {
       try {
           const docRef = doc(db, "artifacts", appId, "system_words", id);
           await updateDoc(docRef, { ...wordData, updatedAt: new Date() });
-          setDynamicSystemWords(prev => prev.map(w => String(w.id) === String(id) ? { ...w, ...wordData } : w));
           return { success: true };
       } catch(e) { return { success: false, message: e.message }; }
   };
