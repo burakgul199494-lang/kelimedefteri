@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 
 export default function SentenceBuilderGame() {
-  const { getAllWords, knownWordIds, learningQueue, addScore } = useData();
+  const { getAllWords, knownWordIds, learningQueue, addScore, updateGameStats } = useData();
   const navigate = useNavigate();
 
   // --- STATE'LER ---
@@ -176,6 +176,7 @@ export default function SentenceBuilderGame() {
   };
 
   const handleComplete = (success) => {
+      updateGameStats('sentence_builder', 1); // <--- BURAYA EKLE (1 Cümle kuruldu)
       setIsComplete(true);
       const sentenceStr = questions[currentIndex].sentence;
       speak(sentenceStr);
