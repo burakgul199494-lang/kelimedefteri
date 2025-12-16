@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 
 export default function WritingGame2() {
-  const { getAllWords, knownWordIds, addScore, learningQueue } = useData();
+  const { getAllWords, knownWordIds, addScore, learningQueue, updateGameStats } = useData();
   const navigate = useNavigate();
 
   // --- STATE'LER ---
@@ -197,6 +197,7 @@ export default function WritingGame2() {
               setCompletedLetters(targetWord.split('')); 
               setIsWordComplete(true);
               handleSpeak(targetWord); // Doğrusunu oku
+              updateGameStats('listening', 1); // <--- BURAYA EKLE
               
               setTimeout(() => {
                   if (currentIndex + 1 < questions.length) {
@@ -233,6 +234,7 @@ export default function WritingGame2() {
 
   // --- KELİME BİTİRME (BAŞARILI) ---
   const handleWordComplete = () => {
+    updateGameStats('listening', 1); // <--- BURAYA EKLE (Dinleme oyunu olduğu için 'listening')
     setIsWordComplete(true);
     handleSpeak(targetWord);
     
