@@ -12,10 +12,12 @@ import {
   Languages,
   Layout,
   Headphones, // Dinleme
-  Puzzle // Eşleştirme
+  Puzzle, // Eşleştirme
+  BarChart2 // <-- YENİ EKLENEN İKON
 } from "lucide-react"; 
 import ProfileModal from "../components/ProfileModal"; 
 import LeaderboardModal from "../components/LeaderboardModal";
+import StatisticsModal from "../components/StatisticsModal"; // <-- YENİ EKLENEN BİLEŞEN
 
 export default function Home() {
   const { user, knownWordIds, getAllWords, streak, resetProfile, isAdmin, leaderboardData, learningQueue } = useData();
@@ -23,32 +25,30 @@ export default function Home() {
   
   const [showProfileModal, setShowProfileModal] = useState(false); 
   const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [showStats, setShowStats] = useState(false); // <-- YENİ STATE
   
   // Veritabanından gelen temizlenmiş (silinenler hariç) tüm kelimeler
   const allWords = getAllWords();
   const totalWords = allWords.length;
 
-  // --- HESAPLAMALAR (DÜZELTİLDİ: HAYALET KAYITLARI YOK SAYAR) ---
+  // --- HESAPLAMALAR ---
 
   // 1. ÖĞRENİLENLER: Sadece şu an sistemde var olan kelimeleri say
   const validKnownWords = allWords.filter(w => knownWordIds.includes(w.id));
   const learnedCount = validKnownWords.length;
   
-  // 2. KUYRUKTAKİLER: Sadece şu an sistemde var olan kelimeleri say
-  // (Eski silinen kelimeler queue'da kalsa bile burada sayılmaz)
+  // 2. KUYRUKTAKİLER
   const validQueueItems = learningQueue 
     ? learningQueue.filter(q => allWords.some(w => w.id === q.wordId))
     : [];
   
   const inQueueCount = validQueueItems.length;
 
-  // 3. BEKLEMEDE: Geçerli kuyruk öğelerinden zamanı gelmeyenler
+  // 3. BEKLEMEDE
   const now = new Date();
   const waitingCount = validQueueItems.filter(item => new Date(item.nextReview) > now).length;
 
-  // 4. KALAN (REMAINING): 
-  // Matematiksel çıkarma yerine DOĞRUDAN FİLTRELEME yapıyoruz.
-  // "Listemdeki kelimelerden; bildiklerim ve kuyruktakiler HARİÇ olanlar"
+  // 4. KALAN (REMAINING)
   const remainingCount = allWords.filter(w => 
     !knownWordIds.includes(w.id) && 
     !learningQueue.some(q => q.wordId === w.id)
@@ -67,6 +67,7 @@ export default function Home() {
       {/* --- MODALLAR --- */}
       {showProfileModal && <ProfileModal user={user} onClose={() => setShowProfileModal(false)} />}
       {showLeaderboard && <LeaderboardModal onClose={() => setShowLeaderboard(false)} />}
+      {showStats && <StatisticsModal onClose={() => setShowStats(false)} />} {/* <-- YENİ MODAL */}
 
       <div className="w-full max-w-md space-y-6 mt-2">
         
@@ -76,9 +77,17 @@ export default function Home() {
              <button onClick={() => setShowProfileModal(true)} className="p-2.5 bg-white rounded-xl shadow-sm border border-slate-200 text-slate-600 hover:text-indigo-600">
                 <Settings size={18} />
              </button>
+             
+             {/* Liderlik Tablosu */}
              <button onClick={() => setShowLeaderboard(true)} className="p-2.5 bg-white rounded-xl shadow-sm border border-slate-200 text-slate-600 hover:text-yellow-500">
                 <Trophy size={18} />
              </button>
+
+             {/* --- YENİ İSTATİSTİK BUTONU --- */}
+             <button onClick={() => setShowStats(true)} className="p-2.5 bg-white rounded-xl shadow-sm border border-slate-200 text-slate-600 hover:text-emerald-500" title="Haftalık Rapor">
+                <BarChart2 size={18} />
+             </button>
+
              <button onClick={handleReset} className="p-2.5 bg-white rounded-xl shadow-sm border border-slate-200 text-slate-400 hover:text-red-500" title="Sıfırla">
                 <RotateCcw size={18} />
              </button>
@@ -94,16 +103,16 @@ export default function Home() {
             <div className="bg-indigo-600 p-4 rounded-2xl shadow-lg transform rotate-3"><Brain className="w-12 h-12 text-white" /></div>
             <div className="absolute -right-4 -top-4 flex flex-col items-end gap-2">
               <div className="flex flex-col items-center">
-                 <div className="flex items-center gap-1 bg-orange-500 text-white px-3 py-1 rounded-full shadow-lg border-2 border-white min-w-[60px] justify-center">
-                   <Flame className="w-3 h-3 fill-white" /><span className="font-bold text-xs">{streak}</span>
-                 </div>
-                 <span className="text-[10px] font-bold text-orange-600 bg-orange-100 px-1.5 rounded mt-0.5">Seri</span>
+                  <div className="flex items-center gap-1 bg-orange-500 text-white px-3 py-1 rounded-full shadow-lg border-2 border-white min-w-[60px] justify-center">
+                    <Flame className="w-3 h-3 fill-white" /><span className="font-bold text-xs">{streak}</span>
+                  </div>
+                  <span className="text-[10px] font-bold text-orange-600 bg-orange-100 px-1.5 rounded mt-0.5">Seri</span>
               </div>
               <div className="flex flex-col items-center">
-                 <div className="flex items-center gap-1 bg-yellow-400 text-yellow-900 px-3 py-1 rounded-full shadow-lg border-2 border-white min-w-[60px] justify-center">
-                   <Star className="w-3 h-3 fill-yellow-900" /><span className="font-bold text-xs">{myScore}</span>
-                 </div>
-                 <span className="text-[10px] font-bold text-yellow-600 bg-yellow-100 px-1.5 rounded mt-0.5">Puan</span>
+                  <div className="flex items-center gap-1 bg-yellow-400 text-yellow-900 px-3 py-1 rounded-full shadow-lg border-2 border-white min-w-[60px] justify-center">
+                    <Star className="w-3 h-3 fill-yellow-900" /><span className="font-bold text-xs">{myScore}</span>
+                  </div>
+                  <span className="text-[10px] font-bold text-yellow-600 bg-yellow-100 px-1.5 rounded mt-0.5">Puan</span>
               </div>
             </div>
           </div>
@@ -168,50 +177,50 @@ export default function Home() {
 
           {/* 3. DİĞER OYUNLAR (GRID) */}
           <div className="grid grid-cols-2 gap-3">
-             
-             {/* 1. SATIR: Quiz & Ters Quiz */}
-             <button onClick={() => navigate("/quiz")} className="bg-amber-500 text-white font-bold py-4 px-4 rounded-xl shadow-md flex flex-col items-center gap-2 text-center active:scale-95 transition-transform">
+              
+              {/* 1. SATIR: Quiz & Ters Quiz */}
+              <button onClick={() => navigate("/quiz")} className="bg-amber-500 text-white font-bold py-4 px-4 rounded-xl shadow-md flex flex-col items-center gap-2 text-center active:scale-95 transition-transform">
                 <div className="bg-white/20 p-2 rounded-full"><HelpCircle className="w-6 h-6"/></div>
                 <span className="text-sm">Quiz</span>
-             </button>
+              </button>
 
-             <button onClick={() => navigate("/quiz2")} className="bg-emerald-500 text-white font-bold py-4 px-4 rounded-xl shadow-md flex flex-col items-center gap-2 text-center active:scale-95 transition-transform">
+              <button onClick={() => navigate("/quiz2")} className="bg-emerald-500 text-white font-bold py-4 px-4 rounded-xl shadow-md flex flex-col items-center gap-2 text-center active:scale-95 transition-transform">
                 <div className="bg-white/20 p-2 rounded-full"><Languages className="w-6 h-6"/></div>
                 <span className="text-sm">Ters Quiz</span>
-             </button>
+              </button>
 
-             {/* 2. SATIR: Yazma & Dinleme */}
-             <button onClick={() => navigate("/writing")} className="bg-purple-600 text-white font-bold py-4 px-4 rounded-xl shadow-md flex flex-col items-center gap-2 text-center active:scale-95 transition-transform">
+              {/* 2. SATIR: Yazma & Dinleme */}
+              <button onClick={() => navigate("/writing")} className="bg-purple-600 text-white font-bold py-4 px-4 rounded-xl shadow-md flex flex-col items-center gap-2 text-center active:scale-95 transition-transform">
                 <div className="bg-white/20 p-2 rounded-full"><Edit className="w-6 h-6"/></div>
                 <span className="text-sm">Yazma</span>
-             </button>
+              </button>
 
-             <button onClick={() => navigate("/writing2")} className="bg-pink-600 text-white font-bold py-4 px-4 rounded-xl shadow-md flex flex-col items-center gap-2 text-center active:scale-95 transition-transform">
+              <button onClick={() => navigate("/writing2")} className="bg-pink-600 text-white font-bold py-4 px-4 rounded-xl shadow-md flex flex-col items-center gap-2 text-center active:scale-95 transition-transform">
                 <div className="bg-white/20 p-2 rounded-full"><Headphones className="w-6 h-6"/></div>
                 <span className="text-sm">Dinle & Yaz</span>
-             </button>
+              </button>
 
-             {/* 3. SATIR: Boşluk Doldurma & Cümle Kurma */}
-             <button onClick={() => navigate("/gap-filling")} className="bg-cyan-600 text-white font-bold py-4 px-4 rounded-xl shadow-md flex flex-col items-center gap-2 text-center active:scale-95 transition-transform">
+              {/* 3. SATIR: Boşluk Doldurma & Cümle Kurma */}
+              <button onClick={() => navigate("/gap-filling")} className="bg-cyan-600 text-white font-bold py-4 px-4 rounded-xl shadow-md flex flex-col items-center gap-2 text-center active:scale-95 transition-transform">
                 <div className="bg-white/20 p-2 rounded-full"><Quote className="w-6 h-6"/></div>
                 <span className="text-sm">Boşluk Dol.</span>
-             </button>
+              </button>
 
-             <button onClick={() => navigate("/game/sentence-builder")} className="bg-teal-600 text-white font-bold py-4 px-4 rounded-xl shadow-md flex flex-col items-center gap-2 text-center active:scale-95 transition-transform">
+              <button onClick={() => navigate("/game/sentence-builder")} className="bg-teal-600 text-white font-bold py-4 px-4 rounded-xl shadow-md flex flex-col items-center gap-2 text-center active:scale-95 transition-transform">
                 <div className="bg-white/20 p-2 rounded-full"><Layout className="w-6 h-6"/></div>
                 <span className="text-sm">Cümle Kurma</span>
-             </button>
+              </button>
 
-             {/* 4. SATIR: Eşleştirme & Telaffuz */}
-             <button onClick={() => navigate("/game/word-match")} className="bg-orange-500 text-white font-bold py-4 px-4 rounded-xl shadow-md flex flex-col items-center gap-2 text-center active:scale-95 transition-transform">
+              {/* 4. SATIR: Eşleştirme & Telaffuz */}
+              <button onClick={() => navigate("/game/word-match")} className="bg-orange-500 text-white font-bold py-4 px-4 rounded-xl shadow-md flex flex-col items-center gap-2 text-center active:scale-95 transition-transform">
                 <div className="bg-white/20 p-2 rounded-full"><Puzzle className="w-6 h-6"/></div>
                 <span className="text-sm">Eşleştirme</span>
-             </button>
+              </button>
 
-             <button onClick={() => navigate("/pronunciation")} className="bg-rose-500 text-white font-bold py-4 px-4 rounded-xl shadow-md flex flex-col items-center gap-2 text-center active:scale-95 transition-transform">
+              <button onClick={() => navigate("/pronunciation")} className="bg-rose-500 text-white font-bold py-4 px-4 rounded-xl shadow-md flex flex-col items-center gap-2 text-center active:scale-95 transition-transform">
                 <div className="bg-white/20 p-2 rounded-full"><Mic className="w-6 h-6"/></div>
                 <span className="text-sm">Telaffuz</span>
-             </button>
+              </button>
 
           </div>
 
