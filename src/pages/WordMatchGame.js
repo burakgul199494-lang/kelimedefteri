@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 
 export default function WordMatchGame() {
-  const { getAllWords, knownWordIds, learningQueue, addScore } = useData();
+  const { getAllWords, knownWordIds, learningQueue, addScore, updateGameStats } = useData();
   const navigate = useNavigate();
 
   // --- STATE'LER ---
@@ -147,6 +147,9 @@ export default function WordMatchGame() {
 
       if (first.wordId === second.wordId) {
           // --- DOĞRU ---
+
+        updateGameStats('word_match', 1); // <--- BURAYA EKLE (1 Doğru eşleşme)
+        
           setCards(prev => prev.map(card => {
               if (card.id === first.id || card.id === second.id) {
                   return { ...card, isMatched: true };
