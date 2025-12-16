@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 
 export default function Pronunciation() {
-  const { getAllWords, knownWordIds, learningQueue, addScore } = useData();
+  const { getAllWords, knownWordIds, learningQueue, addScore, updateGameStats } = useData();
   const navigate = useNavigate();
 
   // --- STATE'LER ---
@@ -196,6 +196,8 @@ export default function Pronunciation() {
     setSessionScore(prev => prev + earnedPoints);
     setFeedback({ score: earnedPoints, type, msg });
     setIsRoundDone(true);
+    updateGameStats('pronunciation', 1); // <--- BURAYA EKLE (1 Telaffuz denemesi yapıldı)
+    
   };
 
   // --- 5. DİĞER AKSİYONLAR ---
