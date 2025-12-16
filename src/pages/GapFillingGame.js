@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 
 export default function GapFillingGame() {
-  const { getAllWords, knownWordIds, learningQueue, addScore } = useData();
+  const { getAllWords, knownWordIds, learningQueue, addScore, updateGameStats } = useData();
   const navigate = useNavigate();
 
   // --- OYUN STATE'LERİ ---
@@ -226,6 +226,8 @@ export default function GapFillingGame() {
               setCompletedLetters(targetWord.split('')); 
               setIsWordComplete(true);
               handleSpeak(targetWord, 'word'); 
+
+            updateGameStats('gap_filling', 1); // <--- BURAYA EKLE (Kelime geçildi)
               
               setTimeout(() => {
                   if (currentIndex + 1 < questions.length) {
@@ -260,6 +262,7 @@ export default function GapFillingGame() {
   };
 
   const handleWordComplete = () => {
+    updateGameStats('gap_filling', 1); // <--- BURAYA EKLE (1 Kelime Tamamlandı)
     setIsWordComplete(true);
     handleSpeak(targetWord, 'word'); 
     
