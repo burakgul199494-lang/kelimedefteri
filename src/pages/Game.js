@@ -120,7 +120,8 @@ export default function Game() {
               updateGameStats('flashcard', 1);
           }
           else if (type === "dont_know") {
-              setStats((p) => ({ ...p, review: p.review + 1 })); 
+              setStats((p) => ({ ...p, review: p.review + 1 }));
+              updateGameStats('flashcard', 1);
           }
           else if (type === "master") {
               setStats((p) => ({ ...p, mastered: p.mastered + 1, learned: p.learned + 1 }));
