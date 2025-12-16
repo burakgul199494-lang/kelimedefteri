@@ -130,14 +130,14 @@ export default function Quiz() {
     setIsAnswered(true); 
     setSelected(option);
     
-    // 1. Puanı sadece doğruysa ver
-  if (option === questions[index].correct) {
-      setScore(s => s + 5);
-  }
+    // 1. Puanı SADECE doğruysa ver (İçeride kalsın)
+    if (option === questions[index].correct) {
+        setScore(s => s + 5);
+    }
 
-  // 2. İstatistiği her durumda işle (Doğru/Yanlış fark etmez)
-  updateGameStats('quiz', 1); // <--- BURAYA (DIŞARIYA) AL
-  }
+    // 2. İstatistiği HER DURUMDA işle (Dışarıya aldık)
+    // Bu satır if bloğunun dışında ama handleAnswer fonksiyonunun içinde olmalı.
+    updateGameStats('quiz', 1);
     
     setTimeout(() => {
       if (index + 1 < questions.length) {
