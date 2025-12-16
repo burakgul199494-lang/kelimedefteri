@@ -71,9 +71,9 @@ export default function StatisticsModal({ onClose }) {
                 <div className="text-center py-10 text-slate-400">Veriler Yükleniyor...</div>
             ) : (
                 <div className="grid gap-3">
+                    <StatRow icon={Play} label="Flash Kart" value={stats?.flashcard} color="bg-indigo-600" />
                     <StatRow icon={HelpCircle} label="Quiz Çözülen" value={stats?.quiz} color="bg-amber-500" />
                     <StatRow icon={Languages} label="Ters Quiz" value={stats?.reverse_quiz} color="bg-emerald-500" />
-                    <StatRow icon={Play} label="Flash Kart" value={stats?.flashcard} color="bg-indigo-600" />
                     <StatRow icon={Edit} label="Yazma Testi" value={stats?.writing} color="bg-purple-600" />
                     <StatRow icon={Headphones} label="Dinle & Yaz" value={stats?.listening} color="bg-pink-600" />
                     <StatRow icon={Quote} label="Boşluk Doldurma" value={stats?.gap_filling} color="bg-cyan-600" />
