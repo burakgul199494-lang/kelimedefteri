@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 
 export default function Game() {
-  const { getAllWords, knownWordIds, handleSmartLearn, learningQueue, addScore } = useData();
+  const { getAllWords, knownWordIds, handleSmartLearn, learningQueue, addScore, updateGameStats } = useData();
   const navigate = useNavigate();
 
   // --- STATE'LER ---
@@ -103,18 +103,22 @@ export default function Game() {
       // 1. Durum: TEKRAR MODU (Review) - Sadece geçer
       if (activeMode === 'review') {
           setStats((p) => ({ ...p, review: p.review + 1 }));
+        updateGameStats('flashcard', 1); // <--- EKLE: 1 kart görüldü
       } 
       // 2. Durum: BEKLEME MODU (Waiting) - "Sıradaki Kelime" basıldıysa
       // Veritabanına (SRS) kayıt yapma, sadece istatistik güncelle ve geç.
       else if (activeMode === 'waiting' && type === 'waiting_pass') {
-          setStats((p) => ({ ...p, review: p.review + 1 })); 
+          setStats((p) => ({ ...p, review: p.review + 1 }));
+        updateGameStats('flashcard', 1); // <--- EKLE: 1 kart görüldü
       }
       // 3. Durum: NORMAL ÖĞRENME (Learn/Master/DontKnow)
       else {
           await handleSmartLearn(currentWord.id, type);
           if (type === "know") setStats((p) => ({ ...p, learned: p.learned + 1 }));
+            updateGameStats('flashcard', 1); // <--- EKLE
           else if (type === "dont_know") setStats((p) => ({ ...p, review: p.review + 1 })); 
           else if (type === "master") setStats((p) => ({ ...p, mastered: p.mastered + 1, learned: p.learned + 1 }));
+         updateGameStats('flashcard', 1); // <--- EKLE
       }
 
       // Sonraki Soruya Geç
