@@ -205,7 +205,7 @@ export default function Game() {
                   <div className="bg-orange-100 p-3 rounded-xl text-orange-600"><RotateCcw className="w-8 h-8" /></div>
                   <div className="text-left">
                     <div className="font-bold text-xl text-slate-800">Tekrar Modu</div>
-                    <div className="text-sm text-slate-500">Öğrendiklerini Pekiştir</div>
+                    <div className="text-sm text-slate-500">Öğrendiklerini (Mezunları) pekiştir</div>
                   </div>
                 </div>
                 <div className="text-2xl font-black text-orange-600">{pools.reviewPool.length}</div>
@@ -223,7 +223,7 @@ export default function Game() {
                   <div className="bg-indigo-100 p-3 rounded-xl text-indigo-600"><Brain className="w-8 h-8" /></div>
                   <div className="text-left">
                     <div className="font-bold text-xl text-slate-800">Öğrenme Modu</div>
-                    <div className="text-sm text-slate-500">Yeni Kelimeler</div>
+                    <div className="text-sm text-slate-500">Yeni ve zamanı gelen kelimeler</div>
                   </div>
                 </div>
                 <div className="text-2xl font-black text-indigo-600">{pools.learnPool.length}</div>
@@ -241,7 +241,7 @@ export default function Game() {
                   <div className="bg-slate-100 p-3 rounded-xl text-slate-500"><Hourglass className="w-8 h-8" /></div>
                   <div className="text-left">
                     <div className="font-bold text-xl text-slate-700">Bekleme Listesi</div>
-                    <div className="text-sm text-slate-400">Henüz Zamanı Gelmeyen Kelimeler</div>
+                    <div className="text-sm text-slate-400">Henüz zamanı gelmeyenler</div>
                   </div>
                 </div>
                 <div className="text-2xl font-black text-slate-500">{pools.waitingPool.length}</div>
@@ -289,7 +289,7 @@ export default function Game() {
   return (
     <div className="flex flex-col min-h-screen bg-slate-100 overflow-hidden relative">
       
-      {/* --- OYUN BUTONLARI İÇİN ÖZEL CSS --- */}
+      {/* --- GLOBAL CSS FIX (KART EKRANI İÇİN) --- */}
       <style>{`
             * { -webkit-tap-highlight-color: transparent !important; }
             
@@ -299,9 +299,8 @@ export default function Game() {
                 .btn-green:hover { background-color: #f0fdf4 !important; border-color: #dcfce7 !important; }
                 .btn-blue:hover { background-color: #eff6ff !important; border-color: #dbeafe !important; }
                 .btn-white:hover { background-color: #f8fafc !important; }
-                .icon-btn:hover { background-color: #f1f5f9 !important; }
             }
-            .game-btn { transition: transform 0.1s ease, background-color 0.2s ease; }
+            .game-btn { transition: all 0.2s ease; }
       `}</style>
 
       {/* --- EZBERLEDİM ONAY MODALI --- */}
@@ -338,7 +337,7 @@ export default function Game() {
       <div className="bg-white shadow-sm p-4 z-10">
         <div className="max-w-md mx-auto">
           <div className="flex justify-between items-center mb-2">
-            <button onClick={handleQuitEarly} className="icon-btn text-slate-400 p-2 rounded-full active:bg-slate-100 transition-colors"><X className="w-6 h-6" /></button>
+            <button onClick={handleQuitEarly} className="text-slate-400 hover:text-slate-700"><X className="w-6 h-6" /></button>
             <div className="flex items-center gap-2">
               <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-1 rounded-full font-bold border border-slate-200">
                  {activeMode === 'learn' ? 'Öğrenme' : activeMode === 'review' ? 'Tekrar' : 'Bekleme'} Modu
@@ -363,21 +362,53 @@ export default function Game() {
         )}
       </div>
 
-      {/* BUTONLAR (TAM MOBİL UYUMLU) */}
+      {/* BUTONLAR (DÜZENLENDİ) */}
       <div className="pb-10 px-6 max-w-md mx-auto w-full">
         {activeMode === 'review' ? (
+            // --- TEKRAR MODU (Tek Buton) ---
             <button 
-                onClick={(e) => handleAnswerAction("right", "review_pass", e)}
+                onClick={(e) => {
+                    handleBlur(e);
+                    handleAnswerAction("right", "review_pass");
+                }}
                 style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
                 className="game-btn btn-white w-full bg-white border-2 border-slate-200 text-slate-600 font-bold py-4 rounded-2xl shadow-sm flex items-center justify-center gap-2 active:scale-95 focus:outline-none"
             >
                 <span>Sıradaki Kelime</span>
                 <ArrowRight className="w-5 h-5" />
             </button>
-        ) : (
+        ) : activeMode === 'waiting' ? (
+            // --- BEKLEME MODU (Sıradaki + Ezberledim) ---
             <div className="flex gap-3 justify-center">
               <button 
-                onClick={(e) => handleAnswerAction("left", "dont_know", e)} 
+                onClick={(e) => {
+                    handleBlur(e);
+                    handleAnswerAction("right", "know", e); // Biliyorum ile aynı işlev (geçiş)
+                }} 
+                disabled={!!swipeDirection || showMasterConfirm || showResetConfirm} 
+                style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
+                className="game-btn btn-white flex-1 bg-white border-2 border-slate-200 text-slate-600 font-bold py-4 rounded-2xl shadow-sm flex flex-col items-center gap-1 active:scale-95 focus:outline-none"
+              >
+                <ArrowRight className="w-6 h-6" /><span className="text-sm">Sıradaki Kelime</span>
+              </button>
+              
+              <button 
+                onClick={(e) => handleMasterClick(e)} 
+                disabled={!!swipeDirection || showMasterConfirm || showResetConfirm} 
+                style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
+                className="game-btn btn-blue flex-1 bg-white border-2 border-blue-100 text-blue-600 font-bold py-4 rounded-2xl shadow-sm flex flex-col items-center gap-1 active:scale-95 focus:outline-none"
+              >
+                <CheckCheck className="w-6 h-6" /><span className="text-sm">Ezberledim</span>
+              </button>
+            </div>
+        ) : (
+            // --- ÖĞRENME MODU (Bilmiyorum + Biliyorum + Ezberledim) ---
+            <div className="flex gap-3 justify-center">
+              <button 
+                onClick={(e) => {
+                    handleBlur(e);
+                    handleAnswerAction("left", "dont_know", e);
+                }} 
                 disabled={!!swipeDirection || showMasterConfirm || showResetConfirm} 
                 style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
                 className="game-btn btn-orange flex-1 bg-white border-2 border-orange-100 text-orange-500 font-bold py-4 rounded-2xl shadow-sm flex flex-col items-center gap-1 active:scale-95 focus:outline-none"
@@ -386,7 +417,10 @@ export default function Game() {
               </button>
               
               <button 
-                onClick={(e) => handleAnswerAction("right", "know", e)} 
+                onClick={(e) => {
+                    handleBlur(e);
+                    handleAnswerAction("right", "know", e);
+                }} 
                 disabled={!!swipeDirection || showMasterConfirm || showResetConfirm} 
                 style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
                 className="game-btn btn-green flex-1 bg-white border-2 border-green-100 text-green-600 font-bold py-4 rounded-2xl shadow-sm flex flex-col items-center gap-1 active:scale-95 focus:outline-none"
@@ -405,8 +439,8 @@ export default function Game() {
             </div>
         )}
 
-        <button onClick={handleQuitEarly} className="icon-btn mt-6 flex items-center justify-center gap-2 text-slate-400 p-2 rounded-full active:bg-slate-100 transition-colors text-sm font-medium mx-auto focus:outline-none">
-          Bitir (Puanı Al ve Çık)
+        <button onClick={handleQuitEarly} style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }} className="mt-6 flex items-center justify-center gap-2 text-slate-400 hover:text-red-500 transition-colors text-sm font-medium mx-auto focus:outline-none focus:ring-0">
+          <Target className="w-4 h-4" /> Bitir
         </button>
       </div>
     </div>
