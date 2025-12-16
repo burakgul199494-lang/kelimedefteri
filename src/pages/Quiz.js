@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 
 export default function Quiz() {
-  const { getAllWords, knownWordIds, learningQueue, addScore } = useData();
+  const { getAllWords, knownWordIds, learningQueue, addScore, updateGameStats } = useData();
   const navigate = useNavigate();
 
   // --- STATE'LER ---
@@ -130,7 +130,10 @@ export default function Quiz() {
     setIsAnswered(true); 
     setSelected(option);
     
-    if (option === questions[index].correct) setScore(s => s + 5);
+    if (option === questions[index].correct) {
+      setScore(s => s + 5);
+      updateGameStats('quiz', 1); // <-- BU SATIRI EKLE
+  }
     
     setTimeout(() => {
       if (index + 1 < questions.length) {
