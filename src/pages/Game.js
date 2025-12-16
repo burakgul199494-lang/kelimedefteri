@@ -36,7 +36,6 @@ export default function Game() {
   const POINTS_PER_CARD = 5;
 
   // --- KRİTİK FONKSİYON: ODAĞI HEMEN KALDIR ---
-  // Bu fonksiyon, tıklama biter bitmez butonu "seçilmemiş" hale getirir.
   const handleBlur = (e) => {
       if (e && e.currentTarget) e.currentTarget.blur();
   };
@@ -101,22 +100,33 @@ export default function Game() {
     const currentWord = sessionWords[currentIndex];
 
     setTimeout(async () => {
+      // 1. Durum: TEKRAR MODU (Review) - Sadece geçer
       if (activeMode === 'review') {
           setStats((p) => ({ ...p, review: p.review + 1 }));
-      } else {
+      } 
+      // 2. Durum: BEKLEME MODU (Waiting) - "Sıradaki Kelime" basıldıysa
+      // Veritabanına (SRS) kayıt yapma, sadece istatistik güncelle ve geç.
+      else if (activeMode === 'waiting' && type === 'waiting_pass') {
+          setStats((p) => ({ ...p, review: p.review + 1 })); 
+      }
+      // 3. Durum: NORMAL ÖĞRENME (Learn/Master/DontKnow)
+      else {
           await handleSmartLearn(currentWord.id, type);
           if (type === "know") setStats((p) => ({ ...p, learned: p.learned + 1 }));
           else if (type === "dont_know") setStats((p) => ({ ...p, review: p.review + 1 })); 
           else if (type === "master") setStats((p) => ({ ...p, mastered: p.mastered + 1, learned: p.learned + 1 }));
       }
 
+      // Sonraki Soruya Geç
       if (currentIndex + 1 < sessionWords.length) {
         setCurrentIndex((p) => p + 1);
         setSwipeDirection(null);
       } else {
         setGameStage("summary");
         setSwipeDirection(null);
-        if (activeMode !== 'review') {
+        // Puan sadece 'learn' modunda veya 'master' yapıldığında verilir
+        // Waiting modunda sadece geçiş yapıldığı için puan vermiyoruz (Ezberledim hariç)
+        if (activeMode === 'learn') {
             const totalPoints = sessionWords.length * POINTS_PER_CARD; 
             if (totalPoints > 0) addScore(totalPoints);
         }
@@ -151,7 +161,7 @@ export default function Game() {
   
   const handleQuitEarly = (e) => {
     handleBlur(e);
-    if(activeMode !== 'review') {
+    if(activeMode === 'learn') {
         const pointsEarned = currentIndex * POINTS_PER_CARD;
         if (pointsEarned > 0) addScore(pointsEarned);
     }
@@ -289,7 +299,7 @@ export default function Game() {
   return (
     <div className="flex flex-col min-h-screen bg-slate-100 overflow-hidden relative">
       
-      {/* --- GLOBAL CSS FIX (KART EKRANI İÇİN) --- */}
+      {/* --- OYUN BUTONLARI İÇİN ÖZEL CSS --- */}
       <style>{`
             * { -webkit-tap-highlight-color: transparent !important; }
             
@@ -299,8 +309,9 @@ export default function Game() {
                 .btn-green:hover { background-color: #f0fdf4 !important; border-color: #dcfce7 !important; }
                 .btn-blue:hover { background-color: #eff6ff !important; border-color: #dbeafe !important; }
                 .btn-white:hover { background-color: #f8fafc !important; }
+                .icon-btn:hover { background-color: #f1f5f9 !important; }
             }
-            .game-btn { transition: all 0.2s ease; }
+            .game-btn { transition: transform 0.1s ease, background-color 0.2s ease; }
       `}</style>
 
       {/* --- EZBERLEDİM ONAY MODALI --- */}
@@ -337,7 +348,7 @@ export default function Game() {
       <div className="bg-white shadow-sm p-4 z-10">
         <div className="max-w-md mx-auto">
           <div className="flex justify-between items-center mb-2">
-            <button onClick={handleQuitEarly} className="text-slate-400 hover:text-slate-700"><X className="w-6 h-6" /></button>
+            <button onClick={handleQuitEarly} className="icon-btn text-slate-400 p-2 rounded-full active:bg-slate-100 transition-colors"><X className="w-6 h-6" /></button>
             <div className="flex items-center gap-2">
               <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-1 rounded-full font-bold border border-slate-200">
                  {activeMode === 'learn' ? 'Öğrenme' : activeMode === 'review' ? 'Tekrar' : 'Bekleme'} Modu
@@ -369,7 +380,7 @@ export default function Game() {
             <button 
                 onClick={(e) => {
                     handleBlur(e);
-                    handleAnswerAction("right", "review_pass");
+                    handleAnswerAction("right", "review_pass", e);
                 }}
                 style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
                 className="game-btn btn-white w-full bg-white border-2 border-slate-200 text-slate-600 font-bold py-4 rounded-2xl shadow-sm flex items-center justify-center gap-2 active:scale-95 focus:outline-none"
@@ -383,7 +394,8 @@ export default function Game() {
               <button 
                 onClick={(e) => {
                     handleBlur(e);
-                    handleAnswerAction("right", "know", e); // Biliyorum ile aynı işlev (geçiş)
+                    // DİKKAT: 'waiting_pass' tipi, SRS güncellemesi yapmadan sadece geçer
+                    handleAnswerAction("right", "waiting_pass", e); 
                 }} 
                 disabled={!!swipeDirection || showMasterConfirm || showResetConfirm} 
                 style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
@@ -439,7 +451,7 @@ export default function Game() {
             </div>
         )}
 
-        <button onClick={handleQuitEarly} style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }} className="mt-6 flex items-center justify-center gap-2 text-slate-400 hover:text-red-500 transition-colors text-sm font-medium mx-auto focus:outline-none focus:ring-0">
+        <button onClick={handleQuitEarly} style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }} className="icon-btn mt-6 flex items-center justify-center gap-2 text-slate-400 p-2 rounded-full active:bg-slate-100 transition-colors text-sm font-medium mx-auto focus:outline-none">
           <Target className="w-4 h-4" /> Bitir
         </button>
       </div>
