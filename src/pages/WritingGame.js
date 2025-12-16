@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { X, Trophy, Volume2, Lightbulb, Loader2, RefreshCw, BrainCircuit, Hourglass, Home, AlertTriangle } from "lucide-react";
 
 export default function WritingGame() {
-  const { getAllWords, knownWordIds, addScore, learningQueue } = useData();
+  const { getAllWords, knownWordIds, addScore, learningQueue, updateGameStats } = useData(); // <-- EKLENDİ
   const navigate = useNavigate();
 
   // --- STATE'LER ---
@@ -172,6 +172,8 @@ export default function WritingGame() {
               setCompletedLetters(targetWord.split('')); 
               setIsWordComplete(true);
               speak(targetWord);
+
+              updateGameStats('writing', 1); // <--- BURAYA EKLE (Kelime geçildi)
               
               setTimeout(() => {
                   if (currentIndex + 1 < questions.length) {
@@ -208,6 +210,7 @@ export default function WritingGame() {
 
   // --- KELİME BİTİRME (BAŞARILI) ---
   const handleWordComplete = () => {
+    updateGameStats('writing', 1); // <--- BURAYA EKLE (1 Kelime bitti)
     setIsWordComplete(true);
     speak(targetWord);
     
