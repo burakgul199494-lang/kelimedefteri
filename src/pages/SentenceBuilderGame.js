@@ -146,7 +146,7 @@ export default function SentenceBuilderGame() {
         setWrongAnimationId(wordObj.id);
         setTimeout(() => setWrongAnimationId(null), 500);
 
-        if (newMistakes >= 2) {
+        if (newMistakes >= 6) {
             handleFailAndShowCorrect();
         }
     }
@@ -414,7 +414,7 @@ export default function SentenceBuilderGame() {
                       <Lightbulb className="w-5 h-5"/> 
                       <span className="text-xs ml-1 flex flex-col items-start leading-none">
                           <span>İpucu ({hintCount === 0 ? "5p" : hintCount === 1 ? "2p" : "0p"})</span>
-                          <span className="text-[9px] text-amber-600/80">Hata: {mistakeCount}/2</span>
+                          <span className="text-[9px] text-amber-600/80">Hata: {mistakeCount}/6</span>
                       </span>
                     </button>
               </div>
