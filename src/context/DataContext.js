@@ -360,6 +360,16 @@ export const DataProvider = ({ children }) => {
         const weekKey = getCurrentWeekKey();
         const leaderboardRef = doc(db, "artifacts", appId, "weekly_scores", weekKey, "users", user.uid);
         await deleteDoc(leaderboardRef);
+
+        // --- YENİ EKLENEN KISIM: İSTATİSTİKLERİ SİL ---
+        // Haftalık aktivite raporunu (Quiz: 5, Yazma: 3 vb.) siler.
+        const statsRef = doc(db, "artifacts", appId, "weekly_stats", weekKey, "user_activities", user.uid);
+        await deleteDoc(statsRef);
+        // ----------------------------------------------
+
+
+
+        
       } catch(e) { console.error(e); }
   };
 
