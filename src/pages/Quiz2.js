@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { X, Trophy, Loader2, Home, RefreshCw, BrainCircuit, Hourglass } from "lucide-react";
 
 export default function Quiz2() {
-  const { getAllWords, knownWordIds, learningQueue, addScore } = useData();
+  const { getAllWords, knownWordIds, learningQueue, addScore, updateGameStats } = useData();
   const navigate = useNavigate();
 
   // --- STATE'LER ---
@@ -102,7 +102,11 @@ export default function Quiz2() {
     setIsAnswered(true); 
     setSelected(option);
     
+    // 1. Puanı sadece doğruysa ver
     if (option === questions[index].correct) setScore(s => s + 5);
+
+    // 2. İstatistiği HER DURUMDA işle (Dışarıda)
+    updateGameStats('reverse_quiz', 1); // <--- BURAYA EKLİYORUZ
     
     setTimeout(() => {
       if (index + 1 < questions.length) {
