@@ -130,9 +130,13 @@ export default function Quiz() {
     setIsAnswered(true); 
     setSelected(option);
     
-    if (option === questions[index].correct) {
+    // 1. Puanı sadece doğruysa ver
+  if (option === questions[index].correct) {
       setScore(s => s + 5);
-      updateGameStats('quiz', 1); // <-- BU SATIRI EKLE
+  }
+
+  // 2. İstatistiği her durumda işle (Doğru/Yanlış fark etmez)
+  updateGameStats('quiz', 1); // <--- BURAYA (DIŞARIYA) AL
   }
     
     setTimeout(() => {
