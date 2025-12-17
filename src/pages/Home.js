@@ -6,60 +6,52 @@ import {
   RotateCcw, LogOut,
   Brain, Flame, Play, Book, 
   Edit, HelpCircle, 
-  Settings, Trophy,
+  Settings, Trophy, 
   Star, Mic, Quote, Shield,
   Hourglass,
   Languages,
   Layout,
-  Headphones, // Dinleme
-  Puzzle, // Eşleştirme
-  BarChart2 // <-- YENİ EKLENEN İKON
+  Headphones, 
+  Puzzle, 
+  BarChart2,
+  User // <-- Yeni: Profil ikonu için
 } from "lucide-react"; 
 import ProfileModal from "../components/ProfileModal"; 
 import LeaderboardModal from "../components/LeaderboardModal";
-import StatisticsModal from "../components/StatisticsModal"; // <-- YENİ EKLENEN BİLEŞEN
+import StatisticsModal from "../components/StatisticsModal";
+import SettingsModal from "../components/SettingsModal"; // <-- YENİ: Ayarlar Modalı
 
 export default function Home() {
-  const { user, knownWordIds, getAllWords, streak, resetProfile, isAdmin, leaderboardData, learningQueue } = useData();
+  const { user, knownWordIds, getAllWords, streak, isAdmin, leaderboardData, learningQueue } = useData();
   const navigate = useNavigate();
   
   const [showProfileModal, setShowProfileModal] = useState(false); 
   const [showLeaderboard, setShowLeaderboard] = useState(false);
-  const [showStats, setShowStats] = useState(false); // <-- YENİ STATE
+  const [showStats, setShowStats] = useState(false);
+  const [showSettings, setShowSettings] = useState(false); // <-- YENİ STATE
   
-  // Veritabanından gelen temizlenmiş (silinenler hariç) tüm kelimeler
+  // Veritabanından gelen temizlenmiş kelimeler
   const allWords = getAllWords();
   const totalWords = allWords.length;
 
   // --- HESAPLAMALAR ---
-
-  // 1. ÖĞRENİLENLER: Sadece şu an sistemde var olan kelimeleri say
   const validKnownWords = allWords.filter(w => knownWordIds.includes(w.id));
   const learnedCount = validKnownWords.length;
   
-  // 2. KUYRUKTAKİLER
   const validQueueItems = learningQueue 
     ? learningQueue.filter(q => allWords.some(w => w.id === q.wordId))
     : [];
   
-  const inQueueCount = validQueueItems.length;
-
-  // 3. BEKLEMEDE
   const now = new Date();
   const waitingCount = validQueueItems.filter(item => new Date(item.nextReview) > now).length;
 
-  // 4. KALAN (REMAINING)
   const remainingCount = allWords.filter(w => 
     !knownWordIds.includes(w.id) && 
     !learningQueue.some(q => q.wordId === w.id)
   ).length;
 
-  // İlerleme Yüzdesi
   const progressPercentage = totalWords > 0 ? (learnedCount / totalWords) * 100 : 0;
   const myScore = leaderboardData.find(u => u.id === user?.uid)?.score || 0;
-
-  const handleLogout = async () => { await auth.signOut(); navigate("/login"); };
-  const handleReset = async () => { if(window.confirm("Emin misin? Tüm ilerleme silinecek.")) await resetProfile(); };
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center p-6">
@@ -67,34 +59,40 @@ export default function Home() {
       {/* --- MODALLAR --- */}
       {showProfileModal && <ProfileModal user={user} onClose={() => setShowProfileModal(false)} />}
       {showLeaderboard && <LeaderboardModal onClose={() => setShowLeaderboard(false)} />}
-      {showStats && <StatisticsModal onClose={() => setShowStats(false)} />} {/* <-- YENİ MODAL */}
+      {showStats && <StatisticsModal onClose={() => setShowStats(false)} />}
+      {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />} {/* <-- AYARLAR MODALI */}
 
       <div className="w-full max-w-md space-y-6 mt-2">
         
-        {/* Üst Bar */}
+        {/* Üst Bar (Daha Temiz Hale Getirildi) */}
         <div className="flex justify-between items-center w-full px-1">
-           <div className="flex gap-2">
-             <button onClick={() => setShowProfileModal(true)} className="p-2.5 bg-white rounded-xl shadow-sm border border-slate-200 text-slate-600 hover:text-indigo-600">
-                <Settings size={18} />
-             </button>
+           <div className="flex gap-2 w-full justify-between">
              
-             {/* Liderlik Tablosu */}
-             <button onClick={() => setShowLeaderboard(true)} className="p-2.5 bg-white rounded-xl shadow-sm border border-slate-200 text-slate-600 hover:text-yellow-500">
-                <Trophy size={18} />
-             </button>
+             <div className="flex gap-2">
+                {/* 1. PROFİL (User İkonu) */}
+                <button onClick={() => setShowProfileModal(true)} className="p-2.5 bg-white rounded-xl shadow-sm border border-slate-200 text-slate-600 hover:text-indigo-600" title="Profil Düzenle">
+                    <User size={18} />
+                </button>
+                
+                {/* 2. AYARLAR (Çark İkonu - Bildirim/Sıfırla/Çıkış burada) */}
+                <button onClick={() => setShowSettings(true)} className="p-2.5 bg-white rounded-xl shadow-sm border border-slate-200 text-slate-600 hover:text-slate-900" title="Ayarlar">
+                    <Settings size={18} />
+                </button>
+             </div>
 
-             {/* --- YENİ İSTATİSTİK BUTONU --- */}
-             <button onClick={() => setShowStats(true)} className="p-2.5 bg-white rounded-xl shadow-sm border border-slate-200 text-slate-600 hover:text-emerald-500" title="Haftalık Rapor">
-                <BarChart2 size={18} />
-             </button>
+             <div className="flex gap-2">
+                {/* 3. LİDERLİK */}
+                <button onClick={() => setShowLeaderboard(true)} className="p-2.5 bg-white rounded-xl shadow-sm border border-slate-200 text-slate-600 hover:text-yellow-500" title="Liderlik">
+                    <Trophy size={18} />
+                </button>
 
-             <button onClick={handleReset} className="p-2.5 bg-white rounded-xl shadow-sm border border-slate-200 text-slate-400 hover:text-red-500" title="Sıfırla">
-                <RotateCcw size={18} />
-             </button>
+                {/* 4. İSTATİSTİK */}
+                <button onClick={() => setShowStats(true)} className="p-2.5 bg-white rounded-xl shadow-sm border border-slate-200 text-slate-600 hover:text-emerald-500" title="Haftalık Rapor">
+                    <BarChart2 size={18} />
+                </button>
+             </div>
+
            </div>
-           <button onClick={handleLogout} className="p-2.5 bg-white rounded-xl shadow-sm border border-slate-200 text-slate-400 hover:text-red-500" title="Çıkış">
-             <LogOut size={18} />
-           </button>
         </div>
 
         {/* Başlık & İstatistikler */}
@@ -231,4 +229,3 @@ export default function Home() {
     </div>
   );
 }
-
