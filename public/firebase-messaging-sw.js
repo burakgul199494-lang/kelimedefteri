@@ -13,15 +13,7 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const messaging = firebase.messaging();
 
-// iOS İÇİN BU KOD ŞARTMIŞ (Geri ekledik)
-messaging.onBackgroundMessage((payload) => {
-  console.log('[firebase-messaging-sw.js] Arka plan mesajı:', payload);
-  
-  const notificationTitle = payload.notification.title;
-  const notificationOptions = {
-    body: payload.notification.body,
-    icon: '/logo192.png' // Manifestteki ikonumuz
-  };
-
-  self.registration.showNotification(notificationTitle, notificationOptions);
-});
+// --- KESİN ÇÖZÜM ---
+// onBackgroundMessage bloğunu TAMAMEN SİLDİM.
+// Artık manuel olarak "showNotification" çağırmıyoruz.
+// Firebase SDK'sı gelen bildirimi otomatik olarak tek sefer gösterecek.
