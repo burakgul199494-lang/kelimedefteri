@@ -115,7 +115,7 @@ export const DataProvider = ({ children }) => {
         unsubProfile();
         unsubLeaderboard();
     };
-  }, [user]);
+  }, [user?.uid]); // <---- DEĞİŞTİRDİĞİMİZ YER BURASI
 
   // --- YARDIMCI FONKSİYONLAR ---
 
