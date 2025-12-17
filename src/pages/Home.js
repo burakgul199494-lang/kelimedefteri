@@ -6,20 +6,18 @@ import {
   RotateCcw, LogOut,
   Brain, Flame, Play, Book, 
   Edit, HelpCircle, 
-  Settings, Trophy, // Settings ikonu artık Ayarlar için
-  User, // <-- Yeni Profil İkonu
+  Settings, Trophy,
   Star, Mic, Quote, Shield,
   Hourglass,
   Languages,
   Layout,
-  Headphones, 
-  Puzzle, 
-  BarChart2 
+  Headphones, // Dinleme
+  Puzzle, // Eşleştirme
+  BarChart2 // <-- YENİ EKLENEN İKON
 } from "lucide-react"; 
 import ProfileModal from "../components/ProfileModal"; 
 import LeaderboardModal from "../components/LeaderboardModal";
-import StatisticsModal from "../components/StatisticsModal";
-import SettingsModal from "../components/SettingsModal"; // <-- YENİ MODAL IMPORT
+import StatisticsModal from "../components/StatisticsModal"; // <-- YENİ EKLENEN BİLEŞEN
 
 export default function Home() {
   const { user, knownWordIds, getAllWords, streak, resetProfile, isAdmin, leaderboardData, learningQueue } = useData();
@@ -27,39 +25,40 @@ export default function Home() {
   
   const [showProfileModal, setShowProfileModal] = useState(false); 
   const [showLeaderboard, setShowLeaderboard] = useState(false);
-  const [showStats, setShowStats] = useState(false);
-  const [showSettings, setShowSettings] = useState(false); // <-- YENİ STATE
+  const [showStats, setShowStats] = useState(false); // <-- YENİ STATE
   
   // Veritabanından gelen temizlenmiş (silinenler hariç) tüm kelimeler
   const allWords = getAllWords();
   const totalWords = allWords.length;
 
   // --- HESAPLAMALAR ---
+
+  // 1. ÖĞRENİLENLER: Sadece şu an sistemde var olan kelimeleri say
   const validKnownWords = allWords.filter(w => knownWordIds.includes(w.id));
   const learnedCount = validKnownWords.length;
   
+  // 2. KUYRUKTAKİLER
   const validQueueItems = learningQueue 
     ? learningQueue.filter(q => allWords.some(w => w.id === q.wordId))
     : [];
   
   const inQueueCount = validQueueItems.length;
+
+  // 3. BEKLEMEDE
   const now = new Date();
   const waitingCount = validQueueItems.filter(item => new Date(item.nextReview) > now).length;
 
+  // 4. KALAN (REMAINING)
   const remainingCount = allWords.filter(w => 
     !knownWordIds.includes(w.id) && 
     !learningQueue.some(q => q.wordId === w.id)
   ).length;
 
+  // İlerleme Yüzdesi
   const progressPercentage = totalWords > 0 ? (learnedCount / totalWords) * 100 : 0;
   const myScore = leaderboardData.find(u => u.id === user?.uid)?.score || 0;
 
-  // Çıkış ve Reset fonksiyonlarını SettingsModal içine taşıdık ama
-  // Navbar'da hızlı erişim için LogOut butonu kalabilir.
   const handleLogout = async () => { await auth.signOut(); navigate("/login"); };
-  
-  // Reset butonu artık SettingsModal içinde de var, burada hızlı erişim olarak kalsın mı?
-  // Kodunda vardı, bırakıyorum.
   const handleReset = async () => { if(window.confirm("Emin misin? Tüm ilerleme silinecek.")) await resetProfile(); };
 
   return (
@@ -68,36 +67,31 @@ export default function Home() {
       {/* --- MODALLAR --- */}
       {showProfileModal && <ProfileModal user={user} onClose={() => setShowProfileModal(false)} />}
       {showLeaderboard && <LeaderboardModal onClose={() => setShowLeaderboard(false)} />}
-      {showStats && <StatisticsModal onClose={() => setShowStats(false)} />}
-      {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />} {/* <-- EKLENDİ */}
+      {showStats && <StatisticsModal onClose={() => setShowStats(false)} />} {/* <-- YENİ MODAL */}
 
       <div className="w-full max-w-md space-y-6 mt-2">
         
         {/* Üst Bar */}
         <div className="flex justify-between items-center w-full px-1">
            <div className="flex gap-2">
-             {/* PROFİL BUTONU (User İkonuyla Değişti) */}
-             <button onClick={() => setShowProfileModal(true)} className="p-2.5 bg-white rounded-xl shadow-sm border border-slate-200 text-slate-600 hover:text-indigo-600" title="Profil">
-                <User size={18} />
-             </button>
-             
-             {/* AYARLAR BUTONU (Settings İkonu Buraya Geldi) */}
-             <button onClick={() => setShowSettings(true)} className="p-2.5 bg-white rounded-xl shadow-sm border border-slate-200 text-slate-600 hover:text-slate-900" title="Ayarlar">
+             <button onClick={() => setShowProfileModal(true)} className="p-2.5 bg-white rounded-xl shadow-sm border border-slate-200 text-slate-600 hover:text-indigo-600">
                 <Settings size={18} />
              </button>
              
              {/* Liderlik Tablosu */}
-             <button onClick={() => setShowLeaderboard(true)} className="p-2.5 bg-white rounded-xl shadow-sm border border-slate-200 text-slate-600 hover:text-yellow-500" title="Liderlik">
+             <button onClick={() => setShowLeaderboard(true)} className="p-2.5 bg-white rounded-xl shadow-sm border border-slate-200 text-slate-600 hover:text-yellow-500">
                 <Trophy size={18} />
              </button>
 
-             {/* İstatistik Butonu */}
+             {/* --- YENİ İSTATİSTİK BUTONU --- */}
              <button onClick={() => setShowStats(true)} className="p-2.5 bg-white rounded-xl shadow-sm border border-slate-200 text-slate-600 hover:text-emerald-500" title="Haftalık Rapor">
                 <BarChart2 size={18} />
              </button>
+
+             <button onClick={handleReset} className="p-2.5 bg-white rounded-xl shadow-sm border border-slate-200 text-slate-400 hover:text-red-500" title="Sıfırla">
+                <RotateCcw size={18} />
+             </button>
            </div>
-           
-           {/* Hızlı Çıkış (İstersen kaldırabilirsin, Ayarlar içinde de var) */}
            <button onClick={handleLogout} className="p-2.5 bg-white rounded-xl shadow-sm border border-slate-200 text-slate-400 hover:text-red-500" title="Çıkış">
              <LogOut size={18} />
            </button>
@@ -237,3 +231,4 @@ export default function Home() {
     </div>
   );
 }
+
