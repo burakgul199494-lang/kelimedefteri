@@ -4,10 +4,11 @@ import {
   createUserWithEmailAndPassword, 
   signInWithPopup, 
   GoogleAuthProvider,
-  sendPasswordResetEmail // YENİ EKLENDİ
+  sendPasswordResetEmail,
+  updateProfile // <-- YENİ EKLENDİ
 } from "firebase/auth";
 import { auth } from "../services/firebase";
-import { Brain, Globe, Mail, Lock, Loader2, ArrowLeft, CheckCircle2 } from "lucide-react";
+import { Brain, Globe, Mail, Lock, Loader2, ArrowLeft, CheckCircle2, User } from "lucide-react"; // <-- User ikonu eklendi
 import { useNavigate } from "react-router-dom";
 import { useData } from "../context/DataContext";
 
@@ -17,8 +18,15 @@ export default function Auth() {
   
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  
+  // --- YENİ EKLENEN STATE'LER ---
+  const [name, setName] = useState("");
+  const [surname, setSurname] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  // ------------------------------
+
   const [error, setError] = useState("");
-  const [successMsg, setSuccessMsg] = useState(""); // Şifre sıfırlama başarılı mesajı için
+  const [successMsg, setSuccessMsg] = useState(""); 
   const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
@@ -30,6 +38,19 @@ export default function Auth() {
     }
   }, [user, navigate]);
 
+  // View değiştiğinde formları temizle
+  const changeView = (newView) => {
+    setView(newView);
+    setError("");
+    setSuccessMsg("");
+    // Formu temizle
+    setEmail("");
+    setPassword("");
+    setName("");
+    setSurname("");
+    setConfirmPassword("");
+  };
+
   // Form Gönderildiğinde
   const handleSubmit = async (e) => {
     e.preventDefault(); 
@@ -39,27 +60,49 @@ export default function Auth() {
     
     try {
       if (view === "login") {
-        // GİRİŞ YAPMA
+        // --- GİRİŞ YAPMA ---
         await signInWithEmailAndPassword(auth, email, password);
       } 
       else if (view === "register") {
-        // KAYIT OLMA
-        await createUserWithEmailAndPassword(auth, email, password);
+        // --- KAYIT OLMA (GÜNCELLENDİ) ---
+        
+        // 1. Basit Validasyonlar
+        if (!name || !surname) {
+          throw new Error("Lütfen isim ve soyisim alanlarını doldurun.");
+        }
+        if (password !== confirmPassword) {
+          throw new Error("Şifreler birbiriyle uyuşmuyor.");
+        }
+        if (password.length < 6) {
+          throw new Error("Şifre en az 6 karakter olmalıdır.");
+        }
+
+        // 2. Kullanıcıyı Oluştur
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        
+        // 3. Profili Güncelle (İsim Soyisim Ekle)
+        await updateProfile(userCredential.user, {
+          displayName: `${name} ${surname}`
+        });
       } 
       else if (view === "reset") {
-        // ŞİFRE SIFIRLAMA LİNKİ GÖNDERME
+        // --- ŞİFRE SIFIRLAMA ---
         await sendPasswordResetEmail(auth, email);
         setSuccessMsg("Sıfırlama bağlantısı e-posta adresine gönderildi! Lütfen gelen kutunu (ve spam klasörünü) kontrol et.");
         setLoading(false); 
-        return; // Yönlendirme yapma, mesajı görsün
+        return; 
       }
     } catch (err) { 
-      // Hata Mesajlarını Türkçeleştirme (Basitçe)
+      // Hata Mesajlarını Türkçeleştirme
       let msg = err.message;
       if(msg.includes("user-not-found")) msg = "Bu e-posta ile kayıtlı kullanıcı bulunamadı.";
       else if(msg.includes("wrong-password")) msg = "Hatalı şifre.";
       else if(msg.includes("email-already-in-use")) msg = "Bu e-posta zaten kullanımda.";
       else if(msg.includes("invalid-email")) msg = "Geçersiz e-posta adresi.";
+      // Bizim fırlattığımız özel hatalar (Validation)
+      else if(msg.includes("Şifreler")) msg = err.message;
+      else if(msg.includes("isim")) msg = err.message;
+      else if(msg.includes("6 karakter")) msg = err.message;
       
       setError(msg); 
     } finally { 
@@ -99,7 +142,7 @@ export default function Auth() {
         {error && <div className="bg-red-50 text-red-600 p-3 rounded-xl mb-4 text-sm border border-red-100 flex items-center gap-2"><div className="w-1 h-1 bg-red-500 rounded-full shrink-0"/>{error}</div>}
         {successMsg && <div className="bg-green-50 text-green-700 p-3 rounded-xl mb-4 text-sm border border-green-100 flex items-start gap-2"><CheckCircle2 className="w-5 h-5 shrink-0"/>{successMsg}</div>}
         
-        {/* Google Butonu (Sadece Giriş ve Kayıtta) */}
+        {/* Google Butonu (Reset hariç) */}
         {view !== "reset" && (
             <>
                 <button onClick={handleGoogle} className="w-full bg-white border border-slate-200 font-bold py-3 rounded-xl mb-4 flex items-center justify-center gap-2 hover:bg-slate-50 transition-colors text-slate-700">
@@ -113,13 +156,41 @@ export default function Auth() {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          
+          {/* --- YENİ ALANLAR: İSİM VE SOYİSİM (Sadece Register'da) --- */}
+          {view === "register" && (
+            <div className="flex gap-2">
+              <div className="relative w-1/2">
+                <User className="absolute left-3 top-3.5 text-slate-400 w-5 h-5" />
+                <input 
+                  type="text" 
+                  placeholder="İsim" 
+                  className="w-full pl-10 p-3 border border-slate-200 rounded-xl outline-none focus:border-indigo-500 transition-colors" 
+                  value={name} 
+                  onChange={e => setName(e.target.value)} 
+                  required 
+                />
+              </div>
+              <div className="relative w-1/2">
+                <input 
+                  type="text" 
+                  placeholder="Soyisim" 
+                  className="w-full p-3 border border-slate-200 rounded-xl outline-none focus:border-indigo-500 transition-colors" 
+                  value={surname} 
+                  onChange={e => setSurname(e.target.value)} 
+                  required 
+                />
+              </div>
+            </div>
+          )}
+          
           {/* Email Input (Her zaman var) */}
           <div className="relative">
               <Mail className="absolute left-3 top-3.5 text-slate-400 w-5 h-5" />
               <input type="email" placeholder="E-posta Adresi" className="w-full pl-10 p-3 border border-slate-200 rounded-xl outline-none focus:border-indigo-500 transition-colors" value={email} onChange={e => setEmail(e.target.value)} required />
           </div>
           
-          {/* Şifre Input (Sadece Giriş ve Kayıtta var, Reset'te yok) */}
+          {/* Şifre Input (Reset hariç) */}
           {view !== "reset" && (
               <div className="relative">
                   <Lock className="absolute left-3 top-3.5 text-slate-400 w-5 h-5" />
@@ -127,10 +198,25 @@ export default function Auth() {
               </div>
           )}
 
+          {/* --- YENİ ALAN: ŞİFRE TEKRAR (Sadece Register'da) --- */}
+          {view === "register" && (
+              <div className="relative">
+                  <Lock className="absolute left-3 top-3.5 text-slate-400 w-5 h-5" />
+                  <input 
+                    type="password" 
+                    placeholder="Şifreyi Tekrar Girin" 
+                    className="w-full pl-10 p-3 border border-slate-200 rounded-xl outline-none focus:border-indigo-500 transition-colors" 
+                    value={confirmPassword} 
+                    onChange={e => setConfirmPassword(e.target.value)} 
+                    required 
+                  />
+              </div>
+          )}
+
           {/* Şifremi Unuttum Linki (Sadece Girişte) */}
           {view === "login" && (
               <div className="text-right">
-                  <button type="button" onClick={() => { setView("reset"); setError(""); setSuccessMsg(""); }} className="text-xs font-bold text-indigo-500 hover:text-indigo-700">
+                  <button type="button" onClick={() => changeView("reset")} className="text-xs font-bold text-indigo-500 hover:text-indigo-700">
                       Şifremi unuttum?
                   </button>
               </div>
@@ -148,15 +234,15 @@ export default function Auth() {
         {/* Alt Linkler (Geçişler) */}
         <div className="mt-6 text-center text-sm text-slate-500">
             {view === "login" && (
-                <p>Hesabın yok mu? <button onClick={() => { setView("register"); setError(""); }} className="font-bold text-indigo-600 hover:underline">Hesap oluştur</button></p>
+                <p>Hesabın yok mu? <button onClick={() => changeView("register")} className="font-bold text-indigo-600 hover:underline">Hesap oluştur</button></p>
             )}
             
             {view === "register" && (
-                <p>Zaten hesabın var mı? <button onClick={() => { setView("login"); setError(""); }} className="font-bold text-indigo-600 hover:underline">Giriş yap</button></p>
+                <p>Zaten hesabın var mı? <button onClick={() => changeView("login")} className="font-bold text-indigo-600 hover:underline">Giriş yap</button></p>
             )}
 
             {view === "reset" && (
-                <button onClick={() => { setView("login"); setError(""); setSuccessMsg(""); }} className="flex items-center justify-center gap-2 font-bold text-slate-600 hover:text-indigo-600 w-full">
+                <button onClick={() => changeView("login")} className="flex items-center justify-center gap-2 font-bold text-slate-600 hover:text-indigo-600 w-full">
                     <ArrowLeft className="w-4 h-4"/> Girişe Dön
                 </button>
             )}
