@@ -1,7 +1,11 @@
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
-import { getFirestore, doc, setDoc } from "firebase/firestore"; // doc ve setDoc eklendi
-import { getMessaging, getToken } from "firebase/messaging"; // Messaging eklendi
+import { getFirestore, doc, setDoc } from "firebase/firestore"; 
+import { getMessaging, getToken } from "firebase/messaging"; 
+
+// 1. SABİTLERİ EN ÜSTE ALIYORUZ (Hız Kazandırmak İçin)
+export const appId = "burak-ingilizce-pro";
+export const ADMIN_EMAILS = ["burakgul1994@outlook.com.tr"];
 
 const firebaseConfig = {
   apiKey: "AIzaSyDpdcEZIaCzf4fvnrk9LD0D6WIuXWO30NA",
@@ -12,47 +16,38 @@ const firebaseConfig = {
   appId: "1:922162845642:web:75b579cbe5f46983996133",
 };
 
+// Uygulamayı başlat
 const app = initializeApp(firebaseConfig);
 
-// Mevcut Servisler
+// 2. KRİTİK SERVİSLER (Önce bunlar yüklenmeli)
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 
-// YENİ EKLENEN: Bildirim Servisi
+// 3. BİLDİRİM SERVİSİ (En sona koyduk, veritabanını yavaşlatmasın)
 export const messaging = getMessaging(app);
 
-// MEVCUT AYARLARIN (BUNLAR DEĞİŞMEDİ, GÜVENDE)
-export const appId = "burak-ingilizce-pro";
-export const ADMIN_EMAILS = ["burakgul1994@outlook.com.tr"];
-
-// --- YENİ EKLENEN: Bildirim İzni İsteme Fonksiyonu ---
+// --- BİLDİRİM İZNİ FONKSİYONU ---
 export const requestNotificationPermission = async (userId) => {
   try {
     const permission = await Notification.requestPermission();
-    
     if (permission === 'granted') {
-      // Senin VAPID Key'in ile token alıyoruz
       const token = await getToken(messaging, {
         vapidKey: "BAEv8tvoKaliQ-Dx3xxhUcPH-hDV_RylcMuPI4OtWMS3nYvHT_Gv7myuk_DsQ3kltls8moIe9WSdbLjBrE-Ui54"
       });
 
       if (token) {
-        console.log("Bildirim Tokeni:", token);
-        
-        // Tokeni veritabanına kaydediyoruz
+        console.log("Token:", token);
         if (userId) {
-            // appId değişkenini kullandığımız için doğru yere kaydedecek
             const userRef = doc(db, "artifacts", appId, "users", userId); 
             await setDoc(userRef, { fcmToken: token }, { merge: true });
-            
             alert("Bildirimler başarıyla açıldı! 🎉");
         }
       }
     } else {
-      alert("Bildirim izni verilmedi.");
+      alert("İzin verilmedi.");
     }
   } catch (error) {
-    console.error("Bildirim hatası:", error);
+    console.error("Hata:", error);
     alert("Bir hata oluştu.");
   }
 };
