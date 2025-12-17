@@ -13,12 +13,15 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const messaging = firebase.messaging();
 
-// --- DÜZELTME ---
-// Aşağıdaki bloğu kaldırdık. Çünkü Firebase Konsol'dan gönderilen mesajları
-// SDK zaten otomatik gösteriyor. Biz de göster deyince çift oluyordu.
-/*
+// iOS İÇİN BU KOD ŞARTMIŞ (Geri ekledik)
 messaging.onBackgroundMessage((payload) => {
-  ...
-  self.registration.showNotification(...) 
+  console.log('[firebase-messaging-sw.js] Arka plan mesajı:', payload);
+  
+  const notificationTitle = payload.notification.title;
+  const notificationOptions = {
+    body: payload.notification.body,
+    icon: '/logo192.png' // Manifestteki ikonumuz
+  };
+
+  self.registration.showNotification(notificationTitle, notificationOptions);
 });
-*/
