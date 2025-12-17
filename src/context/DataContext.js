@@ -14,10 +14,10 @@ export const DataProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
   
-  // YÜKLEME DURUMLARI (Sorunun Çözümü Burada)
-  const [authLoading, setAuthLoading] = useState(true);   // Oturum kontrolü
-  const [systemLoading, setSystemLoading] = useState(true); // Kelime listesi kontrolü
-  const [profileLoading, setProfileLoading] = useState(true); // Kullanıcı verisi kontrolü
+  // --- YENİ EKLENEN YÜKLEME KONTROLLERİ ---
+  const [authLoading, setAuthLoading] = useState(true);
+  const [systemLoading, setSystemLoading] = useState(true);
+  const [profileLoading, setProfileLoading] = useState(true);
 
   // Veri State'leri
   const [knownWordIds, setKnownWordIds] = useState([]);
@@ -29,7 +29,6 @@ export const DataProvider = ({ children }) => {
   const [leaderboardData, setLeaderboardData] = useState([]);
 
   // GENEL LOADING: Eğer herhangi biri hala yükleniyorsa BEKLE.
-  // Kullanıcı giriş yapmamışsa sadece auth ve system beklenir.
   const loading = authLoading || systemLoading || (user ? profileLoading : false);
 
   const getCurrentWeekKey = () => {
@@ -50,18 +49,17 @@ export const DataProvider = ({ children }) => {
       setAuthLoading(false); // Oturum kontrolü bitti
 
       if (!currentUser) {
-        // Çıkış yapıldıysa verileri temizle
         setKnownWordIds([]); setCustomWords([]); setDeletedWordIds([]); 
         setLearningQueue([]); setStreak(0);
-        setProfileLoading(false); // Profil yüklemeye gerek yok
+        setProfileLoading(false); 
       } else {
-        setProfileLoading(true); // Yeni kullanıcı geldi, profili bekle
+        setProfileLoading(true); // Yeni kullanıcı geldi, verisini bekle
       }
     });
     return () => unsubscribe();
   }, []);
 
-  // 2. SİSTEM KELİMELERİNİ CANLI DİNLE (BAĞIMSIZ)
+  // 2. SİSTEM KELİMELERİNİ CANLI DİNLE
   useEffect(() => {
     const systemWordsRef = collection(db, "artifacts", appId, "system_words");
     const unsub = onSnapshot(systemWordsRef, (snapshot) => {
@@ -70,10 +68,10 @@ export const DataProvider = ({ children }) => {
             sysWords.push({ ...doc.data(), id: doc.id, source: "system" });
         });
         setDynamicSystemWords(sysWords);
-        setSystemLoading(false); // <-- KRİTİK: Kelimeler gelince yükleme biter
+        setSystemLoading(false); // <-- Kelimeler yüklenince loading biter
     }, (error) => {
-        console.error("Kelime yükleme hatası:", error);
-        setSystemLoading(false); // Hata olsa bile sonsuz döngüde kalmasın
+        console.error("Sistem kelimeleri hatası:", error);
+        setSystemLoading(false);
     });
     return () => unsub();
   }, []);
@@ -118,7 +116,7 @@ export const DataProvider = ({ children }) => {
             setDoc(userProfileRef, { last_visit_date: todayStr, streak: 1 }, { merge: true });
             setStreak(1);
         }
-        setProfileLoading(false); // <-- Profil de yüklendi, artık ekran açılabilir
+        setProfileLoading(false); // <-- Profil yüklendi, ekran açılabilir
     });
 
     // C) LİDERLİK TABLOSU
@@ -129,9 +127,10 @@ export const DataProvider = ({ children }) => {
         unsubProfile();
         unsubLeaderboard();
     };
-  }, [user?.uid]); // <-- BURASI DÜZELTİLDİ: Sadece UID değişince çalışır
+  }, [user?.uid]); // <-- ÖNEMLİ: Sadece UID değişince tetiklenir
 
   // --- YARDIMCI FONKSİYONLAR ---
+
   const subscribeToLeaderboard = () => {
       const weekKey = getCurrentWeekKey(); 
       const q = query(collection(db, "artifacts", appId, "weekly_scores", weekKey, "users"), orderBy("score", "desc"), limit(50));
@@ -161,7 +160,6 @@ export const DataProvider = ({ children }) => {
       try {
           const weekKey = getCurrentWeekKey();
           const statsRef = doc(db, "artifacts", appId, "weekly_stats", weekKey, "user_activities", user.uid);
-          
           await setDoc(statsRef, {
               [gameType]: increment(count),
               lastUpdated: new Date(),
@@ -242,6 +240,8 @@ export const DataProvider = ({ children }) => {
     const newId = Date.now().toString();
     const newWord = {
       id: newId, word: wordData.word.trim(), tags: wordData.tags || [],
+      plural: wordData.plural||"", v2: wordData.v2||"", v3: wordData.v3||"", vIng: wordData.vIng||"", thirdPerson: wordData.thirdPerson||"",
+      advLy: wordData.advLy||"", compEr: wordData.compEr||"", superEst: wordData.superEst||"",
       definitions: wordData.definitions, sentence: wordData.sentence.trim(), sentence_tr: wordData.sentence_tr || "",
       source: "user", createdAt: new Date()
     };
@@ -343,9 +343,45 @@ export const DataProvider = ({ children }) => {
       } catch(e) { console.error(e); }
   };
 
-  const handleSaveSystemWord = async (wordData) => { /* ... */ }; 
-  const handleDeleteSystemWord = async (wordId) => { /* ... */ };
-  const handleUpdateSystemWord = async (id, wordData) => { /* ... */ };
+  // --- BURADA AÇILAN FONKSİYONLAR (ADMIN) ---
+  const handleSaveSystemWord = async (wordData) => {
+    try {
+      const normalizedInput = wordData.word.toLowerCase().trim();
+      const exists = dynamicSystemWords.some(w => w.word.toLowerCase() === normalizedInput);
+      if(exists) return { success: false, message: "Bu kelime zaten sistemde var!" };
+
+      const newWord = { 
+        ...wordData, 
+        sentence_tr: wordData.sentence_tr || "",
+        source: "system", 
+        createdAt: new Date() 
+      };
+      await addDoc(collection(db, "artifacts", appId, "system_words"), newWord);
+      
+      // Eğer kullanıcıda aynı kelime varsa, onu silindiye at ki çakışmasın
+      const conflictingCustom = customWords.find(w => w.word.toLowerCase() === normalizedInput);
+      if (conflictingCustom) {
+          const userRef = doc(db, "artifacts", appId, "users", user.uid, "vocab_game", "progress");
+          await setDoc(userRef, { deleted_ids: arrayUnion(conflictingCustom.id) }, { merge: true });
+      }
+      return { success: true };
+    } catch (e) { return { success: false, message: e.message }; }
+  };
+
+  const handleDeleteSystemWord = async (wordId) => {
+      if(!window.confirm("Silmek istediğine emin misin?")) return;
+      try {
+          await deleteDoc(doc(db, "artifacts", appId, "system_words", wordId));
+      } catch(e) { console.error(e); }
+  };
+
+  const handleUpdateSystemWord = async (id, wordData) => {
+      try {
+          const docRef = doc(db, "artifacts", appId, "system_words", id);
+          await updateDoc(docRef, { ...wordData, updatedAt: new Date() });
+          return { success: true };
+      } catch(e) { return { success: false, message: e.message }; }
+  };
 
   return (
     <DataContext.Provider value={{
