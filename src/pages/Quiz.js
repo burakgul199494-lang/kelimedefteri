@@ -15,7 +15,8 @@ import {
 } from "lucide-react";
 
 export default function Quiz() {
-  const { getAllWords, knownWordIds, learningQueue, addScore, updateGameStats } = useData();
+  // 1. handleUpdateWord EKLENDİ
+  const { getAllWords, knownWordIds, learningQueue, addScore, updateGameStats, handleUpdateWord } = useData();
   const navigate = useNavigate();
 
   // --- STATE'LER ---
@@ -71,7 +72,7 @@ export default function Quiz() {
       if (e && e.currentTarget) e.currentTarget.blur();
   };
 
-  // --- OYUN BAŞLATMA ---
+  // --- OYUN BAŞLATMA (YENİ ALGORİTMA BURADA) ---
   const startQuiz = (mode, e) => {
     handleBlur(e);
     setGameMode(mode);
@@ -86,7 +87,38 @@ export default function Quiz() {
       return;
     }
 
-    const selectedWords = [...pool].sort(() => 0.5 - Math.random()).slice(0, 20);
+    // --- DEĞİŞİKLİK BAŞLANGICI ---
+    // Eski Kod: const selectedWords = [...pool].sort(() => 0.5 - Math.random()).slice(0, 20);
+    
+    // Yeni Kod (Akıllı Sıralama):
+    const neverSeen = [];
+    const seen = [];
+
+    pool.forEach(w => {
+        // Bu kelime daha önce Quiz modunda görülmüş mü?
+        if (!w.lastSeen_quiz) {
+            neverSeen.push(w);
+        } else {
+            seen.push(w);
+        }
+    });
+
+    // 1. Hiç görülmeyenleri kendi içinde karıştır
+    neverSeen.sort(() => 0.5 - Math.random());
+
+    // 2. Görülenleri TARİHE GÖRE (Eskiden Yeniye) sırala
+    seen.sort((a, b) => new Date(a.lastSeen_quiz).getTime() - new Date(b.lastSeen_quiz).getTime());
+
+    // 3. Listeyi birleştir (Önce hiç görülmeyenler)
+    const smartSortedPool = [...neverSeen, ...seen];
+
+    // 4. İlk 20 adayı al (En acil olanlar)
+    const candidates = smartSortedPool.slice(0, 20);
+
+    // 5. Bu 20 taneyi karıştır (Kullanıcı sırayı ezberlemesin diye)
+    const selectedWords = candidates.sort(() => 0.5 - Math.random());
+    // --- DEĞİŞİKLİK BİTİŞİ ---
+
     const allValidWords = getAllWords().filter(w => w.definitions && w.definitions[0]?.meaning);
 
     const generated = selectedWords.map(target => {
@@ -130,13 +162,19 @@ export default function Quiz() {
     setIsAnswered(true); 
     setSelected(option);
     
+    // --- YENİ EKLENEN KISIM: TARİH DAMGASI ---
+    // Cevap ne olursa olsun, bu kelimeye "Ben bunu gördüm" damgası basıyoruz.
+    // Böylece bir sonraki oyunda listenin en sonuna atılacak.
+    const currentWord = questions[index].wordObj;
+    handleUpdateWord(currentWord.id, { lastSeen_quiz: new Date().toISOString() });
+    // ----------------------------------------
+
     // 1. Puanı SADECE doğruysa ver (İçeride kalsın)
     if (option === questions[index].correct) {
         setScore(s => s + 5);
     }
 
-    // 2. İstatistiği HER DURUMDA işle (Dışarıya aldık)
-    // Bu satır if bloğunun dışında ama handleAnswer fonksiyonunun içinde olmalı.
+    // 2. İstatistiği HER DURUMDA işle
     updateGameStats('quiz', 1);
     
     setTimeout(() => {
