@@ -28,7 +28,8 @@ const FORM_TYPES = [
 ];
 
 export default function ExerciseGame() {
-  const { getAllWords, addScore, updateGameStats } = useData();
+  // handleUpdateWord fonksiyonunu context'ten çektik (Tarih güncellemek için)
+  const { getAllWords, addScore, updateGameStats, handleUpdateWord } = useData();
   const navigate = useNavigate();
 
   // --- STATE'LER ---
@@ -70,10 +71,12 @@ export default function ExerciseGame() {
     }).length;
   };
 
-  // --- 2. OYUNU BAŞLATMA ---
+  // --- 2. OYUNU BAŞLATMA (AKILLI SEÇİM) ---
   const startSession = (formTypeObj) => {
     const key = formTypeObj.key;
-    const validWords = allWords.filter(w => {
+    
+    // 1. İlgili forma sahip kelimeleri filtrele
+    let validWords = allWords.filter(w => {
         const val = w[key];
         return val && typeof val === 'string' && val.trim().length > 0;
     });
@@ -83,13 +86,29 @@ export default function ExerciseGame() {
       return;
     }
 
-    const selected = validWords.sort(() => 0.5 - Math.random()).slice(0, 10);
+    // --- AKILLI SIRALAMA ALGORİTMASI ---
+    // Amaç: En son çözülenleri en sona atmak.
+    validWords.sort((a, b) => {
+        // Tarih yoksa (hiç çözülmediyse) değeri 0 kabul et (en başa gelsin)
+        // Tarih varsa timestamp'e çevir (büyük olan sona gitsin)
+        const dateA = a.lastExerciseDate ? new Date(a.lastExerciseDate).getTime() : 0;
+        const dateB = b.lastExerciseDate ? new Date(b.lastExerciseDate).getTime() : 0;
+        
+        return dateA - dateB; // Küçükten büyüğe (Eskiden yeniye)
+    });
+
+    // 2. En eski tarihli (veya hiç çözülmemiş) ilk 50 kelimeyi "Aday Havuzu"na al
+    // Neden 50? Hep aynı sırayla gelmesin diye bu 50 taneyi kendi içinde karıştıracağız.
+    const candidates = validWords.slice(0, 50);
+
+    // 3. Bu adaylar arasından rastgele 10 tane seç
+    const selected = candidates.sort(() => 0.5 - Math.random()).slice(0, 10);
 
     const generatedQuestions = selected.map(w => ({
         baseWordObj: w,
         targetWord: w[key].trim(),
         formLabel: formTypeObj.label,
-        formKey: key // Hangi modda olduğumuzu bilelim (v2, plural vs.)
+        formKey: key
     }));
 
     setQuestions(generatedQuestions);
@@ -124,31 +143,16 @@ export default function ExerciseGame() {
     }
   }, [currentIndex, gameStatus, questions]);
 
-  // --- YARDIMCI: DOĞRU TANIMI BULMA (YENİ EKLENDİ) ---
   const getSmartDefinition = (wordObj, formKey) => {
       const defs = wordObj.definitions || [];
       if (defs.length === 0) return { meaning: "Tanım yok", engExplanation: "" };
 
       let targetType = "";
+      if (['v2', 'v3', 'thirdPerson', 'vIng'].includes(formKey)) targetType = "verb";
+      else if (formKey === 'plural') targetType = "noun";
+      else if (['compEr', 'superEst', 'advLy'].includes(formKey)) targetType = "adjective";
 
-      // 1. Fiil Modları (V2, V3, 3.Tekil, V-ing)
-      if (['v2', 'v3', 'thirdPerson', 'vIng'].includes(formKey)) {
-          targetType = "verb";
-      }
-      // 2. İsim Modları (Çoğul)
-      else if (formKey === 'plural') {
-          targetType = "noun";
-      }
-      // 3. Sıfat/Zarf Modları
-      else if (['compEr', 'superEst', 'advLy'].includes(formKey)) {
-          targetType = "adjective"; // Genelde sıfatlar comp/super alır
-          // advLy için adverb de bakılabilir ama genelde sıfattan türetilir.
-      }
-
-      // Hedef tipe uygun tanımı ara
       const matchedDef = defs.find(d => d.type === targetType);
-      
-      // Bulursa onu döndür, bulamazsa ilk tanımı (fallback) döndür
       return matchedDef || defs[0];
   };
 
@@ -213,7 +217,6 @@ export default function ExerciseGame() {
 
       const targetWord = questions[currentIndex].targetWord;
       const nextIndex = completedLetters.length;
-      const expectedChar = targetWord[nextIndex];
       const correctLetterObj = shuffledLetters.find(l => !l.isUsed && l.char.toLowerCase() === expectedChar.toLowerCase());
 
       if (correctLetterObj) {
@@ -229,6 +232,11 @@ export default function ExerciseGame() {
       setIsWordComplete(true);
       speak(wordToSpeak, 'main'); 
       updateGameStats('exercise', 1);
+      
+      // --- TARİH GÜNCELLEME (TEKRARI ÖNLEMEK İÇİN) ---
+      const currentQ = questions[currentIndex];
+      handleUpdateWord(currentQ.baseWordObj.id, { lastExerciseDate: new Date().toISOString() });
+
       if (currentWordPoints > 0) {
           addScore(currentWordPoints);
           setScore(s => s + currentWordPoints);
@@ -242,6 +250,10 @@ export default function ExerciseGame() {
       setIsWordComplete(true);
       speak(wordToSpeak, 'main');
       updateGameStats('exercise', 1);
+
+      // Yanlış yapsa bile gördü kabul edip tarihi güncelliyoruz ki hemen tekrar sormasın
+      const currentQ = questions[currentIndex];
+      handleUpdateWord(currentQ.baseWordObj.id, { lastExerciseDate: new Date().toISOString() });
   };
 
   const handleNext = (e) => {
@@ -338,11 +350,9 @@ export default function ExerciseGame() {
   const currentQ = questions[currentIndex];
   const targetWord = currentQ.targetWord;
   const baseWordObj = currentQ.baseWordObj;
-  const formKey = currentQ.formKey; // Hangi modda olduğumuz (v2, plural vs.)
+  const formKey = currentQ.formKey;
 
-  // --- BURADA AKILLI SEÇİM YAPIYORUZ ---
   const def = getSmartDefinition(baseWordObj, formKey);
-  
   const progress = ((currentIndex + 1) / questions.length) * 100;
   const styles = getDynamicStyle(targetWord.length);
 
@@ -381,14 +391,12 @@ export default function ExerciseGame() {
                     <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">ANA KELİME (BASE)</div>
                     <div className="flex items-center gap-2">
                         <h2 className="text-3xl font-black text-slate-800">{baseWordObj.word}</h2>
-                        
                         <button 
                             onClick={(e) => { handleBlur(e); speak(baseWordObj.word, 'base'); }}
                             className={`mini-btn p-1.5 rounded-lg border ${activeAudio === 'base' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-400 border-slate-200'}`}
                         >
                             {activeAudio === 'base' ? <Square size={14} fill="currentColor"/> : <Volume2 size={14}/>}
                         </button>
-
                         <button 
                             onClick={(e) => { handleBlur(e); setShowWordTr(!showWordTr); }}
                             className={`mini-btn p-1.5 rounded-lg border ${showWordTr ? 'bg-indigo-100 text-indigo-600 border-indigo-200' : 'bg-white text-slate-400 border-slate-200'}`}
@@ -396,7 +404,6 @@ export default function ExerciseGame() {
                             <Languages size={14}/>
                         </button>
                     </div>
-
                     {showWordTr && (
                         <div className="text-sm font-bold text-green-600 bg-green-50 px-3 py-1 rounded-lg animate-in fade-in slide-in-from-top-1 mt-1">
                             {def.meaning}
