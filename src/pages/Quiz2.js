@@ -4,7 +4,8 @@ import { useNavigate } from "react-router-dom";
 import { X, Trophy, Loader2, Home, RefreshCw, BrainCircuit, Hourglass } from "lucide-react";
 
 export default function Quiz2() {
-  const { getAllWords, knownWordIds, learningQueue, addScore, updateGameStats } = useData();
+  // 1. handleUpdateWord EKLENDİ
+  const { getAllWords, knownWordIds, learningQueue, addScore, updateGameStats, handleUpdateWord } = useData();
   const navigate = useNavigate();
 
   // --- STATE'LER ---
@@ -50,7 +51,7 @@ export default function Quiz2() {
 
   const { learnPool, reviewPool, waitingPool } = getWordPools();
 
-  // --- OYUN BAŞLATMA ---
+  // --- OYUN BAŞLATMA (AKILLI SIRALAMA) ---
   const startQuiz = (mode) => {
     setGameMode(mode);
     let pool = [];
@@ -64,7 +65,35 @@ export default function Quiz2() {
       return;
     }
 
-    const selectedWords = [...pool].sort(() => 0.5 - Math.random()).slice(0, 20);
+    // --- YENİ ALGORİTMA: TARİHE GÖRE SIRALA ---
+    // Quiz 2 için özel tarih anahtarı: 'lastSeen_quiz2'
+    
+    const neverSeen = [];
+    const seen = [];
+
+    pool.forEach(w => {
+        if (!w.lastSeen_quiz2) { 
+            neverSeen.push(w); 
+        } else { 
+            seen.push(w); 
+        }
+    });
+
+    // 1. Hiç görülmeyenleri karıştır
+    neverSeen.sort(() => 0.5 - Math.random());
+
+    // 2. Görülenleri Eskiden -> Yeniye sırala
+    seen.sort((a, b) => new Date(a.lastSeen_quiz2).getTime() - new Date(b.lastSeen_quiz2).getTime());
+
+    // 3. Birleştir
+    const smartSortedPool = [...neverSeen, ...seen];
+
+    // 4. İlk 20 taneyi al
+    const selectedCandidates = smartSortedPool.slice(0, 20);
+
+    // 5. Karıştır (Kullanıcı sırayı ezberlemesin)
+    const selectedWords = selectedCandidates.sort(() => 0.5 - Math.random());
+
     const allValidWords = getAllWords().filter(w => w.definitions && w.definitions[0]?.meaning);
 
     const generated = selectedWords.map(target => {
@@ -96,17 +125,23 @@ export default function Quiz2() {
       setIsAnswered(false);
   }, [index]);
 
-  // --- CEVAP VERME ---
+  // --- CEVAP VERME (GÜVENLİ KAYIT) ---
   const handleAnswer = (option) => {
     if (isAnswered) return;
     setIsAnswered(true); 
     setSelected(option);
     
+    // --- YENİ: TARİH DAMGASI VUR ---
+    // Quiz 2'de görüldü olarak işaretle (Sona at)
+    const currentWord = questions[index].wordObj;
+    handleUpdateWord(currentWord.id, { lastSeen_quiz2: new Date().toISOString() });
+    // -----------------------------
+
     // 1. Puanı sadece doğruysa ver
     if (option === questions[index].correct) setScore(s => s + 5);
 
-    // 2. İstatistiği HER DURUMDA işle (Dışarıda)
-    updateGameStats('reverse_quiz', 1); // <--- BURAYA EKLİYORUZ
+    // 2. İstatistiği işle
+    updateGameStats('reverse_quiz', 1);
     
     setTimeout(() => {
       if (index + 1 < questions.length) {
@@ -297,7 +332,7 @@ export default function Quiz2() {
 
                         return (
                             <button 
-                                key={`${index}-${i}`} // React Key (Nükleer çözümün parçası)
+                                key={`${index}-${i}`} // React Key
                                 onClick={()=>handleAnswer(opt)} 
                                 disabled={isAnswered}
                                 className={dynamicClass}
