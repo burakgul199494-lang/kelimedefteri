@@ -1,25 +1,26 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useData } from "../context/DataContext";
 import { useNavigate } from "react-router-dom";
-import {
-  ArrowLeft,
-  Mic,
-  Square,
-  Volume2,
-  Trophy,
-  Home,
-  RefreshCw,
-  Brain,
-  Hourglass,
-  CheckCircle2,
-  AlertCircle,
+import { 
+  ArrowLeft, 
+  Mic, 
+  Square, 
+  Volume2, 
+  Trophy, 
+  Home, 
+  RefreshCw, 
+  Brain, 
+  Hourglass, 
+  CheckCircle2, 
+  AlertCircle, 
   X,
   Target,
   Layers
 } from "lucide-react";
 
 export default function Pronunciation() {
-  const { getAllWords, knownWordIds, learningQueue, addScore, updateGameStats } = useData();
+  // 1. handleUpdateWord EKLENDİ
+  const { getAllWords, knownWordIds, learningQueue, addScore, updateGameStats, handleUpdateWord } = useData();
   const navigate = useNavigate();
 
   // --- STATE'LER ---
@@ -35,10 +36,10 @@ export default function Pronunciation() {
   const [feedback, setFeedback] = useState(null); 
   const [isRoundDone, setIsRoundDone] = useState(false);
 
-  // Referans: Her render'da kaybolmasın diye
+  // Referans
   const recognitionRef = useRef(null);
 
-  // --- IPHONE FIX: FOCUS TEMİZLEME ---
+  // --- IPHONE FIX ---
   const handleBlur = (e) => {
       if (e && e.currentTarget) e.currentTarget.blur();
   };
@@ -48,9 +49,12 @@ export default function Pronunciation() {
     const all = getAllWords();
     const now = new Date();
 
-    const learnPool = all.filter(w => !knownWordIds.includes(w.id) && !learningQueue.find(q => q.wordId === w.id));
-    const reviewPool = all.filter(w => knownWordIds.includes(w.id));
-    const waitingPool = all.filter(w => {
+    // Telaffuz için kelime metni olan her şey uygundur
+    const validWords = all.filter(w => w.word && w.word.length > 0);
+
+    const learnPool = validWords.filter(w => !knownWordIds.includes(w.id) && !learningQueue.find(q => q.wordId === w.id));
+    const reviewPool = validWords.filter(w => knownWordIds.includes(w.id));
+    const waitingPool = validWords.filter(w => {
         const q = learningQueue.find(item => item.wordId === w.id);
         return q && new Date(q.nextReview) > now;
     });
@@ -60,9 +64,9 @@ export default function Pronunciation() {
 
   const { learnPool, reviewPool, waitingPool } = getWordPools();
 
-  // --- 2. OYUNU BAŞLAT ---
+  // --- 2. OYUNU BAŞLATMA (AKILLI SIRALAMA) ---
   const startSession = (mode, e) => {
-    handleBlur(e); // Mobile Fix
+    handleBlur(e); 
 
     setActiveMode(mode);
     let selectedPool = [];
@@ -75,7 +79,35 @@ export default function Pronunciation() {
       return;
     }
 
-    const selected = selectedPool.sort(() => 0.5 - Math.random()).slice(0, 10);
+    // --- YENİ ALGORİTMA: TARİHE GÖRE SIRALA ---
+    // Pronunciation oyunu için özel tarih anahtarı: 'lastSeen_pronunciation'
+    
+    const neverSeen = [];
+    const seen = [];
+
+    selectedPool.forEach(w => {
+        if (!w.lastSeen_pronunciation) {
+            neverSeen.push(w);
+        } else {
+            seen.push(w);
+        }
+    });
+
+    // 1. Hiç görülmeyenleri karıştır
+    neverSeen.sort(() => 0.5 - Math.random());
+
+    // 2. Görülenleri Eskiden -> Yeniye sırala
+    seen.sort((a, b) => new Date(a.lastSeen_pronunciation).getTime() - new Date(b.lastSeen_pronunciation).getTime());
+
+    // 3. Birleştir
+    const smartSortedPool = [...neverSeen, ...seen];
+
+    // 4. İlk 10 taneyi al
+    const selectedCandidates = smartSortedPool.slice(0, 10);
+
+    // 5. Karıştır (Kullanıcı sırayı ezberlemesin)
+    const selected = selectedCandidates.sort(() => 0.5 - Math.random());
+
     setSessionWords(selected);
     setCurrentIndex(0);
     setSessionScore(0);
@@ -146,7 +178,7 @@ export default function Pronunciation() {
   };
 
   const toggleMic = (e) => {
-    handleBlur(e); // Mobile Fix
+    handleBlur(e); 
     if (isListening) {
         stopMicrophone();
     } else {
@@ -161,9 +193,10 @@ export default function Pronunciation() {
     };
   }, []);
 
-  // --- 4. PUANLAMA MANTIĞI ---
+  // --- 4. PUANLAMA VE KAYIT MANTIĞI ---
   const evaluatePronunciation = (spoken) => {
-    const target = sessionWords[currentIndex].word.toLowerCase().trim();
+    const currentWord = sessionWords[currentIndex]; // Mevcut kelime
+    const target = currentWord.word.toLowerCase().trim();
     const input = spoken.toLowerCase().trim().replace(/[.,?!]/g, ""); 
 
     let earnedPoints = 0;
@@ -193,16 +226,19 @@ export default function Pronunciation() {
         }
     }
 
+    // --- GÜVENLİ KAYIT ---
+    // Telaffuz denemesi yapıldı, tarihini güncelle.
+    handleUpdateWord(currentWord.id, { lastSeen_pronunciation: new Date().toISOString() });
+
     setSessionScore(prev => prev + earnedPoints);
     setFeedback({ score: earnedPoints, type, msg });
     setIsRoundDone(true);
-    updateGameStats('pronunciation', 1); // <--- BURAYA EKLE (1 Telaffuz denemesi yapıldı)
-    
+    updateGameStats('pronunciation', 1);
   };
 
   // --- 5. DİĞER AKSİYONLAR ---
   const handleNext = (e) => {
-    handleBlur(e); // Mobile Fix
+    handleBlur(e); 
     stopMicrophone(); 
     
     if (currentIndex + 1 < sessionWords.length) {
@@ -221,7 +257,7 @@ export default function Pronunciation() {
   };
 
   const speakWord = (e) => {
-    handleBlur(e); // Mobile Fix
+    handleBlur(e); 
     const word = sessionWords[currentIndex].word;
     window.speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(word);
@@ -421,7 +457,7 @@ export default function Pronunciation() {
            <div className="flex justify-center pt-4">
                {!isRoundDone ? (
                    <div className="flex flex-col items-center gap-3">
-                       {/* MİKROFON BUTONU (DÜZELTİLDİ: CSS CLASS + BLUR) */}
+                       {/* MİKROFON BUTONU */}
                        <button
                            onClick={(e) => toggleMic(e)}
                            style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
