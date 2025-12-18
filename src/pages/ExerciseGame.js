@@ -217,7 +217,7 @@ export default function ExerciseGame() {
   const handleSuccess = (wordToSpeak) => {
       setIsWordComplete(true);
       speak(wordToSpeak, 'main'); 
-      updateGameStats('writing', 1);
+      updateGameStats('exercise', 1);
       if (currentWordPoints > 0) {
           addScore(currentWordPoints);
           setScore(s => s + currentWordPoints);
@@ -230,7 +230,7 @@ export default function ExerciseGame() {
       setCompletedLetters(targetWord.split(''));
       setIsWordComplete(true);
       speak(wordToSpeak, 'main');
-      updateGameStats('writing', 1);
+      updateGameStats('exercise', 1);
   };
 
   const handleNext = (e) => {
