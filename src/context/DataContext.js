@@ -18,12 +18,12 @@ export const DataProvider = ({ children }) => {
   const [systemLoading, setSystemLoading] = useState(true);
   const [profileLoading, setProfileLoading] = useState(true);
 
-  // Veri State'leri
+  // --- Veri State'leri ---
   const [knownWordIds, setKnownWordIds] = useState([]);
   const [customWords, setCustomWords] = useState([]);
   const [deletedWordIds, setDeletedWordIds] = useState([]);
   const [dynamicSystemWords, setDynamicSystemWords] = useState([]);
-  const [blacklistedWords, setBlacklistedWords] = useState([]); // Kara Liste
+  const [blacklistedWords, setBlacklistedWords] = useState([]); 
   const [streak, setStreak] = useState(0);
   const [learningQueue, setLearningQueue] = useState([]);
   const [leaderboardData, setLeaderboardData] = useState([]);
@@ -73,7 +73,7 @@ export const DataProvider = ({ children }) => {
     return () => unsub();
   }, []);
 
-  // 3. KARA LİSTEYİ (SİLİNENLERİ) DİNLE
+  // 3. KARA LİSTEYİ DİNLE
   useEffect(() => {
     const blacklistRef = collection(db, "artifacts", appId, "blacklist");
     const unsub = onSnapshot(blacklistRef, (snapshot) => {
@@ -202,15 +202,14 @@ export const DataProvider = ({ children }) => {
     });
 
     // 3. Kullanıcı Kelimelerini İşle (Live Sync)
-    // Admin sistemde güncelleme yaptıysa, kullanıcının kopyasını anlık güncelle.
     const mergedCustom = customRaw.map(userWord => {
         const text = userWord.word.toLowerCase().trim();
         const sysMatch = systemMap[text];
 
         if (sysMatch) {
+            // Admin düzeltmesi varsa, kullanıcının istatistiklerini koru ama içeriği güncelle
             return {
-                ...userWord, // Kullanıcı istatistiklerini (Tarih, ID) koru
-                // İçeriği sistemden al:
+                ...userWord, 
                 plural: sysMatch.plural,
                 v2: sysMatch.v2,
                 v3: sysMatch.v3,
@@ -389,97 +388,92 @@ export const DataProvider = ({ children }) => {
       } catch(e) { console.error(e); }
   };
 
-  // --- PROFİL SIFIRLAMA (TAM TEMİZLİK) ---
+  // --- PROFİL SIFIRLAMA (BATCH LIMIT KORUMALI) ---
   const resetProfile = async () => {
-      if(!window.confirm("TÜM İLERLEMEN VE GEÇMİŞİN SİLİNECEK!\n\nBu işlem:\n1. Bildiğin kelimeleri sıfırlar.\n2. Oyun geçmişini ve sıralamaları siler.\nOnaylıyor musun?")) return;
+      if(!window.confirm("TÜM İLERLEMEN SİLİNECEK! Çift kayıtlar ve geçmiş temizlenecek.\nOnaylıyor musun?")) return;
       
       try {
         setProfileLoading(true);
-
         const userRef = doc(db, "artifacts", appId, "users", user.uid, "vocab_game", "progress");
         const today = new Date().toISOString().split("T")[0];
         
         await setDoc(userRef, { 
-            known_ids: [], 
-            deleted_ids: [], 
-            learning_queue: [], 
-            streak: 1, 
-            last_visit_date: today 
+            known_ids: [], deleted_ids: [], learning_queue: [], streak: 1, last_visit_date: today 
         });
         
         const weekKey = getCurrentWeekKey();
         const leaderboardRef = doc(db, "artifacts", appId, "weekly_scores", weekKey, "users", user.uid);
         await deleteDoc(leaderboardRef);
-
         const statsRef = doc(db, "artifacts", appId, "weekly_stats", weekKey, "user_activities", user.uid);
         await deleteDoc(statsRef);
 
-        // KELİME GEÇMİŞİNİ SİL (Sıralamayı Sıfırlamak İçin)
+        // --- TOPLU SİLME (500'LÜK PAKETLER HALİNDE) ---
         const wordsRef = collection(db, "artifacts", appId, "users", user.uid, "words");
         const snapshot = await getDocs(wordsRef);
-        const batch = writeBatch(db);
-        let deletedCount = 0;
-
+        
         const systemTexts = new Set(dynamicSystemWords.map(w => w.word.toLowerCase().trim()));
+        const docsToDelete = [];
 
         snapshot.forEach((doc) => {
             const data = doc.data();
             const text = data.word.toLowerCase().trim();
-            // Eğer sistemde varsa, bu bir kopyadır. Sil.
+            // Sistemde olanlar VEYA çift kayıtlar silinsin
             if (systemTexts.has(text)) {
-                batch.delete(doc.ref);
-                deletedCount++;
+                docsToDelete.push(doc.ref);
             }
         });
 
-        if (deletedCount > 0) {
+        // 500'erli döngü
+        const chunkSize = 500;
+        for (let i = 0; i < docsToDelete.length; i += chunkSize) {
+            const batch = writeBatch(db);
+            const chunk = docsToDelete.slice(i, i + chunkSize);
+            chunk.forEach(ref => batch.delete(ref));
             await batch.commit();
         }
-        
-        alert("Profilin ve tüm oyun geçmişin başarıyla sıfırlandı! 🚀\nSayfa yenileniyor...");
+
+        alert("Profilin tamamen tertemiz oldu! 🚀\nSayfa yenileniyor...");
         window.location.reload();
 
-      } catch(e) { 
-          console.error(e); 
-          alert("Sıfırlama sırasında bir hata oluştu: " + e.message);
-      } finally {
-          setProfileLoading(false);
-      }
+      } catch(e) { console.error(e); alert("Hata: " + e.message); } 
+      finally { setProfileLoading(false); }
   };
 
-  // --- TEMİZLİK ARACI (Geçici) ---
+  // --- TEMİZLİK ARACI (BATCH LIMIT KORUMALI) ---
   const cleanUpDuplicates = async () => {
       if(!user) return;
       try {
           const wordsRef = collection(db, "artifacts", appId, "users", user.uid, "words");
           const querySnapshot = await getDocs(wordsRef);
           const wordsMap = {};
-          const batch = writeBatch(db);
-          let deletedCount = 0;
+          const docsToDelete = [];
 
           querySnapshot.forEach((doc) => {
               const data = doc.data();
               const text = data.word.toLowerCase().trim();
               if(!wordsMap[text]) wordsMap[text] = [];
-              wordsMap[text].push({ id: doc.id, ...data });
+              wordsMap[text].push({ id: doc.id, ...data, ref: doc.ref });
           });
 
           for (const text in wordsMap) {
               const duplicates = wordsMap[text];
               if (duplicates.length > 1) {
-                  duplicates.sort((a, b) => b.id.localeCompare(a.id)); // Yeniyi tut
+                  duplicates.sort((a, b) => b.id.localeCompare(a.id));
                   const [keep, ...remove] = duplicates;
-                  remove.forEach(w => {
-                      const ref = doc(db, "artifacts", appId, "users", user.uid, "words", w.id);
-                      batch.delete(ref);
-                      deletedCount++;
-                  });
+                  remove.forEach(w => docsToDelete.push(w.ref));
               }
           }
 
-          if(deletedCount > 0) {
+          const chunkSize = 500;
+          for (let i = 0; i < docsToDelete.length; i += chunkSize) {
+              const batch = writeBatch(db);
+              const chunk = docsToDelete.slice(i, i + chunkSize);
+              chunk.forEach(ref => batch.delete(ref));
               await batch.commit();
-              alert(`${deletedCount} adet çift kelime temizlendi!`);
+          }
+
+          if(docsToDelete.length > 0) {
+              alert(`${docsToDelete.length} adet çift kelime temizlendi!`);
               window.location.reload();
           } else { alert("Çift kelime bulunamadı."); }
       } catch(e) { console.error(e); alert("Hata: " + e.message); }
