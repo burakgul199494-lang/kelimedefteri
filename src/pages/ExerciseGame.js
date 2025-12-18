@@ -24,7 +24,7 @@ export default function ExerciseGame() {
   // --- STATE'LER ---
   const [gameStatus, setGameStatus] = useState("selection"); 
   const [activeForm, setActiveForm] = useState(null);
-  const [gameMode, setGameMode] = useState("learn"); // Default bir mod ismi, bitiş ekranı için
+  const [gameMode, setGameMode] = useState("learn");
   
   const [questions, setQuestions] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -44,6 +44,9 @@ export default function ExerciseGame() {
 
   const [activeAudio, setActiveAudio] = useState(null);
 
+  // --- IPHONE FIX ---
+  const handleBlur = (e) => { if (e && e.currentTarget) e.currentTarget.blur(); };
+
   // --- 1. KELİME HAVUZU ---
   const allWords = useMemo(() => {
       const words = getAllWords();
@@ -58,7 +61,8 @@ export default function ExerciseGame() {
   };
 
   // --- 2. OYUNU BAŞLATMA ---
-  const startSession = (formTypeObj) => {
+  const startSession = (formTypeObj, e) => {
+    handleBlur(e); // Mobile Fix
     const key = formTypeObj.key;
     const dateKey = `lastExercise_${key}`; 
     
@@ -125,7 +129,6 @@ export default function ExerciseGame() {
     }
   }, [currentIndex, gameStatus, questions]);
 
-  // --- YARDIMCI ---
   const getSmartDefinition = (wordObj, formKey) => {
       const defs = wordObj.definitions || [];
       if (defs.length === 0) return { meaning: "Tanım yok", engExplanation: "" };
@@ -138,8 +141,6 @@ export default function ExerciseGame() {
       const matchedDef = defs.find(d => d.type === targetType);
       return matchedDef || defs[0];
   };
-
-  const handleBlur = (e) => { if (e && e.currentTarget) e.currentTarget.blur(); };
 
   const getDynamicStyle = (length) => {
     if (length <= 5) return { box: "w-11 h-14", text: "text-2xl" }; 
@@ -251,15 +252,45 @@ export default function ExerciseGame() {
       setGameStatus("finished");
   };
 
-  // EKRANLAR
+  // ===================================
+  // === 1. MOD SEÇİM EKRANI (FİXED) ===
+  // ===================================
   if (gameStatus === "selection") {
       return (
         <div className="min-h-screen bg-slate-50 flex flex-col items-center p-6">
+            
+            {/* CSS FİX: SADECE MOUSE VARSA HOVER ET */}
             <style>{`
                 * { -webkit-tap-highlight-color: transparent !important; }
-                .menu-btn { transition: all 0.2s ease; }
-                @media (hover: hover) { .menu-btn:hover { transform: translateY(-2px); } }
+                
+                .menu-btn { 
+                    background-color: white;
+                    border: 1px solid #e2e8f0;
+                    transition: all 0.2s ease;
+                }
+                .menu-btn:active {
+                    transform: scale(0.96);
+                    background-color: #f1f5f9;
+                }
+                .menu-btn:disabled {
+                    opacity: 0.5;
+                    cursor: not-allowed;
+                }
+
+                /* Sadece mouse ile hover (Telefonda yapışmayı engeller) */
+                @media (hover: hover) {
+                    .menu-btn:hover { 
+                        border-color: #a5b4fc !important; /* indigo-300 */
+                        background-color: #f8fafc !important; /* slate-50 */
+                    }
+                    /* İkon kutusu hover */
+                    .menu-btn:hover .icon-box {
+                        background-color: #eef2ff !important; /* indigo-50 */
+                        color: #4f46e5 !important; /* indigo-600 */
+                    }
+                }
             `}</style>
+
             <div className="w-full max-w-md space-y-6">
                 <div className="flex items-center justify-between">
                     <button onClick={() => navigate("/")} className="p-2 bg-white rounded-full shadow-sm hover:bg-slate-100">
@@ -285,13 +316,14 @@ export default function ExerciseGame() {
                         return (
                             <button 
                                 key={form.id}
-                                onClick={() => startSession(form)}
+                                onClick={(e) => startSession(form, e)}
                                 disabled={count === 0}
-                                className="menu-btn w-full bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex justify-between items-center hover:border-indigo-300 disabled:opacity-50 disabled:cursor-not-allowed group active:scale-95"
+                                style={{ outline: 'none' }}
+                                className="menu-btn w-full p-4 rounded-xl shadow-sm flex justify-between items-center focus:outline-none focus:ring-0"
                             >
                                 <div className="flex items-center gap-3">
-                                    <div className="bg-slate-100 p-2 rounded-lg group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-colors">
-                                        <Layers className="w-5 h-5 text-slate-500"/>
+                                    <div className="icon-box bg-slate-100 p-2 rounded-lg text-slate-500 transition-colors">
+                                        <Layers className="w-5 h-5"/>
                                     </div>
                                     <span className="font-bold text-slate-700">{form.label}</span>
                                 </div>
@@ -307,20 +339,18 @@ export default function ExerciseGame() {
       );
   }
 
-  // --- DÜZELTİLEN BÖLÜM: BİTİŞ EKRANI (STANDART) ---
+  // --- BİTİŞ EKRANI ---
   if (gameStatus === "finished") {
       const maxScore = questions.length * 10;
-      let modeTitle = "Bitti"; 
-
       return (
         <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
             <div className="bg-white p-8 rounded-3xl shadow-xl max-w-sm w-full text-center space-y-6">
                 <div className="bg-green-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto animate-bounce">
                     <Trophy className="w-10 h-10 text-green-600"/>
                 </div>
-                <h2 className="text-2xl font-bold text-slate-800">{modeTitle}</h2>
+                <h2 className="text-2xl font-bold text-slate-800">Egzersiz Bitti!</h2>
                 <div className="py-6 bg-slate-50 rounded-2xl border border-slate-100">
-                    <div className="text-sm text-slate-400 font-bold uppercase">TOPLAM PUAN</div>
+                    <div className="text-sm text-slate-400 font-bold uppercase">Kazanılan Puan</div>
                     <div className="text-5xl font-extrabold text-indigo-600 mt-2">{score}</div>
                     <div className="text-xs text-slate-400 font-bold">Maksimum: {maxScore}</div>
                 </div>
@@ -449,7 +479,6 @@ export default function ExerciseGame() {
                                     key={item.id}
                                     onClick={(e) => handleLetterClick(item, e)}
                                     disabled={item.isUsed}
-                                    style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
                                     className={`w-10 h-10 rounded-xl font-bold text-lg shadow-[0_3px_0_rgb(0,0,0,0.1)] transition-all active:translate-y-[2px] active:shadow-none outline-none focus:outline-none
                                         ${item.isUsed 
                                             ? "opacity-0 pointer-events-none scale-0" 
