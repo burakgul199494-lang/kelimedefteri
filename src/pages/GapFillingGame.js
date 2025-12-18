@@ -19,7 +19,8 @@ import {
 } from "lucide-react";
 
 export default function GapFillingGame() {
-  const { getAllWords, knownWordIds, learningQueue, addScore, updateGameStats } = useData();
+  // 1. handleUpdateWord EKLENDİ
+  const { getAllWords, knownWordIds, learningQueue, addScore, updateGameStats, handleUpdateWord } = useData();
   const navigate = useNavigate();
 
   // --- OYUN STATE'LERİ ---
@@ -83,21 +84,49 @@ export default function GapFillingGame() {
 
   const { learnPool, reviewPool, waitingPool } = getWordPools();
 
-  // --- OYUN BAŞLATMA ---
+  // --- OYUN BAŞLATMA (AKILLI SIRALAMA) ---
   const startSession = (mode) => {
     setGameMode(mode);
-    let selectedPool = [];
+    let pool = [];
 
-    if (mode === "learn") selectedPool = learnPool;
-    else if (mode === "review") selectedPool = reviewPool;
-    else if (mode === "waiting") selectedPool = waitingPool;
+    if (mode === "learn") pool = learnPool;
+    else if (mode === "review") pool = reviewPool;
+    else if (mode === "waiting") pool = waitingPool;
 
-    if (selectedPool.length === 0) {
+    if (pool.length === 0) {
       alert("Bu modda uygun cümleli kelime yok.");
       return;
     }
 
-    const selected = selectedPool.sort(() => 0.5 - Math.random()).slice(0, 20);
+    // --- YENİ ALGORİTMA: TARİHE GÖRE SIRALA ---
+    // Gap Filling oyunu için özel tarih anahtarı: 'lastSeen_gap_filling'
+    
+    const neverSeen = [];
+    const seen = [];
+
+    pool.forEach(w => {
+        if (!w.lastSeen_gap_filling) {
+            neverSeen.push(w);
+        } else {
+            seen.push(w);
+        }
+    });
+
+    // 1. Hiç görülmeyenleri karıştır
+    neverSeen.sort(() => 0.5 - Math.random());
+
+    // 2. Görülenleri Eskiden -> Yeniye sırala
+    seen.sort((a, b) => new Date(a.lastSeen_gap_filling).getTime() - new Date(b.lastSeen_gap_filling).getTime());
+
+    // 3. Birleştir
+    const smartSortedPool = [...neverSeen, ...seen];
+
+    // 4. İlk 20 taneyi al
+    const selectedCandidates = smartSortedPool.slice(0, 20);
+
+    // 5. Karıştır (Kullanıcı sırayı ezberlemesin)
+    const selected = selectedCandidates.sort(() => 0.5 - Math.random());
+
     setQuestions(selected);
     setCurrentIndex(0);
     setScore(0);
@@ -107,11 +136,11 @@ export default function GapFillingGame() {
   // --- DİNAMİK BOYUT ---
   const getDynamicStyle = (length) => {
     if (length <= 5) return { box: "w-11 h-14", text: "text-2xl" }; 
-    if (length <= 8) return { box: "w-8 h-11", text: "text-xl" };   
+    if (length <= 8) return { box: "w-8 h-11", text: "text-xl" };    
     if (length <= 11) return { box: "w-6 h-9", text: "text-lg" };    
     if (length <= 14) return { box: "w-4 h-8", text: "text-sm" }; 
     if (length <= 17) return { box: "w-3 h-6", text: "text-[10px]" }; 
-    return { box: "w-2 h-5", text: "text-[8px]" };                       
+    return { box: "w-2 h-5", text: "text-[8px]" };                        
   };
 
   // --- SORU YÜKLEME VE SES TEMİZLEME ---
@@ -144,10 +173,9 @@ export default function GapFillingGame() {
   const currentWordObj = questions[currentIndex];
   const targetWord = currentWordObj?.word.trim() || "";
   
-  // --- MASK LE ME (Regex Düzeltildi: Sadece tam kelime) ---
+  // --- MASKELEME (Regex Düzeltildi) ---
   const getMaskedSentence = () => {
       if (!currentWordObj) return "";
-      // \\b kelime sınırını ifade eder. 'want' içindeki 'a'yı eşleştirmez.
       const regex = new RegExp(`\\b${currentWordObj.word}\\b`, "gi");
       return currentWordObj.sentence.replace(regex, "________");
   };
@@ -185,7 +213,7 @@ export default function GapFillingGame() {
     }
   };
 
-  // --- IPHONE FIX: Tıklanınca odağı zorla kaldır (Blur) ---
+  // --- IPHONE FIX ---
   const handleBlur = (e) => {
       if (e && e.currentTarget) {
           e.currentTarget.blur();
@@ -194,7 +222,7 @@ export default function GapFillingGame() {
 
   // --- HARF TIKLAMA ---
   const handleLetterClick = (letterObj, e) => {
-    handleBlur(e); // Mobile fix
+    handleBlur(e);
 
     if (isWordComplete || letterObj.isUsed) return;
 
@@ -227,7 +255,11 @@ export default function GapFillingGame() {
               setIsWordComplete(true);
               handleSpeak(targetWord, 'word'); 
 
-            updateGameStats('gap_filling', 1); // <--- BURAYA EKLE (Kelime geçildi)
+              updateGameStats('gap_filling', 1);
+              
+              // Yanlış yapsa da tarih güncellenir (Sona atılır)
+              const currentQ = questions[currentIndex];
+              handleUpdateWord(currentQ.id, { lastSeen_gap_filling: new Date().toISOString() });
               
               setTimeout(() => {
                   if (currentIndex + 1 < questions.length) {
@@ -242,7 +274,7 @@ export default function GapFillingGame() {
   };
 
   const handleHint = (e) => {
-    handleBlur(e); // Mobile fix
+    handleBlur(e); 
     if (isWordComplete) return;
 
     const newHintCount = hintCount + 1;
@@ -261,10 +293,16 @@ export default function GapFillingGame() {
     if (correctLetterObj) handleLetterClick(correctLetterObj, null);
   };
 
+  // --- KELİME BİTİRME (BAŞARILI) ---
   const handleWordComplete = () => {
-    updateGameStats('gap_filling', 1); // <--- BURAYA EKLE (1 Kelime Tamamlandı)
+    updateGameStats('gap_filling', 1); 
     setIsWordComplete(true);
     handleSpeak(targetWord, 'word'); 
+    
+    // --- GÜVENLİ KAYIT ---
+    // Gap Filling tarihinde bu kelimeyi işaretle
+    const currentQ = questions[currentIndex];
+    handleUpdateWord(currentQ.id, { lastSeen_gap_filling: new Date().toISOString() });
     
     if (currentWordPoints > 0) {
         addScore(currentWordPoints);
@@ -365,11 +403,11 @@ export default function GapFillingGame() {
            </div>
            
            <button onClick={() => setGameStatus("mode-selection")} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-xl flex items-center justify-center gap-2 mb-3 shadow-lg shadow-blue-200">
-                Başka Test Çöz
+               Başka Test Çöz
            </button>
            
            <button onClick={() => navigate("/")} className="w-full bg-white border-2 border-slate-200 text-slate-600 font-bold py-3 rounded-xl hover:bg-slate-50 flex items-center justify-center gap-2">
-                <Home className="w-5 h-5" /> Ana Sayfa
+               <Home className="w-5 h-5" /> Ana Sayfa
            </button>
         </div>
       </div>
