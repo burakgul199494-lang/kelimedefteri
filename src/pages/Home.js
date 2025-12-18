@@ -15,7 +15,7 @@ import {
   Puzzle, 
   BarChart2,
   User,
-  Dumbbell // <-- İkon eklendi
+  Dumbbell 
 } from "lucide-react"; 
 import ProfileModal from "../components/ProfileModal"; 
 import LeaderboardModal from "../components/LeaderboardModal";
@@ -31,7 +31,6 @@ export default function Home() {
   const [showStats, setShowStats] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   
-  // Veritabanından gelen temizlenmiş kelimeler
   const allWords = getAllWords();
   const totalWords = allWords.length;
 
@@ -70,24 +69,18 @@ export default function Home() {
            <div className="flex gap-2 w-full justify-between">
              
              <div className="flex gap-2">
-                {/* 1. PROFİL */}
                 <button onClick={() => setShowProfileModal(true)} className="p-2.5 bg-white rounded-xl shadow-sm border border-slate-200 text-slate-600 hover:text-indigo-600 active:scale-95 transition-transform" title="Profil Düzenle">
                     <User size={18} />
                 </button>
-                
-                {/* 2. AYARLAR */}
                 <button onClick={() => setShowSettings(true)} className="p-2.5 bg-white rounded-xl shadow-sm border border-slate-200 text-slate-600 hover:text-slate-900 active:scale-95 transition-transform" title="Ayarlar">
                     <Settings size={18} />
                 </button>
              </div>
 
              <div className="flex gap-2">
-                {/* 3. LİDERLİK */}
                 <button onClick={() => setShowLeaderboard(true)} className="p-2.5 bg-white rounded-xl shadow-sm border border-slate-200 text-slate-600 hover:text-yellow-500 active:scale-95 transition-transform" title="Liderlik">
                     <Trophy size={18} />
                 </button>
-
-                {/* 4. İSTATİSTİK */}
                 <button onClick={() => setShowStats(true)} className="p-2.5 bg-white rounded-xl shadow-sm border border-slate-200 text-slate-600 hover:text-emerald-500 active:scale-95 transition-transform" title="Haftalık Rapor">
                     <BarChart2 size={18} />
                 </button>
@@ -174,7 +167,19 @@ export default function Home() {
              <Play className="w-6 h-6 opacity-60 group-hover:translate-x-1 transition-transform"/>
           </button>
 
-          {/* GRID MENÜ */}
+          {/* YENİ: GRAMER EGZERSİZİ (Flash Kart'ın Altına Taşındı) */}
+          <button onClick={() => navigate("/exercise")} className="w-full bg-slate-800 text-white font-bold py-5 px-6 rounded-2xl shadow-lg flex items-center justify-between group active:scale-95 transition-transform mb-3">
+             <div className="flex items-center gap-4">
+                <div className="bg-white/20 p-3 rounded-xl group-hover:bg-white/30 transition-colors"><Dumbbell className="w-8 h-8"/></div>
+                <div className="text-left">
+                   <div className="text-xl">Gramer Egzersizi</div>
+                   <div className="text-xs text-slate-400 font-normal">Tüm kelimelerle form çalışması</div>
+                </div>
+            </div>
+             <Dumbbell className="w-6 h-6 opacity-60 group-hover:rotate-12 transition-transform"/>
+          </button>
+
+          {/* GRID MENÜ (Diğer Oyunlar) */}
           <div className="grid grid-cols-2 gap-3">
               <button onClick={() => navigate("/quiz")} className="bg-amber-500 text-white font-bold py-4 px-4 rounded-xl shadow-md flex flex-col items-center gap-2 text-center active:scale-95 transition-transform">
                 <div className="bg-white/20 p-2 rounded-full"><HelpCircle className="w-6 h-6"/></div>
@@ -215,16 +220,6 @@ export default function Home() {
                 <div className="bg-white/20 p-2 rounded-full"><Mic className="w-6 h-6"/></div>
                 <span className="text-sm">Telaffuz</span>
               </button>
-
-              {/* YENİ: GRAMER EGZERSİZİ BUTONU */}
-              <button onClick={() => navigate("/exercise")} className="col-span-2 bg-slate-800 text-white font-bold py-4 px-4 rounded-xl shadow-lg flex items-center justify-center gap-3 text-center active:scale-95 transition-transform mt-1 group">
-                  <div className="bg-white/20 p-2 rounded-full group-hover:bg-white/30 transition-colors"><Dumbbell className="w-6 h-6"/></div>
-                  <div className="flex flex-col items-start">
-                      <span className="text-base">Gramer Egzersizi</span>
-                      <span className="text-[10px] opacity-70 font-normal font-sans">Tüm kelimelerle form çalışması</span>
-                  </div>
-              </button>
-
           </div>
 
           <div className="h-px bg-slate-200 my-2"></div>
