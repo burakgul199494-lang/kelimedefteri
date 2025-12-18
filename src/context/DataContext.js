@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import { 
-  doc, getDoc, setDoc, updateDoc, arrayUnion, arrayRemove, 
+  doc, setDoc, updateDoc, arrayUnion, arrayRemove, 
   collection, deleteDoc, addDoc, increment, onSnapshot, query, orderBy, limit 
 } from "firebase/firestore";
 import { auth, db, appId, ADMIN_EMAILS } from "../services/firebase";
@@ -14,7 +14,6 @@ export const DataProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
   
-  // --- YENİ EKLENEN YÜKLEME KONTROLLERİ ---
   const [authLoading, setAuthLoading] = useState(true);
   const [systemLoading, setSystemLoading] = useState(true);
   const [profileLoading, setProfileLoading] = useState(true);
@@ -28,7 +27,6 @@ export const DataProvider = ({ children }) => {
   const [learningQueue, setLearningQueue] = useState([]);
   const [leaderboardData, setLeaderboardData] = useState([]);
 
-  // GENEL LOADING: Eğer herhangi biri hala yükleniyorsa BEKLE.
   const loading = authLoading || systemLoading || (user ? profileLoading : false);
 
   const getCurrentWeekKey = () => {
@@ -46,14 +44,14 @@ export const DataProvider = ({ children }) => {
       if (currentUser && ADMIN_EMAILS.includes(currentUser.email)) setIsAdmin(true);
       else setIsAdmin(false);
 
-      setAuthLoading(false); // Oturum kontrolü bitti
+      setAuthLoading(false);
 
       if (!currentUser) {
         setKnownWordIds([]); setCustomWords([]); setDeletedWordIds([]); 
         setLearningQueue([]); setStreak(0);
         setProfileLoading(false); 
       } else {
-        setProfileLoading(true); // Yeni kullanıcı geldi, verisini bekle
+        setProfileLoading(true); 
       }
     });
     return () => unsubscribe();
@@ -68,7 +66,7 @@ export const DataProvider = ({ children }) => {
             sysWords.push({ ...doc.data(), id: doc.id, source: "system" });
         });
         setDynamicSystemWords(sysWords);
-        setSystemLoading(false); // <-- Kelimeler yüklenince loading biter
+        setSystemLoading(false);
     }, (error) => {
         console.error("Sistem kelimeleri hatası:", error);
         setSystemLoading(false);
@@ -99,7 +97,6 @@ export const DataProvider = ({ children }) => {
             setDeletedWordIds(data.deleted_ids || []);
             setLearningQueue(data.learning_queue || []);
             
-            // Streak
             let currentStreak = data.streak || 0;
             const todayStr = new Date().toISOString().split("T")[0];
             const lastVisit = data.last_visit_date;
@@ -116,10 +113,9 @@ export const DataProvider = ({ children }) => {
             setDoc(userProfileRef, { last_visit_date: todayStr, streak: 1 }, { merge: true });
             setStreak(1);
         }
-        setProfileLoading(false); // <-- Profil yüklendi, ekran açılabilir
+        setProfileLoading(false); 
     });
 
-    // C) LİDERLİK TABLOSU
     const unsubLeaderboard = subscribeToLeaderboard();
 
     return () => {
@@ -127,9 +123,7 @@ export const DataProvider = ({ children }) => {
         unsubProfile();
         unsubLeaderboard();
     };
-  }, [user?.uid]); // <-- ÖNEMLİ: Sadece UID değişince tetiklenir
-
-  // --- YARDIMCI FONKSİYONLAR ---
+  }, [user?.uid]);
 
   const subscribeToLeaderboard = () => {
       const weekKey = getCurrentWeekKey(); 
@@ -232,6 +226,63 @@ export const DataProvider = ({ children }) => {
     } catch (e) { console.error("Hata:", e); }
   };
 
+  // --- KELİME DÜZENLEME (GÜVENLİ VERSİYON) ---
+  const handleUpdateWord = async (originalId, newData) => {
+     try {
+       const isCustom = customWords.find((w) => String(w.id) === String(originalId));
+       const isKnown = knownWordIds.includes(originalId);
+
+       if (isCustom) {
+         // Zaten kullanıcı kelimesi ise direkt güncelle
+         const updatedWord = { ...isCustom, ...newData, source: "user" };
+         const wordRef = doc(db, "artifacts", appId, "users", user.uid, "words", String(originalId));
+         await updateDoc(wordRef, updatedWord);
+       } else {
+         // !!! SİSTEM KELİMESİ KULLANICIYA DÖNÜŞÜYOR !!!
+         const originalSystemWord = dynamicSystemWords.find(w => String(w.id) === String(originalId));
+         
+         if (!originalSystemWord) {
+             console.error("Kelime bulunamadı:", originalId);
+             return; 
+         }
+
+         const userRef = doc(db, "artifacts", appId, "users", user.uid, "vocab_game", "progress");
+         
+         // 1. Eski ID'yi silinmişlere at (Artık sistem kelimesi görünmeyecek)
+         await setDoc(userRef, { deleted_ids: arrayUnion(originalId) }, { merge: true });
+
+         // 2. Yeni ID oluştur
+         const newId = Date.now().toString();
+
+         // 3. VERİ KORUMA: Eski verilerin üzerine yenileri (tarih vs.) ekle
+         const newCustomWord = { 
+             ...originalSystemWord, 
+             ...newData, 
+             id: newId, 
+             source: "user" 
+         };
+
+         // 4. Yeni kelimeyi kaydet
+         const wordRef = doc(db, "artifacts", appId, "users", user.uid, "words", newId);
+         await setDoc(wordRef, newCustomWord);
+
+         // 5. Bilinenler listesindeyse ID güncelle
+         if (isKnown) {
+           await updateDoc(userRef, { known_ids: arrayRemove(originalId) }); 
+           await updateDoc(userRef, { known_ids: arrayUnion(newCustomWord.id) });
+         }
+         
+         // 6. Kuyruktaysa ID güncelle
+         const queueItem = learningQueue.find(q => q.wordId === originalId);
+         if (queueItem) {
+             const newQueue = learningQueue.filter(q => q.wordId !== originalId);
+             newQueue.push({ ...queueItem, wordId: newId });
+             await updateDoc(userRef, { learning_queue: newQueue });
+         }
+       }
+     } catch (e) { console.error(e); }
+  };
+
   const handleSaveNewWord = async (wordData) => {
     const normalizedInput = wordData.word.toLowerCase().trim();
     const allWords = getAllWords();
@@ -258,29 +309,6 @@ export const DataProvider = ({ children }) => {
       const newQueue = learningQueue.filter(q => String(q.wordId) !== String(wordId));
       await setDoc(userRef, { deleted_ids: arrayUnion(wordId), known_ids: arrayRemove(wordId), learning_queue: newQueue }, { merge: true });
     } catch (e) { console.error(e); }
-  };
-
-  const handleUpdateWord = async (originalId, newData) => {
-     try {
-       const isCustom = customWords.find((w) => String(w.id) === String(originalId));
-       const isKnown = knownWordIds.includes(originalId);
-       if (isCustom) {
-         const updatedWord = { ...isCustom, ...newData, source: "user" };
-         const wordRef = doc(db, "artifacts", appId, "users", user.uid, "words", String(originalId));
-         await updateDoc(wordRef, updatedWord);
-       } else {
-         const userRef = doc(db, "artifacts", appId, "users", user.uid, "vocab_game", "progress");
-         await setDoc(userRef, { deleted_ids: arrayUnion(originalId) }, { merge: true });
-         const newId = Date.now().toString();
-         const newCustomWord = { ...newData, id: newId, source: "user" };
-         const wordRef = doc(db, "artifacts", appId, "users", user.uid, "words", newId);
-         await setDoc(wordRef, newCustomWord);
-         if (isKnown) {
-           await updateDoc(userRef, { known_ids: arrayRemove(originalId) }); 
-           await updateDoc(userRef, { known_ids: arrayUnion(newCustomWord.id) });
-         }
-       }
-     } catch (e) { console.error(e); }
   };
 
   const addToKnown = async (wordId) => {
@@ -343,7 +371,6 @@ export const DataProvider = ({ children }) => {
       } catch(e) { console.error(e); }
   };
 
-  // --- BURADA AÇILAN FONKSİYONLAR (ADMIN) ---
   const handleSaveSystemWord = async (wordData) => {
     try {
       const normalizedInput = wordData.word.toLowerCase().trim();
@@ -358,7 +385,6 @@ export const DataProvider = ({ children }) => {
       };
       await addDoc(collection(db, "artifacts", appId, "system_words"), newWord);
       
-      // Eğer kullanıcıda aynı kelime varsa, onu silindiye at ki çakışmasın
       const conflictingCustom = customWords.find(w => w.word.toLowerCase() === normalizedInput);
       if (conflictingCustom) {
           const userRef = doc(db, "artifacts", appId, "users", user.uid, "vocab_game", "progress");
