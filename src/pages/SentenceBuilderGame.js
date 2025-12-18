@@ -15,7 +15,8 @@ import {
 } from "lucide-react";
 
 export default function SentenceBuilderGame() {
-  const { getAllWords, knownWordIds, learningQueue, addScore, updateGameStats } = useData();
+  // 1. handleUpdateWord EKLENDİ
+  const { getAllWords, knownWordIds, learningQueue, addScore, updateGameStats, handleUpdateWord } = useData();
   const navigate = useNavigate();
 
   // --- STATE'LER ---
@@ -35,10 +36,9 @@ export default function SentenceBuilderGame() {
   const [currentPoints, setCurrentPoints] = useState(10); 
   const [wrongAnimationId, setWrongAnimationId] = useState(null); 
   
-  // YENİ: CÜMLE BİTTİ Mİ? (BEKLEME EKRANI İÇİN)
   const [isRoundFinished, setIsRoundFinished] = useState(false); 
 
-  // --- IPHONE FIX: TIKLAMA ODAĞINI KALDIR ---
+  // --- IPHONE FIX ---
   const handleBlur = (e) => {
       if (e && e.currentTarget) e.currentTarget.blur();
   };
@@ -48,6 +48,7 @@ export default function SentenceBuilderGame() {
     const all = getAllWords();
     const now = new Date();
     
+    // Cümlesi olan kelimeleri al
     const validWords = all.filter(w => w.sentence && w.sentence.trim().length > 0);
     const getQueueItem = (id) => learningQueue ? learningQueue.find(q => q.wordId === id) : null;
 
@@ -67,11 +68,12 @@ export default function SentenceBuilderGame() {
     return { learnPool, reviewPool, waitingPool };
   }, [getAllWords, knownWordIds, learningQueue]);
 
-  // --- BAŞLATMA ---
+  // --- BAŞLATMA (AKILLI SIRALAMA) ---
   const startSession = (mode, e) => {
-    handleBlur(e); // Mobile Fix
+    handleBlur(e);
     setGameMode(mode);
     let selectedPool = [];
+    
     if (mode === "learn") selectedPool = pools.learnPool;
     else if (mode === "review") selectedPool = pools.reviewPool;
     else if (mode === "waiting") selectedPool = pools.waitingPool;
@@ -81,7 +83,35 @@ export default function SentenceBuilderGame() {
       return;
     }
 
-    const selected = selectedPool.sort(() => 0.5 - Math.random()).slice(0, 10);
+    // --- YENİ ALGORİTMA: TARİHE GÖRE SIRALA ---
+    // Sentence Builder oyunu için özel tarih anahtarı: 'lastSeen_sentence_builder'
+    
+    const neverSeen = [];
+    const seen = [];
+
+    selectedPool.forEach(w => {
+        if (!w.lastSeen_sentence_builder) {
+            neverSeen.push(w);
+        } else {
+            seen.push(w);
+        }
+    });
+
+    // 1. Hiç görülmeyenleri karıştır
+    neverSeen.sort(() => 0.5 - Math.random());
+
+    // 2. Görülenleri Eskiden -> Yeniye sırala
+    seen.sort((a, b) => new Date(a.lastSeen_sentence_builder).getTime() - new Date(b.lastSeen_sentence_builder).getTime());
+
+    // 3. Birleştir
+    const smartSortedPool = [...neverSeen, ...seen];
+
+    // 4. İlk 10 taneyi al
+    const selectedCandidates = smartSortedPool.slice(0, 10);
+
+    // 5. Karıştır
+    const selected = selectedCandidates.sort(() => 0.5 - Math.random());
+
     setQuestions(selected);
     setCurrentIndex(0);
     setScore(0);
@@ -123,7 +153,7 @@ export default function SentenceBuilderGame() {
 
   // --- KELİME SEÇME ---
   const handleSelectWord = (wordObj, e) => {
-    handleBlur(e); // Mobile Fix
+    handleBlur(e);
 
     if (isRoundFinished || wordObj.isUsed) return;
 
@@ -154,7 +184,7 @@ export default function SentenceBuilderGame() {
 
   // --- İPUCU ---
   const handleHint = (e) => {
-      handleBlur(e); // Mobile Fix
+      handleBlur(e); 
       if (isRoundFinished) return;
 
       const newHintCount = hintCount + 1;
@@ -168,11 +198,10 @@ export default function SentenceBuilderGame() {
       const expectedWordText = targetSentenceWords[nextIndex];
       const correctObj = shuffledPool.find(w => !w.isUsed && w.text === expectedWordText);
 
-      // İpucu için hayali bir event gönderiyoruz, handleSelectWord içindeki handleBlur hata vermesin
       if (correctObj) handleSelectWord(correctObj, { currentTarget: { blur: () => {} } });
   };
 
-  // --- OTOMATİK TAMAMLAMA (2 HATA SONRASI) ---
+  // --- OTOMATİK TAMAMLAMA (BAŞARISIZLIK) ---
   const handleFailAndShowCorrect = () => {
       setCurrentPoints(0); 
       
@@ -187,10 +216,15 @@ export default function SentenceBuilderGame() {
       finishRound(false); 
   };
 
-  // --- TURU BİTİR (DURAKLAMA) ---
+  // --- TURU BİTİR (DURAKLAMA & KAYIT) ---
   const finishRound = (success) => {
-      setIsRoundFinished(true); // "Devam Et" butonunu açar
-      updateGameStats('sentence_builder', 1); // İstatistiği işle
+      setIsRoundFinished(true); 
+      updateGameStats('sentence_builder', 1);
+
+      // --- GÜVENLİ KAYIT ---
+      // Sentence Builder tarihinde bu kelimeyi işaretle
+      const currentWordObj = questions[currentIndex];
+      handleUpdateWord(currentWordObj.id, { lastSeen_sentence_builder: new Date().toISOString() });
 
       const sentenceStr = questions[currentIndex].sentence;
       speak(sentenceStr); 
@@ -203,7 +237,7 @@ export default function SentenceBuilderGame() {
 
   // --- SONRAKİ SORUYA GEÇ ---
   const handleNextQuestion = (e) => {
-      handleBlur(e); // Mobile Fix
+      handleBlur(e);
       if (currentIndex + 1 < questions.length) {
           setCurrentIndex(p => p + 1);
       } else {
