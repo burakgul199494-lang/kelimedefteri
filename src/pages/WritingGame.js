@@ -3,7 +3,7 @@ import { useData } from "../context/DataContext";
 import { useNavigate } from "react-router-dom";
 import { 
   X, Trophy, Loader2, Home, Volume2, CheckCircle2, 
-  PenTool, RefreshCw, BrainCircuit, Hourglass, Lightbulb, AlertTriangle, Languages, Square
+  PenTool, RefreshCw, BrainCircuit, Hourglass, Lightbulb, AlertTriangle, Languages, Square, ArrowRight
 } from "lucide-react";
 
 export default function WritingGame() {
@@ -25,7 +25,7 @@ export default function WritingGame() {
   
   const [mistakeCount, setMistakeCount] = useState(0);
   const [hintCount, setHintCount] = useState(0);
-  const [currentWordPoints, setCurrentWordPoints] = useState(5); 
+  const [currentWordPoints, setCurrentWordPoints] = useState(10); 
 
   const [activeAudio, setActiveAudio] = useState(null);
 
@@ -39,7 +39,7 @@ export default function WritingGame() {
     const all = getAllWords();
     const now = new Date();
     
-    // Tanımı (Türkçesi) olan kelimeler
+    // Tanımı (Türkçesi) olan kelimeler geçerlidir
     const validWords = all.filter(w => w.word && w.definitions && w.definitions[0]?.meaning);
     const getQueueItem = (id) => learningQueue ? learningQueue.find(q => q.wordId === id) : null;
 
@@ -74,7 +74,7 @@ export default function WritingGame() {
       return;
     }
 
-    // --- AKILLI SIRALAMA ---
+    // --- AKILLI SIRALAMA (Writing için) ---
     const neverSeen = [];
     const seen = [];
 
@@ -90,14 +90,15 @@ export default function WritingGame() {
     seen.sort((a, b) => new Date(a.lastSeen_writing).getTime() - new Date(b.lastSeen_writing).getTime());
 
     const smartPool = [...neverSeen, ...seen];
-    const selectedCandidates = smartPool.slice(0, 20);
+    
+    // DÜZELTME: 10 Soruya Düşürüldü
+    const selectedCandidates = smartPool.slice(0, 10);
     const selected = selectedCandidates.sort(() => 0.5 - Math.random());
 
-    // Soruları Hazırla
     const generatedQuestions = selected.map(w => ({
         wordObj: w,
         targetWord: w.word.trim(),
-        questionText: w.definitions[0].meaning // Türkçe Anlamı
+        questionText: w.definitions[0].meaning 
     }));
 
     setQuestions(generatedQuestions);
@@ -111,22 +112,26 @@ export default function WritingGame() {
     window.speechSynthesis.cancel();
     setActiveAudio(null);
 
-    if (gameStatus === "playing" && questions[currentIndex]) {
+    // CRASH FIX: questions dizisi dolu mu ve geçerli index var mı?
+    if (gameStatus === "playing" && questions.length > 0 && questions[currentIndex]) {
       const target = questions[currentIndex].targetWord;
       const letters = target.split('').map((char, index) => ({
         id: `${char}-${index}-${Math.random()}`,
         char: char,
         isUsed: false
       }));
+      
+      // State sıfırlama (Temiz bir sayfa için)
       setShuffledLetters([...letters].sort(() => Math.random() - 0.5));
       setCompletedLetters([]);
       setIsWordComplete(false);
       setMistakeCount(0);
       setHintCount(0);
-      setCurrentWordPoints(5);
+      setCurrentWordPoints(10);
     }
+    
     return () => window.speechSynthesis.cancel();
-  }, [currentIndex, gameStatus, questions]);
+  }, [currentIndex, gameStatus, questions]); // questions eklendi
 
   const getDynamicStyle = (length) => {
     if (length <= 5) return { box: "w-11 h-14", text: "text-2xl" }; 
@@ -146,7 +151,6 @@ export default function WritingGame() {
         window.speechSynthesis.cancel();
         const u = new SpeechSynthesisUtterance(text);
         u.lang = "en-US";
-        u.rate = 0.8;
         u.onend = () => setActiveAudio(null);
         u.onerror = () => setActiveAudio(null);
         window.speechSynthesis.speak(u);
@@ -214,14 +218,6 @@ export default function WritingGame() {
           addScore(currentWordPoints);
           setScore(s => s + currentWordPoints);
       }
-
-      setTimeout(() => {
-        if (currentIndex + 1 < questions.length) {
-            setCurrentIndex(p => p + 1);
-        } else {
-            setGameStatus("finished");
-        }
-      }, 1200);
   };
 
   const handleFail = (wordToSpeak) => {
@@ -234,14 +230,12 @@ export default function WritingGame() {
 
       const currentQ = questions[currentIndex];
       handleUpdateWord(currentQ.wordObj.id, { lastSeen_writing: new Date().toISOString() });
-      
-      setTimeout(() => {
-        if (currentIndex + 1 < questions.length) {
-            setCurrentIndex(p => p + 1);
-        } else {
-            setGameStatus("finished");
-        }
-      }, 2000);
+  };
+
+  const handleNext = (e) => {
+      handleBlur(e);
+      if (currentIndex + 1 < questions.length) setCurrentIndex(p => p + 1);
+      else setGameStatus("finished");
   };
 
   const handleQuitEarly = (e) => {
@@ -254,8 +248,6 @@ export default function WritingGame() {
   if (gameStatus === "mode-selection") {
       return (
         <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
-            
-            {/* TASARIM BÜTÜNLÜĞÜ İÇİN AYNI CSS */}
             <style>{`
                 * { -webkit-tap-highlight-color: transparent !important; }
                 
@@ -330,23 +322,24 @@ export default function WritingGame() {
       return (
         <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
             <div className="bg-white p-8 rounded-3xl shadow-xl max-w-sm w-full text-center space-y-6">
-                <div className="bg-pink-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto animate-bounce">
-                    <Trophy className="w-10 h-10 text-pink-600"/>
+                <div className="bg-blue-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto animate-bounce">
+                    <Trophy className="w-10 h-10 text-blue-600"/>
                 </div>
                 <h2 className="text-2xl font-bold text-slate-800">{modeTitle}</h2>
                 <div className="py-6 bg-slate-50 rounded-2xl border border-slate-100">
                     <div className="text-sm text-slate-400 font-bold uppercase">Kazanılan Puan</div>
-                    <div className="text-5xl font-extrabold text-indigo-600 mt-2">{score}</div>
+                    <div className="text-5xl font-extrabold text-blue-600 mt-2">{score}</div>
                     <div className="text-xs text-slate-400 mt-1">Maksimum: {maxScore}</div>
                 </div>
-                <button onClick={() => setGameStatus("mode-selection")} className="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl shadow-lg hover:bg-indigo-700 active:scale-95 transition-transform">Başka Test Çöz</button>
+                <button onClick={() => setGameStatus("mode-selection")} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-xl flex items-center justify-center gap-2 mb-3 shadow-lg active:scale-95 transition-transform">Başka Test Çöz</button>
                 <button onClick={() => navigate("/")} className="w-full bg-white border-2 border-slate-200 text-slate-600 font-bold py-3 rounded-xl hover:bg-slate-50 active:scale-95 transition-transform">Ana Sayfa</button>
             </div>
         </div>
       );
   }
 
-  if (!questions[currentIndex]) return <div className="flex h-screen items-center justify-center"><Loader2 className="animate-spin w-10 h-10 text-indigo-600"/></div>;
+  // CRASH FIX: Soru yüklenmediyse Loader göster (currentIndex kontrolüyle)
+  if (!questions[currentIndex]) return <div className="flex h-screen items-center justify-center"><Loader2 className="animate-spin w-10 h-10 text-blue-600"/></div>;
 
   const currentQ = questions[currentIndex];
   const targetWord = currentQ.targetWord;
@@ -355,7 +348,7 @@ export default function WritingGame() {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center p-4">
         
-        {/* --- TASARIM UYUMU İÇİN AYNI CSS --- */}
+        {/* --- MOBİL CSS --- */}
         <style>{`
             * { -webkit-tap-highlight-color: transparent !important; }
             @keyframes shake {
@@ -364,19 +357,17 @@ export default function WritingGame() {
               75% { transform: translateX(5px); }
             }
             @media (hover: hover) {
-                .letter-btn:hover { border-color: #818cf8 !important; color: #4f46e5 !important; } /* indigo-400 */
+                .letter-btn:hover { border-color: #60a5fa !important; color: #2563eb !important; } /* blue-400 */
                 .hint-btn:hover { background-color: #fcd34d !important; } /* amber-300 */
-                .audio-btn:hover { background-color: #e0e7ff !important; } /* indigo-100 */
+                .audio-btn:hover { background-color: #dbeafe !important; } /* blue-100 */
             }
             .game-btn { transition: all 0.2s ease; }
         `}</style>
 
         <div className="w-full max-w-md space-y-4 mt-2">
-            
-            {/* Header */}
             <div className="flex justify-between items-center">
                 <button onClick={handleQuitEarly} className="p-2 bg-white rounded-full shadow-sm active:bg-slate-100 transition-colors"><X className="w-5 h-5 text-slate-400"/></button>
-                <div className="font-bold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-100 text-xs">
+                <div className="font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-full border border-blue-100 text-xs">
                     {gameMode === 'review' ? 'Tekrar' : gameMode === 'learn' ? 'Öğrenme' : 'Bekleme'}: {currentIndex + 1} / {questions.length}
                 </div>
                 <div className="flex items-center gap-1 bg-amber-100 text-amber-700 px-3 py-1 rounded-full font-bold text-sm border border-amber-200">
@@ -384,28 +375,31 @@ export default function WritingGame() {
                 </div>
             </div>
             <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
-                <div className="bg-indigo-500 h-full transition-all duration-500" style={{width:`${((currentIndex + 1) / questions.length) * 100}%`}}></div>
+                <div className="bg-blue-500 h-full transition-all duration-500" style={{width:`${((currentIndex + 1) / questions.length) * 100}%`}}></div>
             </div>
 
-            {/* OYUN KARTI */}
             <div className="bg-white p-6 rounded-3xl shadow-xl border border-slate-100 text-center relative overflow-hidden min-h-[450px] flex flex-col justify-between">
-                <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-indigo-400 to-purple-400"></div>
+                <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-blue-400 to-cyan-400"></div>
 
                 {/* ORTA ALAN: TÜRKÇE KELİME + SES BUTONU */}
                 <div className="flex-1 flex flex-col items-center justify-center gap-4 py-4">
                     
                     <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">TÜRKÇE ANLAMI</div>
-                    <h2 className="text-3xl font-black text-slate-800 leading-tight">{currentQ.questionText}</h2>
                     
-                    {/* Ses butonu eklendi (Opsiyonel dinleme) */}
+                    {/* TÜRKÇE KELİME KARTI */}
+                    <div className="bg-slate-50 px-6 py-8 rounded-3xl border-2 border-slate-100 w-full flex items-center justify-center">
+                        <h2 className="text-3xl font-black text-slate-800 leading-tight break-words">{currentQ.questionText}</h2>
+                    </div>
+
+                    {/* Ses butonu (Opsiyonel dinleme) */}
                     <button 
                         onClick={(e) => {
                             handleBlur(e);
                             handleSpeak(targetWord, 'main');
                         }}
                         style={{ outline: 'none' }}
-                        className={`audio-btn p-2 rounded-full flex items-center justify-center transition-all active:scale-95 focus:outline-none focus:ring-0
-                            ${activeAudio === 'main' ? "bg-indigo-100 text-indigo-600 animate-pulse" : "bg-slate-50 text-slate-400"}
+                        className={`audio-btn p-3 rounded-full flex items-center justify-center transition-all active:scale-95 focus:outline-none focus:ring-0
+                            ${activeAudio === 'main' ? "bg-indigo-100 text-indigo-600 animate-pulse" : "bg-slate-100 text-slate-400"}
                         `}
                     >
                         {activeAudio === 'main' ? <Square className="w-5 h-5 fill-current"/> : <Volume2 className="w-5 h-5"/>}
@@ -418,7 +412,7 @@ export default function WritingGame() {
                         const char = completedLetters[idx];
                         const isFilled = char !== undefined;
                         return (
-                            <div key={idx} className={`${styles.box} ${styles.text} flex items-center justify-center font-bold border-b-4 rounded-t-lg transition-all ${isFilled ? "border-indigo-500 text-indigo-700 bg-indigo-50" : "border-slate-200 bg-slate-50 text-transparent"}`}>
+                            <div key={idx} className={`${styles.box} ${styles.text} flex items-center justify-center font-bold border-b-4 rounded-t-lg transition-all ${isFilled ? "border-blue-500 text-blue-700 bg-blue-50" : "border-slate-200 bg-slate-50 text-transparent"}`}>
                                 {char}
                             </div>
                         );
@@ -442,7 +436,7 @@ export default function WritingGame() {
                                             ? "opacity-0 pointer-events-none scale-0" 
                                             : wrongAnimationId === item.id 
                                                 ? "bg-red-500 text-white shadow-none animate-[shake_0.5s_ease-in-out]" 
-                                                : "bg-white border-2 border-slate-200 text-slate-700 active:bg-indigo-100 active:border-indigo-300 active:text-indigo-600 active:shadow-none active:translate-y-[2px]"
+                                                : "bg-white border-2 border-slate-200 text-slate-700 active:bg-blue-100 active:border-blue-300 active:text-blue-600 active:shadow-none active:translate-y-[2px]"
                                         }
                                     `}
                                 >
@@ -459,10 +453,8 @@ export default function WritingGame() {
                                 className="hint-btn flex items-center gap-2 px-5 py-3 bg-amber-100 text-amber-700 rounded-2xl font-bold active:bg-amber-200 transition-colors active:scale-95 focus:outline-none focus:ring-0"
                              >
                                 <Lightbulb className="w-5 h-5"/> 
-                                <span className="text-xs ml-1 flex flex-col items-start leading-none">
-                                    <span>İpucu ({hintCount === 0 ? "5p" : hintCount === 1 ? "2p" : "0p"})</span>
-                                    <span className="text-[9px] text-amber-600/80">Hata: {mistakeCount}/2</span>
-                                </span>
+                                <span>İpucu ({hintCount === 0 ? "5p" : hintCount === 1 ? "2p" : "0p"})</span>
+                                <span className="text-[10px] bg-white/50 px-1.5 rounded ml-1">Hata: {mistakeCount}/2</span>
                              </button>
                         </div>
                     </div>
