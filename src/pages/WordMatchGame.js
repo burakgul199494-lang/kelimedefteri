@@ -17,7 +17,8 @@ import {
 } from "lucide-react";
 
 export default function WordMatchGame() {
-  const { getAllWords, knownWordIds, learningQueue, addScore, updateGameStats } = useData();
+  // 1. handleUpdateWord EKLENDİ
+  const { getAllWords, knownWordIds, learningQueue, addScore, updateGameStats, handleUpdateWord } = useData();
   const navigate = useNavigate();
 
   // --- STATE'LER ---
@@ -62,9 +63,9 @@ export default function WordMatchGame() {
     return { learnPool, reviewPool, waitingPool };
   }, [getAllWords, knownWordIds, learningQueue]);
 
-  // --- OYUNU BAŞLATMA ---
+  // --- OYUNU BAŞLATMA (AKILLI SIRALAMA) ---
   const startSession = (mode, e) => {
-    handleBlur(e); // Mobile Fix
+    handleBlur(e);
     setGameMode(mode);
     let selectedPool = [];
 
@@ -78,15 +79,41 @@ export default function WordMatchGame() {
       return;
     }
 
-    // 10 Kelime Seç
-    const selected10 = selectedPool.sort(() => 0.5 - Math.random()).slice(0, 10);
+    // --- YENİ ALGORİTMA: TARİHE GÖRE SIRALA ---
+    // Word Match oyunu için özel tarih anahtarı: 'lastSeen_word_match'
     
-    setAllSessionWords(selected10);
+    const neverSeen = [];
+    const seen = [];
+
+    selectedPool.forEach(w => {
+        if (!w.lastSeen_word_match) {
+            neverSeen.push(w);
+        } else {
+            seen.push(w);
+        }
+    });
+
+    // 1. Hiç görülmeyenleri karıştır
+    neverSeen.sort(() => 0.5 - Math.random());
+
+    // 2. Görülenleri Eskiden -> Yeniye sırala
+    seen.sort((a, b) => new Date(a.lastSeen_word_match).getTime() - new Date(b.lastSeen_word_match).getTime());
+
+    // 3. Birleştir
+    const smartSortedPool = [...neverSeen, ...seen];
+
+    // 4. İlk 10 taneyi al
+    const selected10 = smartSortedPool.slice(0, 10);
+
+    // 5. Karıştır (Roundlara dağıtmadan önce)
+    const shuffled10 = selected10.sort(() => 0.5 - Math.random());
+    
+    setAllSessionWords(shuffled10);
     setScore(0);
     setRound(1);
     
     // İlk turu başlat
-    setupRound(1, selected10);
+    setupRound(1, shuffled10);
     setGameStatus("playing");
   };
 
@@ -128,7 +155,7 @@ export default function WordMatchGame() {
 
   // --- KART TIKLAMA ---
   const handleCardClick = (clickedCard, e) => {
-      handleBlur(e); // Mobile Fix: Tıklama odağını kaldır
+      handleBlur(e); 
 
       if (isProcessing || clickedCard.isMatched || selectedCards.find(c => c.id === clickedCard.id)) return;
 
@@ -147,9 +174,12 @@ export default function WordMatchGame() {
 
       if (first.wordId === second.wordId) {
           // --- DOĞRU ---
-
-        updateGameStats('word_match', 1); // <--- BURAYA EKLE (1 Doğru eşleşme)
-        
+          updateGameStats('word_match', 1);
+          
+          // --- GÜVENLİ KAYIT ---
+          // Word Match tarihinde bu kelimeyi işaretle (Sona at)
+          handleUpdateWord(first.wordId, { lastSeen_word_match: new Date().toISOString() });
+       
           setCards(prev => prev.map(card => {
               if (card.id === first.id || card.id === second.id) {
                   return { ...card, isMatched: true };
@@ -158,7 +188,7 @@ export default function WordMatchGame() {
           }));
           
           const newScore = 10;
-          addScore(newScore); // Anlık kaydet
+          addScore(newScore); 
           setScore(s => s + newScore);
           
           setMatchedPairsInRound(prevCount => {
