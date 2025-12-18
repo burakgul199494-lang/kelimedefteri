@@ -56,7 +56,7 @@ export default function ExerciseGame() {
     }).length;
   };
 
-  // --- 2. OYUNU BAŞLATMA (KESİN SIRALAMA MANTIĞI) ---
+  // --- 2. OYUNU BAŞLATMA (AKILLI SIRALAMA + FINAL SHUFFLE) ---
   const startSession = (formTypeObj) => {
     const key = formTypeObj.key;
     const dateKey = `lastExercise_${key}`; // Örn: lastExercise_plural
@@ -72,33 +72,38 @@ export default function ExerciseGame() {
       return;
     }
 
-    // --- KESİN AYRIŞTIRMA ---
+    // --- KESİN AYRIŞTIRMA VE SIRALAMA ---
     const neverSeen = [];
     const seen = [];
 
     validWords.forEach(w => {
         if (!w[dateKey]) {
-            neverSeen.push(w); // Hiç tarihi olmayanlar
+            neverSeen.push(w); // Hiç tarihi olmayanlar (Öncelikli)
         } else {
             seen.push(w); // Tarihi olanlar
         }
     });
 
-    // A. Hiç görülmeyenleri kendi içinde karıştır (Rastgelelik hissi için)
+    // A. Hiç görülmeyenleri kendi içinde karıştır (Rastgelelik)
     neverSeen.sort(() => 0.5 - Math.random());
 
     // B. Görülenleri tarih sırasına diz (ESKİDEN -> YENİYE)
+    // En eski tarihli olan en başa gelir.
     seen.sort((a, b) => {
         return new Date(a[dateKey]).getTime() - new Date(b[dateKey]).getTime();
     });
 
     // C. Listeleri birleştir: Önce Hiç Görülmeyenler, Sonra Eskiden Görülenler
-    const finalPool = [...neverSeen, ...seen];
+    const smartPool = [...neverSeen, ...seen];
 
-    // D. İlk 10 taneyi al (Artık "Cat" en sonda olduğu için buraya giremez)
-    const selected = finalPool.slice(0, 10);
+    // D. İlk 10 adayı kesip al (En acil 10 kelime)
+    const selectedCandidates = smartPool.slice(0, 10);
 
-    // E. Soruları oluştur
+    // E. FİNAL KARIŞTIRMA (Shuffle)
+    // Bu 10 kelimeyi kendi içinde karıştırıyoruz ki kullanıcı tarih sırasını ezberlemesin.
+    const selected = selectedCandidates.sort(() => 0.5 - Math.random());
+
+    // F. Soruları oluştur
     const generatedQuestions = selected.map(w => ({
         baseWordObj: w,
         targetWord: w[key].trim(),
@@ -154,7 +159,7 @@ export default function ExerciseGame() {
 
   const getDynamicStyle = (length) => {
     if (length <= 5) return { box: "w-11 h-14", text: "text-2xl" }; 
-    if (length <= 8) return { box: "w-8 h-11", text: "text-xl" };   
+    if (length <= 8) return { box: "w-8 h-11", text: "text-xl" };    
     if (length <= 11) return { box: "w-6 h-9", text: "text-lg" };    
     return { box: "w-4 h-8", text: "text-sm" }; 
   };
@@ -230,6 +235,7 @@ export default function ExerciseGame() {
       const currentQ = questions[currentIndex];
       const dateKey = `lastExercise_${currentQ.formKey}`;
       
+      // PARÇALI GÜNCELLEME: Sadece tarih bilgisini gönderiyoruz.
       handleUpdateWord(currentQ.baseWordObj.id, { [dateKey]: new Date().toISOString() });
 
       if (currentWordPoints > 0) {
@@ -246,7 +252,7 @@ export default function ExerciseGame() {
       speak(wordToSpeak, 'main');
       updateGameStats('exercise', 1);
 
-      // Yanlış yapsa bile sıranın sonuna atıyoruz
+      // Yanlış yapsa bile sıranın sonuna atıyoruz (Tarihi güncelliyoruz)
       const currentQ = questions[currentIndex];
       const dateKey = `lastExercise_${currentQ.formKey}`;
       handleUpdateWord(currentQ.baseWordObj.id, { [dateKey]: new Date().toISOString() });
