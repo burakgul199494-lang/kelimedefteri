@@ -11,12 +11,13 @@ import {
   Home, 
   Lightbulb, 
   Volume2, 
-  Square, // Durdurma ikonu
-  Headphones // Başlık ikonu
+  Square, 
+  Headphones 
 } from "lucide-react";
 
 export default function WritingGame2() {
-  const { getAllWords, knownWordIds, addScore, learningQueue, updateGameStats } = useData();
+  // 1. handleUpdateWord EKLENDİ
+  const { getAllWords, knownWordIds, addScore, learningQueue, updateGameStats, handleUpdateWord } = useData();
   const navigate = useNavigate();
 
   // --- STATE'LER ---
@@ -78,22 +79,50 @@ export default function WritingGame2() {
 
   const { learnPool, reviewPool, waitingPool } = getWordPools();
 
-  // --- OYUN BAŞLATMA ---
+  // --- OYUN BAŞLATMA (AKILLI SIRALAMA) ---
   const startSession = (mode, e) => {
-    handleBlur(e); // Mobile Fix
+    handleBlur(e);
     setGameMode(mode);
-    let selectedPool = [];
+    let pool = [];
 
-    if (mode === "learn") selectedPool = learnPool;
-    else if (mode === "review") selectedPool = reviewPool;
-    else if (mode === "waiting") selectedPool = waitingPool;
+    if (mode === "learn") pool = learnPool;
+    else if (mode === "review") pool = reviewPool;
+    else if (mode === "waiting") pool = waitingPool;
 
-    if (selectedPool.length === 0) {
+    if (pool.length === 0) {
       alert("Bu modda şu an çalışılacak kelime yok.");
       return;
     }
 
-    const selected = selectedPool.sort(() => 0.5 - Math.random()).slice(0, 20);
+    // --- YENİ ALGORİTMA: TARİHE GÖRE SIRALA ---
+    // Listening oyunu için özel tarih anahtarı: 'lastSeen_listening'
+    
+    const neverSeen = [];
+    const seen = [];
+
+    pool.forEach(w => {
+        if (!w.lastSeen_listening) {
+            neverSeen.push(w);
+        } else {
+            seen.push(w);
+        }
+    });
+
+    // 1. Hiç görülmeyenleri karıştır
+    neverSeen.sort(() => 0.5 - Math.random());
+
+    // 2. Görülenleri Eskiden -> Yeniye sırala
+    seen.sort((a, b) => new Date(a.lastSeen_listening).getTime() - new Date(b.lastSeen_listening).getTime());
+
+    // 3. Birleştir
+    const smartSortedPool = [...neverSeen, ...seen];
+
+    // 4. İlk 20 taneyi al
+    const selectedCandidates = smartSortedPool.slice(0, 20);
+
+    // 5. Karıştır (Kullanıcı sırayı ezberlemesin)
+    const selected = selectedCandidates.sort(() => 0.5 - Math.random());
+
     setQuestions(selected);
     setCurrentIndex(0);
     setScore(0);
@@ -103,11 +132,11 @@ export default function WritingGame2() {
   // --- DİNAMİK BOYUT HESAPLAMA ---
   const getDynamicStyle = (length) => {
     if (length <= 5) return { box: "w-11 h-14", text: "text-2xl" }; 
-    if (length <= 8) return { box: "w-8 h-11", text: "text-xl" };   
+    if (length <= 8) return { box: "w-8 h-11", text: "text-xl" };    
     if (length <= 11) return { box: "w-6 h-9", text: "text-lg" };    
     if (length <= 14) return { box: "w-4 h-8", text: "text-sm" }; 
     if (length <= 17) return { box: "w-3 h-6", text: "text-[10px]" }; 
-    return { box: "w-2 h-5", text: "text-[8px]" };                       
+    return { box: "w-2 h-5", text: "text-[8px]" };                        
   };
 
   // --- SORU YÜKLEME ---
@@ -162,7 +191,7 @@ export default function WritingGame2() {
 
   // --- HARF TIKLAMA VE HATA KONTROLÜ ---
   const handleLetterClick = (letterObj, e) => {
-    handleBlur(e); // Mobile Fix: Focus temizle
+    handleBlur(e);
 
     if (isWordComplete || letterObj.isUsed) return;
 
@@ -196,8 +225,12 @@ export default function WritingGame2() {
           setTimeout(() => {
               setCompletedLetters(targetWord.split('')); 
               setIsWordComplete(true);
-              handleSpeak(targetWord); // Doğrusunu oku
-              updateGameStats('listening', 1); // <--- BURAYA EKLE
+              handleSpeak(targetWord); 
+              updateGameStats('listening', 1);
+              
+              // Yanlış yapsa bile sıranın sonuna atıyoruz (Tarih güncelleniyor)
+              const currentQ = questions[currentIndex];
+              handleUpdateWord(currentQ.id, { lastSeen_listening: new Date().toISOString() });
               
               setTimeout(() => {
                   if (currentIndex + 1 < questions.length) {
@@ -213,7 +246,7 @@ export default function WritingGame2() {
 
   // --- İPUCU KULLANIMI ---
   const handleHint = (e) => {
-    handleBlur(e); // Mobile Fix
+    handleBlur(e);
     if (isWordComplete) return;
 
     const newHintCount = hintCount + 1;
@@ -234,11 +267,15 @@ export default function WritingGame2() {
 
   // --- KELİME BİTİRME (BAŞARILI) ---
   const handleWordComplete = () => {
-    updateGameStats('listening', 1); // <--- BURAYA EKLE (Dinleme oyunu olduğu için 'listening')
+    updateGameStats('listening', 1);
     setIsWordComplete(true);
     handleSpeak(targetWord);
     
-    // ANLIK PUAN EKLEME
+    // --- GÜVENLİ KAYIT ---
+    // Listening tarihinde bu kelimeyi işaretle
+    const currentQ = questions[currentIndex];
+    handleUpdateWord(currentQ.id, { lastSeen_listening: new Date().toISOString() });
+
     if (currentWordPoints > 0) {
         addScore(currentWordPoints);
         setScore(s => s + currentWordPoints);
@@ -265,11 +302,9 @@ export default function WritingGame2() {
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
             
-            {/* --- GLOBAL CSS FIX --- */}
             <style>{`
                 * { -webkit-tap-highlight-color: transparent !important; }
                 
-                /* Sadece Mouse ile hover */
                 @media (hover: hover) {
                     .btn-select:hover { border-color: #fb923c !important; background-color: #fff7ed !important; }
                     .btn-learn:hover { border-color: #818cf8 !important; background-color: #eef2ff !important; }
@@ -442,12 +477,13 @@ export default function WritingGame2() {
                     style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
                     className={`letter-btn
                       w-10 h-10 md:w-11 md:h-11 rounded-xl font-bold text-lg shadow-[0_3px_0_rgb(0,0,0,0.1)] 
+                      active:bg-purple-100 active:border-purple-300 active:text-purple-600 active:shadow-none active:translate-y-[2px]
                       transition-all duration-75 select-none touch-manipulation focus:outline-none focus:ring-0
                       ${item.isUsed 
                           ? "opacity-0 pointer-events-none scale-0" 
                           : wrongAnimationId === item.id 
                               ? "bg-red-500 text-white shadow-none animate-[shake_0.5s_ease-in-out]" 
-                              : "bg-white border-2 border-slate-200 text-slate-700 active:bg-purple-100 active:border-purple-300 active:text-purple-600 active:shadow-none active:translate-y-[2px]"
+                              : "bg-white border-2 border-slate-200 text-slate-700"
                       }
                     `}
                   >
