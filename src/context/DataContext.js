@@ -134,7 +134,6 @@ export const DataProvider = ({ children }) => {
   const extractUserStats = (wordObj) => {
       const stats = {};
       Object.keys(wordObj).forEach(key => {
-          // lastExercise_plural, lastExercise_v2, lastSeen_quiz hepsi buradan geçer
           if (
               key.startsWith("last") ||   
               key.startsWith("next") ||   
@@ -205,6 +204,7 @@ export const DataProvider = ({ children }) => {
     const deletedSet = new Set(deletedWordIds.map(String));
     
     // 1. Ham Listeler
+    // Silinmişler hariç (Kullanıcının MANUEL sildikleri)
     const systemRaw = dynamicSystemWords.filter(w => !deletedSet.has(String(w.id)));
     const customRaw = customWords.filter(w => !deletedSet.has(String(w.id)));
     
@@ -222,23 +222,18 @@ export const DataProvider = ({ children }) => {
 
     // 3. SİSTEM KELİMELERİNİ DÖN
     systemRaw.forEach(systemWord => {
-        // Önce ID ile eşleştir
         let userMatch = userMapById[systemWord.id];
-        // ID tutmazsa Text ile eşleştir
         if (!userMatch) userMatch = userMapByText[systemWord.word.toLowerCase().trim()];
 
         if (userMatch) {
-            // Eşleşme bulundu:
-            // İçeriği SİSTEMDEN al. Kullanıcıdan sadece istatistikleri al.
             processedUserIds.add(userMatch.id);
             finalWordList.push({
-                ...systemWord, // GÜNCEL İÇERİK (Dog3)
-                id: userMatch.id, // ID kullanıcıdan
+                ...systemWord, // GÜNCEL İÇERİK
+                id: userMatch.id, 
                 source: "user",
-                ...extractUserStats(userMatch) // Tarihler ve Level korunur
+                ...extractUserStats(userMatch) // Sadece Tarih/Level
             });
         } else {
-            // Kullanıcıda yok
             finalWordList.push({ ...systemWord, source: "system" });
         }
     });
@@ -250,7 +245,6 @@ export const DataProvider = ({ children }) => {
         }
     });
 
-    // 5. Normalizasyon
     const all = finalWordList.map(normalizeWord);
     if (blacklistedWords.length > 0) {
         return all.filter(w => !blacklistedWords.includes(w.word.toLowerCase().trim()));
@@ -292,33 +286,26 @@ export const DataProvider = ({ children }) => {
     } catch (e) { console.error("Hata:", e); }
   };
 
-  // --- KELİME GÜNCELLEME (PARÇALI GÜNCELLEME - HİÇBİR ŞEYİ EZMEZ) ---
+  // --- KELİME GÜNCELLEME (SİLME YOK - SADECE TARİH) ---
   const handleUpdateWord = async (originalId, newData) => {
      try {
-       // Önce ID ile bulmaya çalış
        let isCustom = customWords.find((w) => String(w.id) === String(originalId));
        const isKnown = knownWordIds.includes(originalId);
-
        const systemOriginal = dynamicSystemWords.find(w => String(w.id) === String(originalId));
 
        if (isCustom) {
          // --- DURUM 1: Kullanıcıda zaten var ---
-         // Veritabanındaki kelimeyi (adı, anlamı) değiştirmeden
-         // SADECE gönderilen tarihi (newData) ekler.
-         
+         // Sadece tarihi güncelle
          const wordRef = doc(db, "artifacts", appId, "users", user.uid, "words", String(originalId));
          await updateDoc(wordRef, newData);
 
        } else if (systemOriginal) {
          // --- DURUM 2: Sistem kelimesi ilk defa kullanılıyor ---
-         
-         // Text kontrolü
          const existingByText = customWords.find(w => w.word.toLowerCase() === systemOriginal.word.toLowerCase());
 
          if (existingByText) {
-             // Metin olarak varmış, onun ID'sini kullan
-             await setDoc(doc(db, "artifacts", appId, "users", user.uid, "vocab_game", "progress"), { deleted_ids: arrayUnion(originalId) }, { merge: true });
-             
+             // DİKKAT: Burada 'deleted_ids' eklemesi KALDIRILDI.
+             // Böylece kelime "Silinenler" listesine girmiyor ve kaybolmuyor.
              const wordRef = doc(db, "artifacts", appId, "users", user.uid, "words", existingByText.id);
              await updateDoc(wordRef, newData);
 
@@ -329,10 +316,7 @@ export const DataProvider = ({ children }) => {
              }
          } else {
              // --- DURUM 3: Yepyeni kopya oluştur ---
-             // İlk sefer olduğu için içeriği sistemden kopyalıyoruz
-             await setDoc(doc(db, "artifacts", appId, "users", user.uid, "vocab_game", "progress"), { deleted_ids: arrayUnion(originalId) }, { merge: true });
-             
-             // ID'yi Sistem ID'si ile aynı yapıyoruz
+             // Buraya da 'deleted_ids' eklemiyoruz.
              const targetId = systemOriginal.id; 
              const wordRef = doc(db, "artifacts", appId, "users", user.uid, "words", targetId);
              
