@@ -348,7 +348,7 @@ export default function ExerciseGame() {
                 <div className="bg-green-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto animate-bounce">
                     <Trophy className="w-10 h-10 text-green-600"/>
                 </div>
-                <h2 className="text-2xl font-bold text-slate-800">Egzersiz Bitti!</h2>
+                <h2 className="text-2xl font-bold text-slate-800">Bitti</h2>
                 <div className="py-6 bg-slate-50 rounded-2xl border border-slate-100">
                     <div className="text-sm text-slate-400 font-bold uppercase">Kazanılan Puan</div>
                     <div className="text-5xl font-extrabold text-indigo-600 mt-2">{score}</div>
