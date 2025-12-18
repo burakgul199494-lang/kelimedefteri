@@ -130,7 +130,7 @@ export const DataProvider = ({ children }) => {
     return () => { unsubUserWords(); unsubProfile(); unsubLeaderboard(); };
   }, [user?.uid]);
 
-  // --- YARDIMCI: İSTATİSTİK AYIKLAYICI ---
+  // --- YARDIMCI: Sadece İstatistikleri Çek ---
   const extractUserStats = (wordObj) => {
       const stats = {};
       Object.keys(wordObj).forEach(key => {
@@ -199,44 +199,47 @@ export const DataProvider = ({ children }) => {
     };
   };
 
-  // --- KELİMELERİ GETİR (SİSTEM ÖNCELİKLİ + CANLI GÜNCELLEME) ---
+  // --- KELİMELERİ GETİR (SİSTEM DİKTATÖRLÜĞÜ) ---
   const getAllWords = () => {
     const deletedSet = new Set(deletedWordIds.map(String));
     
-    // 1. Ham Listeler
+    // 1. Silinmemiş Ham Listeleri Al
     const systemRaw = dynamicSystemWords.filter(w => !deletedSet.has(String(w.id)));
     const customRaw = customWords.filter(w => !deletedSet.has(String(w.id)));
     
     // 2. Kullanıcı kelimelerini "Text" anahtarıyla haritala
     const userWordMap = {};
     customRaw.forEach(w => {
+        // Kelime metnini küçük harfle anahtar yap
         userWordMap[w.word.toLowerCase().trim()] = w;
     });
 
     const finalWordList = [];
 
-    // 3. SİSTEM KELİMELERİNİ BAZ AL (Master Source)
+    // 3. ÖNCELİK SİSTEMDE: Sistemdeki her kelimeyi gez
     systemRaw.forEach(systemWord => {
         const text = systemWord.word.toLowerCase().trim();
-        const userMatch = userWordMap[text];
+        const userMatch = userWordMap[text]; // Kullanıcıda bu kelime var mı?
 
         if (userMatch) {
-            // Eşleşme var: İçerik SİSTEMDEN, İstatistik KULLANICIDAN
+            // VARSA: Kullanıcının kelime içeriğini (Plural, V2 vb.) YORKSAY.
+            // Sadece Sistem verisini al.
+            // Kullanıcıdan sadece tarihleri ve ID'yi al.
             finalWordList.push({
-                ...systemWord, // <-- GÜNCEL İÇERİK (Köpek3, doğru çoğullar vb.)
+                ...systemWord, // <-- DİKKAT: Sistem verisi tabandır (Köpek3)
                 
-                // İstatistikleri üzerine giydir
-                id: userMatch.id, 
+                // İstatistikleri kullanıcıdan alıp üstüne giydir
+                id: userMatch.id, // ID'yi kullanıcı kopyasından al (Update için gerekli)
                 source: "user",
                 ...extractUserStats(userMatch)
             });
         } else {
-            // Kullanıcıda yok, ham sistem kelimesi
+            // YOKSA: Ham sistem kelimesini koy
             finalWordList.push({ ...systemWord, source: "system" });
         }
     });
 
-    // 4. Sadece Kullanıcıda Olanlar (Admin'in eklemediği özel kelimeler)
+    // 4. Sadece Kullanıcıda Olanlar (Sistemde olmayan Custom kelimeler)
     const systemTexts = new Set(systemRaw.map(w => w.word.toLowerCase().trim()));
     customRaw.forEach(userWord => {
         const text = userWord.word.toLowerCase().trim();
@@ -287,14 +290,13 @@ export const DataProvider = ({ children }) => {
     } catch (e) { console.error("Hata:", e); }
   };
 
-  // --- KELİME GÜNCELLEME (KENDİNİ İYİLEŞTİREN VERSİYON) ---
+  // --- KELİME GÜNCELLEME (VERİTABANI TEMİZLİĞİ) ---
   const handleUpdateWord = async (originalId, newData) => {
      try {
        const isCustom = customWords.find((w) => String(w.id) === String(originalId));
        const isKnown = knownWordIds.includes(originalId);
 
-       // Bu kelimenin Sistemdeki en güncel halini bul
-       // isCustom varsa onun text'iyle, yoksa sistem listesinden ID ile bul
+       // Bu kelimenin Sistemdeki orjinalini bul
        const wordText = isCustom ? isCustom.word : dynamicSystemWords.find(w => String(w.id) === String(originalId))?.word;
        const systemMatch = wordText ? dynamicSystemWords.find(sw => sw.word.toLowerCase().trim() === wordText.toLowerCase().trim()) : null;
 
@@ -303,23 +305,22 @@ export const DataProvider = ({ children }) => {
          let dataToSave;
          
          if (systemMatch) {
-             // SİSTEMDE VAR: İçeriği sistemden kopyala, tarihleri kullanıcıdan al.
-             // Self-Healing: Veritabanındaki eski "Köpek" bilgisini "Köpek3" ile ezer.
+             // DİKKAT: Veritabanına kaydederken bile, içeriği SİSTEMDEN alıp üzerine yazıyoruz.
+             // Böylece veritabanındaki "Köpek" -> "Köpek3" olarak düzeliyor.
              dataToSave = {
                  ...systemMatch, // <-- GÜNCEL SİSTEM VERİSİ
                  
-                 // Kimlik ve Kaynak
+                 // Kullanıcıya ait ID ve Kaynak
                  id: isCustom.id,
                  source: "user",
                  
                  // İstatistikleri koru
                  ...extractUserStats(isCustom),
                  
-                 // Yeni eklenen tarihi (newData) işle
+                 // Yeni eklenen tarihi (newData) ekle
                  ...newData
              };
          } else {
-             // SİSTEMDE YOK: Normal güncelle
              dataToSave = { ...isCustom, ...newData, source: "user" };
          }
 
@@ -335,7 +336,7 @@ export const DataProvider = ({ children }) => {
          const userRef = doc(db, "artifacts", appId, "users", user.uid, "vocab_game", "progress");
 
          if (existingCustomByText) {
-             // Zaten kopyası var, Self-Healing ile güncelle
+             // Zaten kopyası var
              await setDoc(userRef, { deleted_ids: arrayUnion(originalId) }, { merge: true });
              
              let dataToSave = {
@@ -427,10 +428,8 @@ export const DataProvider = ({ children }) => {
       } catch(e) { console.error(e); }
   };
 
-  // --- PROFİL SIFIRLAMA (BATCH LIMIT KORUMALI) ---
   const resetProfile = async () => {
       if(!window.confirm("TÜM İLERLEMEN SİLİNECEK! Çift kayıtlar ve geçmiş temizlenecek.\nOnaylıyor musun?")) return;
-      
       try {
         setProfileLoading(true);
         const userRef = doc(db, "artifacts", appId, "users", user.uid, "vocab_game", "progress");
