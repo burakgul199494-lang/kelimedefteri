@@ -57,7 +57,7 @@ export default function ExerciseGame() {
   // Ses
   const [activeAudio, setActiveAudio] = useState(null);
 
-  // --- KELİME HAVUZU ---
+  // --- 1. KELİME HAVUZU ---
   const allWords = useMemo(() => {
       const words = getAllWords();
       return words || [];
@@ -70,7 +70,7 @@ export default function ExerciseGame() {
     }).length;
   };
 
-  // --- OYUN BAŞLATMA ---
+  // --- 2. OYUNU BAŞLATMA ---
   const startSession = (formTypeObj) => {
     const key = formTypeObj.key;
     const validWords = allWords.filter(w => {
@@ -88,7 +88,8 @@ export default function ExerciseGame() {
     const generatedQuestions = selected.map(w => ({
         baseWordObj: w,
         targetWord: w[key].trim(),
-        formLabel: formTypeObj.label
+        formLabel: formTypeObj.label,
+        formKey: key // Hangi modda olduğumuzu bilelim (v2, plural vs.)
     }));
 
     setQuestions(generatedQuestions);
@@ -98,7 +99,7 @@ export default function ExerciseGame() {
     setGameStatus("playing");
   };
 
-  // --- SORU DEĞİŞİMİ ---
+  // --- 3. SORU YÜKLEME ---
   useEffect(() => {
     window.speechSynthesis.cancel();
     setActiveAudio(null);
@@ -123,10 +124,36 @@ export default function ExerciseGame() {
     }
   }, [currentIndex, gameStatus, questions]);
 
-  // --- YARDIMCI ---
-  const handleBlur = (e) => {
-      if (e && e.currentTarget) e.currentTarget.blur();
+  // --- YARDIMCI: DOĞRU TANIMI BULMA (YENİ EKLENDİ) ---
+  const getSmartDefinition = (wordObj, formKey) => {
+      const defs = wordObj.definitions || [];
+      if (defs.length === 0) return { meaning: "Tanım yok", engExplanation: "" };
+
+      let targetType = "";
+
+      // 1. Fiil Modları (V2, V3, 3.Tekil, V-ing)
+      if (['v2', 'v3', 'thirdPerson', 'vIng'].includes(formKey)) {
+          targetType = "verb";
+      }
+      // 2. İsim Modları (Çoğul)
+      else if (formKey === 'plural') {
+          targetType = "noun";
+      }
+      // 3. Sıfat/Zarf Modları
+      else if (['compEr', 'superEst', 'advLy'].includes(formKey)) {
+          targetType = "adjective"; // Genelde sıfatlar comp/super alır
+          // advLy için adverb de bakılabilir ama genelde sıfattan türetilir.
+      }
+
+      // Hedef tipe uygun tanımı ara
+      const matchedDef = defs.find(d => d.type === targetType);
+      
+      // Bulursa onu döndür, bulamazsa ilk tanımı (fallback) döndür
+      return matchedDef || defs[0];
   };
+
+  // --- OYUN FONKSİYONLARI ---
+  const handleBlur = (e) => { if (e && e.currentTarget) e.currentTarget.blur(); };
 
   const getDynamicStyle = (length) => {
     if (length <= 5) return { box: "w-11 h-14", text: "text-2xl" }; 
@@ -151,7 +178,6 @@ export default function ExerciseGame() {
     }
   };
 
-  // --- OYUN AKSİYONLARI ---
   const handleLetterClick = (letterObj, e) => {
     handleBlur(e);
     if (isWordComplete || letterObj.isUsed) return;
@@ -161,25 +187,18 @@ export default function ExerciseGame() {
     const expectedChar = targetWord[nextIndex];
 
     if (letterObj.char.toLowerCase() === expectedChar.toLowerCase()) {
-        const newShuffled = shuffledLetters.map(l => 
-            l.id === letterObj.id ? { ...l, isUsed: true } : l
-        );
+        const newShuffled = shuffledLetters.map(l => l.id === letterObj.id ? { ...l, isUsed: true } : l);
         setShuffledLetters(newShuffled);
         const newCompleted = [...completedLetters, letterObj.char];
         setCompletedLetters(newCompleted);
 
-        if (newCompleted.length === targetWord.length) {
-            handleSuccess(targetWord);
-        }
+        if (newCompleted.length === targetWord.length) handleSuccess(targetWord);
     } else {
         const newMistakes = mistakeCount + 1;
         setMistakeCount(newMistakes);
         setWrongAnimationId(letterObj.id);
         setTimeout(() => setWrongAnimationId(null), 500);
-
-        if (newMistakes >= 3) {
-            handleFail(targetWord);
-        }
+        if (newMistakes >= 3) handleFail(targetWord);
     }
   };
 
@@ -195,22 +214,14 @@ export default function ExerciseGame() {
       const targetWord = questions[currentIndex].targetWord;
       const nextIndex = completedLetters.length;
       const expectedChar = targetWord[nextIndex];
-
-      const correctLetterObj = shuffledLetters.find(l => 
-          !l.isUsed && l.char.toLowerCase() === expectedChar.toLowerCase()
-      );
+      const correctLetterObj = shuffledLetters.find(l => !l.isUsed && l.char.toLowerCase() === expectedChar.toLowerCase());
 
       if (correctLetterObj) {
-          const newShuffled = shuffledLetters.map(l => 
-            l.id === correctLetterObj.id ? { ...l, isUsed: true } : l
-          );
+          const newShuffled = shuffledLetters.map(l => l.id === correctLetterObj.id ? { ...l, isUsed: true } : l);
           setShuffledLetters(newShuffled);
           const newCompleted = [...completedLetters, correctLetterObj.char];
           setCompletedLetters(newCompleted);
-
-          if (newCompleted.length === targetWord.length) {
-             handleSuccess(targetWord);
-          }
+          if (newCompleted.length === targetWord.length) handleSuccess(targetWord);
       }
   };
 
@@ -235,11 +246,8 @@ export default function ExerciseGame() {
 
   const handleNext = (e) => {
       handleBlur(e);
-      if (currentIndex + 1 < questions.length) {
-          setCurrentIndex(p => p + 1);
-      } else {
-          setGameStatus("finished");
-      }
+      if (currentIndex + 1 < questions.length) setCurrentIndex(p => p + 1);
+      else setGameStatus("finished");
   };
 
   const handleQuitEarly = (e) => {
@@ -272,7 +280,7 @@ export default function ExerciseGame() {
 
                 <div className="bg-indigo-600 p-6 rounded-2xl shadow-lg text-white text-center">
                     <h3 className="text-2xl font-bold mb-2">Form Çalışması</h3>
-                    <p className="opacity-90 text-sm">Kelime havuzundaki kelimelerin farklı hallerini test et.</p>
+                    <p className="opacity-90 text-sm">Kelime havuzundaki kelimelerin gramer hallerini (V2, V3, Çoğul vb.) yazarak çalış.</p>
                     <div className="mt-4 inline-block bg-white/20 px-4 py-1 rounded-full text-xs font-bold">
                         Aktif Havuz: {allWords.length} Kelime
                     </div>
@@ -325,15 +333,16 @@ export default function ExerciseGame() {
       );
   }
 
-  if (!questions[currentIndex]) {
-      return <div className="flex h-screen items-center justify-center"><Loader2 className="animate-spin w-10 h-10 text-indigo-600"/></div>;
-  }
+  if (!questions[currentIndex]) return <div className="flex h-screen items-center justify-center"><Loader2 className="animate-spin w-10 h-10 text-indigo-600"/></div>;
 
   const currentQ = questions[currentIndex];
   const targetWord = currentQ.targetWord;
   const baseWordObj = currentQ.baseWordObj;
+  const formKey = currentQ.formKey; // Hangi modda olduğumuz (v2, plural vs.)
+
+  // --- BURADA AKILLI SEÇİM YAPIYORUZ ---
+  const def = getSmartDefinition(baseWordObj, formKey);
   
-  const def = baseWordObj.definitions && baseWordObj.definitions[0] ? baseWordObj.definitions[0] : { meaning: "Tanım yok", engExplanation: "" };
   const progress = ((currentIndex + 1) / questions.length) * 100;
   const styles = getDynamicStyle(targetWord.length);
 
@@ -352,7 +361,6 @@ export default function ExerciseGame() {
         `}</style>
 
         <div className="w-full max-w-md space-y-4 mt-2">
-            
             <div className="flex justify-between items-center">
                 <button onClick={handleQuitEarly} className="p-2 bg-white rounded-full shadow-sm"><X className="w-5 h-5 text-slate-400"/></button>
                 <div className="font-bold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-100 text-xs">
@@ -369,14 +377,11 @@ export default function ExerciseGame() {
             <div className="bg-white p-5 rounded-3xl shadow-xl border border-slate-100 text-center relative overflow-hidden min-h-[450px] flex flex-col justify-between">
                 <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-indigo-400 to-purple-400"></div>
 
-                {/* --- 1. ANA KELİME ALANI --- */}
                 <div className="mt-2 flex flex-col items-center gap-1">
                     <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">ANA KELİME (BASE)</div>
-                    
                     <div className="flex items-center gap-2">
                         <h2 className="text-3xl font-black text-slate-800">{baseWordObj.word}</h2>
                         
-                        {/* Ana Kelime Ses */}
                         <button 
                             onClick={(e) => { handleBlur(e); speak(baseWordObj.word, 'base'); }}
                             className={`mini-btn p-1.5 rounded-lg border ${activeAudio === 'base' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-400 border-slate-200'}`}
@@ -384,7 +389,6 @@ export default function ExerciseGame() {
                             {activeAudio === 'base' ? <Square size={14} fill="currentColor"/> : <Volume2 size={14}/>}
                         </button>
 
-                        {/* Ana Kelime Çeviri Butonu */}
                         <button 
                             onClick={(e) => { handleBlur(e); setShowWordTr(!showWordTr); }}
                             className={`mini-btn p-1.5 rounded-lg border ${showWordTr ? 'bg-indigo-100 text-indigo-600 border-indigo-200' : 'bg-white text-slate-400 border-slate-200'}`}
@@ -393,7 +397,6 @@ export default function ExerciseGame() {
                         </button>
                     </div>
 
-                    {/* Ana Kelime Anlamı (Açılır) */}
                     {showWordTr && (
                         <div className="text-sm font-bold text-green-600 bg-green-50 px-3 py-1 rounded-lg animate-in fade-in slide-in-from-top-1 mt-1">
                             {def.meaning}
@@ -401,21 +404,16 @@ export default function ExerciseGame() {
                     )}
                 </div>
                 
-                {/* --- 2. TANIM ALANI --- */}
                 {def.engExplanation && (
                     <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 relative mt-2 text-left">
                          <p className="text-slate-600 text-sm italic pr-16 leading-relaxed">"{def.engExplanation}"</p>
-                         
                          <div className="absolute right-2 top-2 flex gap-1">
-                             {/* Tanım Ses */}
                              <button 
                                 onClick={(e) => { handleBlur(e); speak(def.engExplanation, 'desc'); }}
                                 className={`mini-btn p-1.5 rounded-lg border ${activeAudio === 'desc' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-400 border-slate-200'}`}
                              >
                                 {activeAudio === 'desc' ? <Square size={12} fill="currentColor"/> : <Volume2 size={12}/>}
                              </button>
-
-                             {/* Tanım Çeviri */}
                              {def.trExplanation && (
                                  <button 
                                     onClick={(e) => { handleBlur(e); setShowDefTr(!showDefTr); }}
@@ -425,8 +423,6 @@ export default function ExerciseGame() {
                                  </button>
                              )}
                          </div>
-
-                         {/* Tanım Çevirisi (Açılır) */}
                          {showDefTr && def.trExplanation && (
                              <div className="mt-2 pt-2 border-t border-slate-200 text-indigo-700 text-xs font-bold animate-in fade-in">
                                 TR: {def.trExplanation}
@@ -435,12 +431,10 @@ export default function ExerciseGame() {
                     </div>
                 )}
 
-                {/* --- 3. HEDEF KELİME ALANI (BOŞLUKLAR) --- */}
                 <div className="space-y-3 mt-4">
                     <div className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider bg-slate-50 inline-block px-2 py-1 rounded">
                         İSTENEN: {activeForm?.label.split('(')[0]}
                     </div>
-                    
                     <div className="flex flex-wrap justify-center gap-1 min-h-[50px] items-end content-center">
                         {targetWord.split('').map((_, idx) => {
                             const char = completedLetters[idx];
@@ -454,7 +448,6 @@ export default function ExerciseGame() {
                     </div>
                 </div>
 
-                {/* --- 4. KLAVYE / BUTONLAR --- */}
                 {!isWordComplete ? (
                     <div className="space-y-4">
                         <div className="flex flex-wrap justify-center gap-2 content-center min-h-[100px]">
@@ -475,7 +468,6 @@ export default function ExerciseGame() {
                                 </button>
                             ))}
                         </div>
-
                         <div className="flex justify-center border-t border-slate-100 pt-3">
                              <button 
                                 onClick={handleHint}
@@ -498,7 +490,6 @@ export default function ExerciseGame() {
                         </button>
                     </div>
                 )}
-
             </div>
 
             {!isWordComplete && (
@@ -506,7 +497,6 @@ export default function ExerciseGame() {
                     Bitir (Puanı Al ve Çık)
                 </button>
             )}
-
         </div>
     </div>
   );
