@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import { 
   doc, setDoc, updateDoc, arrayUnion, arrayRemove, 
-  collection, deleteDoc, addDoc, increment, onSnapshot, query, orderBy, limit 
+  collection, deleteDoc, addDoc, increment, onSnapshot, query, orderBy, limit, getDocs, writeBatch, where 
 } from "firebase/firestore";
 import { auth, db, appId, ADMIN_EMAILS } from "../services/firebase";
 
@@ -23,6 +23,7 @@ export const DataProvider = ({ children }) => {
   const [customWords, setCustomWords] = useState([]);
   const [deletedWordIds, setDeletedWordIds] = useState([]);
   const [dynamicSystemWords, setDynamicSystemWords] = useState([]);
+  const [blacklistedWords, setBlacklistedWords] = useState([]); // Kara Liste
   const [streak, setStreak] = useState(0);
   const [learningQueue, setLearningQueue] = useState([]);
   const [leaderboardData, setLeaderboardData] = useState([]);
@@ -49,6 +50,7 @@ export const DataProvider = ({ children }) => {
       if (!currentUser) {
         setKnownWordIds([]); setCustomWords([]); setDeletedWordIds([]); 
         setLearningQueue([]); setStreak(0);
+        setBlacklistedWords([]);
         setProfileLoading(false); 
       } else {
         setProfileLoading(true); 
@@ -57,7 +59,7 @@ export const DataProvider = ({ children }) => {
     return () => unsubscribe();
   }, []);
 
-  // 2. SİSTEM KELİMELERİNİ CANLI DİNLE
+  // 2. SİSTEM KELİMELERİNİ DİNLE
   useEffect(() => {
     const systemWordsRef = collection(db, "artifacts", appId, "system_words");
     const unsub = onSnapshot(systemWordsRef, (snapshot) => {
@@ -67,18 +69,28 @@ export const DataProvider = ({ children }) => {
         });
         setDynamicSystemWords(sysWords);
         setSystemLoading(false);
-    }, (error) => {
-        console.error("Sistem kelimeleri hatası:", error);
-        setSystemLoading(false);
     });
     return () => unsub();
   }, []);
 
-  // 3. KULLANICI VERİLERİNİ CANLI DİNLE
+  // 3. KARA LİSTEYİ (SİLİNENLERİ) DİNLE
+  useEffect(() => {
+    const blacklistRef = collection(db, "artifacts", appId, "blacklist");
+    const unsub = onSnapshot(blacklistRef, (snapshot) => {
+        const banned = new Set();
+        snapshot.forEach((doc) => {
+            if(doc.data().word) banned.add(doc.data().word.toLowerCase().trim());
+        });
+        setBlacklistedWords(Array.from(banned));
+    });
+    return () => unsub();
+  }, []);
+
+  // 4. KULLANICI VERİLERİNİ DİNLE
   useEffect(() => {
     if (!user) return;
 
-    // A) KULLANICI KELİMELERİ
+    // A) KULLANICI KELİMELERİ (Kopyalar)
     const userWordsRef = collection(db, "artifacts", appId, "users", user.uid, "words");
     const unsubUserWords = onSnapshot(userWordsRef, (snapshot) => {
         const usrWords = [];
@@ -116,17 +128,9 @@ export const DataProvider = ({ children }) => {
         setProfileLoading(false); 
     });
 
-    // C) LİDERLİK TABLOSU
     const unsubLeaderboard = subscribeToLeaderboard();
-
-    return () => {
-        unsubUserWords();
-        unsubProfile();
-        unsubLeaderboard();
-    };
+    return () => { unsubUserWords(); unsubProfile(); unsubLeaderboard(); };
   }, [user?.uid]);
-
-  // --- YARDIMCI FONKSİYONLAR ---
 
   const subscribeToLeaderboard = () => {
       const weekKey = getCurrentWeekKey(); 
@@ -183,18 +187,27 @@ export const DataProvider = ({ children }) => {
     };
   };
 
+  // --- KELİMELERİ GETİR (KARA LİSTE + ÇİFT KAYIT KORUMALI) ---
   const getAllWords = () => {
     const deletedSet = new Set(deletedWordIds.map(String));
+    
+    // 1. Sistem ve Kullanıcı kelimelerini al
     const system = dynamicSystemWords.filter(w => !deletedSet.has(String(w.id)));
     const custom = customWords.filter(w => !deletedSet.has(String(w.id)));
     
-    // --- ÇİFT KAYIT ENGELLEME FİLTRESİ ---
-    // Eğer bir kelime hem 'user' (custom) hem 'system' listesinde varsa,
-    // System olanı gizle, User olanı göster.
+    // 2. Çift Kayıt Engelleme: User'da varsa System'i gizle
     const customWordTexts = new Set(custom.map(w => w.word.toLowerCase().trim()));
     const uniqueSystem = system.filter(w => !customWordTexts.has(w.word.toLowerCase().trim()));
 
-    return [...uniqueSystem, ...custom].map(normalizeWord);
+    // 3. Birleştir
+    const all = [...uniqueSystem, ...custom].map(normalizeWord);
+
+    // 4. KARA LİSTE FİLTRESİ (Yasaklıları Gösterme)
+    if (blacklistedWords.length > 0) {
+        return all.filter(w => !blacklistedWords.includes(w.word.toLowerCase().trim()));
+    }
+
+    return all;
   };
   
   const getDeletedWords = () => {
@@ -238,40 +251,35 @@ export const DataProvider = ({ children }) => {
     } catch (e) { console.error("Hata:", e); }
   };
 
-  // --- KELİME DÜZENLEME (ÇİFT KAYIT ENGELLEYİCİ VERSİYON) ---
+  // --- KELİME GÜNCELLEME (ÇİFT KAYIT OLUŞTURMAZ) ---
   const handleUpdateWord = async (originalId, newData) => {
      try {
-       // 1. Hedef kelime zaten bir "User Word" mü?
+       // 1. Zaten bir "User Word" mü?
        const isCustom = customWords.find((w) => String(w.id) === String(originalId));
        const isKnown = knownWordIds.includes(originalId);
 
        if (isCustom) {
-         // Evet: Direkt güncelle (Sorun yok)
+         // EVET: Direkt güncelle
          const updatedWord = { ...isCustom, ...newData, source: "user" };
          const wordRef = doc(db, "artifacts", appId, "users", user.uid, "words", String(originalId));
          await updateDoc(wordRef, updatedWord);
        } else {
-         // Hayır: Bu bir "System Word". 
+         // HAYIR: Sistem kelimesi
          const originalSystemWord = dynamicSystemWords.find(w => String(w.id) === String(originalId));
-         
          if (!originalSystemWord) return;
 
-         // !!! KRİTİK KONTROL !!!
-         // Bu kelimenin metniyle (örn: "Book") daha önce oluşturulmuş bir kopya var mı?
+         // KONTROL: Daha önce kopyası oluşturulmuş mu?
          const existingCustomByText = customWords.find(w => w.word.toLowerCase() === originalSystemWord.word.toLowerCase());
          const userRef = doc(db, "artifacts", appId, "users", user.uid, "vocab_game", "progress");
 
          if (existingCustomByText) {
-             // Zaten kopyası varmış! (Duplicate engelleme)
-             // 1. Sistem kelimesini gizle
+             // VARSA: Eskisini kullan, yeni oluşturma
              await setDoc(userRef, { deleted_ids: arrayUnion(originalId) }, { merge: true });
              
-             // 2. Mevcut kopyayı güncelle
              const updatedWord = { ...existingCustomByText, ...newData, source: "user" };
              const wordRef = doc(db, "artifacts", appId, "users", user.uid, "words", existingCustomByText.id);
              await updateDoc(wordRef, updatedWord);
 
-             // 3. ID değişimi gerekiyorsa listeleri güncelle
              if(isKnown) {
                  await updateDoc(userRef, { known_ids: arrayRemove(originalId) });
                  await updateDoc(userRef, { known_ids: arrayUnion(existingCustomByText.id) });
@@ -284,10 +292,11 @@ export const DataProvider = ({ children }) => {
              }
 
          } else {
-             // HİÇ YOKSA: Yeni kopya oluştur
+             // YOKSA: Yeni kopya oluştur
              await setDoc(userRef, { deleted_ids: arrayUnion(originalId) }, { merge: true });
              
              const newId = Date.now().toString();
+             // VERİLERİ KORU: Sistem kelimesinin tüm verilerini al, yenileri üstüne yaz
              const newCustomWord = { 
                  ...originalSystemWord, 
                  ...newData, 
@@ -302,7 +311,6 @@ export const DataProvider = ({ children }) => {
                await updateDoc(userRef, { known_ids: arrayRemove(originalId) }); 
                await updateDoc(userRef, { known_ids: arrayUnion(newCustomWord.id) });
              }
-             
              const queueItem = learningQueue.find(q => q.wordId === originalId);
              if (queueItem) {
                  const newQueue = learningQueue.filter(q => q.wordId !== originalId);
@@ -314,6 +322,95 @@ export const DataProvider = ({ children }) => {
      } catch (e) { console.error(e); }
   };
 
+  // --- ADMIN: KELİME EKLE (YASAĞI KALDIRIR) ---
+  const handleSaveSystemWord = async (wordData) => {
+    try {
+      const normalizedInput = wordData.word.toLowerCase().trim();
+      const exists = dynamicSystemWords.some(w => w.word.toLowerCase() === normalizedInput);
+      if(exists) return { success: false, message: "Bu kelime zaten sistemde var!" };
+
+      const newWord = { 
+        ...wordData, 
+        sentence_tr: wordData.sentence_tr || "", 
+        source: "system", 
+        createdAt: new Date() 
+      };
+      await addDoc(collection(db, "artifacts", appId, "system_words"), newWord);
+      
+      // EĞER KARA LİSTEDEYSE SİL (AF)
+      const blacklistRef = collection(db, "artifacts", appId, "blacklist");
+      const q = query(blacklistRef, where("word", "==", normalizedInput));
+      const querySnapshot = await getDocs(q);
+      querySnapshot.forEach(async (doc) => { await deleteDoc(doc.ref); });
+
+      // Çakışma Yönetimi
+      const conflictingCustom = customWords.find(w => w.word.toLowerCase() === normalizedInput);
+      if (conflictingCustom) {
+          const userRef = doc(db, "artifacts", appId, "users", user.uid, "vocab_game", "progress");
+          await setDoc(userRef, { deleted_ids: arrayUnion(conflictingCustom.id) }, { merge: true });
+      }
+      return { success: true };
+    } catch (e) { return { success: false, message: e.message }; }
+  };
+
+  // --- ADMIN: KELİME SİL (HERKESTEN GİZLE - KARA LİSTE) ---
+  const handleDeleteSystemWord = async (wordId) => {
+      if(!window.confirm("Bu kelime tüm kullanıcılardan silinecek (Yasaklanacak). Emin misin?")) return;
+      try { 
+          const wordToDelete = dynamicSystemWords.find(w => String(w.id) === String(wordId));
+          if (wordToDelete) {
+             // Kara Listeye Ekle
+             await addDoc(collection(db, "artifacts", appId, "blacklist"), {
+                 word: wordToDelete.word.toLowerCase().trim(),
+                 bannedAt: new Date()
+             });
+          }
+          await deleteDoc(doc(db, "artifacts", appId, "system_words", wordId)); 
+      } catch(e) { console.error(e); }
+  };
+
+  // --- TEMİZLİK ARACI (Geçici Kullanım İçin) ---
+  const cleanUpDuplicates = async () => {
+      if(!user) return;
+      try {
+          const wordsRef = collection(db, "artifacts", appId, "users", user.uid, "words");
+          const querySnapshot = await getDocs(wordsRef);
+          
+          const wordsMap = {};
+          const batch = writeBatch(db);
+          let deletedCount = 0;
+
+          querySnapshot.forEach((doc) => {
+              const data = doc.data();
+              const text = data.word.toLowerCase().trim();
+              if(!wordsMap[text]) wordsMap[text] = [];
+              wordsMap[text].push({ id: doc.id, ...data });
+          });
+
+          for (const text in wordsMap) {
+              const duplicates = wordsMap[text];
+              if (duplicates.length > 1) {
+                  duplicates.sort((a, b) => b.id.localeCompare(a.id)); // Yeniyi tut
+                  const [keep, ...remove] = duplicates;
+                  remove.forEach(w => {
+                      const ref = doc(db, "artifacts", appId, "users", user.uid, "words", w.id);
+                      batch.delete(ref);
+                      deletedCount++;
+                  });
+              }
+          }
+
+          if(deletedCount > 0) {
+              await batch.commit();
+              alert(`${deletedCount} adet çift kelime temizlendi!`);
+              window.location.reload();
+          } else {
+              alert("Çift kelime bulunamadı.");
+          }
+      } catch(e) { console.error(e); alert("Hata: " + e.message); }
+  };
+
+  // Diğer standart fonksiyonlar
   const handleSaveNewWord = async (wordData) => {
     const normalizedInput = wordData.word.toLowerCase().trim();
     const allWords = getAllWords();
@@ -391,27 +488,6 @@ export const DataProvider = ({ children }) => {
       } catch(e) { console.error(e); }
   };
 
-  const handleSaveSystemWord = async (wordData) => {
-    try {
-      const normalizedInput = wordData.word.toLowerCase().trim();
-      const exists = dynamicSystemWords.some(w => w.word.toLowerCase() === normalizedInput);
-      if(exists) return { success: false, message: "Bu kelime zaten sistemde var!" };
-      const newWord = { ...wordData, sentence_tr: wordData.sentence_tr || "", source: "system", createdAt: new Date() };
-      await addDoc(collection(db, "artifacts", appId, "system_words"), newWord);
-      const conflictingCustom = customWords.find(w => w.word.toLowerCase() === normalizedInput);
-      if (conflictingCustom) {
-          const userRef = doc(db, "artifacts", appId, "users", user.uid, "vocab_game", "progress");
-          await setDoc(userRef, { deleted_ids: arrayUnion(conflictingCustom.id) }, { merge: true });
-      }
-      return { success: true };
-    } catch (e) { return { success: false, message: e.message }; }
-  };
-
-  const handleDeleteSystemWord = async (wordId) => {
-      if(!window.confirm("Silmek istediğine emin misin?")) return;
-      try { await deleteDoc(doc(db, "artifacts", appId, "system_words", wordId)); } catch(e) { console.error(e); }
-  };
-
   const handleUpdateSystemWord = async (id, wordData) => {
       try {
           const docRef = doc(db, "artifacts", appId, "system_words", id);
@@ -427,7 +503,7 @@ export const DataProvider = ({ children }) => {
       getAllWords, getDeletedWords,
       handleSaveNewWord, handleDeleteWord, handleUpdateWord,
       addToKnown, removeFromKnown, restoreWord, permanentlyDeleteWord, resetProfile,
-      handleSaveSystemWord, handleDeleteSystemWord, handleUpdateSystemWord,
+      handleSaveSystemWord, handleDeleteSystemWord, handleUpdateSystemWord, cleanUpDuplicates,
       updateGameStats, getCurrentWeekKey, handleSmartLearn, addScore
     }}>
       {children}
