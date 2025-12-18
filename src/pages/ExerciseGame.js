@@ -21,6 +21,7 @@ export default function ExerciseGame() {
   const { getAllWords, addScore, updateGameStats, handleUpdateWord } = useData();
   const navigate = useNavigate();
 
+  // --- STATE'LER ---
   const [gameStatus, setGameStatus] = useState("selection"); 
   const [activeForm, setActiveForm] = useState(null);
   
@@ -42,6 +43,7 @@ export default function ExerciseGame() {
 
   const [activeAudio, setActiveAudio] = useState(null);
 
+  // --- 1. KELİME HAVUZU ---
   const allWords = useMemo(() => {
       const words = getAllWords();
       return words || [];
@@ -54,9 +56,12 @@ export default function ExerciseGame() {
     }).length;
   };
 
+  // --- 2. OYUNU BAŞLATMA (KESİN SIRALAMA MANTIĞI) ---
   const startSession = (formTypeObj) => {
     const key = formTypeObj.key;
+    const dateKey = `lastExercise_${key}`; // Örn: lastExercise_plural
     
+    // 1. İlgili forma sahip kelimeleri filtrele
     let validWords = allWords.filter(w => {
         const val = w[key];
         return val && typeof val === 'string' && val.trim().length > 0;
@@ -67,17 +72,33 @@ export default function ExerciseGame() {
       return;
     }
 
-    // MODA ÖZEL SIRALAMA (LRU)
-    validWords.sort((a, b) => {
-        const dateKey = `lastExercise_${key}`; 
-        const dateA = a[dateKey] ? new Date(a[dateKey]).getTime() : 0;
-        const dateB = b[dateKey] ? new Date(b[dateKey]).getTime() : 0;
-        return dateA - dateB; 
+    // --- KESİN AYRIŞTIRMA ---
+    const neverSeen = [];
+    const seen = [];
+
+    validWords.forEach(w => {
+        if (!w[dateKey]) {
+            neverSeen.push(w); // Hiç tarihi olmayanlar
+        } else {
+            seen.push(w); // Tarihi olanlar
+        }
     });
 
-    const candidates = validWords.slice(0, 50);
-    const selected = candidates.sort(() => 0.5 - Math.random()).slice(0, 10);
+    // A. Hiç görülmeyenleri kendi içinde karıştır (Rastgelelik hissi için)
+    neverSeen.sort(() => 0.5 - Math.random());
 
+    // B. Görülenleri tarih sırasına diz (ESKİDEN -> YENİYE)
+    seen.sort((a, b) => {
+        return new Date(a[dateKey]).getTime() - new Date(b[dateKey]).getTime();
+    });
+
+    // C. Listeleri birleştir: Önce Hiç Görülmeyenler, Sonra Eskiden Görülenler
+    const finalPool = [...neverSeen, ...seen];
+
+    // D. İlk 10 taneyi al (Artık "Cat" en sonda olduğu için buraya giremez)
+    const selected = finalPool.slice(0, 10);
+
+    // E. Soruları oluştur
     const generatedQuestions = selected.map(w => ({
         baseWordObj: w,
         targetWord: w[key].trim(),
@@ -92,6 +113,7 @@ export default function ExerciseGame() {
     setGameStatus("playing");
   };
 
+  // --- 3. SORU YÜKLEME ---
   useEffect(() => {
     window.speechSynthesis.cancel();
     setActiveAudio(null);
@@ -114,6 +136,7 @@ export default function ExerciseGame() {
     }
   }, [currentIndex, gameStatus, questions]);
 
+  // --- YARDIMCI ---
   const getSmartDefinition = (wordObj, formKey) => {
       const defs = wordObj.definitions || [];
       if (defs.length === 0) return { meaning: "Tanım yok", engExplanation: "" };
@@ -223,9 +246,9 @@ export default function ExerciseGame() {
       speak(wordToSpeak, 'main');
       updateGameStats('exercise', 1);
 
+      // Yanlış yapsa bile sıranın sonuna atıyoruz
       const currentQ = questions[currentIndex];
       const dateKey = `lastExercise_${currentQ.formKey}`;
-      
       handleUpdateWord(currentQ.baseWordObj.id, { [dateKey]: new Date().toISOString() });
   };
 
