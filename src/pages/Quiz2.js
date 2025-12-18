@@ -4,7 +4,6 @@ import { useNavigate } from "react-router-dom";
 import { X, Trophy, Loader2, Home, RefreshCw, BrainCircuit, Hourglass } from "lucide-react";
 
 export default function Quiz2() {
-  // 1. handleUpdateWord EKLENDİ
   const { getAllWords, knownWordIds, learningQueue, addScore, updateGameStats, handleUpdateWord } = useData();
   const navigate = useNavigate();
 
@@ -65,9 +64,7 @@ export default function Quiz2() {
       return;
     }
 
-    // --- YENİ ALGORİTMA: TARİHE GÖRE SIRALA ---
-    // Quiz 2 için özel tarih anahtarı: 'lastSeen_quiz2'
-    
+    // --- SIRALAMA ALGORİTMASI: lastSeen_quiz2 ---
     const neverSeen = [];
     const seen = [];
 
@@ -79,19 +76,11 @@ export default function Quiz2() {
         }
     });
 
-    // 1. Hiç görülmeyenleri karıştır
     neverSeen.sort(() => 0.5 - Math.random());
-
-    // 2. Görülenleri Eskiden -> Yeniye sırala
     seen.sort((a, b) => new Date(a.lastSeen_quiz2).getTime() - new Date(b.lastSeen_quiz2).getTime());
 
-    // 3. Birleştir
     const smartSortedPool = [...neverSeen, ...seen];
-
-    // 4. İlk 20 taneyi al
     const selectedCandidates = smartSortedPool.slice(0, 20);
-
-    // 5. Karıştır (Kullanıcı sırayı ezberlemesin)
     const selectedWords = selectedCandidates.sort(() => 0.5 - Math.random());
 
     const allValidWords = getAllWords().filter(w => w.definitions && w.definitions[0]?.meaning);
@@ -116,38 +105,45 @@ export default function Quiz2() {
     setQuestions(generated);
     setIndex(0);
     setScore(0);
+    
+    // State'leri temizle
+    setSelected(null);
+    setIsAnswered(false);
+    
     setGameStatus("playing");
   };
 
   // --- TEMİZLİK ---
   useEffect(() => { 
-      setSelected(null);
-      setIsAnswered(false);
+      // useEffect artık state resetlemiyor, sadece yan etkileri temizliyor (örn: ses iptali)
+      // Resetleme işlemi handleAnswer içinde senkron yapılıyor.
   }, [index]);
 
-  // --- CEVAP VERME (GÜVENLİ KAYIT) ---
+  // --- CEVAP VERME (FLASH FIX & GÜVENLİ KAYIT) ---
   const handleAnswer = (option) => {
     if (isAnswered) return;
     setIsAnswered(true); 
     setSelected(option);
     
-    // --- YENİ: TARİH DAMGASI VUR ---
-    // Quiz 2'de görüldü olarak işaretle (Sona at)
+    // KAYIT
     const currentWord = questions[index].wordObj;
     handleUpdateWord(currentWord.id, { lastSeen_quiz2: new Date().toISOString() });
-    // -----------------------------
 
-    // 1. Puanı sadece doğruysa ver
+    // PUAN
     if (option === questions[index].correct) setScore(s => s + 5);
 
-    // 2. İstatistiği işle
+    // İSTATİSTİK
     updateGameStats('reverse_quiz', 1);
     
+    // GEÇİŞ MANTIĞI
     setTimeout(() => {
       if (index + 1 < questions.length) {
         setIsTransitioning(true);
         setTimeout(() => {
+            // FLASH FIX: Hepsini aynı anda yapıyoruz
             setIndex(i => i + 1);
+            setSelected(null);
+            setIsAnswered(false);
             setIsTransitioning(false);
         }, 100); 
       } else {
@@ -169,6 +165,31 @@ export default function Quiz2() {
   if (gameStatus === "mode-selection") {
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
+            
+            {/* CSS FIX */}
+            <style>{`
+                * { -webkit-tap-highlight-color: transparent !important; }
+                
+                .menu-btn { 
+                    background-color: white;
+                    border: 2px solid #f1f5f9;
+                    transition: all 0.2s ease;
+                }
+                .menu-btn:active {
+                    transform: scale(0.96);
+                    background-color: #f8fafc;
+                }
+                .menu-btn:disabled {
+                    opacity: 0.6;
+                    cursor: not-allowed;
+                }
+
+                @media (hover: hover) {
+                    .menu-btn:hover { border-color: #e2e8f0 !important; background-color: #f8fafc !important; }
+                    /* Özel renkler için inline classlar zaten var, burası genel hover */
+                }
+            `}</style>
+
             <div className="w-full max-w-sm space-y-6">
                 
                 <div className="flex items-center justify-between">
@@ -186,10 +207,10 @@ export default function Quiz2() {
 
                 <div className="space-y-4">
                     {/* Tekrar Modu */}
-                    <button onClick={() => startQuiz('review')} disabled={reviewPool.length < 4} className="w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 hover:border-orange-200 hover:bg-orange-50 transition-all group active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed">
+                    <button onClick={() => startQuiz('review')} disabled={reviewPool.length < 4} style={{ outline: 'none' }} className="menu-btn w-full p-5 rounded-2xl shadow-md border-slate-100 hover:border-orange-200 hover:bg-orange-50 focus:outline-none focus:ring-0">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-4">
-                                <div className="bg-orange-100 p-3 rounded-xl text-orange-600 group-hover:bg-orange-200 transition-colors"><RefreshCw className="w-8 h-8" /></div>
+                                <div className="bg-orange-100 p-3 rounded-xl text-orange-600"><RefreshCw className="w-8 h-8" /></div>
                                 <div className="text-left"><div className="font-bold text-xl text-slate-800">Tekrar Modu</div><div className="text-sm text-slate-500">Öğrendiklerini Pekiştir</div></div>
                             </div>
                             <div className="text-2xl font-black text-orange-600">{reviewPool.length}</div>
@@ -197,10 +218,10 @@ export default function Quiz2() {
                     </button>
 
                     {/* Öğrenme Modu */}
-                    <button onClick={() => startQuiz('learn')} disabled={learnPool.length < 4} className="w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 hover:border-indigo-200 hover:bg-indigo-50 transition-all group active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed">
+                    <button onClick={() => startQuiz('learn')} disabled={learnPool.length < 4} style={{ outline: 'none' }} className="menu-btn w-full p-5 rounded-2xl shadow-md border-slate-100 hover:border-indigo-200 hover:bg-indigo-50 focus:outline-none focus:ring-0">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-4">
-                                <div className="bg-indigo-100 p-3 rounded-xl text-indigo-600 group-hover:bg-indigo-200 transition-colors"><BrainCircuit className="w-8 h-8" /></div>
+                                <div className="bg-indigo-100 p-3 rounded-xl text-indigo-600"><BrainCircuit className="w-8 h-8" /></div>
                                 <div className="text-left"><div className="font-bold text-xl text-slate-800">Öğrenme Modu</div><div className="text-sm text-slate-500">Yeni Kelimeler</div></div>
                             </div>
                             <div className="text-2xl font-black text-indigo-600">{learnPool.length}</div>
@@ -208,10 +229,10 @@ export default function Quiz2() {
                     </button>
 
                     {/* Bekleme Modu */}
-                    <button onClick={() => startQuiz('waiting')} disabled={waitingPool.length < 4} className="w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 hover:border-slate-300 hover:bg-slate-50 transition-all group active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed">
+                    <button onClick={() => startQuiz('waiting')} disabled={waitingPool.length < 4} style={{ outline: 'none' }} className="menu-btn w-full p-5 rounded-2xl shadow-md border-slate-100 hover:border-slate-300 hover:bg-slate-50 focus:outline-none focus:ring-0">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-4">
-                                <div className="bg-slate-100 p-3 rounded-xl text-slate-500 group-hover:bg-slate-200 transition-colors"><Hourglass className="w-8 h-8" /></div>
+                                <div className="bg-slate-100 p-3 rounded-xl text-slate-500"><Hourglass className="w-8 h-8" /></div>
                                 <div className="text-left"><div className="font-bold text-xl text-slate-700">Bekleme Listesi</div><div className="text-sm text-slate-400">Henüz Zamanı Gelmeyen Kelimeler</div></div>
                             </div>
                             <div className="text-2xl font-black text-slate-500">{waitingPool.length}</div>
@@ -269,14 +290,10 @@ export default function Quiz2() {
          }
 
          /* 2. Sadece MOUSE kullanan cihazlarda hover efekti göster */
-         /* Dokunmatik ekranlarda bu stil yok sayılır = YAPISMA OLMAZ */
          @media (hover: hover) {
             .quiz-option-btn:hover {
                 border-color: #a5b4fc !important; /* indigo-300 */
                 background-color: #eef2ff !important; /* indigo-50 */
-            }
-            .quiz-option-btn:active {
-                background-color: #e0e7ff !important; /* indigo-100 */
             }
          }
 
@@ -286,6 +303,12 @@ export default function Quiz2() {
             border: 2px solid #e2e8f0; /* slate-200 */
             color: #334155; /* slate-700 */
             transition: all 0.2s ease;
+         }
+         
+         /* 4. Active (Tıklama) Stili - Mobilde geri bildirim için */
+         .quiz-option-btn:active {
+            background-color: #e0e7ff !important; /* indigo-100 */
+            transform: scale(0.98);
          }
        `}</style>
 
@@ -316,10 +339,9 @@ export default function Quiz2() {
                 <div className="space-y-3 mt-6">
                     {current.options.map((opt, i) => {
                         
-                        // Dinamik Class Hesaplama (Cevap verildiğinde renk değişimi)
                         let dynamicClass = "quiz-option-btn w-full p-4 rounded-xl text-left font-medium shadow-sm focus:outline-none focus:ring-0 select-none touch-manipulation";
                         
-                        // Eğer cevap verilmişse, stil CSS'i ezer (!important gibi davranırız)
+                        // Eğer cevap verilmişse, renkleri sabitle
                         if (isAnswered) {
                             if (opt === current.correct) {
                                 dynamicClass = "w-full p-4 rounded-xl text-left font-medium shadow-sm border-2 bg-green-100 border-green-500 text-green-700";
