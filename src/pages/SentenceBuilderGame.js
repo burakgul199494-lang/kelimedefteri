@@ -2,20 +2,10 @@ import React, { useState, useEffect, useMemo } from "react";
 import { useData } from "../context/DataContext";
 import { useNavigate } from "react-router-dom";
 import { 
-  X, 
-  Trophy, 
-  Loader2, 
-  RefreshCw, 
-  BrainCircuit, 
-  Hourglass, 
-  Home, 
-  Lightbulb, 
-  Volume2, 
-  ArrowRight
+  X, Trophy, Loader2, RefreshCw, BrainCircuit, Hourglass, Home, Lightbulb, Volume2, ArrowRight
 } from "lucide-react";
 
 export default function SentenceBuilderGame() {
-  // 1. handleUpdateWord EKLENDİ
   const { getAllWords, knownWordIds, learningQueue, addScore, updateGameStats, handleUpdateWord } = useData();
   const navigate = useNavigate();
 
@@ -42,6 +32,14 @@ export default function SentenceBuilderGame() {
   const handleBlur = (e) => {
       if (e && e.currentTarget) e.currentTarget.blur();
   };
+
+  // --- KRİTİK DÜZELTME: SAYFA DEĞİŞİNCE SESİ KES ---
+  useEffect(() => {
+      // Bu fonksiyon component ekrandan gidince (unmount) çalışır
+      return () => {
+          window.speechSynthesis.cancel();
+      };
+  }, []);
 
   // --- KELİME HAVUZLARI ---
   const pools = useMemo(() => {
@@ -84,8 +82,6 @@ export default function SentenceBuilderGame() {
     }
 
     // --- YENİ ALGORİTMA: TARİHE GÖRE SIRALA ---
-    // Sentence Builder oyunu için özel tarih anahtarı: 'lastSeen_sentence_builder'
-    
     const neverSeen = [];
     const seen = [];
 
@@ -97,19 +93,11 @@ export default function SentenceBuilderGame() {
         }
     });
 
-    // 1. Hiç görülmeyenleri karıştır
     neverSeen.sort(() => 0.5 - Math.random());
-
-    // 2. Görülenleri Eskiden -> Yeniye sırala
     seen.sort((a, b) => new Date(a.lastSeen_sentence_builder).getTime() - new Date(b.lastSeen_sentence_builder).getTime());
 
-    // 3. Birleştir
     const smartSortedPool = [...neverSeen, ...seen];
-
-    // 4. İlk 10 taneyi al
     const selectedCandidates = smartSortedPool.slice(0, 10);
-
-    // 5. Karıştır
     const selected = selectedCandidates.sort(() => 0.5 - Math.random());
 
     setQuestions(selected);
@@ -120,6 +108,9 @@ export default function SentenceBuilderGame() {
 
   // --- SORU YÜKLEME ---
   useEffect(() => {
+    // Soru değiştiğinde de eski sesi sustur
+    window.speechSynthesis.cancel();
+
     if (gameStatus === "playing" && questions[currentIndex]) {
       const currentWordObj = questions[currentIndex];
       const cleanSentence = currentWordObj.sentence.replace(/[.,?!]/g, "").trim();
