@@ -18,7 +18,7 @@ export const DataProvider = ({ children }) => {
   const [systemLoading, setSystemLoading] = useState(true);
   const [profileLoading, setProfileLoading] = useState(true);
 
-  // --- Veri State'leri ---
+  // Veri State'leri
   const [knownWordIds, setKnownWordIds] = useState([]);
   const [customWords, setCustomWords] = useState([]);
   const [deletedWordIds, setDeletedWordIds] = useState([]);
@@ -185,7 +185,7 @@ export const DataProvider = ({ children }) => {
     };
   };
 
-  // --- KELİMELERİ GETİR (CANLI SENKRONİZASYON + KARA LİSTE) ---
+  // --- KELİMELERİ GETİR (AGRESİF SENKRONİZASYON) ---
   const getAllWords = () => {
     const deletedSet = new Set(deletedWordIds.map(String));
     
@@ -199,28 +199,32 @@ export const DataProvider = ({ children }) => {
         systemMap[w.word.toLowerCase().trim()] = w;
     });
 
-    // 3. Kullanıcı Kelimelerini İşle (Live Sync - Ekranda Gösterirken Düzelt)
+    // 3. Kullanıcı Kelimelerini İşle (CANLI TAMİR)
     const mergedCustom = customRaw.map(userWord => {
         const text = userWord.word.toLowerCase().trim();
         const sysMatch = systemMap[text];
 
         if (sysMatch) {
-            // Ekranda gösterirken daima SİSTEM verisini kullan
+            // SİSTEMDEN: Tüm içeriği al (Köpek3, plural, v2 vs.)
+            // KULLANICIDAN: Sadece ID, Tarihler ve İlerleme verilerini koru.
+            // Bu yöntemle "Köpek" (eski veri) tamamen yok olur.
             return {
-                ...userWord, // İstatistikleri koru
-                // İçeriği sistemden al (Ezber bozma):
-                plural: sysMatch.plural,
-                v2: sysMatch.v2,
-                v3: sysMatch.v3,
-                vIng: sysMatch.vIng,
-                thirdPerson: sysMatch.thirdPerson,
-                advLy: sysMatch.advLy,
-                compEr: sysMatch.compEr,
-                superEst: sysMatch.superEst,
-                definitions: sysMatch.definitions,
-                sentence: sysMatch.sentence,
-                sentence_tr: sysMatch.sentence_tr,
-                tags: sysMatch.tags
+                ...sysMatch, // Önce Sistem verisini yay (Doğru içerik)
+                
+                // Sonra kullanıcının kritik verilerini üstüne yaz (Korunacaklar)
+                id: userWord.id,
+                source: "user",
+                createdAt: userWord.createdAt,
+                
+                // Tarihleri ve İlerlemeyi koru
+                ...Object.fromEntries(
+                    Object.entries(userWord).filter(([key]) => 
+                        key.startsWith("last") || // lastExercise_...
+                        key.startsWith("next") || // nextReview
+                        key === "level" || 
+                        key === "streak"
+                    )
+                )
             };
         }
         return userWord;
@@ -272,45 +276,51 @@ export const DataProvider = ({ children }) => {
     } catch (e) { console.error("Hata:", e); }
   };
 
-  // --- KELİME GÜNCELLEME (KENDİNİ İYİLEŞTİREN VERSİYON) ---
+  // --- KELİME GÜNCELLEME (KENDİNİ İYİLEŞTİREN VERİTABANI YAZIMI) ---
   const handleUpdateWord = async (originalId, newData) => {
      try {
        const isCustom = customWords.find((w) => String(w.id) === String(originalId));
        const isKnown = knownWordIds.includes(originalId);
 
        if (isCustom) {
-         // KULLANICI KELİMESİ GÜNCELLENİYOR
-         let finalWordData = { ...isCustom, ...newData, source: "user" };
-
-         // SELF-HEALING: Eğer bu kelime aslında bir Sistem kelimesiyse,
-         // kaydederken sistemdeki en güncel veriyi içine gömelim.
-         // Böylece veritabanındaki "Köpek" -> "Köpek3" olarak düzelir.
+         // --- SENARYO 1: Kullanıcı Kelimesi Güncelleniyor ---
+         
+         // 1. Sistemde bu kelimenin günceli var mı?
          const systemMatch = dynamicSystemWords.find(sw => sw.word.toLowerCase().trim() === isCustom.word.toLowerCase().trim());
          
+         let dataToSave;
+         
          if (systemMatch) {
-             finalWordData = {
-                 ...finalWordData,
-                 // Sistemden gelen taze verilerle üzerini yaz:
-                 plural: systemMatch.plural,
-                 v2: systemMatch.v2,
-                 v3: systemMatch.v3,
-                 vIng: systemMatch.vIng,
-                 thirdPerson: systemMatch.thirdPerson,
-                 advLy: systemMatch.advLy,
-                 compEr: systemMatch.compEr,
-                 superEst: systemMatch.superEst,
-                 definitions: systemMatch.definitions,
-                 sentence: systemMatch.sentence,
-                 sentence_tr: systemMatch.sentence_tr,
-                 tags: systemMatch.tags
+             // VARSA: Sistemin verisini al, üzerine kullanıcının ID ve Tarihlerini koy.
+             // Böylece veritabanına geri yazarken "Köpek" yerine "Köpek3" yazılır.
+             dataToSave = {
+                 ...systemMatch, // Doğru içerik (Köpek3)
+                 
+                 // Kullanıcı verilerini koru
+                 id: isCustom.id,
+                 source: "user",
+                 createdAt: isCustom.createdAt,
+                 
+                 // Mevcut tarihleri koru
+                 ...Object.fromEntries(
+                    Object.entries(isCustom).filter(([key]) => 
+                        key.startsWith("last") || key.startsWith("next") || key === "level"
+                    )
+                 ),
+                 
+                 // Yeni eklenen tarihi en üste yaz
+                 ...newData
              };
+         } else {
+             // YOKSA: Olduğu gibi güncelle
+             dataToSave = { ...isCustom, ...newData, source: "user" };
          }
 
          const wordRef = doc(db, "artifacts", appId, "users", user.uid, "words", String(originalId));
-         await updateDoc(wordRef, finalWordData);
+         await updateDoc(wordRef, dataToSave);
 
        } else {
-         // SİSTEM KELİMESİ İLK DEFA KULLANICIYA GEÇİYOR
+         // --- SENARYO 2: Sistem Kelimesi İlk Defa Kopyalanıyor ---
          const originalSystemWord = dynamicSystemWords.find(w => String(w.id) === String(originalId));
          if (!originalSystemWord) return;
 
@@ -318,24 +328,27 @@ export const DataProvider = ({ children }) => {
          const userRef = doc(db, "artifacts", appId, "users", user.uid, "vocab_game", "progress");
 
          if (existingCustomByText) {
+             // KOPYASI VARSA: Onu güncelle (Self-Healing ile)
              await setDoc(userRef, { deleted_ids: arrayUnion(originalId) }, { merge: true });
              
-             // Burada da Self-Healing yapalım
-             let updatedWord = { ...existingCustomByText, ...newData, source: "user" };
-             // Sistem verileriyle güncelle
-             updatedWord = {
-                 ...updatedWord,
-                 plural: originalSystemWord.plural,
-                 v2: originalSystemWord.v2,
-                 definitions: originalSystemWord.definitions,
-                 // ... diğer alanlar (kısalık için hepsini yazmıyorum ama yukarıdaki gibi hepsi olmalı)
-                 // Pratikte ...originalSystemWord yapmak daha güvenli, sonra ...updatedWord ile ezmek
-                 ...originalSystemWord, 
-                 ...updatedWord // updatedWord içindeki tarih (newData) en son geçerli olsun
+             const dataToSave = {
+                 ...originalSystemWord, // En güncel sistem verisi
+                 
+                 id: existingCustomByText.id,
+                 source: "user",
+                 createdAt: existingCustomByText.createdAt,
+                 
+                 ...Object.fromEntries(
+                    Object.entries(existingCustomByText).filter(([key]) => 
+                        key.startsWith("last") || key.startsWith("next") || key === "level"
+                    )
+                 ),
+                 
+                 ...newData
              };
 
              const wordRef = doc(db, "artifacts", appId, "users", user.uid, "words", existingCustomByText.id);
-             await updateDoc(wordRef, updatedWord);
+             await updateDoc(wordRef, dataToSave);
 
              if(isKnown) {
                  await updateDoc(userRef, { known_ids: arrayRemove(originalId) });
@@ -347,18 +360,22 @@ export const DataProvider = ({ children }) => {
                  newQueue.push({ ...queueItem, wordId: existingCustomByText.id });
                  await updateDoc(userRef, { learning_queue: newQueue });
              }
+
          } else {
-             // Yeni oluşturma
+             // YENİ OLUŞTURMA
              await setDoc(userRef, { deleted_ids: arrayUnion(originalId) }, { merge: true });
              const newId = Date.now().toString();
+             
              const newCustomWord = { 
-                 ...originalSystemWord, // En güncel sistem verisiyle başla
+                 ...originalSystemWord, // Taze veri
                  ...newData, 
                  id: newId, 
                  source: "user" 
              };
+
              const wordRef = doc(db, "artifacts", appId, "users", user.uid, "words", newId);
              await setDoc(wordRef, newCustomWord);
+
              if (isKnown) {
                await updateDoc(userRef, { known_ids: arrayRemove(originalId) }); 
                await updateDoc(userRef, { known_ids: arrayUnion(newCustomWord.id) });
@@ -428,6 +445,7 @@ export const DataProvider = ({ children }) => {
 
         const wordsRef = collection(db, "artifacts", appId, "users", user.uid, "words");
         const snapshot = await getDocs(wordsRef);
+        
         const systemTexts = new Set(dynamicSystemWords.map(w => w.word.toLowerCase().trim()));
         const docsToDelete = [];
 
@@ -459,12 +477,14 @@ export const DataProvider = ({ children }) => {
           const querySnapshot = await getDocs(wordsRef);
           const wordsMap = {};
           const docsToDelete = [];
+
           querySnapshot.forEach((doc) => {
               const data = doc.data();
               const text = data.word.toLowerCase().trim();
               if(!wordsMap[text]) wordsMap[text] = [];
               wordsMap[text].push({ id: doc.id, ...data, ref: doc.ref });
           });
+
           for (const text in wordsMap) {
               const duplicates = wordsMap[text];
               if (duplicates.length > 1) {
@@ -473,6 +493,7 @@ export const DataProvider = ({ children }) => {
                   remove.forEach(w => docsToDelete.push(w.ref));
               }
           }
+
           const chunkSize = 500;
           for (let i = 0; i < docsToDelete.length; i += chunkSize) {
               const batch = writeBatch(db);
@@ -480,6 +501,7 @@ export const DataProvider = ({ children }) => {
               chunk.forEach(ref => batch.delete(ref));
               await batch.commit();
           }
+
           if(docsToDelete.length > 0) {
               alert(`${docsToDelete.length} adet çift kelime temizlendi!`);
               window.location.reload();
