@@ -24,6 +24,7 @@ export default function ExerciseGame() {
   // --- STATE'LER ---
   const [gameStatus, setGameStatus] = useState("selection"); 
   const [activeForm, setActiveForm] = useState(null);
+  const [gameMode, setGameMode] = useState("learn"); // Default bir mod ismi, bitiş ekranı için
   
   const [questions, setQuestions] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -56,12 +57,11 @@ export default function ExerciseGame() {
     }).length;
   };
 
-  // --- 2. OYUNU BAŞLATMA (AKILLI SIRALAMA + FINAL SHUFFLE) ---
+  // --- 2. OYUNU BAŞLATMA ---
   const startSession = (formTypeObj) => {
     const key = formTypeObj.key;
-    const dateKey = `lastExercise_${key}`; // Örn: lastExercise_plural
+    const dateKey = `lastExercise_${key}`; 
     
-    // 1. İlgili forma sahip kelimeleri filtrele
     let validWords = allWords.filter(w => {
         const val = w[key];
         return val && typeof val === 'string' && val.trim().length > 0;
@@ -72,38 +72,22 @@ export default function ExerciseGame() {
       return;
     }
 
-    // --- KESİN AYRIŞTIRMA VE SIRALAMA ---
+    // --- AKILLI SIRALAMA ---
     const neverSeen = [];
     const seen = [];
 
     validWords.forEach(w => {
-        if (!w[dateKey]) {
-            neverSeen.push(w); // Hiç tarihi olmayanlar (Öncelikli)
-        } else {
-            seen.push(w); // Tarihi olanlar
-        }
+        if (!w[dateKey]) { neverSeen.push(w); } 
+        else { seen.push(w); }
     });
 
-    // A. Hiç görülmeyenleri kendi içinde karıştır (Rastgelelik)
     neverSeen.sort(() => 0.5 - Math.random());
+    seen.sort((a, b) => new Date(a[dateKey]).getTime() - new Date(b[dateKey]).getTime());
 
-    // B. Görülenleri tarih sırasına diz (ESKİDEN -> YENİYE)
-    // En eski tarihli olan en başa gelir.
-    seen.sort((a, b) => {
-        return new Date(a[dateKey]).getTime() - new Date(b[dateKey]).getTime();
-    });
-
-    // C. Listeleri birleştir: Önce Hiç Görülmeyenler, Sonra Eskiden Görülenler
     const smartPool = [...neverSeen, ...seen];
-
-    // D. İlk 10 adayı kesip al (En acil 10 kelime)
     const selectedCandidates = smartPool.slice(0, 10);
-
-    // E. FİNAL KARIŞTIRMA (Shuffle)
-    // Bu 10 kelimeyi kendi içinde karıştırıyoruz ki kullanıcı tarih sırasını ezberlemesin.
     const selected = selectedCandidates.sort(() => 0.5 - Math.random());
 
-    // F. Soruları oluştur
     const generatedQuestions = selected.map(w => ({
         baseWordObj: w,
         targetWord: w[key].trim(),
@@ -235,7 +219,6 @@ export default function ExerciseGame() {
       const currentQ = questions[currentIndex];
       const dateKey = `lastExercise_${currentQ.formKey}`;
       
-      // PARÇALI GÜNCELLEME: Sadece tarih bilgisini gönderiyoruz.
       handleUpdateWord(currentQ.baseWordObj.id, { [dateKey]: new Date().toISOString() });
 
       if (currentWordPoints > 0) {
@@ -252,7 +235,6 @@ export default function ExerciseGame() {
       speak(wordToSpeak, 'main');
       updateGameStats('exercise', 1);
 
-      // Yanlış yapsa bile sıranın sonuna atıyoruz (Tarihi güncelliyoruz)
       const currentQ = questions[currentIndex];
       const dateKey = `lastExercise_${currentQ.formKey}`;
       handleUpdateWord(currentQ.baseWordObj.id, { [dateKey]: new Date().toISOString() });
@@ -325,20 +307,25 @@ export default function ExerciseGame() {
       );
   }
 
+  // --- DÜZELTİLEN BÖLÜM: BİTİŞ EKRANI (STANDART) ---
   if (gameStatus === "finished") {
+      const maxScore = questions.length * 10;
+      let modeTitle = "Bitti"; 
+
       return (
         <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
             <div className="bg-white p-8 rounded-3xl shadow-xl max-w-sm w-full text-center space-y-6">
                 <div className="bg-green-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto animate-bounce">
                     <Trophy className="w-10 h-10 text-green-600"/>
                 </div>
-                <h2 className="text-2xl font-bold text-slate-800">Egzersiz Bitti!</h2>
+                <h2 className="text-2xl font-bold text-slate-800">{modeTitle}</h2>
                 <div className="py-6 bg-slate-50 rounded-2xl border border-slate-100">
-                    <div className="text-sm text-slate-400 font-bold uppercase">Kazanılan Puan</div>
+                    <div className="text-sm text-slate-400 font-bold uppercase">TOPLAM PUAN</div>
                     <div className="text-5xl font-extrabold text-indigo-600 mt-2">{score}</div>
+                    <div className="text-xs text-slate-400 font-bold">Maksimum: {maxScore}</div>
                 </div>
-                <button onClick={() => setGameStatus("selection")} className="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl shadow-lg hover:bg-indigo-700">Başka Egzersiz Yap</button>
-                <button onClick={() => navigate("/")} className="w-full bg-white border-2 border-slate-200 text-slate-600 font-bold py-3 rounded-xl hover:bg-slate-50">Ana Sayfa</button>
+                <button onClick={() => setGameStatus("selection")} className="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl shadow-lg hover:bg-indigo-700 active:scale-95 transition-transform">Başka Egzersiz Yap</button>
+                <button onClick={() => navigate("/")} className="w-full bg-white border-2 border-slate-200 text-slate-600 font-bold py-3 rounded-xl hover:bg-slate-50 active:scale-95 transition-transform">Ana Sayfa</button>
             </div>
         </div>
       );
@@ -462,7 +449,8 @@ export default function ExerciseGame() {
                                     key={item.id}
                                     onClick={(e) => handleLetterClick(item, e)}
                                     disabled={item.isUsed}
-                                    className={`w-10 h-10 rounded-xl font-bold text-lg shadow-[0_3px_0_rgb(0,0,0,0.1)] transition-all active:translate-y-[2px] active:shadow-none outline-none
+                                    style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
+                                    className={`w-10 h-10 rounded-xl font-bold text-lg shadow-[0_3px_0_rgb(0,0,0,0.1)] transition-all active:translate-y-[2px] active:shadow-none outline-none focus:outline-none
                                         ${item.isUsed 
                                             ? "opacity-0 pointer-events-none scale-0" 
                                             : wrongAnimationId === item.id 
@@ -477,7 +465,8 @@ export default function ExerciseGame() {
                         <div className="flex justify-center border-t border-slate-100 pt-3">
                              <button 
                                 onClick={handleHint}
-                                className="flex items-center gap-2 px-4 py-2 bg-amber-100 text-amber-700 rounded-xl font-bold text-sm active:scale-95 transition-transform"
+                                style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
+                                className="flex items-center gap-2 px-4 py-2 bg-amber-100 text-amber-700 rounded-xl font-bold text-sm active:scale-95 transition-transform focus:outline-none"
                              >
                                 <Lightbulb className="w-4 h-4"/> 
                                 <span>İpucu ({hintCount === 0 ? "10p" : hintCount === 1 ? "7p" : "0p"})</span>
