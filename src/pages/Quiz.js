@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 
 export default function Quiz() {
-  // 1. handleUpdateWord EKLENDİ
+  // --- DEĞİŞİKLİK 1: handleUpdateWord EKLENDİ ---
   const { getAllWords, knownWordIds, learningQueue, addScore, updateGameStats, handleUpdateWord } = useData();
   const navigate = useNavigate();
 
@@ -72,7 +72,7 @@ export default function Quiz() {
       if (e && e.currentTarget) e.currentTarget.blur();
   };
 
-  // --- OYUN BAŞLATMA (YENİ ALGORİTMA BURADA) ---
+  // --- OYUN BAŞLATMA ---
   const startQuiz = (mode, e) => {
     handleBlur(e);
     setGameMode(mode);
@@ -87,10 +87,9 @@ export default function Quiz() {
       return;
     }
 
-    // --- DEĞİŞİKLİK BAŞLANGICI ---
-    // Eski Kod: const selectedWords = [...pool].sort(() => 0.5 - Math.random()).slice(0, 20);
+    // --- DEĞİŞİKLİK 2: SIRALAMA ALGORİTMASI ---
+    // Eski basit kod yerine, önce tarihi olmayanları, sonra en eski tarihli olanları seçen yapı.
     
-    // Yeni Kod (Akıllı Sıralama):
     const neverSeen = [];
     const seen = [];
 
@@ -113,10 +112,11 @@ export default function Quiz() {
     const smartSortedPool = [...neverSeen, ...seen];
 
     // 4. İlk 20 adayı al (En acil olanlar)
-    const candidates = smartSortedPool.slice(0, 20);
+    const selectedCandidates = smartSortedPool.slice(0, 20);
 
     // 5. Bu 20 taneyi karıştır (Kullanıcı sırayı ezberlemesin diye)
-    const selectedWords = candidates.sort(() => 0.5 - Math.random());
+    // Böylece "Dog" en sonda olsa bile, bu 20'lik grubun içinde herhangi bir yerde karşına çıkabilir.
+    const selectedWords = selectedCandidates.sort(() => 0.5 - Math.random());
     // --- DEĞİŞİKLİK BİTİŞİ ---
 
     const allValidWords = getAllWords().filter(w => w.definitions && w.definitions[0]?.meaning);
@@ -162,12 +162,12 @@ export default function Quiz() {
     setIsAnswered(true); 
     setSelected(option);
     
-    // --- YENİ EKLENEN KISIM: TARİH DAMGASI ---
+    // --- DEĞİŞİKLİK 3: TARİH GÜNCELLEME ---
     // Cevap ne olursa olsun, bu kelimeye "Ben bunu gördüm" damgası basıyoruz.
-    // Böylece bir sonraki oyunda listenin en sonuna atılacak.
+    // Bir sonraki oyunda bu kelime listenin en sonuna gidecek.
     const currentWord = questions[index].wordObj;
     handleUpdateWord(currentWord.id, { lastSeen_quiz: new Date().toISOString() });
-    // ----------------------------------------
+    // -------------------------------------
 
     // 1. Puanı SADECE doğruysa ver (İçeride kalsın)
     if (option === questions[index].correct) {
