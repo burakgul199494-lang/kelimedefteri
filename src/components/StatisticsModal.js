@@ -4,7 +4,8 @@ import { doc, onSnapshot } from "firebase/firestore";
 import { db, appId } from "../services/firebase";
 import { 
   X, BarChart2, Calendar, 
-  HelpCircle, Languages, Edit, Headphones, Quote, Layout, Puzzle, Mic, Play
+  HelpCircle, Languages, Edit, Headphones, Quote, Layout, Puzzle, Mic, Play,
+  Dumbbell 
 } from "lucide-react";
 
 export default function StatisticsModal({ onClose }) {
@@ -36,7 +37,9 @@ export default function StatisticsModal({ onClose }) {
   const StatRow = ({ icon: Icon, label, value, color }) => (
     <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
       <div className="flex items-center gap-3">
-        <div className={`p-2 rounded-lg ${color} bg-opacity-10 text-${color.split('-')[1]}-600`}>
+        {/* Renk sınıfını güvenli bir şekilde oluşturma */}
+        {/* Örn: bg-indigo-600 -> text-indigo-600 ve bg-indigo-600 bg-opacity-10 */}
+        <div className={`p-2 rounded-lg ${color} bg-opacity-10 text-${color.split('-')[1]}-${color.split('-')[2] || '600'}`}>
           <Icon className={`w-5 h-5 ${color.replace('bg-', 'text-')}`} />
         </div>
         <span className="font-bold text-slate-700">{label}</span>
@@ -71,7 +74,12 @@ export default function StatisticsModal({ onClose }) {
                 <div className="text-center py-10 text-slate-400">Veriler Yükleniyor...</div>
             ) : (
                 <div className="grid gap-3">
+                    {/* 1. Flash Kart */}
                     <StatRow icon={Play} label="Flash Kart" value={stats?.flashcard} color="bg-indigo-600" />
+                    
+                    {/* 2. Gramer Egzersiz (HEMEN BURAYA ALINDI) */}
+                    <StatRow icon={Dumbbell} label="Gramer Egzersiz" value={stats?.exercise} color="bg-slate-600" />
+
                     <StatRow icon={HelpCircle} label="Quiz Çözülen" value={stats?.quiz} color="bg-amber-500" />
                     <StatRow icon={Languages} label="Ters Quiz" value={stats?.reverse_quiz} color="bg-emerald-500" />
                     <StatRow icon={Edit} label="Yazma Testi" value={stats?.writing} color="bg-purple-600" />
