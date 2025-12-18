@@ -195,23 +195,21 @@ export const DataProvider = ({ children }) => {
     const systemRaw = dynamicSystemWords.filter(w => !deletedSet.has(String(w.id)));
     const customRaw = customWords.filter(w => !deletedSet.has(String(w.id)));
     
-    // 2. Sistem Kelimelerini Haritala (Key: kelime adı)
+    // 2. Sistem Kelimelerini Haritala
     const systemMap = {};
     systemRaw.forEach(w => {
         systemMap[w.word.toLowerCase().trim()] = w;
     });
 
     // 3. Kullanıcı Kelimelerini İşle (Live Sync)
-    // Eğer kullanıcının elindeki kelime sistemde de varsa (aynı isimde),
-    // Sistemin GÜNCEL içeriğini (forms, definitions) kullan ama Kullanıcının İSTATİSTİKLERİNİ (ID, Date) koru.
+    // Admin sistemde güncelleme yaptıysa, kullanıcının kopyasını anlık güncelle.
     const mergedCustom = customRaw.map(userWord => {
         const text = userWord.word.toLowerCase().trim();
         const sysMatch = systemMap[text];
 
         if (sysMatch) {
-            // Admin düzeltmesi varsa yansıt (Senkronizasyon)
             return {
-                ...userWord, // İstatistikleri koru
+                ...userWord, // Kullanıcı istatistiklerini (Tarih, ID) koru
                 // İçeriği sistemden al:
                 plural: sysMatch.plural,
                 v2: sysMatch.v2,
@@ -391,6 +389,64 @@ export const DataProvider = ({ children }) => {
       } catch(e) { console.error(e); }
   };
 
+  // --- PROFİL SIFIRLAMA (TAM TEMİZLİK) ---
+  const resetProfile = async () => {
+      if(!window.confirm("TÜM İLERLEMEN VE GEÇMİŞİN SİLİNECEK!\n\nBu işlem:\n1. Bildiğin kelimeleri sıfırlar.\n2. Oyun geçmişini ve sıralamaları siler.\nOnaylıyor musun?")) return;
+      
+      try {
+        setProfileLoading(true);
+
+        const userRef = doc(db, "artifacts", appId, "users", user.uid, "vocab_game", "progress");
+        const today = new Date().toISOString().split("T")[0];
+        
+        await setDoc(userRef, { 
+            known_ids: [], 
+            deleted_ids: [], 
+            learning_queue: [], 
+            streak: 1, 
+            last_visit_date: today 
+        });
+        
+        const weekKey = getCurrentWeekKey();
+        const leaderboardRef = doc(db, "artifacts", appId, "weekly_scores", weekKey, "users", user.uid);
+        await deleteDoc(leaderboardRef);
+
+        const statsRef = doc(db, "artifacts", appId, "weekly_stats", weekKey, "user_activities", user.uid);
+        await deleteDoc(statsRef);
+
+        // KELİME GEÇMİŞİNİ SİL (Sıralamayı Sıfırlamak İçin)
+        const wordsRef = collection(db, "artifacts", appId, "users", user.uid, "words");
+        const snapshot = await getDocs(wordsRef);
+        const batch = writeBatch(db);
+        let deletedCount = 0;
+
+        const systemTexts = new Set(dynamicSystemWords.map(w => w.word.toLowerCase().trim()));
+
+        snapshot.forEach((doc) => {
+            const data = doc.data();
+            const text = data.word.toLowerCase().trim();
+            // Eğer sistemde varsa, bu bir kopyadır. Sil.
+            if (systemTexts.has(text)) {
+                batch.delete(doc.ref);
+                deletedCount++;
+            }
+        });
+
+        if (deletedCount > 0) {
+            await batch.commit();
+        }
+        
+        alert("Profilin ve tüm oyun geçmişin başarıyla sıfırlandı! 🚀\nSayfa yenileniyor...");
+        window.location.reload();
+
+      } catch(e) { 
+          console.error(e); 
+          alert("Sıfırlama sırasında bir hata oluştu: " + e.message);
+      } finally {
+          setProfileLoading(false);
+      }
+  };
+
   // --- TEMİZLİK ARACI (Geçici) ---
   const cleanUpDuplicates = async () => {
       if(!user) return;
@@ -489,20 +545,6 @@ export const DataProvider = ({ children }) => {
        const wordRef = doc(db, "artifacts", appId, "users", user.uid, "words", String(wordObj.id));
        await deleteDoc(wordRef);
      } catch(e) { console.error(e); }
-  };
-
-  const resetProfile = async () => {
-      try {
-        const userRef = doc(db, "artifacts", appId, "users", user.uid, "vocab_game", "progress");
-        const today = new Date().toISOString().split("T")[0];
-        await setDoc(userRef, { known_ids: [], deleted_ids: [], learning_queue: [], streak: 1, last_visit_date: today });
-        const weekKey = getCurrentWeekKey();
-        const leaderboardRef = doc(db, "artifacts", appId, "weekly_scores", weekKey, "users", user.uid);
-        await deleteDoc(leaderboardRef);
-        const statsRef = doc(db, "artifacts", appId, "weekly_stats", weekKey, "user_activities", user.uid);
-        await deleteDoc(statsRef);
-        alert("İlerleme sıfırlandı. Kelimelerin güvende! ✅");
-      } catch(e) { console.error(e); }
   };
 
   const handleUpdateSystemWord = async (id, wordData) => {
