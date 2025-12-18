@@ -2,19 +2,9 @@ import React, { useState, useEffect, useMemo } from "react";
 import { useData } from "../context/DataContext";
 import { useNavigate } from "react-router-dom";
 import { 
-  X, 
-  Trophy, 
-  Loader2, 
-  Home, 
-  Volume2, 
-  CheckCircle2, 
-  Dumbbell, 
-  Layers,
-  ArrowRight,
-  Languages,
-  Square,
-  Lightbulb,
-  AlertTriangle
+  X, Trophy, Loader2, Home, Volume2, CheckCircle2, 
+  Dumbbell, Layers, ArrowRight, Languages, Square, 
+  Lightbulb, AlertTriangle
 } from "lucide-react";
 
 const FORM_TYPES = [
@@ -28,10 +18,9 @@ const FORM_TYPES = [
 ];
 
 export default function ExerciseGame() {
-  const { getAllWords, addScore, updateGameStats } = useData();
+  const { getAllWords, addScore, updateGameStats, handleUpdateWord } = useData();
   const navigate = useNavigate();
 
-  // --- STATE'LER ---
   const [gameStatus, setGameStatus] = useState("selection"); 
   const [activeForm, setActiveForm] = useState(null);
   
@@ -39,25 +28,20 @@ export default function ExerciseGame() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [score, setScore] = useState(0);
 
-  // Yazma Mantığı
   const [shuffledLetters, setShuffledLetters] = useState([]);
   const [completedLetters, setCompletedLetters] = useState([]);
   const [isWordComplete, setIsWordComplete] = useState(false);
   const [wrongAnimationId, setWrongAnimationId] = useState(null);
   
-  // Çeviri State'leri
   const [showWordTr, setShowWordTr] = useState(false);
   const [showDefTr, setShowDefTr] = useState(false);
 
-  // Puan & Hata
   const [mistakeCount, setMistakeCount] = useState(0);
   const [hintCount, setHintCount] = useState(0);
   const [currentWordPoints, setCurrentWordPoints] = useState(10); 
 
-  // Ses
   const [activeAudio, setActiveAudio] = useState(null);
 
-  // --- 1. KELİME HAVUZU ---
   const allWords = useMemo(() => {
       const words = getAllWords();
       return words || [];
@@ -70,10 +54,10 @@ export default function ExerciseGame() {
     }).length;
   };
 
-  // --- 2. OYUNU BAŞLATMA ---
   const startSession = (formTypeObj) => {
     const key = formTypeObj.key;
-    const validWords = allWords.filter(w => {
+    
+    let validWords = allWords.filter(w => {
         const val = w[key];
         return val && typeof val === 'string' && val.trim().length > 0;
     });
@@ -83,13 +67,22 @@ export default function ExerciseGame() {
       return;
     }
 
-    const selected = validWords.sort(() => 0.5 - Math.random()).slice(0, 10);
+    // MODA ÖZEL SIRALAMA (LRU)
+    validWords.sort((a, b) => {
+        const dateKey = `lastExercise_${key}`; 
+        const dateA = a[dateKey] ? new Date(a[dateKey]).getTime() : 0;
+        const dateB = b[dateKey] ? new Date(b[dateKey]).getTime() : 0;
+        return dateA - dateB; 
+    });
+
+    const candidates = validWords.slice(0, 50);
+    const selected = candidates.sort(() => 0.5 - Math.random()).slice(0, 10);
 
     const generatedQuestions = selected.map(w => ({
         baseWordObj: w,
         targetWord: w[key].trim(),
         formLabel: formTypeObj.label,
-        formKey: key // Hangi modda olduğumuzu bilelim (v2, plural vs.)
+        formKey: key
     }));
 
     setQuestions(generatedQuestions);
@@ -99,7 +92,6 @@ export default function ExerciseGame() {
     setGameStatus("playing");
   };
 
-  // --- 3. SORU YÜKLEME ---
   useEffect(() => {
     window.speechSynthesis.cancel();
     setActiveAudio(null);
@@ -108,13 +100,11 @@ export default function ExerciseGame() {
 
     if (gameStatus === "playing" && questions[currentIndex]) {
       const target = questions[currentIndex].targetWord;
-      
       const letters = target.split('').map((char, index) => ({
         id: `${char}-${index}-${Math.random()}`,
         char: char,
         isUsed: false
       }));
-      
       setShuffledLetters([...letters].sort(() => Math.random() - 0.5));
       setCompletedLetters([]);
       setIsWordComplete(false);
@@ -124,35 +114,19 @@ export default function ExerciseGame() {
     }
   }, [currentIndex, gameStatus, questions]);
 
-  // --- YARDIMCI: DOĞRU TANIMI BULMA (YENİ EKLENDİ) ---
   const getSmartDefinition = (wordObj, formKey) => {
       const defs = wordObj.definitions || [];
       if (defs.length === 0) return { meaning: "Tanım yok", engExplanation: "" };
 
       let targetType = "";
+      if (['v2', 'v3', 'thirdPerson', 'vIng'].includes(formKey)) targetType = "verb";
+      else if (formKey === 'plural') targetType = "noun";
+      else if (['compEr', 'superEst', 'advLy'].includes(formKey)) targetType = "adjective";
 
-      // 1. Fiil Modları (V2, V3, 3.Tekil, V-ing)
-      if (['v2', 'v3', 'thirdPerson', 'vIng'].includes(formKey)) {
-          targetType = "verb";
-      }
-      // 2. İsim Modları (Çoğul)
-      else if (formKey === 'plural') {
-          targetType = "noun";
-      }
-      // 3. Sıfat/Zarf Modları
-      else if (['compEr', 'superEst', 'advLy'].includes(formKey)) {
-          targetType = "adjective"; // Genelde sıfatlar comp/super alır
-          // advLy için adverb de bakılabilir ama genelde sıfattan türetilir.
-      }
-
-      // Hedef tipe uygun tanımı ara
       const matchedDef = defs.find(d => d.type === targetType);
-      
-      // Bulursa onu döndür, bulamazsa ilk tanımı (fallback) döndür
       return matchedDef || defs[0];
   };
 
-  // --- OYUN FONKSİYONLARI ---
   const handleBlur = (e) => { if (e && e.currentTarget) e.currentTarget.blur(); };
 
   const getDynamicStyle = (length) => {
@@ -229,6 +203,12 @@ export default function ExerciseGame() {
       setIsWordComplete(true);
       speak(wordToSpeak, 'main'); 
       updateGameStats('exercise', 1);
+      
+      const currentQ = questions[currentIndex];
+      const dateKey = `lastExercise_${currentQ.formKey}`;
+      
+      handleUpdateWord(currentQ.baseWordObj.id, { [dateKey]: new Date().toISOString() });
+
       if (currentWordPoints > 0) {
           addScore(currentWordPoints);
           setScore(s => s + currentWordPoints);
@@ -242,6 +222,11 @@ export default function ExerciseGame() {
       setIsWordComplete(true);
       speak(wordToSpeak, 'main');
       updateGameStats('exercise', 1);
+
+      const currentQ = questions[currentIndex];
+      const dateKey = `lastExercise_${currentQ.formKey}`;
+      
+      handleUpdateWord(currentQ.baseWordObj.id, { [dateKey]: new Date().toISOString() });
   };
 
   const handleNext = (e) => {
@@ -255,10 +240,7 @@ export default function ExerciseGame() {
       setGameStatus("finished");
   };
 
-  // ==============================
-  // === RENDER ===
-  // ==============================
-
+  // EKRANLAR
   if (gameStatus === "selection") {
       return (
         <div className="min-h-screen bg-slate-50 flex flex-col items-center p-6">
@@ -280,7 +262,7 @@ export default function ExerciseGame() {
 
                 <div className="bg-indigo-600 p-6 rounded-2xl shadow-lg text-white text-center">
                     <h3 className="text-2xl font-bold mb-2">Form Çalışması</h3>
-                    <p className="opacity-90 text-sm">Kelime havuzundaki kelimelerin gramer hallerini (V2, V3, Çoğul vb.) yazarak çalış.</p>
+                    <p className="opacity-90 text-sm">Kelime havuzundaki kelimelerin farklı hallerini test et.</p>
                     <div className="mt-4 inline-block bg-white/20 px-4 py-1 rounded-full text-xs font-bold">
                         Aktif Havuz: {allWords.length} Kelime
                     </div>
@@ -338,12 +320,9 @@ export default function ExerciseGame() {
   const currentQ = questions[currentIndex];
   const targetWord = currentQ.targetWord;
   const baseWordObj = currentQ.baseWordObj;
-  const formKey = currentQ.formKey; // Hangi modda olduğumuz (v2, plural vs.)
+  const formKey = currentQ.formKey;
 
-  // --- BURADA AKILLI SEÇİM YAPIYORUZ ---
   const def = getSmartDefinition(baseWordObj, formKey);
-  
-  const progress = ((currentIndex + 1) / questions.length) * 100;
   const styles = getDynamicStyle(targetWord.length);
 
   return (
@@ -371,7 +350,7 @@ export default function ExerciseGame() {
                 </div>
             </div>
             <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
-                <div className="bg-indigo-500 h-full transition-all duration-500" style={{width:`${progress}%`}}></div>
+                <div className="bg-indigo-500 h-full transition-all duration-500" style={{width:`${((currentIndex + 1) / questions.length) * 100}%`}}></div>
             </div>
 
             <div className="bg-white p-5 rounded-3xl shadow-xl border border-slate-100 text-center relative overflow-hidden min-h-[450px] flex flex-col justify-between">
@@ -388,7 +367,6 @@ export default function ExerciseGame() {
                         >
                             {activeAudio === 'base' ? <Square size={14} fill="currentColor"/> : <Volume2 size={14}/>}
                         </button>
-
                         <button 
                             onClick={(e) => { handleBlur(e); setShowWordTr(!showWordTr); }}
                             className={`mini-btn p-1.5 rounded-lg border ${showWordTr ? 'bg-indigo-100 text-indigo-600 border-indigo-200' : 'bg-white text-slate-400 border-slate-200'}`}
@@ -396,7 +374,6 @@ export default function ExerciseGame() {
                             <Languages size={14}/>
                         </button>
                     </div>
-
                     {showWordTr && (
                         <div className="text-sm font-bold text-green-600 bg-green-50 px-3 py-1 rounded-lg animate-in fade-in slide-in-from-top-1 mt-1">
                             {def.meaning}
