@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useData } from "../context/DataContext";
-// auth importu kaldı, messaging YOK (Çift bildirim engellendi)
 import { auth } from "../services/firebase"; 
 import { 
   RotateCcw, LogOut,
@@ -15,7 +14,8 @@ import {
   Headphones, 
   Puzzle, 
   BarChart2,
-  User
+  User,
+  Dumbbell // <-- İkon eklendi
 } from "lucide-react"; 
 import ProfileModal from "../components/ProfileModal"; 
 import LeaderboardModal from "../components/LeaderboardModal";
@@ -55,7 +55,6 @@ export default function Home() {
   const myScore = leaderboardData.find(u => u.id === user?.uid)?.score || 0;
 
   return (
-    // DÜZELTME: 'w-full overflow-x-hidden' eklendi (İz bırakma sorununu çözer)
     <div className="min-h-screen bg-slate-50 flex flex-col items-center p-6 w-full overflow-x-hidden">
       
       {/* --- MODALLAR --- */}
@@ -216,6 +215,16 @@ export default function Home() {
                 <div className="bg-white/20 p-2 rounded-full"><Mic className="w-6 h-6"/></div>
                 <span className="text-sm">Telaffuz</span>
               </button>
+
+              {/* YENİ: GRAMER EGZERSİZİ BUTONU */}
+              <button onClick={() => navigate("/exercise")} className="col-span-2 bg-slate-800 text-white font-bold py-4 px-4 rounded-xl shadow-lg flex items-center justify-center gap-3 text-center active:scale-95 transition-transform mt-1 group">
+                  <div className="bg-white/20 p-2 rounded-full group-hover:bg-white/30 transition-colors"><Dumbbell className="w-6 h-6"/></div>
+                  <div className="flex flex-col items-start">
+                      <span className="text-base">Gramer Egzersizi</span>
+                      <span className="text-[10px] opacity-70 font-normal font-sans">Tüm kelimelerle form çalışması</span>
+                  </div>
+              </button>
+
           </div>
 
           <div className="h-px bg-slate-200 my-2"></div>
