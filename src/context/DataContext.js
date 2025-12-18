@@ -134,9 +134,10 @@ export const DataProvider = ({ children }) => {
   const extractUserStats = (wordObj) => {
       const stats = {};
       Object.keys(wordObj).forEach(key => {
+          // lastExercise_plural, lastExercise_v2, lastSeen_quiz hepsi buradan geçer
           if (
-              key.startsWith("last") ||   // lastExercise_... lastSeen_...
-              key.startsWith("next") ||   // nextReview
+              key.startsWith("last") ||   
+              key.startsWith("next") ||   
               key === "level" || 
               key === "streak" ||
               key === "createdAt"
@@ -199,17 +200,18 @@ export const DataProvider = ({ children }) => {
     };
   };
 
-  // --- KELİMELERİ GETİR (ID ÖNCELİKLİ - EN SAĞLAM YÖNTEM) ---
+  // --- KELİMELERİ GETİR (SİSTEM DİKTATÖRLÜĞÜ) ---
   const getAllWords = () => {
     const deletedSet = new Set(deletedWordIds.map(String));
     
+    // 1. Ham Listeler
     const systemRaw = dynamicSystemWords.filter(w => !deletedSet.has(String(w.id)));
     const customRaw = customWords.filter(w => !deletedSet.has(String(w.id)));
     
-    // 1. Kullanıcı Kelimelerini Hızlı Erişim İçin Haritala (ID ve Text ile)
+    // 2. Kullanıcı kelimelerini "ID" anahtarıyla haritala
     const userMapById = {};
     const userMapByText = {};
-    const processedUserIds = new Set(); // Hangi kullanıcı kelimeleri işlendi?
+    const processedUserIds = new Set(); 
 
     customRaw.forEach(w => {
         userMapById[w.id] = w;
@@ -218,44 +220,37 @@ export const DataProvider = ({ children }) => {
 
     const finalWordList = [];
 
-    // 2. SİSTEM KELİMELERİNİ DÖN (Diktatör Modu)
+    // 3. SİSTEM KELİMELERİNİ DÖN
     systemRaw.forEach(systemWord => {
-        // ÖNCE ID ile eşleştir (En garantisi budur, isim değişse bile ID tutar)
+        // Önce ID ile eşleştir
         let userMatch = userMapById[systemWord.id];
-
-        // EĞER ID tutmazsa, TEXT ile eşleştir (Eski kayıtlar veya manuel eklenenler için)
-        if (!userMatch) {
-            userMatch = userMapByText[systemWord.word.toLowerCase().trim()];
-        }
+        // ID tutmazsa Text ile eşleştir
+        if (!userMatch) userMatch = userMapByText[systemWord.word.toLowerCase().trim()];
 
         if (userMatch) {
-            // Eşleşme bulundu: Kullanıcının ilerlemesini al, içeriği SİSTEMDEN bas.
-            processedUserIds.add(userMatch.id); // Bu kullanıcı kelimesini işledik
+            // Eşleşme bulundu:
+            // İçeriği SİSTEMDEN al. Kullanıcıdan sadece istatistikleri al.
+            processedUserIds.add(userMatch.id);
             finalWordList.push({
-                ...systemWord, // <-- İçerik (Dog3, Plural vb.) buradan gelir
-                
-                // Kullanıcı verileri
-                id: userMatch.id, // ID'yi kullanıcıdan al (Update için kritik)
+                ...systemWord, // GÜNCEL İÇERİK (Dog3)
+                id: userMatch.id, // ID kullanıcıdan
                 source: "user",
-                
-                // İstatistikleri koru
-                ...extractUserStats(userMatch)
+                ...extractUserStats(userMatch) // Tarihler ve Level korunur
             });
         } else {
-            // Hiç eşleşme yok, ham sistem kelimesi
+            // Kullanıcıda yok
             finalWordList.push({ ...systemWord, source: "system" });
         }
     });
 
-    // 3. SADECE KULLANICIDA OLAN (ÖZEL) KELİMELER
+    // 4. Sadece Kullanıcıda Olanlar (Özel Kelimeler)
     customRaw.forEach(userWord => {
-        // Eğer yukarıdaki döngüde bu kelimeyi işlemediysek, tamamen özel bir kelimedir.
         if (!processedUserIds.has(userWord.id)) {
             finalWordList.push({ ...userWord, source: "user" });
         }
     });
 
-    // 4. Normalizasyon ve Kara Liste
+    // 5. Normalizasyon
     const all = finalWordList.map(normalizeWord);
     if (blacklistedWords.length > 0) {
         return all.filter(w => !blacklistedWords.includes(w.word.toLowerCase().trim()));
@@ -297,71 +292,48 @@ export const DataProvider = ({ children }) => {
     } catch (e) { console.error("Hata:", e); }
   };
 
-  // --- KELİME GÜNCELLEME (PARÇALI GÜNCELLEME - FIX) ---
+  // --- KELİME GÜNCELLEME (PARÇALI GÜNCELLEME - HİÇBİR ŞEYİ EZMEZ) ---
   const handleUpdateWord = async (originalId, newData) => {
      try {
-       // Önce ID ile bul
+       // Önce ID ile bulmaya çalış
        let isCustom = customWords.find((w) => String(w.id) === String(originalId));
        const isKnown = knownWordIds.includes(originalId);
 
-       // ID ile bulamazsan (örneğin sistem kelimesi henüz kopyalanmamışsa)
        const systemOriginal = dynamicSystemWords.find(w => String(w.id) === String(originalId));
 
        if (isCustom) {
-         // --- DURUM 1: Kullanıcının elinde zaten var ---
-         // KRİTİK DÜZELTME: Sadece "newData" (yani tarihleri) güncelle.
-         // Kelimenin adını, anlamını vs. tekrar yazma (Overwrite yapma).
-         // Böylece sistemdeki güncelleme (Dog -> Dog3) kullanıcıya yansımaya devam eder.
+         // --- DURUM 1: Kullanıcıda zaten var ---
+         // Veritabanındaki kelimeyi (adı, anlamı) değiştirmeden
+         // SADECE gönderilen tarihi (newData) ekler.
          
          const wordRef = doc(db, "artifacts", appId, "users", user.uid, "words", String(originalId));
-         
-         // Sadece değişen alanları gönder (Partial Update)
          await updateDoc(wordRef, newData);
 
        } else if (systemOriginal) {
          // --- DURUM 2: Sistem kelimesi ilk defa kullanılıyor ---
-         // Şimdi kopyasını oluşturmamız lazım.
          
-         // Daha önce metin bazlı kopyası var mı kontrol et (Eski usül koruma)
+         // Text kontrolü
          const existingByText = customWords.find(w => w.word.toLowerCase() === systemOriginal.word.toLowerCase());
 
          if (existingByText) {
-             // Zaten metin olarak varmış, onun ID'sine geçiş yap
+             // Metin olarak varmış, onun ID'sini kullan
              await setDoc(doc(db, "artifacts", appId, "users", user.uid, "vocab_game", "progress"), { deleted_ids: arrayUnion(originalId) }, { merge: true });
              
-             // Var olanın sadece tarihini güncelle
              const wordRef = doc(db, "artifacts", appId, "users", user.uid, "words", existingByText.id);
              await updateDoc(wordRef, newData);
 
-             // Listeleri güncelle
              if(isKnown) {
                  const userRef = doc(db, "artifacts", appId, "users", user.uid, "vocab_game", "progress");
                  await updateDoc(userRef, { known_ids: arrayRemove(originalId) });
                  await updateDoc(userRef, { known_ids: arrayUnion(existingByText.id) });
              }
          } else {
-             // Yepyeni kopya oluştur (İlk sefer olduğu için içeriği sistemden alıyoruz)
+             // --- DURUM 3: Yepyeni kopya oluştur ---
+             // İlk sefer olduğu için içeriği sistemden kopyalıyoruz
              await setDoc(doc(db, "artifacts", appId, "users", user.uid, "vocab_game", "progress"), { deleted_ids: arrayUnion(originalId) }, { merge: true });
              
-             const newId = Date.now().toString();
-             // Burada sistem verilerini kopyalıyoruz
-             const newCustomWord = { 
-                 ...systemOriginal, 
-                 ...newData, 
-                 id: newId, 
-                 source: "user" 
-             };
-             
-             // ID'yi systemOriginal ID'si ile aynı yaparsak sonraki güncellemeleri yakalamak kolaylaşır.
-             // Ama Firebase çakışması olmasın diye yeni ID veriyoruz. 
-             // getAllWords fonksiyonumuz ID eşleşmesini systemOriginal.id üzerinden değil, 
-             // userWordMapById mantığıyla yapıyordu. 
-             // BURADA BİR İNCELİK YAPACAĞIZ:
-             // Kopyalarken "systemId" diye bir alan ekleyelim veya ID'yi korumaya çalışalım.
-             // En güvenlisi: Sistem ID'sini koruyarak kaydetmektir ama User Collection içinde.
-             
-             // ID KORUMALI KAYIT:
-             const targetId = systemOriginal.id; // Sistem ID'sini kullan
+             // ID'yi Sistem ID'si ile aynı yapıyoruz
+             const targetId = systemOriginal.id; 
              const wordRef = doc(db, "artifacts", appId, "users", user.uid, "words", targetId);
              
              await setDoc(wordRef, { 
@@ -370,10 +342,6 @@ export const DataProvider = ({ children }) => {
                  id: targetId, 
                  source: "user" 
              });
-
-             if (isKnown) {
-                // ID değişmediği için arrayRemove/Union gerekmez
-             }
          }
        }
      } catch (e) { console.error("Update Error:", e); }
