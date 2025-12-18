@@ -324,7 +324,7 @@ export default function ExerciseGame() {
                     <div className="text-5xl font-extrabold text-indigo-600 mt-2">{score}</div>
                     <div className="text-xs text-slate-400 font-bold">Maksimum: {maxScore}</div>
                 </div>
-                <button onClick={() => setGameStatus("selection")} className="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl shadow-lg hover:bg-indigo-700 active:scale-95 transition-transform">Başka Egzersiz Yap</button>
+                <button onClick={() => setGameStatus("selection")} className="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl shadow-lg hover:bg-indigo-700 active:scale-95 transition-transform">Başka Test Çöz</button>
                 <button onClick={() => navigate("/")} className="w-full bg-white border-2 border-slate-200 text-slate-600 font-bold py-3 rounded-xl hover:bg-slate-50 active:scale-95 transition-transform">Ana Sayfa</button>
             </div>
         </div>
