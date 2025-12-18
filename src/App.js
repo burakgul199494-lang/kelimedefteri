@@ -7,6 +7,7 @@ import Auth from "./pages/Auth";
 import Home from "./pages/Home";
 import Dictionary from "./pages/Dictionary";
 import Game from "./pages/Game";
+import ExerciseGame from "./pages/ExerciseGame";
 import SentenceBuilderGame from "./pages/SentenceBuilderGame";
 import Quiz from "./pages/Quiz";
 import Quiz2 from "./pages/Quiz2"; // <-- 1. BU SATIRI EKLE (YENİ)
@@ -74,6 +75,7 @@ export default function App() {
           
           <Route path="/list/:type" element={<PrivateRoute><WordList /></PrivateRoute>} />
             <Route path="/game/word-match" element={<WordMatchGame />} />
+            <Route path="/exercise" element={<PrivateRoute><ExerciseGame /></PrivateRoute>} />
           
           <Route path="/add-word" element={<AdminRoute><AddWord /></AdminRoute>} />
           <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
