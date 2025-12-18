@@ -1,130 +1,174 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useData } from "../context/DataContext";
 import { useNavigate } from "react-router-dom";
-import { X, Trophy, Volume2, Lightbulb, Loader2, RefreshCw, BrainCircuit, Hourglass, Home, AlertTriangle } from "lucide-react";
+import { 
+  X, Trophy, Loader2, Home, Volume2, CheckCircle2, 
+  Dumbbell, Layers, ArrowRight, Languages, Square, 
+  Lightbulb, AlertTriangle
+} from "lucide-react";
 
-export default function WritingGame() {
-  const { getAllWords, knownWordIds, addScore, learningQueue, updateGameStats } = useData(); // <-- EKLENDİ
+const FORM_TYPES = [
+  { id: "plural", label: "Plural (Çoğul)", key: "plural" },
+  { id: "v2", label: "V2 (Past)", key: "v2" },
+  { id: "v3", label: "V3 (Participle)", key: "v3" },
+  { id: "thirdPerson", label: "3. Tekil (He/She)", key: "thirdPerson" },
+  { id: "advLy", label: "Zarf (-ly)", key: "advLy" },
+  { id: "compEr", label: "Comp (-er)", key: "compEr" },
+  { id: "superEst", label: "Super (-est)", key: "superEst" },
+];
+
+export default function ExerciseGame() {
+  // 1. handleUpdateWord EKLENDİ
+  const { getAllWords, addScore, updateGameStats, handleUpdateWord } = useData();
   const navigate = useNavigate();
 
   // --- STATE'LER ---
-  const [gameMode, setGameMode] = useState(null);
+  const [gameStatus, setGameStatus] = useState("selection"); 
+  const [activeForm, setActiveForm] = useState(null);
+  
   const [questions, setQuestions] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [score, setScore] = useState(0);
-  const [gameStatus, setGameStatus] = useState("mode-selection");
 
-  // Kelime Mantığı
-  const [shuffledLetters, setShuffledLetters] = useState([]); 
-  const [completedLetters, setCompletedLetters] = useState([]); 
-  const [wrongAnimationId, setWrongAnimationId] = useState(null); 
-  const [isWordComplete, setIsWordComplete] = useState(false); 
+  const [shuffledLetters, setShuffledLetters] = useState([]);
+  const [completedLetters, setCompletedLetters] = useState([]);
+  const [isWordComplete, setIsWordComplete] = useState(false);
+  const [wrongAnimationId, setWrongAnimationId] = useState(null);
+  
+  const [showWordTr, setShowWordTr] = useState(false);
+  const [showDefTr, setShowDefTr] = useState(false);
 
-  // Puanlama ve Hata Takibi
+  const [mistakeCount, setMistakeCount] = useState(0);
   const [hintCount, setHintCount] = useState(0);
   const [currentWordPoints, setCurrentWordPoints] = useState(5); 
-  const [mistakeCount, setMistakeCount] = useState(0); 
 
-  // --- KELİME HAVUZLARI (SRS DÜZELTİLDİ) ---
-  const getWordPools = () => {
-    const all = getAllWords();
-    const validWords = all.filter(w => w.definitions && w.definitions[0]?.meaning);
-    const now = new Date();
+  const [activeAudio, setActiveAudio] = useState(null);
 
-    // Kuyruktaki ID'ler
-    const queueIds = learningQueue ? learningQueue.map(q => q.wordId) : [];
+  // --- 1. KELİME HAVUZU ---
+  const allWords = useMemo(() => {
+      const words = getAllWords();
+      return words || [];
+  }, [getAllWords]);
 
-    // 1. ÖĞRENME MODU (Kalanlar)
-    // Kural: Öğrenilenlerde YOK --VE-- Kuyrukta YOK
-    const learnPool = validWords.filter(w => 
-        !knownWordIds.includes(w.id) && 
-        !queueIds.includes(w.id)
-    );
-
-    // 2. TEKRAR MODU (Sırası Gelenler + Mezunlar)
-    // Kural: (Kuyrukta VAR ve Zamanı Gelmiş) --VEYA-- (Zaten Öğrenilmiş)
-    const reviewPool = validWords.filter(w => {
-        const qItem = learningQueue ? learningQueue.find(item => item.wordId === w.id) : null;
-        
-        // A) Kuyrukta ve zamanı gelmiş (SRS Tekrarı)
-        const isDue = qItem && new Date(qItem.nextReview) <= now;
-        
-        // B) Zaten tamamen öğrenilmiş (Mezun Tekrarı)
-        const isKnown = knownWordIds.includes(w.id);
-
-        return isDue || isKnown;
-    });
-
-    // 3. BEKLEME LİSTESİ (Gelecekteki Tekrarlar)
-    // Kural: Kuyrukta VAR --VE-- Zamanı GELECEKTE
-    const waitingPool = validWords.filter(w => {
-        const qItem = learningQueue ? learningQueue.find(item => item.wordId === w.id) : null;
-        return qItem && new Date(qItem.nextReview) > now;
-    });
-
-    return { learnPool, reviewPool, waitingPool };
+  const getCount = (key) => {
+    return allWords.filter(w => {
+        const val = w[key];
+        return val && typeof val === 'string' && val.trim().length > 0;
+    }).length;
   };
 
-  const { learnPool, reviewPool, waitingPool } = getWordPools();
+  // --- 2. OYUNU BAŞLATMA (AKILLI SIRALAMA - TARİH BAZLI) ---
+  const startSession = (formTypeObj) => {
+    const key = formTypeObj.key;
+    // Hangi tarihe bakacağımızı belirliyoruz (örn: lastExercise_v2)
+    const dateKey = `lastExercise_${key}`; 
+    
+    // 1. İlgili forma sahip kelimeleri filtrele
+    let validWords = allWords.filter(w => {
+        const val = w[key];
+        return val && typeof val === 'string' && val.trim().length > 0;
+    });
 
-
-  // --- OYUN BAŞLATMA ---
-  const startSession = (mode) => {
-    setGameMode(mode);
-    let selectedPool = [];
-
-    if (mode === "learn") selectedPool = learnPool;
-    else if (mode === "review") selectedPool = reviewPool;
-    else if (mode === "waiting") selectedPool = waitingPool;
-
-    if (selectedPool.length === 0) {
-      alert("Bu modda şu an çalışılacak kelime yok.");
+    if (validWords.length === 0) {
+      alert("Bu formda çalışılacak kelime bulunamadı.");
       return;
     }
 
-    const selected = selectedPool.sort(() => 0.5 - Math.random()).slice(0, 20);
-    setQuestions(selected);
+    // --- YENİ ALGORİTMA BAŞLANGICI ---
+    const neverSeen = [];
+    const seen = [];
+
+    validWords.forEach(w => {
+        // Eğer o form için tarih yoksa "hiç görülmemiş"tir
+        if (!w[dateKey]) {
+            neverSeen.push(w); 
+        } else {
+            seen.push(w); 
+        }
+    });
+
+    // A. Hiç görülmeyenleri karıştır
+    neverSeen.sort(() => 0.5 - Math.random());
+
+    // B. Görülenleri TARİHE GÖRE (Eskiden -> Yeniye) sırala
+    seen.sort((a, b) => {
+        return new Date(a[dateKey]).getTime() - new Date(b[dateKey]).getTime();
+    });
+
+    // C. Listeleri birleştir
+    const smartPool = [...neverSeen, ...seen];
+
+    // D. İlk 20 taneyi al (En acil olanlar)
+    const selectedCandidates = smartPool.slice(0, 20);
+
+    // E. Karıştır (Kullanıcı sırayı ezberlemesin)
+    const selected = selectedCandidates.sort(() => 0.5 - Math.random());
+    // --- YENİ ALGORİTMA BİTİŞİ ---
+
+    // F. Soruları oluştur
+    const generatedQuestions = selected.map(w => ({
+        baseWordObj: w,
+        targetWord: w[key].trim(), // Cevap (örn: went)
+        word: w[key].trim(),       // Eski kodun uyumluluğu için
+        formLabel: formTypeObj.label,
+        formKey: key,              // Tarih kaydı için gerekli
+        definitions: w.definitions // Tanımlar
+    }));
+
+    setQuestions(generatedQuestions);
+    setActiveForm(formTypeObj);
     setCurrentIndex(0);
     setScore(0);
     setGameStatus("playing");
   };
 
-  // --- DİNAMİK BOYUT HESAPLAMA ---
-  const getDynamicStyle = (length) => {
-    if (length <= 5) return { box: "w-11 h-14", text: "text-2xl" }; 
-    if (length <= 8) return { box: "w-8 h-11", text: "text-xl" };   
-    if (length <= 11) return { box: "w-6 h-9", text: "text-lg" };    
-    if (length <= 14) return { box: "w-4 h-8", text: "text-sm" }; 
-    if (length <= 17) return { box: "w-3 h-6", text: "text-[10px]" }; 
-    return { box: "w-2 h-5", text: "text-[8px]" };                       
-  };
-
-  // Soru değişince her şeyi sıfırla
+  // --- 3. SORU YÜKLEME ---
   useEffect(() => {
+    window.speechSynthesis.cancel();
+    setActiveAudio(null);
+    setShowWordTr(false);
+    setShowDefTr(false);
+
     if (gameStatus === "playing" && questions[currentIndex]) {
-      const word = questions[currentIndex].word.trim();
-      const letters = word.split('').map((char, index) => ({
+      const target = questions[currentIndex].targetWord;
+      const letters = target.split('').map((char, index) => ({
         id: `${char}-${index}-${Math.random()}`,
         char: char,
         isUsed: false
       }));
-      const shuffled = [...letters].sort(() => Math.random() - 0.5);
-      
-      setShuffledLetters(shuffled);
+      setShuffledLetters([...letters].sort(() => Math.random() - 0.5));
       setCompletedLetters([]);
       setIsWordComplete(false);
-      
-      // Resetlemeler
+      setMistakeCount(0);
       setHintCount(0);
-      setMistakeCount(0); 
-      setCurrentWordPoints(5); 
+      setCurrentWordPoints(5);
     }
-  }, [currentIndex, gameStatus]);
+  }, [currentIndex, gameStatus, questions]);
 
-  const currentWordObj = questions[currentIndex];
-  const targetWord = currentWordObj?.word.trim() || "";
-  const turkishMeaning = currentWordObj?.definitions[0]?.meaning;
-  const turkishExplanation = currentWordObj?.definitions[0]?.trExplanation; 
+  // --- YARDIMCI ---
+  const getSmartDefinition = (wordObj, formKey) => {
+      const defs = wordObj.definitions || [];
+      if (defs.length === 0) return { meaning: "Tanım yok", engExplanation: "" };
+
+      let targetType = "";
+      if (['v2', 'v3', 'thirdPerson', 'vIng'].includes(formKey)) targetType = "verb";
+      else if (formKey === 'plural') targetType = "noun";
+      else if (['compEr', 'superEst', 'advLy'].includes(formKey)) targetType = "adjective";
+
+      const matchedDef = defs.find(d => d.type === targetType);
+      return matchedDef || defs[0];
+  };
+
+  const handleBlur = (e) => { if (e && e.currentTarget) e.currentTarget.blur(); };
+
+  const getDynamicStyle = (length) => {
+    if (length <= 5) return { box: "w-11 h-14", text: "text-2xl" }; 
+    if (length <= 8) return { box: "w-8 h-11", text: "text-xl" };    
+    if (length <= 11) return { box: "w-6 h-9", text: "text-lg" };    
+    if (length <= 14) return { box: "w-4 h-8", text: "text-sm" }; 
+    if (length <= 17) return { box: "w-3 h-6", text: "text-[10px]" }; 
+    return { box: "w-2 h-5", text: "text-[8px]" };                        
+  };
 
   const speak = (text) => {
     if (!text) return;
@@ -141,6 +185,8 @@ export default function WritingGame() {
 
     if (isWordComplete || letterObj.isUsed) return;
 
+    const currentQ = questions[currentIndex];
+    const targetWord = currentQ.targetWord;
     const nextIndex = completedLetters.length;
     const expectedChar = targetWord[nextIndex];
 
@@ -166,23 +212,7 @@ export default function WritingGame() {
 
       // LİMİT KONTROLÜ (2 HATA)
       if (newMistakes >= 2) {
-          setCurrentWordPoints(0); 
-          
-          setTimeout(() => {
-              setCompletedLetters(targetWord.split('')); 
-              setIsWordComplete(true);
-              speak(targetWord);
-
-              updateGameStats('writing', 1); // <--- BURAYA EKLE (Kelime geçildi)
-              
-              setTimeout(() => {
-                  if (currentIndex + 1 < questions.length) {
-                      setCurrentIndex(p => p + 1);
-                  } else {
-                      setGameStatus("finished");
-                  }
-              }, 2000); 
-          }, 600);
+          handleFail(targetWord);
       }
     }
   };
@@ -198,6 +228,7 @@ export default function WritingGame() {
     if (newHintCount === 1) setCurrentWordPoints(2); 
     else if (newHintCount >= 2) setCurrentWordPoints(0); 
 
+    const targetWord = questions[currentIndex].targetWord;
     const nextIndex = completedLetters.length;
     const expectedChar = targetWord[nextIndex];
 
@@ -210,9 +241,17 @@ export default function WritingGame() {
 
   // --- KELİME BİTİRME (BAŞARILI) ---
   const handleWordComplete = () => {
-    updateGameStats('writing', 1); // <--- BURAYA EKLE (1 Kelime bitti)
+    const currentQ = questions[currentIndex];
+    const targetWord = currentQ.targetWord;
+
     setIsWordComplete(true);
     speak(targetWord);
+    updateGameStats('writing', 1);
+    
+    // --- GÜVENLİ KAYIT ---
+    // Sadece bu formun tarihini güncelliyoruz.
+    const dateKey = `lastExercise_${currentQ.formKey}`;
+    handleUpdateWord(currentQ.baseWordObj.id, { [dateKey]: new Date().toISOString() });
     
     if (currentWordPoints > 0) {
         addScore(currentWordPoints);
@@ -228,214 +267,274 @@ export default function WritingGame() {
     }, 1200);
   };
 
-  const handleQuitEarly = () => {
+  // --- KELİME BİTİRME (BAŞARISIZ / OTOMATİK TAMAMLAMA) ---
+  const handleFail = (targetWord) => {
+      setCurrentWordPoints(0);
+      setCompletedLetters(targetWord.split('')); 
+      setIsWordComplete(true);
+      speak(targetWord);
+      updateGameStats('writing', 1);
+      
+      // Yanlış yapsa bile sıranın sonuna atıyoruz (Tarih güncelleniyor)
+      const currentQ = questions[currentIndex];
+      const dateKey = `lastExercise_${currentQ.formKey}`;
+      handleUpdateWord(currentQ.baseWordObj.id, { [dateKey]: new Date().toISOString() });
+      
+      setTimeout(() => {
+          if (currentIndex + 1 < questions.length) {
+              setCurrentIndex(p => p + 1);
+          } else {
+              setGameStatus("finished");
+          }
+      }, 2000); 
+  };
+
+  const handleNext = (e) => {
+      handleBlur(e);
+      if (currentIndex + 1 < questions.length) setCurrentIndex(p => p + 1);
+      else setGameStatus("finished");
+  };
+
+  const handleQuitEarly = (e) => {
+      handleBlur(e);
       setGameStatus("finished");
   };
 
-  // ===========================
-  // === MOD SEÇİM EKRANI ===
-  // ===========================
-  if (gameStatus === "mode-selection") {
-    return (
-        <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
-            <div className="w-full max-w-sm space-y-6">
+  // EKRANLAR
+  if (gameStatus === "selection") {
+      return (
+        <div className="min-h-screen bg-slate-50 flex flex-col items-center p-6">
+            <style>{`
+                * { -webkit-tap-highlight-color: transparent !important; }
+                .menu-btn { transition: all 0.2s ease; }
+                @media (hover: hover) { .menu-btn:hover { transform: translateY(-2px); } }
+            `}</style>
+            <div className="w-full max-w-md space-y-6">
                 <div className="flex items-center justify-between">
                     <button onClick={() => navigate("/")} className="p-2 bg-white rounded-full shadow-sm hover:bg-slate-100">
-                    <Home className="w-5 h-5 text-slate-600" />
+                        <Home className="w-5 h-5 text-slate-600" />
                     </button>
-                    <h2 className="text-xl font-bold text-slate-800">Yazma</h2>
+                    <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                        <Dumbbell className="w-6 h-6 text-indigo-600"/> Gramer Egzersizi
+                    </h2>
                     <div className="w-9"></div>
                 </div>
 
-                <div className="text-center py-6">
-                    <h1 className="text-3xl font-black text-slate-800 mb-2">Nasıl Test Edelim?</h1>
-                    <p className="text-slate-500">Türkçesi Verilen İngilizce Kelimeyi Yaz.</p>
+                <div className="bg-indigo-600 p-6 rounded-2xl shadow-lg text-white text-center">
+                    <h3 className="text-2xl font-bold mb-2">Form Çalışması</h3>
+                    <p className="opacity-90 text-sm">Kelime havuzundaki kelimelerin farklı hallerini test et.</p>
+                    <div className="mt-4 inline-block bg-white/20 px-4 py-1 rounded-full text-xs font-bold">
+                        Aktif Havuz: {allWords.length} Kelime
+                    </div>
                 </div>
 
-                <div className="space-y-4">
-                    {/* Tekrar Modu */}
-                    <button onClick={() => startSession('review')} disabled={reviewPool.length === 0} className="w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 hover:border-orange-200 hover:bg-orange-50 transition-all group active:scale-95 disabled:opacity-60">
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-4">
-                                <div className="bg-orange-100 p-3 rounded-xl text-orange-600"><RefreshCw className="w-8 h-8" /></div>
-                                <div className="text-left"><div className="font-bold text-xl text-slate-800">Tekrar Modu</div><div className="text-sm text-slate-500">Öğrendiklerini Pekiştir</div></div>
-                            </div>
-                            <div className="text-2xl font-black text-orange-600">{reviewPool.length}</div>
-                        </div>
-                    </button>
-
-                    {/* Öğrenme Modu */}
-                    <button onClick={() => startSession('learn')} disabled={learnPool.length === 0} className="w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 hover:border-indigo-200 hover:bg-indigo-50 transition-all group active:scale-95 disabled:opacity-60">
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-4">
-                                <div className="bg-indigo-100 p-3 rounded-xl text-indigo-600"><BrainCircuit className="w-8 h-8" /></div>
-                                <div className="text-left"><div className="font-bold text-xl text-slate-800">Öğrenme Modu</div><div className="text-sm text-slate-500">Yeni Kelimeler</div></div>
-                            </div>
-                            <div className="text-2xl font-black text-indigo-600">{learnPool.length}</div>
-                        </div>
-                    </button>
-
-                    {/* Bekleme Modu */}
-                    <button onClick={() => startSession('waiting')} disabled={waitingPool.length === 0} className="w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 hover:border-slate-300 hover:bg-slate-50 transition-all group active:scale-95 disabled:opacity-60">
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-4">
-                                <div className="bg-slate-100 p-3 rounded-xl text-slate-500"><Hourglass className="w-8 h-8" /></div>
-                                <div className="text-left"><div className="font-bold text-xl text-slate-700">Bekleme Listesi</div><div className="text-sm text-slate-400">Henüz Zamanı Gelmeyen Kelimeler</div></div>
-                            </div>
-                            <div className="text-2xl font-black text-slate-500">{waitingPool.length}</div>
-                        </div>
-                    </button>
+                <div className="space-y-3 pb-10">
+                    {FORM_TYPES.map(form => {
+                        const count = getCount(form.key);
+                        return (
+                            <button 
+                                key={form.id}
+                                onClick={() => startSession(form)}
+                                disabled={count === 0}
+                                className="menu-btn w-full bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex justify-between items-center hover:border-indigo-300 disabled:opacity-50 disabled:cursor-not-allowed group active:scale-95"
+                            >
+                                <div className="flex items-center gap-3">
+                                    <div className="bg-slate-100 p-2 rounded-lg group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-colors">
+                                        <Layers className="w-5 h-5 text-slate-500"/>
+                                    </div>
+                                    <span className="font-bold text-slate-700">{form.label}</span>
+                                </div>
+                                <span className={`text-xs font-bold px-3 py-1 rounded-full ${count > 0 ? "bg-indigo-100 text-indigo-700" : "bg-slate-100 text-slate-400"}`}>
+                                    {count}
+                                </span>
+                            </button>
+                        )
+                    })}
                 </div>
             </div>
         </div>
-    );
+      );
   }
 
-  // ===========================
-  // === 2. BİTİŞ EKRANI ===
-  // ===========================
   if (gameStatus === "finished") {
-    const max = questions.length * 5;
-    let modeTitle = "Test Tamamlandı!";
-    if (gameMode === "learn") modeTitle = "Bitti";
-    if (gameMode === "review") modeTitle = "Bitti";
-    if (gameMode === "waiting") modeTitle = "Bitti";
-
-    return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
-        <div className="bg-white p-8 rounded-3xl shadow-xl max-w-sm w-full text-center space-y-6">
-           <div className="bg-purple-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto animate-bounce"><Trophy className="w-10 h-10 text-purple-600"/></div>
-           <h2 className="text-2xl font-bold text-slate-800">{modeTitle}</h2>
-           <div className="py-6 bg-slate-50 rounded-2xl border border-slate-100">
-             <div className="text-sm text-slate-400 font-bold uppercase">TOPLAM PUAN</div>
-             <div className="text-5xl font-extrabold text-indigo-600 mt-2">{score}</div>
-             <div className="text-xs text-slate-400 font-bold">Maksimum: {max}</div>
-           </div>
-           <button onClick={() => setGameStatus("mode-selection")} className="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-200">Başka Test Çöz</button>
-           <button onClick={() => navigate("/")} className="w-full bg-white border-2 border-slate-200 text-slate-600 font-bold py-3 rounded-xl hover:bg-slate-50">Ana Sayfa</button>
+      return (
+        <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
+            <div className="bg-white p-8 rounded-3xl shadow-xl max-w-sm w-full text-center space-y-6">
+                <div className="bg-green-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto animate-bounce">
+                    <Trophy className="w-10 h-10 text-green-600"/>
+                </div>
+                <h2 className="text-2xl font-bold text-slate-800">Egzersiz Bitti!</h2>
+                <div className="py-6 bg-slate-50 rounded-2xl border border-slate-100">
+                    <div className="text-sm text-slate-400 font-bold uppercase">Kazanılan Puan</div>
+                    <div className="text-5xl font-extrabold text-indigo-600 mt-2">{score}</div>
+                </div>
+                <button onClick={() => setGameStatus("selection")} className="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl shadow-lg hover:bg-indigo-700">Başka Egzersiz Yap</button>
+                <button onClick={() => navigate("/")} className="w-full bg-white border-2 border-slate-200 text-slate-600 font-bold py-3 rounded-xl hover:bg-slate-50">Ana Sayfa</button>
+            </div>
         </div>
-      </div>
-    );
+      );
   }
 
-  // ===========================
+  if (!questions[currentIndex]) return <div className="flex h-screen items-center justify-center"><Loader2 className="animate-spin w-10 h-10 text-indigo-600"/></div>;
 
-  if (gameStatus === "loading") return <div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin text-purple-600 w-10 h-10"/></div>;
+  const currentQ = questions[currentIndex];
+  const targetWord = currentQ.targetWord;
+  const baseWordObj = currentQ.baseWordObj;
+  const formKey = currentQ.formKey;
 
-  const progress = ((currentIndex + 1) / questions.length) * 100;
+  const def = getSmartDefinition(baseWordObj, formKey);
   const styles = getDynamicStyle(targetWord.length);
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center p-4">
-       <div className="w-full max-w-md space-y-4 mt-2">
-          
-          <div className="flex justify-between items-center">
-             <button onClick={handleQuitEarly} className="p-2 bg-white rounded-full active:bg-slate-100 shadow-sm transition-colors"><X className="w-5 h-5 text-slate-400"/></button>
-             <div className="font-bold text-purple-600 bg-purple-50 px-3 py-1 rounded-full border border-purple-100">
-                {gameMode === 'review' ? 'Tekrar' : gameMode === 'learn' ? 'Öğrenme' : 'Bekleme'}: {currentIndex+1} / {questions.length}
-             </div>
-             <div className="flex items-center gap-1 bg-amber-100 text-amber-700 px-3 py-1 rounded-full font-bold text-sm border border-amber-200"><Trophy className="w-4 h-4"/> {score}</div>
-          </div>
-          <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden"><div className="bg-purple-500 h-full transition-all duration-500" style={{width:`${progress}%`}}></div></div>
-          
-          <div className="bg-white p-6 rounded-3xl shadow-xl border border-slate-100 text-center space-y-6 relative overflow-hidden min-h-[450px] flex flex-col justify-between">
-             <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-purple-400 to-pink-400"></div>
-             
-             {/* SORU */}
-             <div className="space-y-2 mt-2">
-               <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">Türkçesi</div>
-               <h2 className="text-2xl font-extrabold text-slate-800 break-words leading-tight">{turkishMeaning}</h2>
-               {turkishExplanation && (
-                 <div className="text-sm text-slate-500 font-medium bg-slate-50 p-2 rounded-lg inline-block border border-slate-100">
-                    💡 {turkishExplanation}
-                 </div>
-               )}
-             </div>
-
-             {/* YAZI ALANI */}
-             <div className="flex flex-wrap justify-center gap-1 min-h-[60px] items-end content-center">
-                {targetWord.split('').map((_, idx) => {
-                  const char = completedLetters[idx];
-                  const isFilled = char !== undefined;
-                  return (
-                    <div 
-                      key={idx} 
-                      className={`
-                        ${styles.box} ${styles.text} 
-                        flex items-center justify-center font-bold border-b-4 rounded-t-lg transition-all
-                        ${isFilled ? "border-purple-500 text-purple-700 bg-purple-50 translate-y-0" : "border-slate-200 bg-slate-50 text-transparent"}
-                      `}
-                    >
-                      {char}
-                    </div>
-                  );
-                })}
-             </div>
-
-             {/* KARIŞIK HARFLER (BUTONLAR) */}
-             <div key={currentIndex} className="flex flex-wrap justify-center gap-2 content-center">
-                {shuffledLetters.map((item) => (
-                  <button
-                    key={item.id}
-                    onClick={(e) => handleLetterClick(item, e)}
-                    disabled={item.isUsed || isWordComplete}
-                    style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
-                    className={`
-                      w-10 h-10 md:w-11 md:h-11 rounded-xl font-bold text-lg shadow-[0_3px_0_rgb(0,0,0,0.1)] 
-                      active:bg-purple-100 active:border-purple-300 active:text-purple-600 active:shadow-none active:translate-y-[2px]
-                      transition-all duration-75 select-none touch-manipulation focus:outline-none focus:ring-0
-                      ${item.isUsed 
-                          ? "opacity-0 pointer-events-none scale-0" 
-                          : wrongAnimationId === item.id 
-                              ? "bg-red-500 text-white shadow-none animate-[shake_0.5s_ease-in-out]" 
-                              : "bg-white border-2 border-slate-200 text-slate-700"
-                      }
-                    `}
-                  >
-                    {item.char}
-                  </button>
-                ))}
-             </div>
-
-             {/* KONTROL BUTONLARI */}
-             <div className="flex items-center justify-center gap-4 pt-4 border-t border-slate-100 mt-auto">
-                <button 
-                  onClick={() => speak(targetWord)} 
-                  style={{ WebkitTapHighlightColor: 'transparent' }}
-                  className="flex items-center gap-2 px-5 py-3 bg-slate-100 text-slate-600 rounded-2xl font-bold active:bg-slate-200 transition-colors active:scale-95 focus:outline-none"
-                >
-                  <Volume2 className="w-5 h-5"/> Dinle
-                </button>
-                
-                <button 
-                  onClick={handleHint} 
-                  disabled={isWordComplete}
-                  style={{ WebkitTapHighlightColor: 'transparent' }}
-                  className="flex items-center gap-2 px-5 py-3 bg-amber-100 text-amber-700 rounded-2xl font-bold active:bg-amber-200 transition-colors active:scale-95 disabled:opacity-50 focus:outline-none"
-                >
-                  <Lightbulb className="w-5 h-5"/> 
-                  {/* Puan ve Hata Bilgisi */}
-                  <span className="text-xs ml-1 flex flex-col items-start leading-none">
-                      <span>İpucu ({hintCount === 0 ? "5p" : hintCount === 1 ? "2p" : "0p"})</span>
-                      <span className="text-[9px] text-amber-600/80">Hata: {mistakeCount}/2</span>
-                  </span>
-                </button>
-             </div>
-
-          </div>
-
-          <button onClick={handleQuitEarly} className="w-full text-center text-slate-400 hover:text-red-500 text-sm font-medium transition-colors">
-            Bitir (Puanı Al ve Çık)
-          </button>
-
-          <style jsx>{`
+        <style>{`
+            * { -webkit-tap-highlight-color: transparent !important; }
             @keyframes shake {
               0%, 100% { transform: translateX(0); }
               25% { transform: translateX(-5px); }
               75% { transform: translateX(5px); }
             }
-          `}</style>
-       </div>
+            .mini-btn { transition: all 0.2s ease; }
+            .mini-btn:active { transform: scale(0.9); }
+            @media (hover: hover) { .mini-btn:hover { background-color: #f1f5f9; } }
+        `}</style>
+
+        <div className="w-full max-w-md space-y-4 mt-2">
+            <div className="flex justify-between items-center">
+                <button onClick={handleQuitEarly} className="p-2 bg-white rounded-full shadow-sm"><X className="w-5 h-5 text-slate-400"/></button>
+                <div className="font-bold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-100 text-xs">
+                    {activeForm?.label.split('(')[0]}: {currentIndex + 1} / {questions.length}
+                </div>
+                <div className="flex items-center gap-1 bg-amber-100 text-amber-700 px-3 py-1 rounded-full font-bold text-sm border border-amber-200">
+                    <Trophy className="w-4 h-4"/> {score}
+                </div>
+            </div>
+            <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+                <div className="bg-indigo-500 h-full transition-all duration-500" style={{width:`${((currentIndex + 1) / questions.length) * 100}%`}}></div>
+            </div>
+
+            <div className="bg-white p-5 rounded-3xl shadow-xl border border-slate-100 text-center relative overflow-hidden min-h-[450px] flex flex-col justify-between">
+                <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-indigo-400 to-purple-400"></div>
+
+                <div className="mt-2 flex flex-col items-center gap-1">
+                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">ANA KELİME (BASE)</div>
+                    <div className="flex items-center gap-2">
+                        <h2 className="text-3xl font-black text-slate-800">{baseWordObj.word}</h2>
+                        
+                        <button 
+                            onClick={(e) => { handleBlur(e); speak(baseWordObj.word, 'base'); }}
+                            className={`mini-btn p-1.5 rounded-lg border ${activeAudio === 'base' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-400 border-slate-200'}`}
+                        >
+                            {activeAudio === 'base' ? <Square size={14} fill="currentColor"/> : <Volume2 size={14}/>}
+                        </button>
+                        <button 
+                            onClick={(e) => { handleBlur(e); setShowWordTr(!showWordTr); }}
+                            className={`mini-btn p-1.5 rounded-lg border ${showWordTr ? 'bg-indigo-100 text-indigo-600 border-indigo-200' : 'bg-white text-slate-400 border-slate-200'}`}
+                        >
+                            <Languages size={14}/>
+                        </button>
+                    </div>
+                    {showWordTr && (
+                        <div className="text-sm font-bold text-green-600 bg-green-50 px-3 py-1 rounded-lg animate-in fade-in slide-in-from-top-1 mt-1">
+                            {def.meaning}
+                        </div>
+                    )}
+                </div>
+                
+                {def.engExplanation && (
+                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 relative mt-2 text-left">
+                         <p className="text-slate-600 text-sm italic pr-16 leading-relaxed">"{def.engExplanation}"</p>
+                         <div className="absolute right-2 top-2 flex gap-1">
+                             <button 
+                                onClick={(e) => { handleBlur(e); speak(def.engExplanation, 'desc'); }}
+                                className={`mini-btn p-1.5 rounded-lg border ${activeAudio === 'desc' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-400 border-slate-200'}`}
+                             >
+                                {activeAudio === 'desc' ? <Square size={12} fill="currentColor"/> : <Volume2 size={12}/>}
+                             </button>
+                             {def.trExplanation && (
+                                 <button 
+                                    onClick={(e) => { handleBlur(e); setShowDefTr(!showDefTr); }}
+                                    className={`mini-btn p-1.5 rounded-lg border ${showDefTr ? 'bg-indigo-100 text-indigo-600 border-indigo-200' : 'bg-white text-slate-400 border-slate-200'}`}
+                                 >
+                                    <Languages size={12}/>
+                                 </button>
+                             )}
+                         </div>
+                         {showDefTr && def.trExplanation && (
+                             <div className="mt-2 pt-2 border-t border-slate-200 text-indigo-700 text-xs font-bold animate-in fade-in">
+                                TR: {def.trExplanation}
+                             </div>
+                         )}
+                    </div>
+                )}
+
+                <div className="space-y-3 mt-4">
+                    <div className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider bg-slate-50 inline-block px-2 py-1 rounded">
+                        İSTENEN: {activeForm?.label.split('(')[0]}
+                    </div>
+                    <div className="flex flex-wrap justify-center gap-1 min-h-[50px] items-end content-center">
+                        {targetWord.split('').map((_, idx) => {
+                            const char = completedLetters[idx];
+                            const isFilled = char !== undefined;
+                            return (
+                                <div key={idx} className={`${styles.box} ${styles.text} flex items-center justify-center font-bold border-b-4 rounded-t-lg transition-all ${isFilled ? "border-indigo-500 text-indigo-700 bg-indigo-50" : "border-slate-200 bg-white text-transparent"}`}>
+                                    {char}
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+
+                {!isWordComplete ? (
+                    <div className="space-y-4">
+                        <div className="flex flex-wrap justify-center gap-2 content-center min-h-[100px]">
+                            {shuffledLetters.map((item) => (
+                                <button
+                                    key={item.id}
+                                    onClick={(e) => handleLetterClick(item, e)}
+                                    disabled={item.isUsed}
+                                    className={`w-10 h-10 rounded-xl font-bold text-lg shadow-[0_3px_0_rgb(0,0,0,0.1)] transition-all active:translate-y-[2px] active:shadow-none outline-none
+                                        ${item.isUsed 
+                                            ? "opacity-0 pointer-events-none scale-0" 
+                                            : wrongAnimationId === item.id 
+                                                ? "bg-red-500 text-white animate-[shake_0.5s_ease-in-out]" 
+                                                : "bg-white border-2 border-slate-200 text-slate-700 active:bg-indigo-100"
+                                        }`}
+                                >
+                                    {item.char}
+                                </button>
+                            ))}
+                        </div>
+                        <div className="flex justify-center border-t border-slate-100 pt-3">
+                             <button 
+                                onClick={handleHint}
+                                className="flex items-center gap-2 px-4 py-2 bg-amber-100 text-amber-700 rounded-xl font-bold text-sm active:scale-95 transition-transform"
+                             >
+                                <Lightbulb className="w-4 h-4"/> 
+                                <span>İpucu ({hintCount === 0 ? "10p" : hintCount === 1 ? "7p" : "0p"})</span>
+                                <span className="text-[10px] bg-white/50 px-1.5 rounded ml-1">Hata: {mistakeCount}/3</span>
+                             </button>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="animate-in zoom-in duration-300 pb-2">
+                        <div className="flex items-center justify-center gap-2 mb-4 text-green-600 font-bold bg-green-50 p-3 rounded-xl border border-green-100">
+                            {mistakeCount >= 2 ? <><AlertTriangle className="w-5 h-5 text-orange-500"/> Doğrusu Bu</> : <><CheckCircle2 className="w-6 h-6"/> Harika!</>}
+                        </div>
+                        <button onClick={handleNext} className="w-full bg-indigo-600 text-white font-bold py-4 rounded-xl shadow-lg flex items-center justify-center gap-2 hover:bg-indigo-700 active:scale-95 transition-transform">
+                            {currentIndex + 1 === questions.length ? "Sonuçları Gör" : "Sıradaki Kelime"} 
+                            <ArrowRight className="w-5 h-5"/>
+                        </button>
+                    </div>
+                )}
+            </div>
+
+            {!isWordComplete && (
+                <button onClick={handleQuitEarly} className="w-full text-center text-slate-400 hover:text-red-500 text-sm font-medium transition-colors focus:outline-none p-2">
+                    Bitir (Puanı Al ve Çık)
+                </button>
+            )}
+        </div>
     </div>
   );
 }
