@@ -82,14 +82,7 @@ export default function Home() {
 
       <div className="w-full max-w-md space-y-6 mt-2">
         
-        {/* --- ADMIN PANELİ (EN ÜSTE TAŞINDI) --- */}
-        {isAdmin && (
-            <button onClick={() => navigate("/admin")} className="w-full bg-slate-800 text-white font-bold py-3 px-6 rounded-xl shadow-md flex items-center justify-center gap-3 mb-2">
-                <Shield className="w-5 h-5 text-yellow-400"/> Admin Paneli
-            </button>
-        )}
-
-        {/* Üst Bar */}
+        {/* Üst Bar (Admin Buradan Kaldırıldı) */}
         <div className="flex justify-between items-center w-full px-1">
            <div className="flex gap-2 w-full justify-between">
              <div className="flex gap-2">
@@ -163,6 +156,13 @@ export default function Home() {
         {/* --- AKSİYON BUTONLARI --- */}
         <div className="space-y-3 pb-8">
           
+          {/* --- ADMIN PANELİ (BURAYA TAŞINDI) --- */}
+          {isAdmin && (
+            <button onClick={() => navigate("/admin")} className="w-full bg-slate-800 text-white font-bold py-3 px-6 rounded-xl shadow-md flex items-center justify-center gap-3">
+                <Shield className="w-5 h-5 text-yellow-400"/> Admin Paneli
+            </button>
+          )}
+
           {/* SÖZLÜK */}
           <button onClick={() => navigate("/dictionary")} className="w-full bg-sky-500 text-white font-bold py-4 px-6 rounded-xl shadow-md flex items-center justify-between group active:scale-95 transition-transform">
               <div className="flex items-center gap-3"><div className="bg-white/20 p-2 rounded-lg"><Book className="w-6 h-6"/></div><div className="text-left"><div className="text-lg">Sözlük</div><div className="text-xs text-sky-100 font-normal">Kelime ara ve öğren</div></div></div>
@@ -197,7 +197,6 @@ export default function Home() {
               <button onClick={() => navigate("/writing")} className="bg-purple-600 text-white font-bold py-4 px-4 rounded-xl shadow-md flex flex-col items-center gap-2 active:scale-95"><Edit className="w-6 h-6"/><span className="text-sm">Yazma</span></button>
               <button onClick={() => navigate("/writing2")} className="bg-pink-600 text-white font-bold py-4 px-4 rounded-xl shadow-md flex flex-col items-center gap-2 active:scale-95"><Headphones className="w-6 h-6"/><span className="text-sm">Dinle & Yaz</span></button>
               <button onClick={() => navigate("/gap-filling")} className="bg-cyan-600 text-white font-bold py-4 px-4 rounded-xl shadow-md flex flex-col items-center gap-2 active:scale-95"><Quote className="w-6 h-6"/><span className="text-sm">Boşluk</span></button>
-              {/* İSİM GÜNCELLENDİ: Cümle Kurma */}
               <button onClick={() => navigate("/game/sentence-builder")} className="bg-teal-600 text-white font-bold py-4 px-4 rounded-xl shadow-md flex flex-col items-center gap-2 active:scale-95"><Layout className="w-6 h-6"/><span className="text-sm">Cümle Kurma</span></button>
               <button onClick={() => navigate("/game/word-match")} className="bg-orange-500 text-white font-bold py-4 px-4 rounded-xl shadow-md flex flex-col items-center gap-2 active:scale-95"><Puzzle className="w-6 h-6"/><span className="text-sm">Eşleşme</span></button>
               <button onClick={() => navigate("/pronunciation")} className="bg-rose-500 text-white font-bold py-4 px-4 rounded-xl shadow-md flex flex-col items-center gap-2 active:scale-95"><Mic className="w-6 h-6"/><span className="text-sm">Telaffuz</span></button>
