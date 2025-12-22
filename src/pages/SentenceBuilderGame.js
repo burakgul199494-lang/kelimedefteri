@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { useData } from "../context/DataContext";
 import { useNavigate } from "react-router-dom";
 import { 
-  X, Trophy, Loader2, RefreshCw, BrainCircuit, Hourglass, Home, Lightbulb, Volume2, ArrowRight
+  X, Trophy, Loader2, RefreshCw, BrainCircuit, Hourglass, Home, Lightbulb, Volume2, ArrowRight, Star
 } from "lucide-react";
 
 export default function SentenceBuilderGame() {
@@ -23,6 +23,7 @@ export default function SentenceBuilderGame() {
   
   const [mistakeCount, setMistakeCount] = useState(0);
   const [hintCount, setHintCount] = useState(0);
+  // DEĞİŞİKLİK 1: Başlangıç Puanı 10
   const [currentPoints, setCurrentPoints] = useState(10); 
   const [wrongAnimationId, setWrongAnimationId] = useState(null); 
   
@@ -33,9 +34,8 @@ export default function SentenceBuilderGame() {
       if (e && e.currentTarget) e.currentTarget.blur();
   };
 
-  // --- KRİTİK DÜZELTME: SAYFA DEĞİŞİNCE SESİ KES ---
+  // --- SESİ KES ---
   useEffect(() => {
-      // Bu fonksiyon component ekrandan gidince (unmount) çalışır
       return () => {
           window.speechSynthesis.cancel();
       };
@@ -54,7 +54,7 @@ export default function SentenceBuilderGame() {
         const q = getQueueItem(w.id);
         return q && new Date(q.nextReview) > now;
     });
-const reviewPool = validWords.filter(w => knownWordIds.includes(w.id));
+    const reviewPool = validWords.filter(w => knownWordIds.includes(w.id));
     const learnPool = validWords.filter(w => {
         if (knownWordIds.includes(w.id)) return false;
         const q = getQueueItem(w.id);
@@ -108,7 +108,6 @@ const reviewPool = validWords.filter(w => knownWordIds.includes(w.id));
 
   // --- SORU YÜKLEME ---
   useEffect(() => {
-    // Soru değiştiğinde de eski sesi sustur
     window.speechSynthesis.cancel();
 
     if (gameStatus === "playing" && questions[currentIndex]) {
@@ -121,6 +120,7 @@ const reviewPool = validWords.filter(w => knownWordIds.includes(w.id));
       
       setMistakeCount(0);
       setHintCount(0);
+      // DEĞİŞİKLİK 2: Her turda puan 10'a sıfırlanır
       setCurrentPoints(10); 
       setIsRoundFinished(false);
 
@@ -173,7 +173,7 @@ const reviewPool = validWords.filter(w => knownWordIds.includes(w.id));
     }
   };
 
-  // --- İPUCU ---
+  // --- İPUCU (YENİLENMİŞ MANTIK: 10 -> 5 -> 0) ---
   const handleHint = (e) => {
       handleBlur(e); 
       if (isRoundFinished) return;
@@ -181,9 +181,9 @@ const reviewPool = validWords.filter(w => knownWordIds.includes(w.id));
       const newHintCount = hintCount + 1;
       setHintCount(newHintCount);
 
-      if (newHintCount === 1) setCurrentPoints(5);
-      else if (newHintCount === 2) setCurrentPoints(2);
-      else setCurrentPoints(0);
+      // DEĞİŞİKLİK 3: Puanlama Mantığı
+      if (newHintCount === 1) setCurrentPoints(5); // İlk ipucu 5'e düşürür
+      else setCurrentPoints(0); // Sonrakiler 0 yapar
 
       const nextIndex = userSelection.length;
       const expectedWordText = targetSentenceWords[nextIndex];
@@ -207,13 +207,11 @@ const reviewPool = validWords.filter(w => knownWordIds.includes(w.id));
       finishRound(false); 
   };
 
-  // --- TURU BİTİR (DURAKLAMA & KAYIT) ---
+  // --- TURU BİTİR ---
   const finishRound = (success) => {
       setIsRoundFinished(true); 
       updateGameStats('sentence_builder', 1);
 
-      // --- GÜVENLİ KAYIT ---
-      // Sentence Builder tarihinde bu kelimeyi işaretle
       const currentWordObj = questions[currentIndex];
       handleUpdateWord(currentWordObj.id, { lastSeen_sentence_builder: new Date().toISOString() });
 
@@ -247,7 +245,6 @@ const reviewPool = validWords.filter(w => knownWordIds.includes(w.id));
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
             
-            {/* --- GLOBAL CSS FIX (KÖKTEN ÇÖZÜM) --- */}
             <style>{`
                 * { -webkit-tap-highlight-color: transparent !important; }
                 @media (hover: hover) {
@@ -305,6 +302,7 @@ const reviewPool = validWords.filter(w => knownWordIds.includes(w.id));
   }
 
   if (gameStatus === "finished") {
+    // DEĞİŞİKLİK 4: Max puan 10 soru * 10 puan = 100
     const maxScore = questions.length * 10;
     let modeTitle = "Bitti";
     if (gameMode === "learn") modeTitle = "Bitti";
@@ -337,7 +335,6 @@ const reviewPool = validWords.filter(w => knownWordIds.includes(w.id));
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center p-4">
        
-       {/* --- OYUN ALANI CSS FIX (KÖKTEN ÇÖZÜM) --- */}
        <style>{`
             * { -webkit-tap-highlight-color: transparent !important; }
             
@@ -363,7 +360,12 @@ const reviewPool = validWords.filter(w => knownWordIds.includes(w.id));
           <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden"><div className="bg-blue-500 h-full transition-all duration-500" style={{width:`${progress}%`}}></div></div>
 
           {/* OYUN ALANI */}
-          <div className="flex flex-col gap-6 mt-4">
+          <div className="flex flex-col gap-6 mt-4 relative">
+              
+              {/* Soru Değeri Göstergesi (YENİ) - Sağ Üst */}
+              <div className="absolute top-0 right-0 z-10 -mt-2 -mr-2 flex items-center gap-1 bg-green-50 text-green-700 px-2 py-1 rounded-lg text-xs font-bold border border-green-100 animate-in fade-in shadow-sm">
+                 <Star className="w-3 h-3 fill-current"/> Soru: {currentPoints}p
+              </div>
               
               {/* 1. İPUCU KARTI */}
               <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 text-center relative overflow-hidden">
@@ -437,8 +439,9 @@ const reviewPool = validWords.filter(w => knownWordIds.includes(w.id));
                       className="hint-btn w-full flex items-center justify-center gap-2 px-5 py-3 bg-amber-100 text-amber-700 rounded-2xl font-bold active:bg-amber-200 transition-colors active:scale-95 focus:outline-none focus:ring-0"
                     >
                       <Lightbulb className="w-5 h-5"/> 
+                      {/* DEĞİŞİKLİK 5: Maliyet Gösterimi */}
                       <span className="text-xs ml-1 flex flex-col items-start leading-none">
-                          <span>İpucu ({hintCount === 0 ? "5p" : hintCount === 1 ? "2p" : "0p"})</span>
+                          <span>İpucu ({hintCount === 0 ? "(-5p)" : "(-5p)"})</span>
                           <span className="text-[9px] text-amber-600/80">Hata: {mistakeCount}/6</span>
                       </span>
                     </button>
