@@ -30,50 +30,45 @@ export default function Home() {
   const [showStats, setShowStats] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   
-  // --- KESİN HESAPLAMA MANTIĞI (MUTUALLY EXCLUSIVE) ---
   const stats = useMemo(() => {
-    const allWords = getAllWords();
-    const now = new Date();
+  const all = getAllWords();
+  const now = new Date();
 
-    // Sayaçları sıfırdan başlatıyoruz
-    let waitingCount = 0; // Sarı Kutu (Zamanı gelmemiş)
-    let reviewCount = 0;  // Tekrar (Zamanı gelmiş)
-    let newCount = 0;     // Mavi Kutu (Hiç bilinmeyen)
-    
-    allWords.forEach(word => {
-        allWords.forEach(word => {
-  const q = learningQueue?.find(item => item.wordId === word.id);
+  const getQueueItem = (id) =>
+    learningQueue ? learningQueue.find(q => q.wordId === id) : null;
 
-  if (!q) {
-    // learningQueue’da yok → gerçekten YENİ
-    newCount++;
-  } else if (new Date(q.nextReview) > now) {
-    // Tarihi gelmemiş → BEKLEME
-    waitingCount++;
-  } else {
-    // Tarihi gelmiş → TEKRAR
-    reviewCount++;
-  }
-});
-    });
+  // Game.js ile birebir havuzlar
+  const waitingPool = all.filter(w => {
+    const q = getQueueItem(w.id);
+    return q && new Date(q.nextReview) > now;
+  });
 
-    // Toplam Bildiğin Kelime Sayısı (Bekleyen + Tekrar edilen)
-    const totalLearned = waitingCount + reviewCount; 
-    
-    // Mavi Buton İçin Hedef (Yeniler + Tekrarlar)
-    // Game.js ikisini de oynattığı için burası toplam hedefi gösterir.
-    // Eğer sadece "Yeni" sayısını görmek istersen burayı 'newCount' yapabilirsin.
-    const todayTarget = newCount + reviewCount; 
+  const reviewPool = all.filter(w =>
+    knownWordIds.includes(w.id)
+  );
 
-    return {
-        waiting: waitingCount, // Senin örneğinde: 20
-        review: reviewCount,   // Senin örneğinde: 5
-        new: newCount,         // Senin örneğinde: 15
-        totalLearned: totalLearned,
-        target: todayTarget,
-        progress: allWords.length > 0 ? (totalLearned / allWords.length) * 100 : 0
-    };
-  }, [getAllWords, knownWordIds, learningQueue]);
+  const learnPool = all.filter(w => {
+    if (knownWordIds.includes(w.id)) return false;
+    const q = getQueueItem(w.id);
+    if (!q) return true;
+    if (new Date(q.nextReview) <= now) return true;
+    return false;
+  });
+
+  const totalLearned = reviewPool.length;
+
+  return {
+    waiting: waitingPool.length,
+    review: reviewPool.length,
+    new: learnPool.length,
+    totalLearned,
+    target: learnPool.length + reviewPool.length,
+    progress: all.length > 0
+      ? (totalLearned / all.length) * 100
+      : 0
+  };
+}, [getAllWords, knownWordIds, learningQueue]);
+
 
   const myScore = leaderboardData.find(u => u.id === user?.uid)?.score || 0;
 
