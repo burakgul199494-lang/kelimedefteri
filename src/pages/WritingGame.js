@@ -3,7 +3,7 @@ import { useData } from "../context/DataContext";
 import { useNavigate } from "react-router-dom";
 import { 
   X, Trophy, Loader2, Home, Volume2, CheckCircle2, 
-  PenTool, RefreshCw, BrainCircuit, Hourglass, Lightbulb, AlertTriangle, Languages, Square, ArrowRight
+  PenTool, RefreshCw, BrainCircuit, Hourglass, Lightbulb, AlertTriangle, ArrowRight, Square
 } from "lucide-react";
 
 export default function WritingGame() {
@@ -91,7 +91,7 @@ export default function WritingGame() {
 
     const smartPool = [...neverSeen, ...seen];
     
-    // DÜZELTME: 10 Soruya Düşürüldü
+    // 10 Soruya Düşürüldü
     const selectedCandidates = smartPool.slice(0, 10);
     const selected = selectedCandidates.sort(() => 0.5 - Math.random());
 
@@ -131,7 +131,7 @@ export default function WritingGame() {
     }
     
     return () => window.speechSynthesis.cancel();
-  }, [currentIndex, gameStatus, questions]); // questions eklendi
+  }, [currentIndex, gameStatus, questions]);
 
   const getDynamicStyle = (length) => {
     if (length <= 5) return { box: "w-11 h-14", text: "text-2xl" }; 
@@ -183,30 +183,60 @@ export default function WritingGame() {
     }
   };
 
+  // --- İPUCU FONKSİYONU (YENİ PUANLAMA MANTIĞI) ---
   const handleHint = (e) => {
       handleBlur(e);
       if (isWordComplete) return;
 
-      const newHintCount = hintCount + 1;
-      setHintCount(newHintCount);
-      if (newHintCount === 1) setCurrentWordPoints(prev => Math.max(0, prev - 3));
-      else setCurrentWordPoints(0);
-
       const targetWord = questions[currentIndex].targetWord;
+      
+      // KURAL 1: Tek harfli kelimelerde ipucu çalışmasın
+      if (targetWord.length <= 1) return;
+
       const nextIndex = completedLetters.length;
       const expectedChar = targetWord[nextIndex];
       const correctLetterObj = shuffledLetters.find(l => !l.isUsed && l.char.toLowerCase() === expectedChar.toLowerCase());
 
       if (correctLetterObj) {
+          // Puanlama Mantığı
+          let nextPoints = currentWordPoints;
+          const newHintCount = hintCount + 1;
+          setHintCount(newHintCount);
+
+          // KURAL 2: İlk ipucunda puan direkt 5'e düşer.
+          if (newHintCount === 1) {
+              nextPoints = 5;
+          } 
+          // İkinci ve sonraki ipuçlarında puan 0 olur.
+          else {
+              nextPoints = 0;
+          }
+
+          // KURAL 3: Eğer bu ipucu kelimeyi tamamlıyorsa, puan 0 olsun.
+          const isLastLetter = (completedLetters.length + 1) === targetWord.length;
+          if (isLastLetter) {
+              nextPoints = 0;
+          }
+
+          setCurrentWordPoints(nextPoints);
+          
+          // Harfi Yerleştirme
           const newShuffled = shuffledLetters.map(l => l.id === correctLetterObj.id ? { ...l, isUsed: true } : l);
           setShuffledLetters(newShuffled);
+          
           const newCompleted = [...completedLetters, correctLetterObj.char];
           setCompletedLetters(newCompleted);
-          if (newCompleted.length === targetWord.length) handleSuccess(targetWord);
+
+          // Kelime bitti mi?
+          if (newCompleted.length === targetWord.length) {
+              // Puanı override et (state güncellenmesi gecikebilir)
+              handleSuccess(targetWord, nextPoints); 
+          }
       }
   };
 
-  const handleSuccess = (wordToSpeak) => {
+  // --- BAŞARI FONKSİYONU (Puan Parametresi Eklendi) ---
+  const handleSuccess = (wordToSpeak, pointsOverride = null) => {
       setIsWordComplete(true);
       handleSpeak(wordToSpeak, 'main'); 
       updateGameStats('writing', 1);
@@ -214,9 +244,12 @@ export default function WritingGame() {
       const currentQ = questions[currentIndex];
       handleUpdateWord(currentQ.wordObj.id, { lastSeen_writing: new Date().toISOString() });
 
-      if (currentWordPoints > 0) {
-          addScore(currentWordPoints);
-          setScore(s => s + currentWordPoints);
+      // Eğer override varsa onu kullan, yoksa state'i kullan
+      const finalPoints = pointsOverride !== null ? pointsOverride : currentWordPoints;
+
+      if (finalPoints > 0) {
+          addScore(finalPoints);
+          setScore(s => s + finalPoints);
       }
   };
 
@@ -449,11 +482,15 @@ export default function WritingGame() {
                         <div className="flex justify-center border-t border-slate-100 pt-3">
                              <button 
                                 onClick={handleHint}
+                                // 👇 TEK HARFLİ İSE VEYA TAMAMLANDIYSA KAPALI 👇
+                                disabled={isWordComplete || targetWord.length <= 1}
                                 style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
-                                className="hint-btn flex items-center gap-2 px-5 py-3 bg-amber-100 text-amber-700 rounded-2xl font-bold active:bg-amber-200 transition-colors active:scale-95 focus:outline-none focus:ring-0"
+                                className={`hint-btn flex items-center gap-2 px-5 py-3 bg-amber-100 text-amber-700 rounded-2xl font-bold transition-colors focus:outline-none focus:ring-0
+                                    ${(isWordComplete || targetWord.length <= 1) ? 'opacity-50 cursor-not-allowed' : 'active:bg-amber-200 active:scale-95'}
+                                `}
                              >
                                 <Lightbulb className="w-5 h-5"/> 
-                                <span>İpucu ({hintCount === 0 ? "5p" : hintCount === 1 ? "2p" : "0p"})</span>
+                                <span>İpucu ({targetWord.length <= 1 ? "Yok" : (hintCount === 0 ? "5p" : "0p")})</span>
                                 <span className="text-[10px] bg-white/50 px-1.5 rounded ml-1">Hata: {mistakeCount}/2</span>
                              </button>
                         </div>
