@@ -61,8 +61,7 @@ export default function Home() {
       review: reviewPool.length,
       new: learnPool.length,
       totalLearned,
-      // DÜZELTME: Artık sadece aktif öğrenilecekleri gösteriyor (Ezberlenenleri toplama dahil etmiyor)
-      target: learnPool.length,
+      target: learnPool.length, // Sadece öğrenilecekler
       progress: all.length > 0
         ? (totalLearned / all.length) * 100
         : 0
@@ -83,13 +82,6 @@ export default function Home() {
 
       <div className="w-full max-w-md space-y-6 mt-2">
         
-        {/* --- ADMIN PANELİ --- */}
-        {isAdmin && (
-            <button onClick={() => navigate("/admin")} className="w-full bg-slate-800 text-white font-bold py-3 px-6 rounded-xl shadow-md flex items-center justify-center gap-3 mb-2">
-                <Shield className="w-5 h-5 text-yellow-400"/> Admin Paneli
-            </button>
-        )}
-
         {/* Üst Bar */}
         <div className="flex justify-between items-center w-full px-1">
            <div className="flex gap-2 w-full justify-between">
@@ -164,6 +156,13 @@ export default function Home() {
         {/* --- AKSİYON BUTONLARI --- */}
         <div className="space-y-3 pb-8">
           
+          {/* --- ADMIN PANELİ (SÖZLÜĞÜN HEMEN ÜSTÜNDE) --- */}
+          {isAdmin && (
+            <button onClick={() => navigate("/admin")} className="w-full bg-slate-800 text-white font-bold py-3 px-6 rounded-xl shadow-md flex items-center justify-center gap-3">
+                <Shield className="w-5 h-5 text-yellow-400"/> Admin Paneli
+            </button>
+          )}
+
           {/* SÖZLÜK */}
           <button onClick={() => navigate("/dictionary")} className="w-full bg-sky-500 text-white font-bold py-4 px-6 rounded-xl shadow-md flex items-center justify-between group active:scale-95 transition-transform">
               <div className="flex items-center gap-3"><div className="bg-white/20 p-2 rounded-lg"><Book className="w-6 h-6"/></div><div className="text-left"><div className="text-lg">Sözlük</div><div className="text-xs text-sky-100 font-normal">Kelime ara ve öğren</div></div></div>
