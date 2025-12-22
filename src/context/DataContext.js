@@ -4,6 +4,8 @@ import {
   doc, setDoc, updateDoc, arrayUnion, arrayRemove, 
   collection, deleteDoc, addDoc, increment, onSnapshot, query, orderBy, limit, getDocs, writeBatch, where 
 } from "firebase/firestore";
+import { messaging } from "../services/firebase"; 
+import { getToken } from "firebase/messaging";
 import { auth, db, appId, ADMIN_EMAILS } from "../services/firebase";
 
 const DataContext = createContext();
@@ -130,6 +132,34 @@ export const DataProvider = ({ children }) => {
     return () => { unsubUserWords(); unsubProfile(); unsubLeaderboard(); };
   }, [user?.uid]);
 
+  // 5. TOKEN TAZELEME VE CANLI TUTMA
+  useEffect(() => {
+    const refreshToken = async () => {
+      if (!user) return; 
+
+      try {
+        if (Notification.permission === "granted") {
+          const currentToken = await getToken(messaging, {
+            vapidKey: "BAEv8tvoKaliQ-Dx3xxhUcPH-hDV_RylcMuPI4OtWMS3nYvHT_Gv7myuk_DsQ3kltls8moIe9WSdbLjBrE-Ui54"
+          });
+
+          if (currentToken) {
+            const userRef = doc(db, "artifacts", appId, "users", user.uid);
+            await updateDoc(userRef, { 
+              fcmToken: currentToken,
+              lastTokenUpdate: new Date()
+            });
+            console.log("Token tazelendi ve aktiflik bildirildi.");
+          }
+        }
+      } catch (error) {
+        console.log("Token tazeleme hatası (önemsiz):", error);
+      }
+    };
+
+    refreshToken();
+  }, [user]);
+
   // --- YARDIMCI: Sadece İstatistikleri Çek ---
   const extractUserStats = (wordObj) => {
       const stats = {};
@@ -137,7 +167,7 @@ export const DataProvider = ({ children }) => {
           if (
               key.startsWith("last") ||   
               key.startsWith("next") ||   
-              key === "level" || 
+              key === "level" ||   
               key === "streak" ||
               key === "createdAt"
           ) {
@@ -214,9 +244,6 @@ const normalizeWord = (w) => {
   };
 };
 
-
-  // AŞAĞIDAKİ YENİ KODU SİLDİĞİN YERE YAPIŞTIR
-// -------------------------------------------------
   // --- KELİMELERİ GETİR (TİP GÜVENLİKLİ VERSİYON) ---
   const getAllWords = () => {
     const deletedSet = new Set(deletedWordIds.map(String));
@@ -228,8 +255,6 @@ const normalizeWord = (w) => {
     });
 
     // 2. Bilinen Kelimeler Seti (Hız ve Tip Güvenliği İçin)
-    // knownWordIds içindeki her şeyi String'e çevirip bir Set'e atıyoruz.
-    // Böylece "123" (string) ile 123 (sayı) aynı kabul edilir.
     const knownSet = new Set(knownWordIds.map(String));
 
     // 3. Ham Listeler
@@ -312,7 +337,6 @@ const normalizeWord = (w) => {
     }
     return all;
   };
-// -------------------------------------------------
   
   const getDeletedWords = () => {
     const deletedSet = new Set(deletedWordIds.map(String));
@@ -323,7 +347,6 @@ const normalizeWord = (w) => {
 
   // --- YENİ SRS (AKILLI ÖĞRENME) FONKSİYONU ---
   const handleSmartLearn = async (rawWordId, action) => {
-    // GÜVENLİK: ID ne gelirse gelsin (Sayı/Obje) String'e çeviriyoruz.
     const wordId = String(rawWordId); 
 
     try {
@@ -332,27 +355,23 @@ const normalizeWord = (w) => {
 
         // --- SENARYO 1: EZBERLEDİM (MASTER) ---
         if (action === "master") {
-            // 1. Kuyruktan kesinlikle sil (ID'leri string olarak karşılaştır)
             const newQueue = learningQueue.filter(q => String(q.wordId) !== wordId);
 
-            // 2. Hem Öğrendiklerime ekle hem Kuyruğu güncelle
             await updateDoc(userRef, {
-                known_ids: arrayUnion(wordId), // String olarak kaydet
+                known_ids: arrayUnion(wordId),
                 learning_queue: newQueue
             });
             return;
         }
         
         // --- SENARYO 2: BİLİYORUM / BİLMİYORUM ---
-        // Mevcut kelime kuyrukta var mı?
         const currentItem = learningQueue.find(q => String(q.wordId) === wordId);
         const currentLevel = currentItem ? (currentItem.level || 0) : 0;
         
-        // Kuyruğu temizle (Yeni halini aşağıda ekleyeceğiz)
         let newQueue = learningQueue.filter(q => String(q.wordId) !== wordId);
 
         if (action === "know") {
-            if (knownWordIds.includes(wordId)) return; // Zaten biliniyorsa dur
+            if (knownWordIds.includes(wordId)) return;
 
             const newLevel = currentLevel + 1;
             const nextDate = new Date();
@@ -360,27 +379,25 @@ const normalizeWord = (w) => {
             let isMastered = false;
 
             // Gün aralıkları
-           switch (newLevel) {
-    case 1: daysToAdd = 1; break;
-    case 2: daysToAdd = 3; break;
-    case 3: daysToAdd = 7; break;
-    case 4: daysToAdd = 14; break;
-    case 5: daysToAdd = 30; break;
-    case 6: isMastered = true; break;
-    default: isMastered = true; break;
-}
+            switch (newLevel) {
+                case 1: daysToAdd = 1; break;   // 1 Gün
+                case 2: daysToAdd = 3; break;   // 3 Gün
+                case 3: daysToAdd = 7; break;   // 7 Gün
+                case 4: daysToAdd = 14; break;  // 14 Gün
+                case 5: daysToAdd = 30; break;  // 30 Gün
+                case 6: isMastered = true; break;
+                default: isMastered = true; break;
+            }
 
             if (isMastered) {
-                // Level 6 oldu -> Known listesine ekle
                 await updateDoc(userRef, {
                     known_ids: arrayUnion(wordId),
                     learning_queue: newQueue
                 });
             } else {
-                // Seviye arttır -> Kuyruğa geri koy
-                nextDate.setDate(now.getDate() + daysToAdd);
+                nextDate.setDate(now.getDate() + daysToAdd); // Dakika değil, Gün ekleniyor
                 newQueue.push({ 
-                    wordId: wordId, // String ID kullan
+                    wordId: wordId,
                     level: newLevel, 
                     nextReview: nextDate.toISOString() 
                 });
@@ -388,13 +405,10 @@ const normalizeWord = (w) => {
             }
 
         } else if (action === "dont_know") {
-            // Bilmiyorum -> Sıfırla
             if (knownWordIds.map(String).includes(wordId)) {
                 await updateDoc(userRef, { known_ids: arrayRemove(wordId) });
-                // Not: Eğer sayı olarak kayıtlıysa onu da silmeyi dene
                 await updateDoc(userRef, { known_ids: arrayRemove(Number(wordId)) });
             }
-            // Kuyruğa eklemeden (veya sıfırlanmış kuyrukla) güncelle -> Maviye döner
             await updateDoc(userRef, { learning_queue: newQueue });
         }
     } catch (e) { console.error("Hata:", e); }
@@ -409,7 +423,6 @@ const normalizeWord = (w) => {
 
        if (isCustom) {
          // --- DURUM 1: Kullanıcıda zaten var ---
-         // Sadece tarihi güncelle
          const wordRef = doc(db, "artifacts", appId, "users", user.uid, "words", String(originalId));
          await updateDoc(wordRef, newData);
 
@@ -418,8 +431,6 @@ const normalizeWord = (w) => {
          const existingByText = customWords.find(w => w.word.toLowerCase() === systemOriginal.word.toLowerCase());
 
          if (existingByText) {
-             // DİKKAT: Burada 'deleted_ids' eklemesi KALDIRILDI.
-             // Böylece kelime "Silinenler" listesine girmiyor ve kaybolmuyor.
              const wordRef = doc(db, "artifacts", appId, "users", user.uid, "words", existingByText.id);
              await updateDoc(wordRef, newData);
 
@@ -429,40 +440,35 @@ const normalizeWord = (w) => {
                  await updateDoc(userRef, { known_ids: arrayUnion(existingByText.id) });
              }
          } else {
-  // --- DURUM 3: Sistem kelimesinden user kopyası oluştur ---
-  const targetId = systemOriginal.id;
-  const wordRef = doc(
-    db,
-    "artifacts",
-    appId,
-    "users",
-    user.uid,
-    "words",
-    targetId
-  );
+            // --- DURUM 3: Sistem kelimesinden user kopyası oluştur ---
+            const targetId = systemOriginal.id;
+            const wordRef = doc(
+                db,
+                "artifacts",
+                appId,
+                "users",
+                user.uid,
+                "words",
+                targetId
+            );
 
-  await setDoc(wordRef, {
-    ...systemOriginal,
-
-    // 🔐 tüm alanları garantiye al
-    phonetic: newData.phonetic || systemOriginal.phonetic || "",
-    plural: systemOriginal.plural || "",
-    v2: systemOriginal.v2 || "",
-    v3: systemOriginal.v3 || "",
-    vIng: systemOriginal.vIng || "",
-    thirdPerson: systemOriginal.thirdPerson || "",
-    advLy: systemOriginal.advLy || "",
-    compEr: systemOriginal.compEr || "",
-    superEst: systemOriginal.superEst || "",
-
-    ...newData,
-
-    id: targetId,
-    source: "user",
-    createdAt: new Date()
-  });
-}
-
+            await setDoc(wordRef, {
+                ...systemOriginal,
+                phonetic: newData.phonetic || systemOriginal.phonetic || "",
+                plural: systemOriginal.plural || "",
+                v2: systemOriginal.v2 || "",
+                v3: systemOriginal.v3 || "",
+                vIng: systemOriginal.vIng || "",
+                thirdPerson: systemOriginal.thirdPerson || "",
+                advLy: systemOriginal.advLy || "",
+                compEr: systemOriginal.compEr || "",
+                superEst: systemOriginal.superEst || "",
+                ...newData,
+                id: targetId,
+                source: "user",
+                createdAt: new Date()
+            });
+        }
        }
      } catch (e) { console.error("Update Error:", e); }
   };
@@ -473,27 +479,26 @@ const normalizeWord = (w) => {
       const exists = dynamicSystemWords.some(w => w.word.toLowerCase() === normalizedInput);
       if(exists) return { success: false, message: "Bu kelime zaten sistemde var!" };
 
-     const newWord = {
-  word: wordData.word.trim(),
-  phonetic: wordData.phonetic || "",
+      const newWord = {
+        word: wordData.word.trim(),
+        phonetic: wordData.phonetic || "",
 
-  plural: wordData.plural || "",
-  v2: wordData.v2 || "",
-  v3: wordData.v3 || "",
-  vIng: wordData.vIng || "",
-  thirdPerson: wordData.thirdPerson || "",
-  advLy: wordData.advLy || "",
-  compEr: wordData.compEr || "",
-  superEst: wordData.superEst || "",
+        plural: wordData.plural || "",
+        v2: wordData.v2 || "",
+        v3: wordData.v3 || "",
+        vIng: wordData.vIng || "",
+        thirdPerson: wordData.thirdPerson || "",
+        advLy: wordData.advLy || "",
+        compEr: wordData.compEr || "",
+        superEst: wordData.superEst || "",
 
-  sentence: wordData.sentence.trim(),
-  sentence_tr: wordData.sentence_tr || "",
-  definitions: Array.isArray(wordData.definitions) ? wordData.definitions : [],
-  tags: wordData.tags || [],
-  source: "system",
-  createdAt: new Date()
-};
-
+        sentence: wordData.sentence.trim(),
+        sentence_tr: wordData.sentence_tr || "",
+        definitions: Array.isArray(wordData.definitions) ? wordData.definitions : [],
+        tags: wordData.tags || [],
+        source: "system",
+        createdAt: new Date()
+      };
 
       await addDoc(collection(db, "artifacts", appId, "system_words"), newWord);
       
