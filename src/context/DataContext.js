@@ -344,15 +344,17 @@ export const DataProvider = ({ children }) => {
             let isMastered = false;
 
             // Gün aralıkları
-            switch (newLevel) {
-                case 1: daysToAdd = 1; break;  
-                case 2: daysToAdd = 3; break;  
-                case 3: daysToAdd = 7; break;  
-                case 4: daysToAdd = 14; break; 
-                case 5: daysToAdd = 30; break; 
-                case 6: isMastered = true; break; // Level 6 = Master
-                default: isMastered = true; break;
-            }
+            let minutesToAdd = 0;
+
+switch (newLevel) {
+    case 1: minutesToAdd = 1; break;   // 1 dk
+    case 2: minutesToAdd = 1; break;   // 1 dk
+    case 3: minutesToAdd = 1; break;   // 1 dk
+    case 4: minutesToAdd = 1; break;   // 1 dk
+    case 5: minutesToAdd = 1; break;   // 1 dk
+    case 6: isMastered = true; break;
+    default: isMastered = true; break;
+}
 
             if (isMastered) {
                 // Level 6 oldu -> Known listesine ekle
