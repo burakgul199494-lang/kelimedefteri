@@ -1,22 +1,11 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useData } from "../context/DataContext";
 import { useNavigate } from "react-router-dom";
 import { 
-  X, 
-  Trophy, 
-  Loader2, 
-  RefreshCw, 
-  BrainCircuit, 
-  Hourglass, 
-  Home, 
-  Lightbulb, 
-  Volume2, 
-  Square, 
-  Headphones 
+  X, Trophy, Loader2, RefreshCw, BrainCircuit, Hourglass, Home, Lightbulb, Volume2, Square, Headphones, Star, ArrowRight, CheckCircle2, AlertTriangle
 } from "lucide-react";
 
 export default function WritingGame2() {
-  // 1. handleUpdateWord EKLENDİ
   const { getAllWords, knownWordIds, addScore, learningQueue, updateGameStats, handleUpdateWord } = useData();
   const navigate = useNavigate();
 
@@ -35,6 +24,7 @@ export default function WritingGame2() {
 
   // Puanlama ve Hata Takibi
   const [hintCount, setHintCount] = useState(0);
+  // DEĞİŞİKLİK 1: Başlangıç puanı 5 oldu
   const [currentWordPoints, setCurrentWordPoints] = useState(5); 
   const [mistakeCount, setMistakeCount] = useState(0); 
 
@@ -52,31 +42,22 @@ export default function WritingGame2() {
     const validWords = all.filter(w => w.word && w.word.length > 0); 
     const now = new Date();
 
-    const getQueueItem = (id) =>
-  learningQueue ? learningQueue.find(q => q.wordId === id) : null;
+    const getQueueItem = (id) => learningQueue ? learningQueue.find(q => q.wordId === id) : null;
 
-// 1. BEKLEME HAVUZU
-const waitingPool = validWords.filter(w => {
-  const q = getQueueItem(w.id);
-  return q && new Date(q.nextReview) > now;
-});
+    const waitingPool = validWords.filter(w => {
+        const q = getQueueItem(w.id);
+        return q && new Date(q.nextReview) > now;
+    });
 
-// 2. TEKRAR HAVUZU (SADECE KNOWN)
-const reviewPool = validWords.filter(w =>
-  knownWordIds.includes(w.id)
-);
+    const reviewPool = validWords.filter(w => knownWordIds.includes(w.id));
 
-// 3. ÖĞRENME HAVUZU
-const learnPool = validWords.filter(w => {
-  if (knownWordIds.includes(w.id)) return false;
-
-  const q = getQueueItem(w.id);
-  if (!q) return true;
-  if (new Date(q.nextReview) <= now) return true;
-
-  return false;
-});
-
+    const learnPool = validWords.filter(w => {
+        if (knownWordIds.includes(w.id)) return false;
+        const q = getQueueItem(w.id);
+        if (!q) return true;
+        if (new Date(q.nextReview) <= now) return true;
+        return false;
+    });
 
     return { learnPool, reviewPool, waitingPool };
   };
@@ -98,9 +79,6 @@ const learnPool = validWords.filter(w => {
       return;
     }
 
-    // --- YENİ ALGORİTMA: TARİHE GÖRE SIRALA ---
-    // Listening oyunu için özel tarih anahtarı: 'lastSeen_listening'
-    
     const neverSeen = [];
     const seen = [];
 
@@ -112,19 +90,13 @@ const learnPool = validWords.filter(w => {
         }
     });
 
-    // 1. Hiç görülmeyenleri karıştır
     neverSeen.sort(() => 0.5 - Math.random());
-
-    // 2. Görülenleri Eskiden -> Yeniye sırala
     seen.sort((a, b) => new Date(a.lastSeen_listening).getTime() - new Date(b.lastSeen_listening).getTime());
 
-    // 3. Birleştir
     const smartSortedPool = [...neverSeen, ...seen];
-
-    // 4. İlk 20 taneyi al
+    
+    // 20 Soru (İsteğe göre 10 veya 20)
     const selectedCandidates = smartSortedPool.slice(0, 20);
-
-    // 5. Karıştır (Kullanıcı sırayı ezberlemesin)
     const selected = selectedCandidates.sort(() => 0.5 - Math.random());
 
     setQuestions(selected);
@@ -140,7 +112,7 @@ const learnPool = validWords.filter(w => {
     if (length <= 11) return { box: "w-6 h-9", text: "text-lg" };    
     if (length <= 14) return { box: "w-4 h-8", text: "text-sm" }; 
     if (length <= 17) return { box: "w-3 h-6", text: "text-[10px]" }; 
-    return { box: "w-2 h-5", text: "text-[8px]" };                        
+    return { box: "w-2 h-5", text: "text-[8px]" }; 
   };
 
   // --- SORU YÜKLEME ---
@@ -163,6 +135,7 @@ const learnPool = validWords.filter(w => {
       
       setHintCount(0);
       setMistakeCount(0); 
+      // DEĞİŞİKLİK 2: Her soru 5 puanla başlar
       setCurrentWordPoints(5); 
     }
     
@@ -212,7 +185,7 @@ const learnPool = validWords.filter(w => {
       setCompletedLetters(newCompleted);
 
       if (newCompleted.length === targetWord.length) {
-        handleWordComplete(); 
+        handleSuccess(targetWord); 
       }
     } else {
       // YANLIŞ HARF
@@ -224,40 +197,18 @@ const learnPool = validWords.filter(w => {
 
       // LİMİT KONTROLÜ (2 HATA)
       if (newMistakes >= 2) {
-          setCurrentWordPoints(0); 
-          
-          setTimeout(() => {
-              setCompletedLetters(targetWord.split('')); 
-              setIsWordComplete(true);
-              handleSpeak(targetWord); 
-              updateGameStats('listening', 1);
-              
-              // Yanlış yapsa bile sıranın sonuna atıyoruz (Tarih güncelleniyor)
-              const currentQ = questions[currentIndex];
-              handleUpdateWord(currentQ.id, { lastSeen_listening: new Date().toISOString() });
-              
-              setTimeout(() => {
-                  if (currentIndex + 1 < questions.length) {
-                      setCurrentIndex(p => p + 1);
-                  } else {
-                      setGameStatus("finished");
-                  }
-              }, 2000); 
-          }, 600);
+          handleFail(targetWord);
       }
     }
   };
 
-  // --- İPUCU KULLANIMI ---
+  // --- İPUCU KULLANIMI (YENİLENMİŞ MANTIK: 5 -> 2 -> 0) ---
   const handleHint = (e) => {
     handleBlur(e);
     if (isWordComplete) return;
 
-    const newHintCount = hintCount + 1;
-    setHintCount(newHintCount);
-
-    if (newHintCount === 1) setCurrentWordPoints(2); 
-    else if (newHintCount >= 2) setCurrentWordPoints(0); 
+    // KURAL 1: Tek harfli kelimelerde ipucu çalışmasın
+    if (targetWord.length <= 1) return;
 
     const nextIndex = completedLetters.length;
     const expectedChar = targetWord[nextIndex];
@@ -266,32 +217,77 @@ const learnPool = validWords.filter(w => {
       !l.isUsed && l.char.toLowerCase() === expectedChar.toLowerCase()
     );
 
-    if (correctLetterObj) handleLetterClick(correctLetterObj, null);
+    if (correctLetterObj) {
+        let nextPoints = currentWordPoints;
+        const newHintCount = hintCount + 1;
+        setHintCount(newHintCount);
+
+        // DEĞİŞİKLİK 3: Puanlama Mantığı (5 -> 2 -> 0)
+        if (newHintCount === 1) {
+            nextPoints = 2; // 5'ten 2'ye düşer
+        } 
+        else {
+            nextPoints = 0; // 2'den 0'a düşer
+        }
+
+        // KURAL 3: Eğer son harfi ipucu açıyorsa puan 0 olur
+        const isLastLetter = (completedLetters.length + 1) === targetWord.length;
+        if (isLastLetter) {
+            nextPoints = 0;
+        }
+
+        setCurrentWordPoints(nextPoints);
+
+        // Harfi Yerleştir
+        const newShuffled = shuffledLetters.map(l => l.id === correctLetterObj.id ? { ...l, isUsed: true } : l);
+        setShuffledLetters(newShuffled);
+        const newCompleted = [...completedLetters, correctLetterObj.char];
+        setCompletedLetters(newCompleted);
+
+        // Kelime bitti mi?
+        if (newCompleted.length === targetWord.length) {
+            handleSuccess(targetWord, nextPoints);
+        }
+    }
   };
 
   // --- KELİME BİTİRME (BAŞARILI) ---
-  const handleWordComplete = () => {
-    updateGameStats('listening', 1);
+  const handleSuccess = (wordToSpeak, pointsOverride = null) => {
     setIsWordComplete(true);
-    handleSpeak(targetWord);
+    handleSpeak(wordToSpeak);
+    updateGameStats('listening', 1);
     
-    // --- GÜVENLİ KAYIT ---
-    // Listening tarihinde bu kelimeyi işaretle
     const currentQ = questions[currentIndex];
     handleUpdateWord(currentQ.id, { lastSeen_listening: new Date().toISOString() });
 
-    if (currentWordPoints > 0) {
-        addScore(currentWordPoints);
-        setScore(s => s + currentWordPoints);
-    }
+    const finalPoints = pointsOverride !== null ? pointsOverride : currentWordPoints;
 
-    setTimeout(() => {
+    if (finalPoints > 0) {
+        addScore(finalPoints);
+        setScore(s => s + finalPoints);
+    }
+  };
+
+  // --- KELİME BİTİRME (BAŞARISIZ) ---
+  const handleFail = (wordToSpeak) => {
+      setCurrentWordPoints(0);
+      setCompletedLetters(targetWord.split('')); 
+      setIsWordComplete(true);
+      handleSpeak(wordToSpeak); 
+      updateGameStats('listening', 1);
+      
+      const currentQ = questions[currentIndex];
+      handleUpdateWord(currentQ.id, { lastSeen_listening: new Date().toISOString() });
+  };
+
+  // --- SONRAKİ SORUYA GEÇİŞ ---
+  const handleNext = (e) => {
+      handleBlur(e);
       if (currentIndex + 1 < questions.length) {
-        setCurrentIndex(p => p + 1);
+          setCurrentIndex(p => p + 1);
       } else {
-        setGameStatus("finished");
+          setGameStatus("finished");
       }
-    }, 1200);
   };
 
   const handleQuitEarly = (e) => {
@@ -321,7 +317,9 @@ const learnPool = validWords.filter(w => {
             <div className="w-full max-w-sm space-y-6">
                 <div className="flex items-center justify-between">
                     <button onClick={() => navigate("/")} className="icon-btn p-2 bg-white rounded-full shadow-sm active:bg-slate-100 transition-colors"><Home className="w-5 h-5 text-slate-600" /></button>
-                    <h2 className="text-xl font-bold text-slate-800">Dinle & Yaz</h2>
+                    <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                        <Headphones className="w-6 h-6 text-purple-600"/> Dinle & Yaz
+                    </h2>
                     <div className="w-9"></div>
                 </div>
 
@@ -373,6 +371,7 @@ const learnPool = validWords.filter(w => {
   // === 2. BİTİŞ EKRANI ===
   // ===========================
   if (gameStatus === "finished") {
+    // DEĞİŞİKLİK 4: Max puan hesabı (soru sayısı * 5)
     const max = questions.length * 5;
     let modeTitle = "Bitti";
     if (gameMode === "learn") modeTitle = "Bitti";
@@ -403,18 +402,13 @@ const learnPool = validWords.filter(w => {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center p-4">
        
-       {/* --- MOBİL CSS --- */}
        <style>{`
-         * {
-           -webkit-tap-highlight-color: transparent !important;
-         }
-         
+         * { -webkit-tap-highlight-color: transparent !important; }
          @media (hover: hover) {
-            .audio-btn:hover { background-color: #e9d5ff !important; } /* purple-200 */
-            .hint-btn:hover { background-color: #fef3c7 !important; } /* amber-200 */
+            .audio-btn:hover { background-color: #e9d5ff !important; } 
+            .hint-btn:hover { background-color: #fef3c7 !important; } 
             .letter-btn:hover { border-color: #c084fc !important; color: #9333ea !important; }
          }
-
          .game-btn { transition: all 0.2s ease; }
        `}</style>
 
@@ -423,35 +417,42 @@ const learnPool = validWords.filter(w => {
           {/* Header */}
           <div className="flex justify-between items-center">
              <button onClick={handleQuitEarly} className="p-2 bg-white rounded-full active:bg-slate-100 shadow-sm transition-colors"><X className="w-5 h-5 text-slate-400"/></button>
-             <div className="font-bold text-purple-600 bg-purple-50 px-3 py-1 rounded-full border border-purple-100">
-                {gameMode === 'review' ? 'Tekrar' : gameMode === 'learn' ? 'Öğrenme' : 'Bekleme'}: {currentIndex+1} / {questions.length}
+             
+             <div className="font-bold text-purple-600 bg-purple-50 px-3 py-1 rounded-full border border-purple-100 text-xs">
+                {currentIndex+1} / {questions.length}
              </div>
+
              <div className="flex items-center gap-1 bg-amber-100 text-amber-700 px-3 py-1 rounded-full font-bold text-sm border border-amber-200"><Trophy className="w-4 h-4"/> {score}</div>
           </div>
+          
           <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden"><div className="bg-purple-500 h-full transition-all duration-500" style={{width:`${progress}%`}}></div></div>
           
-          {/* SORU ALANI (SADECE SES) */}
           <div className="bg-white p-6 rounded-3xl shadow-xl border border-slate-100 text-center space-y-6 relative overflow-hidden min-h-[450px] flex flex-col justify-between">
              <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-purple-400 to-pink-400"></div>
              
-             {/* ORTA SES BUTONU */}
+             {/* Soru Değeri Göstergesi (5p) */}
+             <div className="absolute top-4 right-4 flex items-center gap-1 bg-green-50 text-green-700 px-2 py-1 rounded-lg text-xs font-bold border border-green-100 animate-in fade-in">
+                 <Star className="w-3 h-3 fill-current"/> Soru: {currentWordPoints}p
+             </div>
+
+             {/* Orta Ses Butonu */}
              <div className="flex-1 flex flex-col items-center justify-center gap-4 py-4">
                 <button 
-                    onClick={(e) => {
-                        handleBlur(e);
-                        handleSpeak(targetWord);
-                    }}
-                    style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
-                    className={`audio-btn w-28 h-28 rounded-full flex items-center justify-center shadow-xl transition-all active:scale-95 focus:outline-none focus:ring-0
-                        ${isPlaying ? "bg-red-100 text-red-500 animate-pulse" : "bg-purple-100 text-purple-600"}
-                    `}
+                   onClick={(e) => {
+                       handleBlur(e);
+                       handleSpeak(targetWord);
+                   }}
+                   style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
+                   className={`audio-btn w-28 h-28 rounded-full flex items-center justify-center shadow-xl transition-all active:scale-95 focus:outline-none focus:ring-0
+                       ${isPlaying ? "bg-red-100 text-red-500 animate-pulse" : "bg-purple-100 text-purple-600"}
+                   `}
                 >
-                    {isPlaying ? <Square className="w-12 h-12 fill-current"/> : <Volume2 className="w-14 h-14"/>}
+                   {isPlaying ? <Square className="w-12 h-12 fill-current"/> : <Volume2 className="w-14 h-14"/>}
                 </button>
                 <div className="text-slate-400 text-sm font-bold uppercase tracking-widest animate-pulse">Dinle ve Yaz</div>
              </div>
 
-             {/* YAZI ALANI */}
+             {/* Yazı Alanı */}
              <div className="flex flex-wrap justify-center gap-1 min-h-[60px] items-end content-center">
                 {targetWord.split('').map((_, idx) => {
                   const char = completedLetters[idx];
@@ -471,60 +472,68 @@ const learnPool = validWords.filter(w => {
                 })}
              </div>
 
-             {/* KARIŞIK HARFLER (BUTONLAR) */}
-             <div key={currentIndex} className="flex flex-wrap justify-center gap-2 content-center pb-2">
-                {shuffledLetters.map((item) => (
-                  <button
-                    key={item.id}
-                    onClick={(e) => handleLetterClick(item, e)}
-                    disabled={item.isUsed || isWordComplete}
-                    style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
-                    className={`letter-btn
-                      w-10 h-10 md:w-11 md:h-11 rounded-xl font-bold text-lg shadow-[0_3px_0_rgb(0,0,0,0.1)] 
-                      active:bg-purple-100 active:border-purple-300 active:text-purple-600 active:shadow-none active:translate-y-[2px]
-                      transition-all duration-75 select-none touch-manipulation focus:outline-none focus:ring-0
-                      ${item.isUsed 
-                          ? "opacity-0 pointer-events-none scale-0" 
-                          : wrongAnimationId === item.id 
-                              ? "bg-red-500 text-white shadow-none animate-[shake_0.5s_ease-in-out]" 
-                              : "bg-white border-2 border-slate-200 text-slate-700"
-                      }
-                    `}
-                  >
-                    {item.char}
-                  </button>
-                ))}
-             </div>
+             {/* Harfler */}
+             {!isWordComplete ? (
+                 <div className="space-y-4">
+                     <div className="flex flex-wrap justify-center gap-2 content-center pb-2">
+                        {shuffledLetters.map((item) => (
+                          <button
+                            key={item.id}
+                            onClick={(e) => handleLetterClick(item, e)}
+                            disabled={item.isUsed}
+                            style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
+                            className={`letter-btn
+                              w-10 h-10 md:w-11 md:h-11 rounded-xl font-bold text-lg shadow-[0_3px_0_rgb(0,0,0,0.1)] 
+                              active:bg-purple-100 active:border-purple-300 active:text-purple-600 active:shadow-none active:translate-y-[2px]
+                              transition-all duration-75 select-none touch-manipulation focus:outline-none focus:ring-0
+                              ${item.isUsed 
+                                  ? "opacity-0 pointer-events-none scale-0" 
+                                  : wrongAnimationId === item.id 
+                                      ? "bg-red-500 text-white shadow-none animate-[shake_0.5s_ease-in-out]" 
+                                      : "bg-white border-2 border-slate-200 text-slate-700"
+                              }
+                            `}
+                          >
+                            {item.char}
+                          </button>
+                        ))}
+                     </div>
 
-             {/* İPUCU BUTONU (SADECE) */}
-             <div className="flex items-center justify-center border-t border-slate-100 pt-4">
-                <button 
-                  onClick={handleHint} 
-                  disabled={isWordComplete}
-                  style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
-                  className="hint-btn flex items-center gap-2 px-5 py-3 bg-amber-100 text-amber-700 rounded-2xl font-bold active:bg-amber-200 transition-colors active:scale-95 disabled:opacity-50 focus:outline-none focus:ring-0 w-full justify-center"
-                >
-                  <Lightbulb className="w-5 h-5"/> 
-                  <span className="text-xs ml-1 flex flex-col items-start leading-none">
-                      <span>İpucu ({hintCount === 0 ? "5p" : hintCount === 1 ? "2p" : "0p"})</span>
-                      <span className="text-[9px] text-amber-600/80">Hata: {mistakeCount}/2</span>
-                  </span>
-                </button>
-             </div>
-
+                     {/* İpuç Butonu */}
+                     <div className="flex items-center justify-center border-t border-slate-100 pt-4">
+                        <button 
+                          onClick={handleHint} 
+                          disabled={isWordComplete || targetWord.length <= 1}
+                          style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
+                          className={`hint-btn flex items-center gap-2 px-5 py-3 bg-amber-100 text-amber-700 rounded-2xl font-bold active:bg-amber-200 transition-colors active:scale-95 focus:outline-none focus:ring-0 w-full justify-center
+                              ${(isWordComplete || targetWord.length <= 1) ? 'opacity-50 cursor-not-allowed' : ''}
+                          `}
+                        >
+                          <Lightbulb className="w-5 h-5"/> 
+                          {/* DEĞİŞİKLİK 5: Buton yazısı (Maliyet gösterimi) */}
+                          <span>İpucu {targetWord.length <= 1 ? "(Yok)" : (hintCount === 0 ? "(-3p)" : "(-2p)")}</span>
+                          <span className="text-[10px] bg-white/50 px-1.5 rounded ml-1">Hata: {mistakeCount}/2</span>
+                        </button>
+                     </div>
+                 </div>
+             ) : (
+                 <div className="animate-in zoom-in duration-300 pb-2">
+                    <div className="flex items-center justify-center gap-2 mb-4 text-green-600 font-bold bg-green-50 p-3 rounded-xl border border-green-100">
+                        {mistakeCount >= 2 ? <><AlertTriangle className="w-5 h-5 text-orange-500"/> Doğrusu Bu</> : <><CheckCircle2 className="w-6 h-6"/> Harika!</>}
+                    </div>
+                    <button onClick={handleNext} className="w-full bg-purple-600 text-white font-bold py-4 rounded-xl shadow-lg flex items-center justify-center gap-2 hover:bg-purple-700 active:scale-95 transition-transform">
+                        {currentIndex + 1 === questions.length ? "Sonuçları Gör" : "Sıradaki Kelime"} 
+                        <ArrowRight className="w-5 h-5"/>
+                    </button>
+                 </div>
+             )}
           </div>
 
-          <button onClick={handleQuitEarly} style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }} className="w-full text-center text-slate-400 hover:text-red-500 text-sm font-medium transition-colors focus:outline-none focus:ring-0">
-            Bitir (Puanı Al ve Çık)
-          </button>
-
-          <style jsx>{`
-            @keyframes shake {
-              0%, 100% { transform: translateX(0); }
-              25% { transform: translateX(-5px); }
-              75% { transform: translateX(5px); }
-            }
-          `}</style>
+          {!isWordComplete && (
+              <button onClick={handleQuitEarly} className="w-full text-center text-slate-400 hover:text-red-500 text-sm font-medium transition-colors focus:outline-none focus:ring-0">
+                Bitir (Puanı Al ve Çık)
+              </button>
+          )}
        </div>
     </div>
   );
