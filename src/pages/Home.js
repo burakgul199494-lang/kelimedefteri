@@ -1,7 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useData } from "../context/DataContext";
-// import { auth } from "../services/firebase"; // Kullanmıyorsan silebilirsin, aşağıda user context'ten geliyor
 import { 
   Brain, Flame, Play, Book, 
   Edit, HelpCircle, 
@@ -22,7 +21,8 @@ import StatisticsModal from "../components/StatisticsModal";
 import SettingsModal from "../components/SettingsModal";
 
 export default function Home() {
-  const { user, knownWordIds, getAllWords, streak, isAdmin, leaderboardData } = useData();
+  // learningQueue'yu context'ten çektik (EN ÖNEMLİ KISIM BURASI)
+  const { user, knownWordIds, getAllWords, streak, isAdmin, leaderboardData, learningQueue } = useData();
   const navigate = useNavigate();
   
   const [showProfileModal, setShowProfileModal] = useState(false); 
@@ -30,60 +30,51 @@ export default function Home() {
   const [showStats, setShowStats] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   
-  // Tüm kelimeleri çek
-  const allWords = getAllWords();
-  const totalWords = allWords.length;
+  // --- DOĞRU HESAPLAMA MANTIĞI (Game.js ile Senkronize) ---
+  const stats = useMemo(() => {
+    const allWords = getAllWords();
+    const now = new Date();
 
-  // --- HESAPLAMALAR (SAYFALARLA BİREBİR EŞLEŞEN MANTIK) ---
-  const now = new Date();
+    // Yardımcı Fonksiyon: Bir kelimenin kuyruk bilgisini (tarihini) bulur
+    const getQueueItem = (id) => learningQueue ? learningQueue.find(q => q.wordId === id) : null;
 
-  // 1. BEKLEMEDE OLANLAR (SARI KUTU)
-  // Mantık: Biliniyor (Level > 0) VE Tarihi Gelecekte.
-  // Bu, "/list/waiting" sayfasındaki listeyle aynıdır.
-  const waitingList = allWords.filter(w => {
-      // Eğer kelime "Bilinmiyorsa" bekleme listesinde olamaz.
-      if (!knownWordIds.includes(w.id)) return false; 
-      
-      // Firebase tarih kontrolü (toDate var mı?)
-      const reviewDate = w.nextReviewDate && w.nextReviewDate.toDate 
-        ? w.nextReviewDate.toDate() 
-        : new Date(w.nextReviewDate);
-      
-      // Sadece gelecekteki kelimeler
-      return reviewDate > now;
-  });
-  const waitingCount = waitingList.length;
+    // 1. BEKLEME LİSTESİ (Sarı Kutu)
+    // Mantık: Kuyrukta var VE Tarihi Gelecekte
+    const waitingList = allWords.filter(w => {
+        const q = getQueueItem(w.id);
+        // q varsa ve tarihi şu andan büyükse beklemededir.
+        return q && new Date(q.nextReview) > now;
+    });
 
-  // 2. KALAN / ÇALIŞILACAKLAR (MAVİ KUTU)
-  // Mantık: (Hiç Bilinmiyor) VEYA (Biliniyor AMA Süresi Dolmuş/Tekrar)
-  // Bu, "/list/unknown" (veya ana çalışma listen) sayfasındaki listeyle aynıdır.
-  const remainingList = allWords.filter(w => {
-      const isKnown = knownWordIds.includes(w.id);
-      
-      // Durum A: Hiç bilinmiyor (Yeni Kelime) -> LİSTEYE AL
-      if (!isKnown) return true; 
+    // 2. ÖĞRENİLENLER (Yeşil Kutu)
+    // Mantık: knownWordIds içinde olanlar (Genel başarı)
+    const learnedList = allWords.filter(w => knownWordIds.includes(w.id));
 
-      // Durum B: Biliniyor ama süresi dolmuş (Tekrar Zamanı) -> LİSTEYE AL
-      const reviewDate = w.nextReviewDate && w.nextReviewDate.toDate 
-        ? w.nextReviewDate.toDate() 
-        : new Date(w.nextReviewDate);
-        
-      return reviewDate <= now; 
-  });
-  const remainingCount = remainingList.length;
+    // 3. KALAN / ÇALIŞILACAKLAR (Mavi Kutu)
+    // Mantık: (Hiç Bilinmeyenler) + (Zamanı Gelmiş Tekrarlar)
+    const remainingList = allWords.filter(w => {
+        // A. Hiç bilinmiyorsa -> Listeye Al
+        if (!knownWordIds.includes(w.id)) return true;
 
-  // 3. ÖĞRENİLENLER (YEŞİL KUTU & İLERLEME ÇUBUĞU)
-  // Mantık: Sadece biliniyor olması yeterli (Süresi dolsa da dolmasa da).
-  // Bu, "/list/known" sayfasındaki listeyle aynıdır.
-  const learnedList = allWords.filter(w => knownWordIds.includes(w.id));
-  const learnedCount = learnedList.length;
+        // B. Biliniyorsa ama zamanı gelmişse -> Listeye Al
+        const q = getQueueItem(w.id);
+        if (!q) return true; // Biliniyor ama kuyrukta yoksa (hata/eski veri) yine de çalıştır
+        if (new Date(q.nextReview) <= now) return true; // Zamanı gelmiş
 
-  // Yüzdelik (Learned count'a göre hesaplanır)
-  const progressPercentage = totalWords > 0 ? (learnedCount / totalWords) * 100 : 0;
-  
+        return false; // Zamanı gelmemiş (Waiting'e düşer)
+    });
+
+    return {
+        waiting: waitingList.length,
+        learned: learnedList.length,
+        remaining: remainingList.length,
+        total: allWords.length,
+        progress: allWords.length > 0 ? (learnedList.length / allWords.length) * 100 : 0
+    };
+  }, [getAllWords, knownWordIds, learningQueue]);
+
   // Skor
   const myScore = leaderboardData.find(u => u.id === user?.uid)?.score || 0;
-  // --- HESAPLAMALAR BİTİŞ ---
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center p-6 w-full overflow-x-hidden">
@@ -148,25 +139,25 @@ export default function Home() {
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
            <div className="flex justify-between items-end mb-2">
              <span className="text-sm font-medium text-slate-500">Genel İlerleme</span>
-             <span className="text-2xl font-bold text-indigo-600">%{progressPercentage.toFixed(1)}</span>
+             <span className="text-2xl font-bold text-indigo-600">%{stats.progress.toFixed(1)}</span>
            </div>
            <div className="w-full bg-slate-100 rounded-full h-3 mb-6">
-             <div className="bg-indigo-600 h-3 rounded-full transition-all duration-500" style={{ width: `${progressPercentage}%` }}></div>
+             <div className="bg-indigo-600 h-3 rounded-full transition-all duration-500" style={{ width: `${stats.progress}%` }}></div>
            </div>
            
            <div className="flex justify-between text-sm divide-x divide-slate-100">
              <div onClick={() => navigate("/list/known")} className="text-center flex-1 px-1 cursor-pointer hover:bg-slate-50 rounded transition-colors group">
-                <div className="font-bold text-slate-800 group-hover:text-green-600 transition-colors text-lg">{learnedCount}</div>
+                <div className="font-bold text-slate-800 group-hover:text-green-600 transition-colors text-lg">{stats.learned}</div>
                 <div className="text-slate-400 text-xs">Öğrenilen</div>
              </div>
              <div onClick={() => navigate("/list/waiting")} className="text-center flex-1 px-1 cursor-pointer hover:bg-slate-50 rounded transition-colors group">
                 <div className="font-bold text-slate-800 group-hover:text-amber-500 transition-colors text-lg flex items-center justify-center gap-1">
-                   {waitingCount} <Hourglass size={12} className="text-amber-400"/>
+                   {stats.waiting} <Hourglass size={12} className="text-amber-400"/>
                 </div>
                 <div className="text-slate-400 text-xs">Beklemede</div>
              </div>
              <div onClick={() => navigate("/list/unknown")} className="text-center flex-1 px-1 cursor-pointer hover:bg-slate-50 rounded transition-colors group">
-                <div className="font-bold text-slate-800 group-hover:text-blue-500 transition-colors text-lg">{remainingCount}</div>
+                <div className="font-bold text-slate-800 group-hover:text-blue-500 transition-colors text-lg">{stats.remaining}</div>
                 <div className="text-slate-400 text-xs">Kalan</div>
              </div>
            </div>
