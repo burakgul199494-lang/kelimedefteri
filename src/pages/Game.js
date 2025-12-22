@@ -64,23 +64,49 @@ export default function Game() {
     return { learnPool, reviewPool, waitingPool };
   }, [getAllWords, knownWordIds, learningQueue]);
 
-  // --- OTURUM BAŞLATMA ---
+  // --- OTURUM BAŞLATMA (AKILLI SIRALAMA EKLENDİ) ---
   const startSession = (mode, e) => {
-    handleBlur(e); // Mobile Fix
+    handleBlur(e); 
     setActiveMode(mode);
-    let selectedPool = [];
+    let pool = []; // selectedPool yerine pool diyelim, daha kısa
 
-    if (mode === "learn") selectedPool = pools.learnPool;
-    else if (mode === "review") selectedPool = pools.reviewPool;
-    else if (mode === "waiting") selectedPool = pools.waitingPool;
+    if (mode === "learn") pool = pools.learnPool;
+    else if (mode === "review") pool = pools.reviewPool;
+    else if (mode === "waiting") pool = pools.waitingPool;
 
-    if (selectedPool.length === 0) {
+    if (pool.length === 0) {
       alert("Bu modda şu an çalışılacak kelime yok!");
       return;
     }
 
-    const shuffled = [...selectedPool].sort(() => 0.5 - Math.random());
-    setSessionWords(shuffled.slice(0, 20));
+    // --- BURASI DEĞİŞTİ: TARİHE GÖRE SIRALAMA ---
+    
+    const neverSeen = [];
+    const seen = [];
+
+    pool.forEach(w => {
+        // Flashcard için 'lastSeen' tarihine bakıyoruz
+        if (!w.lastSeen) {
+            neverSeen.push(w);
+        } else {
+            seen.push(w);
+        }
+    });
+
+    // 1. Hiç görülmeyenleri rastgele karıştır (Önce bunlar gelsin)
+    neverSeen.sort(() => 0.5 - Math.random());
+
+    // 2. Görülenleri TARİHE göre sırala (En Eski -> En Yeni)
+    // Az önce çözdüğün kelimenin tarihi "Şu an" olduğu için en sona gidecek.
+    seen.sort((a, b) => new Date(a.lastSeen).getTime() - new Date(b.lastSeen).getTime());
+
+    // 3. Listeleri birleştir
+    const smartSortedPool = [...neverSeen, ...seen];
+
+    // 4. İlk 20 taneyi al ve kendi içinde karıştır (Oturum içinde sıra ezberlenmesin)
+    const selected = smartSortedPool.slice(0, 20).sort(() => 0.5 - Math.random());
+
+    setSessionWords(selected);
     setCurrentIndex(0);
     setStats({ learned: 0, review: 0, mastered: 0 });
     setGameStage("playing");
