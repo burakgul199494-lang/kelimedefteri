@@ -57,27 +57,31 @@ export default function GapFillingGame() {
         w.definitions && w.definitions[0]?.meaning
     );
 
-    const queueIds = learningQueue ? learningQueue.map(q => q.wordId) : [];
+const getQueueItem = (id) =>
+  learningQueue ? learningQueue.find(q => q.wordId === id) : null;
 
-    // 1. ÖĞRENME MODU
-    const learnPool = validWords.filter(w => 
-        !knownWordIds.includes(w.id) && 
-        !queueIds.includes(w.id)
-    );
+// 1. BEKLEME HAVUZU
+const waitingPool = validWords.filter(w => {
+  const q = getQueueItem(w.id);
+  return q && new Date(q.nextReview) > now;
+});
 
-    // 2. TEKRAR MODU
-    const reviewPool = validWords.filter(w => {
-        const q = learningQueue.find(item => item.wordId === w.id);
-        const isDue = q && new Date(q.nextReview) <= now;
-        const isKnown = knownWordIds.includes(w.id);
-        return isDue || isKnown;
-    });
+// 2. TEKRAR HAVUZU (SADECE KNOWN)
+const reviewPool = validWords.filter(w =>
+  knownWordIds.includes(w.id)
+);
 
-    // 3. BEKLEME LİSTESİ
-    const waitingPool = validWords.filter(w => {
-        const q = learningQueue.find(item => item.wordId === w.id);
-        return q && new Date(q.nextReview) > now;
-    });
+// 3. ÖĞRENME HAVUZU
+const learnPool = validWords.filter(w => {
+  if (knownWordIds.includes(w.id)) return false;
+
+  const q = getQueueItem(w.id);
+  if (!q) return true;
+  if (new Date(q.nextReview) <= now) return true;
+
+  return false;
+});
+
 
     return { learnPool, reviewPool, waitingPool };
   };
