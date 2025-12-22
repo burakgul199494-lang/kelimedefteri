@@ -52,12 +52,33 @@ export default function Pronunciation() {
     // Telaffuz için kelime metni olan her şey uygundur
     const validWords = all.filter(w => w.word && w.word.length > 0);
 
-    const learnPool = validWords.filter(w => !knownWordIds.includes(w.id) && !learningQueue.find(q => q.wordId === w.id));
-    const reviewPool = validWords.filter(w => knownWordIds.includes(w.id));
-    const waitingPool = validWords.filter(w => {
-        const q = learningQueue.find(item => item.wordId === w.id);
-        return q && new Date(q.nextReview) > now;
-    });
+    const getQueueItem = (id) =>
+  learningQueue ? learningQueue.find(q => q.wordId === id) : null;
+
+const waitingPool = validWords.filter(w => {
+  const q = getQueueItem(w.id);
+  return q && new Date(q.nextReview) > now;
+});
+
+const reviewPool = validWords.filter(w =>
+  knownWordIds.includes(w.id)
+);
+
+const learnPool = validWords.filter(w => {
+  if (knownWordIds.includes(w.id)) return false;
+
+  const q = getQueueItem(w.id);
+
+  // queue yoksa -> learn
+  if (!q) return true;
+
+  // queue var ama zamanı geldiyse -> learn (due)
+  if (new Date(q.nextReview) <= now) return true;
+
+  // queue var ve zamanı gelmediyse -> learn değil (waiting’de zaten)
+  return false;
+});
+
 
     return { learnPool, reviewPool, waitingPool };
   };
