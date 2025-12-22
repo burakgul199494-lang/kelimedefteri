@@ -259,28 +259,73 @@ export const DataProvider = ({ children }) => {
     return [...systemDeleted, ...customDeleted].sort((a, b) => a.word.localeCompare(b.word));
   };
 
+  // --- YENİ SRS (AKILLI ÖĞRENME) FONKSİYONU ---
   const handleSmartLearn = async (wordId, action) => {
     try {
         const userRef = doc(db, "artifacts", appId, "users", user.uid, "vocab_game", "progress");
         const now = new Date();
-        if (action === "master") { await addToKnown(wordId); return; }
+
+        // 1. "Ezberledim" butonu (Direkt seviye atlatıp bitir)
+        if (action === "master") { 
+            await addToKnown(wordId); 
+            return; 
+        }
         
+        // Mevcut kelime kuyrukta var mı? Varsa seviyesi kaç?
         const currentItem = learningQueue.find(q => String(q.wordId) === String(wordId));
         const currentLevel = currentItem ? (currentItem.level || 0) : 0;
+        
+        // Kuyruğu önce temizle (Yeni halini aşağıda hesaplayıp ekleyeceğiz)
         let newQueue = learningQueue.filter(q => String(q.wordId) !== String(wordId));
 
         if (action === "know") {
+            // Zaten biliyorsak işlem yapma
             if (knownWordIds.includes(wordId)) return;
-            const nextDate = new Date(); 
-            if (currentLevel === 0) nextDate.setDate(now.getDate() + 1);
-            else nextDate.setDate(now.getDate() + 2);
-            if (currentLevel >= 2) { await addToKnown(wordId); return; }
-            else {
-                newQueue.push({ wordId, level: currentLevel + 1, nextReview: nextDate.toISOString() });
+
+            const newLevel = currentLevel + 1;
+            const nextDate = new Date();
+            let daysToAdd = 0;
+            let isMastered = false;
+
+            // --- SENİN İSTEDİĞİN GÜN ARALIKLARI ---
+            switch (newLevel) {
+                case 1: daysToAdd = 1; break;   // 24 Saat (1 Gün) - Bekleme Listesine gider
+                case 2: daysToAdd = 3; break;   // 3 Gün - Bekleme Listesine gider
+                case 3: daysToAdd = 7; break;   // 1 Hafta - Bekleme Listesine gider
+                case 4: daysToAdd = 14; break;  // 2 Hafta - Bekleme Listesine gider
+                case 5: daysToAdd = 30; break;  // 1 Ay - Bekleme Listesine gider
+                case 6: isMastered = true; break; // SON SEVİYE: Öğrendiklerim (Known) Listesine
+                default: isMastered = true; break;
+            }
+
+            if (isMastered) {
+                // Seviye 6 olduysa: Kuyruktan zaten sildik, şimdi Known'a ekle.
+                await addToKnown(wordId);
+            } else {
+                // Bekleme süresini ekle
+                nextDate.setDate(now.getDate() + daysToAdd);
+                
+                // Kuyruğa yeni seviyesi ve tarihiyle ekle
+                newQueue.push({ 
+                    wordId, 
+                    level: newLevel, 
+                    nextReview: nextDate.toISOString() 
+                });
+                
+                // Veritabanını güncelle
                 await updateDoc(userRef, { learning_queue: newQueue });
             }
+
         } else if (action === "dont_know") {
-            if (knownWordIds.includes(wordId)) await removeFromKnown(wordId);
+            // Bilmiyorum denirse:
+            // 1. Eğer "Öğrendiklerim" listesindeyse oradan çıkar.
+            if (knownWordIds.includes(wordId)) {
+                await removeFromKnown(wordId);
+            }
+
+            // 2. Kuyruktan tamamen çıkar (newQueue zaten yukarıda filtrelenmişti).
+            // Böylece kelime "Hiç bilinmeyenler" (Mavi Kutu / Öğreneceklerim) havuzuna geri döner.
+            // Seviyesi sıfırlanmış olur.
             await updateDoc(userRef, { learning_queue: newQueue });
         }
     } catch (e) { console.error("Hata:", e); }
