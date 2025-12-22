@@ -102,17 +102,26 @@ const WordCard = ({ wordObj }) => {
     <div className="relative w-full max-w-sm bg-white rounded-3xl shadow-lg p-6 text-center border border-slate-100 mb-6 mx-auto transition-shadow duration-300">
       
       {/* 1. KELİME BAŞLIĞI */}
-      <div className="flex items-center justify-center gap-4 mb-6 mt-2">
-        <h2 className="text-4xl font-extrabold text-slate-800 break-words leading-tight text-left">
-            {wordObj.word}
-        </h2>
-        <div className="scale-110 shrink-0"> 
-            <ActionButton 
-                icon={playingText === wordObj.word ? Square : Volume2}
-                onClick={(e) => toggleSpeak(wordObj.word, e)}
-                isActive={playingText === wordObj.word}
-            />
+      <div className="flex flex-col items-center justify-center mb-6 mt-2">
+        <div className="flex items-center gap-4">
+            <h2 className="text-4xl font-extrabold text-slate-800 break-words leading-tight text-left">
+                {wordObj.word}
+            </h2>
+            <div className="scale-110 shrink-0"> 
+                <ActionButton 
+                    icon={playingText === wordObj.word ? Square : Volume2}
+                    onClick={(e) => toggleSpeak(wordObj.word, e)}
+                    isActive={playingText === wordObj.word}
+                />
+            </div>
         </div>
+        
+        {/* YENİ FONETİK GÖSTERİMİ */}
+        {wordObj.phonetic && (
+            <span className="text-slate-400 font-serif italic text-lg mt-1 tracking-wide">
+                /{wordObj.phonetic.replace(/\//g, '')}/ 
+            </span>
+        )}
       </div>
 
       {/* 2. TANIMLAR */}
