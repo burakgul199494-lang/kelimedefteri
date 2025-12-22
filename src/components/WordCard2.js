@@ -49,22 +49,19 @@ const WordCard = ({ wordObj }) => {
     return map[t] || t;
   };
 
-  // --- 2. ORTAK BUTON BİLEŞENİ (İZ BIRAKMAYAN VERSİYON) ---
+  // --- 2. ORTAK BUTON BİLEŞENİ ---
   const ActionButton = ({ icon: Icon, onClick, isActive, title }) => (
     <button
       onClick={onClick}
       title={title}
-      // 1. Mobildeki gri/mavi tıklama kutusunu yok eder
       style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
       className={`
         p-2 rounded-full border flex items-center justify-center shrink-0
-        // 2. Focus ve Outline çizgilerini tamamen siler
         focus:outline-none focus:ring-0
-        // 3. Sadece durum değişince renk değişir, hover/active efekti yok
         transition-colors duration-200
         ${isActive 
-          ? 'bg-indigo-600 text-white border-indigo-600' // Aktifse (Çalıyorsa/Açıksa)
-          : 'bg-white text-slate-400 border-slate-200'   // Pasifse (Kapalıysa)
+          ? 'bg-indigo-600 text-white border-indigo-600' 
+          : 'bg-white text-slate-400 border-slate-200'   
         }
       `}
     >
@@ -101,27 +98,34 @@ const WordCard = ({ wordObj }) => {
   return (
     <div className="relative w-full max-w-sm bg-white rounded-3xl shadow-lg p-6 text-center border border-slate-100 mb-6 mx-auto transition-shadow duration-300">
       
-      {/* 1. KELİME BAŞLIĞI */}
-      <div className="flex flex-col items-center justify-center mb-6 mt-2">
-        <div className="flex items-center gap-4">
-            <h2 className="text-4xl font-extrabold text-slate-800 break-words leading-tight text-left">
+      {/* =============================================
+          1. KELİME BAŞLIĞI (DÜZELTİLDİ - ORTALI) 
+          =============================================
+      */}
+      <div className="flex items-center justify-center gap-3 mb-6 mt-2">
+        
+        {/* SOL: Kelime ve Altında Fonetik (Tek Sütun) */}
+        <div className="flex flex-col items-center">
+            <h2 className="text-4xl font-extrabold text-slate-800 break-words leading-tight text-center">
                 {wordObj.word}
             </h2>
-            <div className="scale-110 shrink-0"> 
-                <ActionButton 
-                    icon={playingText === wordObj.word ? Square : Volume2}
-                    onClick={(e) => toggleSpeak(wordObj.word, e)}
-                    isActive={playingText === wordObj.word}
-                />
-            </div>
+            
+            {/* Fonetik tam kelimenin altına gelir */}
+            {wordObj.phonetic && (
+                <span className="text-slate-400 font-serif italic text-lg -mt-1 tracking-wide">
+                    /{wordObj.phonetic.replace(/\//g, '')}/ 
+                </span>
+            )}
         </div>
-        
-        {/* YENİ FONETİK GÖSTERİMİ */}
-        {wordObj.phonetic && (
-            <span className="text-slate-400 font-serif italic text-lg mt-1 tracking-wide">
-                /{wordObj.phonetic.replace(/\//g, '')}/ 
-            </span>
-        )}
+
+        {/* SAĞ: Ses Butonu (Kelime grubundan bağımsız durur) */}
+        <div className="scale-110 shrink-0 self-center ml-2"> 
+            <ActionButton 
+                icon={playingText === wordObj.word ? Square : Volume2}
+                onClick={(e) => toggleSpeak(wordObj.word, e)}
+                isActive={playingText === wordObj.word}
+            />
+        </div>
       </div>
 
       {/* 2. TANIMLAR */}
@@ -165,9 +169,9 @@ const WordCard = ({ wordObj }) => {
                 {/* Gizli Türkçe Açıklama */}
                 {visibleDefTranslations[idx] && (
                   <div className="mt-3 pt-2 border-t border-indigo-200/30 animate-in fade-in slide-in-from-top-1">
-                     <p className="text-xs text-indigo-800 font-medium bg-white/60 p-2 rounded-lg border border-indigo-100">
+                      <p className="text-xs text-indigo-800 font-medium bg-white/60 p-2 rounded-lg border border-indigo-100">
                         {def.trExplanation ? `TR: ${def.trExplanation}` : <span className="text-slate-400 italic font-normal">Sistemde çeviri bulunamadı.</span>}
-                     </p>
+                      </p>
                   </div>
                 )}
               </div>
