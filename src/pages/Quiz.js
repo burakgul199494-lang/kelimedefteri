@@ -33,36 +33,36 @@ export default function Quiz() {
   // --- SES TAKİBİ ---
   const [activeAudio, setActiveAudio] = useState(null);
 
-  // --- KELİME HAVUZLARI ---
-  const getWordPools = () => {
-    const all = getAllWords();
-    const validWords = all.filter(w => w.definitions && w.definitions[0]?.meaning);
-    const now = new Date();
+const getWordPools = () => {
+  const all = getAllWords();
+  const validWords = all.filter(
+    w => w.definitions && w.definitions[0]?.meaning
+  );
+  const now = new Date();
 
-    const queueIds = learningQueue ? learningQueue.map(q => q.wordId) : [];
+  const getQueueItem = (id) =>
+    learningQueue ? learningQueue.find(q => q.wordId === id) : null;
 
-    // 1. ÖĞRENME MODU
-    const learnPool = validWords.filter(w => 
-        !knownWordIds.includes(w.id) && 
-        !queueIds.includes(w.id)
-    );
+  const waitingPool = validWords.filter(w => {
+    const q = getQueueItem(w.id);
+    return q && new Date(q.nextReview) > now;
+  });
 
-    // 2. TEKRAR MODU
-    const reviewPool = validWords.filter(w => {
-        const qItem = learningQueue ? learningQueue.find(item => item.wordId === w.id) : null;
-        const isDue = qItem && new Date(qItem.nextReview) <= now;
-        const isKnown = knownWordIds.includes(w.id);
-        return isDue || isKnown;
-    });
+  const reviewPool = validWords.filter(w =>
+    knownWordIds.includes(w.id)
+  );
 
-    // 3. BEKLEME LİSTESİ
-    const waitingPool = validWords.filter(w => {
-        const qItem = learningQueue ? learningQueue.find(item => item.wordId === w.id) : null;
-        return qItem && new Date(qItem.nextReview) > now;
-    });
+  const learnPool = validWords.filter(w => {
+    if (knownWordIds.includes(w.id)) return false;
+    const q = getQueueItem(w.id);
+    if (!q) return true;
+    if (new Date(q.nextReview) <= now) return true;
+    return false;
+  });
 
-    return { learnPool, reviewPool, waitingPool };
-  };
+  return { learnPool, reviewPool, waitingPool };
+};
+
 
   const { learnPool, reviewPool, waitingPool } = getWordPools();
 
