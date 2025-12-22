@@ -552,6 +552,20 @@ const learnPool = validWords.filter(w => {
                 })}
              </div>
 
+            {/* FONETİK GÖSTERİMİ (YENİ) */}
+             {currentWordObj?.phonetic && (
+                 <div className="text-center -mt-2 mb-4 animate-in fade-in slide-in-from-top-2">
+                     <span className="text-slate-400 font-serif italic text-lg tracking-wide bg-slate-50/50 px-3 py-1 rounded-full border border-slate-100/50">
+                         /{currentWordObj.phonetic.replace(/\//g, '')}/
+                     </span>
+                 </div>
+             )}
+
+             {/* 👆👆👆 YENİ EKLENECEK KISIM (BURADA BİTİR) 👆👆👆 */}
+
+
+
+
              {/* KARIŞIK HARFLER (BUTONLAR - BLUR EKLENDİ) */}
              <div key={currentIndex} className="flex flex-wrap justify-center gap-2 content-center">
                 {shuffledLetters.map((item) => (
