@@ -54,7 +54,9 @@ export default function SentenceBuilderGame() {
         const q = getQueueItem(w.id);
         return q && new Date(q.nextReview) > now;
     });
-    const reviewPool = validWords.filter(w => knownWordIds.includes(w.id));
+const reviewPool = validWords.filter(w =>
+  knownWordIds.includes(w.id) && w.lastSeen_sentence_builder
+);
     const learnPool = validWords.filter(w => {
         if (knownWordIds.includes(w.id)) return false;
         const q = getQueueItem(w.id);
