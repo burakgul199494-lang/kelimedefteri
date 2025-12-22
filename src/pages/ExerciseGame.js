@@ -426,6 +426,19 @@ export default function ExerciseGame() {
                         </div>
                     )}
                 </div>
+
+
+{/* ✅ FONETİK (BASE kelimenin altı) */}
+{baseWordObj?.phonetic?.trim() ? (
+  <div className="mt-1 flex justify-center animate-in fade-in slide-in-from-top-1">
+    <span className="text-indigo-400 font-serif italic text-lg tracking-wide px-3 py-0.5 bg-indigo-50/50 rounded-lg border border-indigo-100/50">
+      /{String(baseWordObj.phonetic).replace(/\//g, "")}/
+    </span>
+  </div>
+) : (
+  <div className="h-7" />
+)}
+
                 
                 {def.engExplanation && (
                     <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 relative mt-2 text-left">
