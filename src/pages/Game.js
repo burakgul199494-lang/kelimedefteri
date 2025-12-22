@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 
 export default function Game() {
-  const { getAllWords, knownWordIds, handleSmartLearn, learningQueue, addScore, updateGameStats } = useData();
+  const { getAllWords, knownWordIds, handleSmartLearn, learningQueue, addScore, updateGameStats, handleUpdateWord } = useData();
   const navigate = useNavigate();
 
   // --- STATE'LER ---
@@ -113,20 +113,29 @@ export default function Game() {
       }
       // 3. Durum: NORMAL ÖĞRENME (Learn/Master/DontKnow)
       else {
-          await handleSmartLearn(currentWord.id, type);
-          
-          if (type === "know") {
-              setStats((p) => ({ ...p, learned: p.learned + 1 }));
+          // --- DEĞİŞİKLİK BURADA BAŞLIYOR ---
+          if (type === "dont_know") {
+              // "Bilmiyorum" dendiğinde seviye düşürme (SmartLearn çağırma).
+              // Sadece "Son Görülme" tarihini güncelle ki listenin en sonuna gitsin.
+              await handleUpdateWord(currentWord.id, { lastSeen: new Date().toISOString() });
+
+              setStats((p) => ({ ...p, review: p.review + 1 })); 
               updateGameStats('flashcard', 1);
+          } 
+          else {
+              // "Biliyorum" veya "Ezberledim" ise normal sistem (Seviye atlatma) çalışsın
+              await handleSmartLearn(currentWord.id, type);
+              
+              if (type === "know") {
+                  setStats((p) => ({ ...p, learned: p.learned + 1 }));
+                  updateGameStats('flashcard', 1);
+              }
+              else if (type === "master") {
+                  setStats((p) => ({ ...p, mastered: p.mastered + 1, learned: p.learned + 1 }));
+                  updateGameStats('flashcard', 1);
+              }
           }
-          else if (type === "dont_know") {
-              setStats((p) => ({ ...p, review: p.review + 1 }));
-              updateGameStats('flashcard', 1);
-          }
-          else if (type === "master") {
-              setStats((p) => ({ ...p, mastered: p.mastered + 1, learned: p.learned + 1 }));
-              updateGameStats('flashcard', 1);
-          }
+          // --- DEĞİŞİKLİK BURADA BİTİYOR ---
       }
 
       // Sonraki Soruya Geç
