@@ -360,14 +360,12 @@ const normalizeWord = (w) => {
             let isMastered = false;
 
             // Gün aralıkları
-            let minutesToAdd = 0;
-
-switch (newLevel) {
-    case 1: minutesToAdd = 1; break;   // 1 dk
-    case 2: minutesToAdd = 1; break;   // 1 dk
-    case 3: minutesToAdd = 1; break;   // 1 dk
-    case 4: minutesToAdd = 1; break;   // 1 dk
-    case 5: minutesToAdd = 1; break;   // 1 dk
+           switch (newLevel) {
+    case 1: daysToAdd = 1; break;
+    case 2: daysToAdd = 3; break;
+    case 3: daysToAdd = 7; break;
+    case 4: daysToAdd = 14; break;
+    case 5: daysToAdd = 30; break;
     case 6: isMastered = true; break;
     default: isMastered = true; break;
 }
@@ -380,7 +378,7 @@ switch (newLevel) {
                 });
             } else {
                 // Seviye arttır -> Kuyruğa geri koy
-                nextDate.setMinutes(now.getMinutes() + minutesToAdd);
+                nextDate.setDate(now.getDate() + daysToAdd);
                 newQueue.push({ 
                     wordId: wordId, // String ID kullan
                     level: newLevel, 
