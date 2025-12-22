@@ -446,7 +446,17 @@ switch (newLevel) {
       const exists = dynamicSystemWords.some(w => w.word.toLowerCase() === normalizedInput);
       if(exists) return { success: false, message: "Bu kelime zaten sistemde var!" };
 
-      const newWord = { ...wordData, sentence_tr: wordData.sentence_tr || "", source: "system", createdAt: new Date() };
+      const newWord = {
+  word: wordData.word.trim(),
+  phonetic: wordData.phonetic || "",   // ✅ eklendi
+  sentence: wordData.sentence.trim(),
+  sentence_tr: wordData.sentence_tr || "",
+  definitions: wordData.definitions,
+  tags: wordData.tags || [],
+  source: "system",
+  createdAt: new Date()
+};
+
       await addDoc(collection(db, "artifacts", appId, "system_words"), newWord);
       
       const blacklistRef = collection(db, "artifacts", appId, "blacklist");
