@@ -83,18 +83,31 @@ export default function WordCard({ wordObj }) {
           `}
         >
           
-          {/* HERO BÖLÜMÜ */}
+          {/* HERO BÖLÜMÜ (GÜNCELLENDİ) */}
           <div className="relative bg-gradient-to-br from-indigo-600 to-violet-700 p-6 flex flex-col items-center justify-center min-h-[160px] text-center shrink-0">
             <div className="absolute top-0 left-0 w-full h-full opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
             
             <div className="relative z-10 w-full flex items-center justify-center gap-4">
-              <h1 className="text-5xl font-black text-white tracking-tight drop-shadow-md break-words">
-                {wordObj.word}
-              </h1>
+              
+              {/* SOL: Kelime ve Fonetik Grubu */}
+              <div className="flex flex-col items-center">
+                  <h1 className="text-5xl font-black text-white tracking-tight drop-shadow-md break-words">
+                    {wordObj.word}
+                  </h1>
+                  
+                  {/* YENİ: Fonetik Gösterimi (Beyaz/Mor font) */}
+                  {wordObj.phonetic && (
+                    <span className="text-indigo-200 font-serif italic text-lg mt-1 tracking-wide">
+                        /{wordObj.phonetic.replace(/\//g, '')}/
+                    </span>
+                  )}
+              </div>
+
+              {/* SAĞ: Ses Butonu */}
               <button
                 onClick={(e) => toggleSpeak(e, wordObj.word)}
                 style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
-                className="audio-btn-hero card-btn flex items-center justify-center p-3 bg-white/20 text-white rounded-full backdrop-blur-md active:scale-90 shrink-0 focus:outline-none focus:ring-0"
+                className="audio-btn-hero card-btn flex items-center justify-center p-3 bg-white/20 text-white rounded-full backdrop-blur-md active:scale-90 shrink-0 focus:outline-none focus:ring-0 ml-2"
               >
                 {playingText === wordObj.word ? <Square className="w-6 h-6 fill-current" /> : <Volume2 className="w-6 h-6" />}
               </button>
@@ -145,16 +158,16 @@ export default function WordCard({ wordObj }) {
                
                {/* Cümle Ses Butonu */}
                <button
-                  onClick={(e) => toggleSpeak(e, wordObj.sentence)}
-                  style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
-                  className={`audio-btn-light card-btn flex items-center justify-center shrink-0 p-2 rounded-full focus:outline-none focus:ring-0 ${
-                    playingText === wordObj.sentence
-                      ? 'bg-indigo-600 text-white shadow-md'
-                      : 'bg-indigo-50 text-indigo-500'
-                  }`}
-                >
-                  {playingText === wordObj.sentence ? <Square className="w-4 h-4 fill-current" /> : <Volume2 className="w-4 h-4" />}
-                </button>
+                 onClick={(e) => toggleSpeak(e, wordObj.sentence)}
+                 style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
+                 className={`audio-btn-light card-btn flex items-center justify-center shrink-0 p-2 rounded-full focus:outline-none focus:ring-0 ${
+                   playingText === wordObj.sentence
+                     ? 'bg-indigo-600 text-white shadow-md'
+                     : 'bg-indigo-50 text-indigo-500'
+                 }`}
+               >
+                 {playingText === wordObj.sentence ? <Square className="w-4 h-4 fill-current" /> : <Volume2 className="w-4 h-4" />}
+               </button>
             </div>
             
           </div>
