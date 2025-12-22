@@ -266,10 +266,23 @@ export const DataProvider = ({ children }) => {
         const now = new Date();
 
         // 1. "Ezberledim" butonu (Direkt seviye atlatıp bitir)
-        if (action === "master") { 
-            await addToKnown(wordId); 
-            return; 
-        }
+        // ✅ MASTER AKSİYONU ARTIK SEVİYE KONTROLLÜ
+if (action === "master") {
+    const currentItem = learningQueue.find(
+        q => String(q.wordId) === String(wordId)
+    );
+    const currentLevel = currentItem ? (currentItem.level || 0) : 0;
+
+    // SADECE level 5 ve üstü master olabilir
+    if (currentLevel >= 5) {
+        await addToKnown(wordId);
+    } else {
+        // Henüz master değil → normal know gibi davran
+        await handleSmartLearn(wordId, "know");
+    }
+    return;
+}
+
         
         // Mevcut kelime kuyrukta var mı? Varsa seviyesi kaç?
         const currentItem = learningQueue.find(q => String(q.wordId) === String(wordId));
