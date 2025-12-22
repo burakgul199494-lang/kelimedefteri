@@ -655,7 +655,15 @@ switch (newLevel) {
   const handleUpdateSystemWord = async (id, wordData) => {
       try {
           const docRef = doc(db, "artifacts", appId, "system_words", id);
-          await updateDoc(docRef, { ...wordData, updatedAt: new Date() });
+         await updateDoc(docRef, {
+  word: wordData.word?.trim() || "",
+  phonetic: wordData.phonetic || "",   // ✅ eklendi
+  sentence: wordData.sentence?.trim() || "",
+  sentence_tr: wordData.sentence_tr || "",
+  definitions: wordData.definitions || [],
+  tags: wordData.tags || [],
+  updatedAt: new Date()
+});
           return { success: true };
       } catch(e) { return { success: false, message: e.message }; }
   };
