@@ -72,12 +72,20 @@ export default function AdminDashboard() {
                      {/* SOL TARAF (KELİME DETAYLARI) */}
                      <div className="flex-1 min-w-0 pr-2">
                          {/* Başlık */}
-                         <div className="flex items-center gap-2 mb-2 flex-wrap">
-                             <span className="text-lg font-bold text-slate-800 leading-none">{item.word}</span>
-                             <button onClick={(e)=>speak(item.word, e)} className="p-1 text-indigo-400 hover:text-indigo-600 bg-indigo-50 rounded-full transition-colors">
-                                 <Volume2 className="w-4 h-4"/>
-                             </button>
-                         </div>
+                     <div className="flex items-center gap-2 mb-2 flex-wrap">
+                         <span className="text-lg font-bold text-slate-800 leading-none">{item.word}</span>
+                         
+                         {/* YENİ FONETİK GÖSTERİMİ */}
+                         {item.phonetic && (
+                            <span className="text-sm text-slate-400 font-serif italic">
+                                /{item.phonetic.replace(/\//g, '')}/
+                            </span>
+                         )}
+
+                         <button onClick={(e)=>speak(item.word, e)} className="p-1 text-indigo-400 hover:text-indigo-600 bg-indigo-50 rounded-full transition-colors">
+                             <Volume2 className="w-4 h-4"/>
+                         </button>
+                     </div>
 
                          {/* Anlamlar */}
                          <div className="space-y-1.5">
