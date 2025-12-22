@@ -104,7 +104,7 @@ export default function Game() {
     const smartSortedPool = [...neverSeen, ...seen];
 
     // 4. İlk 20 taneyi al ve kendi içinde karıştır (Oturum içinde sıra ezberlenmesin)
-    const selected = smartSortedPool.slice(0, 20).sort(() => 0.5 - Math.random());
+    const selected = smartSortedPool.slice(0, 10).sort(() => 0.5 - Math.random());
 
     setSessionWords(selected);
     setCurrentIndex(0);
