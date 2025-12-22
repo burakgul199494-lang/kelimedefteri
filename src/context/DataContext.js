@@ -426,15 +426,17 @@ switch (newLevel) {
          } else {
              // --- DURUM 3: Yepyeni kopya oluştur ---
              // Buraya da 'deleted_ids' eklemiyoruz.
-             const targetId = systemOriginal.id; 
-             const wordRef = doc(db, "artifacts", appId, "users", user.uid, "words", targetId);
-             
              await setDoc(wordRef, { 
-                 ...systemOriginal, 
-                 ...newData, 
-                 id: targetId, 
-                 source: "user" 
-             });
+  ...systemOriginal,
+  ...newData,
+
+  // 🔐 GARANTİ
+  phonetic: newData.phonetic || systemOriginal.phonetic || "",
+
+  id: targetId,
+  source: "user",
+  createdAt: new Date()
+});
          }
        }
      } catch (e) { console.error("Update Error:", e); }
