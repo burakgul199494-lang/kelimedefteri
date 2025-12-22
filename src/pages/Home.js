@@ -31,26 +31,44 @@ export default function Home() {
   const [showStats, setShowStats] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   
+  // Tüm kelimeleri çek
   const allWords = getAllWords();
   const totalWords = allWords.length;
 
-  // --- HESAPLAMALAR ---
+  // --- HESAPLAMALAR (DÜZELTİLDİ) ---
+  const now = new Date();
+
+  // 1. ÖĞRENİLENLER (İlerleme Çubuğu ve Yeşil Kutu)
+  // Sadece 'knownWordIds' listesinde var mı diye bakarız.
+  // Kelimenin süresinin dolması, onu unuttuğun anlamına gelmez. O yüzden tarih kontrolü YAPMIYORUZ.
   const validKnownWords = allWords.filter(w => knownWordIds.includes(w.id));
   const learnedCount = validKnownWords.length;
   
+  // Queue listesini doğrula (silinmiş kelime varsa filtrele)
   const validQueueItems = learningQueue 
     ? learningQueue.filter(q => allWords.some(w => w.id === q.wordId))
     : [];
   
-  const now = new Date();
-  const waitingCount = validQueueItems.filter(item => new Date(item.nextReview) > now).length;
+  // 2. BEKLEMEDE OLANLAR (Sarı Kutu)
+  // Sadece tarihi ŞU ANDAN İLERİDE olanlar beklemededir.
+  const waitingCount = validQueueItems.filter(item => {
+    // Firebase Timestamp kontrolü ve tarih dönüşümü
+    const reviewDate = item.nextReview && item.nextReview.toDate 
+      ? item.nextReview.toDate() 
+      : new Date(item.nextReview);
+      
+    return reviewDate > now; // Tarihi gelmemişse beklemededir.
+  }).length;
 
-  const remainingCount = allWords.filter(w => 
-    !knownWordIds.includes(w.id) && 
-    !learningQueue.some(q => q.wordId === w.id)
-  ).length;
+  // 3. KALAN / YAPILACAKLAR (Mavi Kutu)
+  // Toplam Kelime - Bekleyenler = Geriye Kalan Her Şey (Yeniler + Tekrarı Gelenler)
+  // Bu formül sayesinde süresi dolanlar (kırmızıya dönenler) otomatik olarak buraya eklenir.
+  const remainingCount = totalWords > 0 ? (totalWords - waitingCount) : 0;
 
+  // Yüzdelik (Learned count'a göre hesaplanır, süre dolunca azalmaz)
   const progressPercentage = totalWords > 0 ? (learnedCount / totalWords) * 100 : 0;
+  
+  // Skor
   const myScore = leaderboardData.find(u => u.id === user?.uid)?.score || 0;
 
   return (
@@ -167,7 +185,7 @@ export default function Home() {
              <Play className="w-6 h-6 opacity-60 group-hover:translate-x-1 transition-transform"/>
           </button>
 
-          {/* YENİ: GRAMER EGZERSİZİ (Flash Kart'ın Altına Taşındı) */}
+          {/* Gramer Egzersizi */}
           <button onClick={() => navigate("/exercise")} className="w-full bg-slate-800 text-white font-bold py-5 px-6 rounded-2xl shadow-lg flex items-center justify-between group active:scale-95 transition-transform mb-3">
              <div className="flex items-center gap-4">
                 <div className="bg-white/20 p-3 rounded-xl group-hover:bg-white/30 transition-colors"><Dumbbell className="w-8 h-8"/></div>
