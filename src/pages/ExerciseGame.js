@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { 
   X, Trophy, Loader2, Home, Volume2, CheckCircle2, 
   Dumbbell, Layers, ArrowRight, Languages, Square, 
-  Lightbulb, AlertTriangle
+  Lightbulb, AlertTriangle, Star
 } from "lucide-react";
 
 const FORM_TYPES = [
@@ -24,6 +24,7 @@ export default function ExerciseGame() {
   // --- STATE'LER ---
   const [gameStatus, setGameStatus] = useState("selection"); 
   const [activeForm, setActiveForm] = useState(null);
+  // eslint-disable-next-line
   const [gameMode, setGameMode] = useState("learn");
   
   const [questions, setQuestions] = useState([]);
@@ -125,7 +126,7 @@ export default function ExerciseGame() {
       setIsWordComplete(false);
       setMistakeCount(0);
       setHintCount(0);
-      setCurrentWordPoints(10);
+      setCurrentWordPoints(10); // Başlangıç Puanı: 10
     }
   }, [currentIndex, gameStatus, questions]);
 
@@ -165,6 +166,7 @@ export default function ExerciseGame() {
     }
   };
 
+  // --- HARF TIKLAMA ---
   const handleLetterClick = (letterObj, e) => {
     handleBlur(e);
     if (isWordComplete || letterObj.isUsed) return;
@@ -189,42 +191,71 @@ export default function ExerciseGame() {
     }
   };
 
+  // --- İPUCU FONKSİYONU (YENİLENMİŞ) ---
   const handleHint = (e) => {
       handleBlur(e);
       if (isWordComplete) return;
 
-      const newHintCount = hintCount + 1;
-      setHintCount(newHintCount);
-      if (newHintCount === 1) setCurrentWordPoints(prev => Math.max(0, prev - 3));
-      else setCurrentWordPoints(0);
-
       const targetWord = questions[currentIndex].targetWord;
+      
+      // KURAL 1: Tek harfli kelime engeli
+      if (targetWord.length <= 1) return;
+
       const nextIndex = completedLetters.length;
       const expectedChar = targetWord[nextIndex];
       const correctLetterObj = shuffledLetters.find(l => !l.isUsed && l.char.toLowerCase() === expectedChar.toLowerCase());
 
       if (correctLetterObj) {
+          // --- Puanlama Mantığı ---
+          let nextPoints = currentWordPoints;
+          const newHintCount = hintCount + 1;
+          setHintCount(newHintCount);
+
+          // KURAL 2: İlk ipucu 5 puana düşürür
+          if (newHintCount === 1) {
+              nextPoints = 5;
+          } 
+          // Sonrakiler 0 yapar
+          else {
+              nextPoints = 0;
+          }
+
+          // KURAL 3: Son harfi ipucu açıyorsa 0 puan
+          const isLastLetter = (completedLetters.length + 1) === targetWord.length;
+          if (isLastLetter) {
+              nextPoints = 0;
+          }
+
+          setCurrentWordPoints(nextPoints);
+
+          // Harfi Yerleştir
           const newShuffled = shuffledLetters.map(l => l.id === correctLetterObj.id ? { ...l, isUsed: true } : l);
           setShuffledLetters(newShuffled);
           const newCompleted = [...completedLetters, correctLetterObj.char];
           setCompletedLetters(newCompleted);
-          if (newCompleted.length === targetWord.length) handleSuccess(targetWord);
+          
+          if (newCompleted.length === targetWord.length) {
+              handleSuccess(targetWord, nextPoints);
+          }
       }
   };
 
-  const handleSuccess = (wordToSpeak) => {
+  // --- BAŞARI (Puan Parametresi Eklendi) ---
+  const handleSuccess = (wordToSpeak, pointsOverride = null) => {
       setIsWordComplete(true);
       speak(wordToSpeak, 'main'); 
       updateGameStats('exercise', 1);
       
       const currentQ = questions[currentIndex];
       const dateKey = `lastExercise_${currentQ.formKey}`;
-      
       handleUpdateWord(currentQ.baseWordObj.id, { [dateKey]: new Date().toISOString() });
 
-      if (currentWordPoints > 0) {
-          addScore(currentWordPoints);
-          setScore(s => s + currentWordPoints);
+      // Override varsa onu kullan, yoksa state
+      const finalPoints = pointsOverride !== null ? pointsOverride : currentWordPoints;
+
+      if (finalPoints > 0) {
+          addScore(finalPoints);
+          setScore(s => s + finalPoints);
       }
   };
 
@@ -386,6 +417,8 @@ export default function ExerciseGame() {
         `}</style>
 
         <div className="w-full max-w-md space-y-4 mt-2">
+            
+            {/* Header */}
             <div className="flex justify-between items-center">
                 <button onClick={handleQuitEarly} className="p-2 bg-white rounded-full shadow-sm"><X className="w-5 h-5 text-slate-400"/></button>
                 <div className="font-bold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-100 text-xs">
@@ -395,12 +428,19 @@ export default function ExerciseGame() {
                     <Trophy className="w-4 h-4"/> {score}
                 </div>
             </div>
+            
             <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
                 <div className="bg-indigo-500 h-full transition-all duration-500" style={{width:`${((currentIndex + 1) / questions.length) * 100}%`}}></div>
             </div>
 
+            {/* OYUN KARTI */}
             <div className="bg-white p-5 rounded-3xl shadow-xl border border-slate-100 text-center relative overflow-hidden min-h-[450px] flex flex-col justify-between">
                 <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-indigo-400 to-purple-400"></div>
+
+                {/* Soru Değeri Göstergesi (YENİ) */}
+                <div className="absolute top-4 right-4 flex items-center gap-1 bg-green-50 text-green-700 px-2 py-1 rounded-lg text-xs font-bold border border-green-100 animate-in fade-in">
+                    <Star className="w-3 h-3 fill-current"/> Soru: {currentWordPoints}p
+                </div>
 
                 <div className="mt-2 flex flex-col items-center gap-1">
                     <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">ANA KELİME (BASE)</div>
@@ -427,18 +467,16 @@ export default function ExerciseGame() {
                     )}
                 </div>
 
-
-{/* ✅ FONETİK (BASE kelimenin altı) */}
-{baseWordObj?.phonetic?.trim() ? (
-  <div className="mt-1 flex justify-center animate-in fade-in slide-in-from-top-1">
-    <span className="text-indigo-400 font-serif italic text-lg tracking-wide px-3 py-0.5 bg-indigo-50/50 rounded-lg border border-indigo-100/50">
-      /{String(baseWordObj.phonetic).replace(/\//g, "")}/
-    </span>
-  </div>
-) : (
-  <div className="h-7" />
-)}
-
+                {/* Fonetik */}
+                {baseWordObj?.phonetic?.trim() ? (
+                  <div className="mt-1 flex justify-center animate-in fade-in slide-in-from-top-1">
+                    <span className="text-indigo-400 font-serif italic text-lg tracking-wide px-3 py-0.5 bg-indigo-50/50 rounded-lg border border-indigo-100/50">
+                      /{String(baseWordObj.phonetic).replace(/\//g, "")}/
+                    </span>
+                  </div>
+                ) : (
+                  <div className="h-7" />
+                )}
                 
                 {def.engExplanation && (
                     <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 relative mt-2 text-left">
@@ -492,6 +530,7 @@ export default function ExerciseGame() {
                                     key={item.id}
                                     onClick={(e) => handleLetterClick(item, e)}
                                     disabled={item.isUsed}
+                                    style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
                                     className={`w-10 h-10 rounded-xl font-bold text-lg shadow-[0_3px_0_rgb(0,0,0,0.1)] transition-all active:translate-y-[2px] active:shadow-none outline-none focus:outline-none
                                         ${item.isUsed 
                                             ? "opacity-0 pointer-events-none scale-0" 
@@ -507,11 +546,15 @@ export default function ExerciseGame() {
                         <div className="flex justify-center border-t border-slate-100 pt-3">
                              <button 
                                 onClick={handleHint}
+                                disabled={isWordComplete || targetWord.length <= 1}
                                 style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
-                                className="flex items-center gap-2 px-4 py-2 bg-amber-100 text-amber-700 rounded-xl font-bold text-sm active:scale-95 transition-transform focus:outline-none"
+                                className={`flex items-center gap-2 px-4 py-2 bg-amber-100 text-amber-700 rounded-xl font-bold text-sm active:scale-95 transition-transform focus:outline-none
+                                    ${(isWordComplete || targetWord.length <= 1) ? 'opacity-50 cursor-not-allowed' : ''}
+                                `}
                              >
                                 <Lightbulb className="w-4 h-4"/> 
-                                <span>İpucu ({hintCount === 0 ? "10p" : hintCount === 1 ? "7p" : "0p"})</span>
+                                {/* YENİ METİN */}
+                                <span>İpucu {targetWord.length <= 1 ? "(Yok)" : "(-5p)"}</span>
                                 <span className="text-[10px] bg-white/50 px-1.5 rounded ml-1">Hata: {mistakeCount}/3</span>
                              </button>
                         </div>
