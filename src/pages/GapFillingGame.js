@@ -444,12 +444,12 @@ const learnPool = validWords.filter(w => {
           </div>
           <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden"><div className="bg-blue-500 h-full transition-all duration-500" style={{width:`${progress}%`}}></div></div>
           
-          {/* OYUN KARTI */}
-          <div className="bg-white p-6 rounded-3xl shadow-xl border border-slate-100 text-center space-y-6 relative overflow-hidden min-h-[450px] flex flex-col justify-between">
+       {/* OYUN KARTI */}
+          <div className="bg-white p-6 rounded-3xl shadow-xl border border-slate-100 text-center space-y-4 relative overflow-hidden min-h-[480px] flex flex-col justify-between">
              <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-blue-400 to-cyan-400"></div>
              
              {/* 1. SORU (CÜMLE) KISMI */}
-             <div className="space-y-3 mt-2">
+             <div className="space-y-2 mt-2">
                <div className="flex justify-center"><div className="bg-blue-50 p-3 rounded-full"><Quote className="w-6 h-6 text-blue-400"/></div></div>
                
                <div className="flex flex-col items-center gap-2">
@@ -457,7 +457,7 @@ const learnPool = validWords.filter(w => {
                        {getMaskedSentence()}
                    </h2>
                    
-                   {/* CÜMLE OKUMA BUTONU (Sözlük Tarzı + Blur) */}
+                   {/* CÜMLE OKUMA BUTONU */}
                    <button 
                        onClick={(e) => { 
                            handleBlur(e);
@@ -468,8 +468,8 @@ const learnPool = validWords.filter(w => {
                          focus:outline-none focus:ring-0 select-none touch-manipulation
                          transition-colors duration-200
                          ${activeAudio === 'sentence' 
-                            ? 'bg-indigo-600 text-white border-indigo-600' // Aktif: Mavi
-                            : 'bg-white text-slate-400 border-slate-200 hover:bg-slate-50' // Pasif: Beyaz
+                            ? 'bg-indigo-600 text-white border-indigo-600'
+                            : 'bg-white text-slate-400 border-slate-200 hover:bg-slate-50'
                          }
                        `}
                        title="Cümleyi Oku"
@@ -484,7 +484,7 @@ const learnPool = validWords.filter(w => {
                     <div className="flex items-center justify-between gap-2 mb-1">
                         <span className="text-xs font-bold text-slate-400 uppercase">Tanım (İpucu)</span>
                         <div className="flex gap-1">
-                            {/* İPUCU SES BUTONU (Sözlük Tarzı + Blur) */}
+                            {/* İPUCU SES */}
                             <button 
                                 onClick={(e) => {
                                     handleBlur(e);
@@ -495,8 +495,8 @@ const learnPool = validWords.filter(w => {
                                   focus:outline-none focus:ring-0 select-none touch-manipulation
                                   transition-colors duration-200
                                   ${activeAudio === 'hint'
-                                    ? 'bg-indigo-600 text-white border-indigo-600' // Aktif: Mavi
-                                    : 'bg-white text-slate-400 border-slate-200 hover:bg-slate-50' // Pasif: Beyaz
+                                    ? 'bg-indigo-600 text-white border-indigo-600'
+                                    : 'bg-white text-slate-400 border-slate-200 hover:bg-slate-50'
                                   }
                                 `}
                                 title="Oku"
@@ -504,7 +504,7 @@ const learnPool = validWords.filter(w => {
                                 {activeAudio === 'hint' ? <Square className="w-3 h-3 fill-current"/> : <Volume2 className="w-3 h-3"/>}
                             </button>
 
-                            {/* ÇEVİRİ BUTONU (Sözlük Tarzı + Blur) */}
+                            {/* ÇEVİRİ BUTONU */}
                             {turkishDefinition && (
                                 <button 
                                   onClick={(e) => {
@@ -516,8 +516,8 @@ const learnPool = validWords.filter(w => {
                                     focus:outline-none focus:ring-0 select-none touch-manipulation
                                     transition-colors duration-200
                                     ${showHintTr 
-                                        ? "bg-indigo-600 text-white border-indigo-600" // Aktif: Mavi
-                                        : "bg-white text-slate-400 border-slate-200 hover:bg-slate-50" // Pasif: Beyaz
+                                      ? "bg-indigo-600 text-white border-indigo-600"
+                                      : "bg-white text-slate-400 border-slate-200 hover:bg-slate-50"
                                     }
                                   `}
                                 >
@@ -532,41 +532,42 @@ const learnPool = validWords.filter(w => {
                )}
              </div>
 
-             {/* YAZI ALANI */}
-             <div className="flex flex-wrap justify-center gap-1 min-h-[60px] items-end content-center">
-                {targetWord.split('').map((_, idx) => {
-                  const char = completedLetters[idx];
-                  const isFilled = char !== undefined;
-                  return (
-                    <div 
-                      key={idx} 
-                      className={`
-                        ${styles.box} ${styles.text} 
-                        flex items-center justify-center font-bold border-b-4 rounded-t-lg transition-all
-                        ${isFilled ? "border-blue-500 text-blue-700 bg-blue-50 translate-y-0" : "border-slate-200 bg-slate-50 text-transparent"}
-                      `}
-                    >
-                      {char}
-                    </div>
-                  );
-                })}
+             {/* 2. CEVAP ALANI (KUTULAR + FONETİK) */}
+             <div className="space-y-3">
+                 {/* YAZI ALANI (Harf Kutucukları) */}
+                 <div className="flex flex-wrap justify-center gap-1 min-h-[50px] items-end content-center">
+                    {targetWord.split('').map((_, idx) => {
+                      const char = completedLetters[idx];
+                      const isFilled = char !== undefined;
+                      return (
+                        <div 
+                          key={idx} 
+                          className={`
+                            ${styles.box} ${styles.text} 
+                            flex items-center justify-center font-bold border-b-4 rounded-t-lg transition-all
+                            ${isFilled ? "border-blue-500 text-blue-700 bg-blue-50 translate-y-0" : "border-slate-200 bg-slate-50 text-transparent"}
+                          `}
+                        >
+                          {char}
+                        </div>
+                      );
+                    })}
+                 </div>
+
+                 {/* 🔥 FONETİK GÖSTERİMİ (BURASI DÜZELTİLDİ) 🔥 */}
+                 {currentWordObj?.phonetic ? (
+                     <div className="flex justify-center animate-in fade-in slide-in-from-top-1">
+                         <span className="text-indigo-400 font-serif italic text-lg tracking-wide px-3 py-0.5 bg-indigo-50/50 rounded-lg border border-indigo-100/50">
+                             /{currentWordObj.phonetic.replace(/\//g, '')}/
+                         </span>
+                     </div>
+                 ) : (
+                     // Boşluk koruyucu (Fonetik yoksa zıplama yapmasın diye)
+                     <div className="h-8"></div>
+                 )}
              </div>
 
-            {/* FONETİK GÖSTERİMİ (YENİ) */}
-             {currentWordObj?.phonetic && (
-                 <div className="text-center -mt-2 mb-4 animate-in fade-in slide-in-from-top-2">
-                     <span className="text-slate-400 font-serif italic text-lg tracking-wide bg-slate-50/50 px-3 py-1 rounded-full border border-slate-100/50">
-                         /{currentWordObj.phonetic.replace(/\//g, '')}/
-                     </span>
-                 </div>
-             )}
-
-             {/* 👆👆👆 YENİ EKLENECEK KISIM (BURADA BİTİR) 👆👆👆 */}
-
-
-
-
-             {/* KARIŞIK HARFLER (BUTONLAR - BLUR EKLENDİ) */}
+             {/* 3. KARIŞIK HARFLER (BUTONLAR) */}
              <div key={currentIndex} className="flex flex-wrap justify-center gap-2 content-center">
                 {shuffledLetters.map((item) => (
                   <button
@@ -591,7 +592,7 @@ const learnPool = validWords.filter(w => {
                 ))}
              </div>
 
-             {/* KONTROL BUTONLARI (İpucu) - BLUR EKLENDİ */}
+             {/* KONTROL BUTONLARI (İpucu) */}
              <div className="flex items-center justify-center gap-4 pt-4 border-t border-slate-100 mt-auto">
                 <button 
                   onClick={(e) => handleHint(e)} 
