@@ -347,11 +347,11 @@ export const DataProvider = ({ children }) => {
             let minutesToAdd = 0;
 
 switch (newLevel) {
-    case 1: minutesToAdd = 2; break;   // 1 dk
-    case 2: minutesToAdd = 2; break;   // 1 dk
-    case 3: minutesToAdd = 2; break;   // 1 dk
-    case 4: minutesToAdd = 2; break;   // 1 dk
-    case 5: minutesToAdd = 2; break;   // 1 dk
+    case 1: minutesToAdd = 1; break;   // 1 dk
+    case 2: minutesToAdd = 1; break;   // 1 dk
+    case 3: minutesToAdd = 1; break;   // 1 dk
+    case 4: minutesToAdd = 1; break;   // 1 dk
+    case 5: minutesToAdd = 1; break;   // 1 dk
     case 6: isMastered = true; break;
     default: isMastered = true; break;
 }
