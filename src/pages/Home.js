@@ -1,9 +1,8 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useData } from "../context/DataContext";
-import { auth } from "../services/firebase"; 
+// import { auth } from "../services/firebase"; // Kullanmıyorsan silebilirsin, aşağıda user context'ten geliyor
 import { 
-  RotateCcw, LogOut,
   Brain, Flame, Play, Book, 
   Edit, HelpCircle, 
   Settings, Trophy, 
@@ -23,7 +22,7 @@ import StatisticsModal from "../components/StatisticsModal";
 import SettingsModal from "../components/SettingsModal";
 
 export default function Home() {
-  const { user, knownWordIds, getAllWords, streak, isAdmin, leaderboardData, learningQueue } = useData();
+  const { user, knownWordIds, getAllWords, streak, isAdmin, leaderboardData } = useData();
   const navigate = useNavigate();
   
   const [showProfileModal, setShowProfileModal] = useState(false); 
@@ -35,41 +34,56 @@ export default function Home() {
   const allWords = getAllWords();
   const totalWords = allWords.length;
 
-  // --- HESAPLAMALAR (DÜZELTİLDİ) ---
+  // --- HESAPLAMALAR (SAYFALARLA BİREBİR EŞLEŞEN MANTIK) ---
   const now = new Date();
 
-  // 1. ÖĞRENİLENLER (İlerleme Çubuğu ve Yeşil Kutu)
-  // Sadece 'knownWordIds' listesinde var mı diye bakarız.
-  // Kelimenin süresinin dolması, onu unuttuğun anlamına gelmez. O yüzden tarih kontrolü YAPMIYORUZ.
-  const validKnownWords = allWords.filter(w => knownWordIds.includes(w.id));
-  const learnedCount = validKnownWords.length;
-  
-  // Queue listesini doğrula (silinmiş kelime varsa filtrele)
-  const validQueueItems = learningQueue 
-    ? learningQueue.filter(q => allWords.some(w => w.id === q.wordId))
-    : [];
-  
-  // 2. BEKLEMEDE OLANLAR (Sarı Kutu)
-  // Sadece tarihi ŞU ANDAN İLERİDE olanlar beklemededir.
-  const waitingCount = validQueueItems.filter(item => {
-    // Firebase Timestamp kontrolü ve tarih dönüşümü
-    const reviewDate = item.nextReview && item.nextReview.toDate 
-      ? item.nextReview.toDate() 
-      : new Date(item.nextReview);
+  // 1. BEKLEMEDE OLANLAR (SARI KUTU)
+  // Mantık: Biliniyor (Level > 0) VE Tarihi Gelecekte.
+  // Bu, "/list/waiting" sayfasındaki listeyle aynıdır.
+  const waitingList = allWords.filter(w => {
+      // Eğer kelime "Bilinmiyorsa" bekleme listesinde olamaz.
+      if (!knownWordIds.includes(w.id)) return false; 
       
-    return reviewDate > now; // Tarihi gelmemişse beklemededir.
-  }).length;
+      // Firebase tarih kontrolü (toDate var mı?)
+      const reviewDate = w.nextReviewDate && w.nextReviewDate.toDate 
+        ? w.nextReviewDate.toDate() 
+        : new Date(w.nextReviewDate);
+      
+      // Sadece gelecekteki kelimeler
+      return reviewDate > now;
+  });
+  const waitingCount = waitingList.length;
 
-  // 3. KALAN / YAPILACAKLAR (Mavi Kutu)
-  // Toplam Kelime - Bekleyenler = Geriye Kalan Her Şey (Yeniler + Tekrarı Gelenler)
-  // Bu formül sayesinde süresi dolanlar (kırmızıya dönenler) otomatik olarak buraya eklenir.
-  const remainingCount = totalWords > 0 ? (totalWords - waitingCount) : 0;
+  // 2. KALAN / ÇALIŞILACAKLAR (MAVİ KUTU)
+  // Mantık: (Hiç Bilinmiyor) VEYA (Biliniyor AMA Süresi Dolmuş/Tekrar)
+  // Bu, "/list/unknown" (veya ana çalışma listen) sayfasındaki listeyle aynıdır.
+  const remainingList = allWords.filter(w => {
+      const isKnown = knownWordIds.includes(w.id);
+      
+      // Durum A: Hiç bilinmiyor (Yeni Kelime) -> LİSTEYE AL
+      if (!isKnown) return true; 
 
-  // Yüzdelik (Learned count'a göre hesaplanır, süre dolunca azalmaz)
+      // Durum B: Biliniyor ama süresi dolmuş (Tekrar Zamanı) -> LİSTEYE AL
+      const reviewDate = w.nextReviewDate && w.nextReviewDate.toDate 
+        ? w.nextReviewDate.toDate() 
+        : new Date(w.nextReviewDate);
+        
+      return reviewDate <= now; 
+  });
+  const remainingCount = remainingList.length;
+
+  // 3. ÖĞRENİLENLER (YEŞİL KUTU & İLERLEME ÇUBUĞU)
+  // Mantık: Sadece biliniyor olması yeterli (Süresi dolsa da dolmasa da).
+  // Bu, "/list/known" sayfasındaki listeyle aynıdır.
+  const learnedList = allWords.filter(w => knownWordIds.includes(w.id));
+  const learnedCount = learnedList.length;
+
+  // Yüzdelik (Learned count'a göre hesaplanır)
   const progressPercentage = totalWords > 0 ? (learnedCount / totalWords) * 100 : 0;
   
   // Skor
   const myScore = leaderboardData.find(u => u.id === user?.uid)?.score || 0;
+  // --- HESAPLAMALAR BİTİŞ ---
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center p-6 w-full overflow-x-hidden">
