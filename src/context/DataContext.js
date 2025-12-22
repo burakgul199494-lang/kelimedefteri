@@ -545,30 +545,50 @@ switch (newLevel) {
   };
 
   const handleSaveNewWord = async (wordData) => {
-    const normalizedInput = wordData.word.toLowerCase().trim();
-    const allWords = getAllWords();
-    if (allWords.some(w => w.word.toLowerCase() === normalizedInput)) return { success: false, message: "Zaten mevcut!" };
-    const newId = Date.now().toString();
-    const newWord = {
-      id: newId, 
-      word: wordData.word.trim(), 
-      phonetic: wordData.phonetic || "", // <--- BU SATIRI EKLE
-      tags: wordData.tags || [],
-      plural: wordData.plural||"", v2: wordData.v2||"", v3: wordData.v3||"", vIng: wordData.vIng||"", thirdPerson: wordData.thirdPerson||"",
-      advLy: wordData.advLy||"", compEr: wordData.compEr||"", superEst: wordData.superEst||"",
-      definitions: wordData.definitions, 
-      sentence: wordData.sentence.trim(), 
-      sentence_tr: wordData.sentence_tr || "",
-      source: "user", 
-      createdAt: new Date()
-    };
-    };
-    try {
-      const wordRef = doc(db, "artifacts", appId, "users", user.uid, "words", newId);
-      await setDoc(wordRef, newWord);
-      return { success: true };
-    } catch (e) { return { success: false, message: "Hata" }; }
+  const normalizedInput = wordData.word.toLowerCase().trim();
+  const allWords = getAllWords();
+  if (allWords.some(w => w.word.toLowerCase() === normalizedInput)) {
+    return { success: false, message: "Zaten mevcut!" };
+  }
+
+  const newId = Date.now().toString();
+  const newWord = {
+    id: newId, 
+    word: wordData.word.trim(), 
+    phonetic: wordData.phonetic || "",
+    tags: wordData.tags || [],
+    plural: wordData.plural || "",
+    v2: wordData.v2 || "",
+    v3: wordData.v3 || "",
+    vIng: wordData.vIng || "",
+    thirdPerson: wordData.thirdPerson || "",
+    advLy: wordData.advLy || "",
+    compEr: wordData.compEr || "",
+    superEst: wordData.superEst || "",
+    definitions: wordData.definitions,
+    sentence: wordData.sentence.trim(),
+    sentence_tr: wordData.sentence_tr || "",
+    source: "user",
+    createdAt: new Date()
   };
+
+  try {
+    const wordRef = doc(
+      db,
+      "artifacts",
+      appId,
+      "users",
+      user.uid,
+      "words",
+      newId
+    );
+    await setDoc(wordRef, newWord);
+    return { success: true };
+  } catch (e) {
+    return { success: false, message: "Hata" };
+  }
+};
+
 
   const handleDeleteWord = async (wordId) => {
     try {
