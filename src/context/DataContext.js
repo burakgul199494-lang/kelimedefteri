@@ -201,22 +201,25 @@ export const DataProvider = ({ children }) => {
 
   // AŞAĞIDAKİ YENİ KODU SİLDİĞİN YERE YAPIŞTIR
 // -------------------------------------------------
-  // --- KELİMELERİ GETİR (DÜZELTİLMİŞ VERSİYON) ---
+  // --- KELİMELERİ GETİR (TİP GÜVENLİKLİ VERSİYON) ---
   const getAllWords = () => {
     const deletedSet = new Set(deletedWordIds.map(String));
     
-    // 1. SRS Kuyruğunu Haritala (Hız için)
-    // Hangi kelime kaçıncı seviyede buradan bakacağız.
+    // 1. Kuyruk Haritası
     const queueMap = {};
     learningQueue.forEach(item => {
         queueMap[String(item.wordId)] = item;
     });
 
-    // 2. Ham Listeler (Silinmişler hariç)
+    // 2. Bilinen Kelimeler Seti (Hız ve Tip Güvenliği İçin)
+    // knownWordIds içindeki her şeyi String'e çevirip bir Set'e atıyoruz.
+    // Böylece "123" (string) ile 123 (sayı) aynı kabul edilir.
+    const knownSet = new Set(knownWordIds.map(String));
+
+    // 3. Ham Listeler
     const systemRaw = dynamicSystemWords.filter(w => !deletedSet.has(String(w.id)));
     const customRaw = customWords.filter(w => !deletedSet.has(String(w.id)));
     
-    // 3. Kullanıcı kelimelerini haritala
     const userMapById = {};
     const userMapByText = {};
     const processedUserIds = new Set(); 
@@ -228,17 +231,16 @@ export const DataProvider = ({ children }) => {
 
     const finalWordList = [];
 
-    // --- YENİ YARDIMCI FONKSİYON: SEVİYE HESAPLA ---
-    // Bu fonksiyon kelimenin durumuna bakıp gerçek seviyesini söyler.
+    // --- SEVİYE HESAPLA ---
     const getWordStats = (wordId) => {
         const strId = String(wordId);
         
-        // KURAL 1 (EN ÖNEMLİSİ): Eğer kelime "BİLİNENLER" listesindeyse, direkt Level 6 (Master) kabul et.
-        if (knownWordIds.includes(strId) || knownWordIds.includes(Number(strId))) {
+        // KURAL 1: Eğer kelime "BİLİNENLER" setindeyse -> Level 6
+        if (knownSet.has(strId)) {
             return { level: 6, nextReview: null, isMastered: true };
         }
         
-        // KURAL 2: Eğer kuyruktaysa, kuyruktaki seviyesini al (Örn: Level 3)
+        // KURAL 2: Kuyruktaysa -> Kuyruk Seviyesi
         if (queueMap[strId]) {
             return { 
                 level: queueMap[strId].level, 
@@ -247,26 +249,25 @@ export const DataProvider = ({ children }) => {
             };
         }
 
-        // KURAL 3: Hiçbiri değilse 0 (Mavi/Öğrenilmemiş)
+        // KURAL 3: Hiçbiri değilse -> 0
         return { level: 0, nextReview: null, isMastered: false };
     };
 
-    // 4. SİSTEM KELİMELERİNİ DÖN
+    // 4. Sistem Kelimelerini İşle
     systemRaw.forEach(systemWord => {
         let userMatch = userMapById[systemWord.id];
         if (!userMatch) userMatch = userMapByText[systemWord.word.toLowerCase().trim()];
 
-        // İstatistikleri hesapla (Yukarıdaki yardımcı fonksiyonu kullan)
         const stats = getWordStats(userMatch ? userMatch.id : systemWord.id);
 
         if (userMatch) {
             processedUserIds.add(userMatch.id);
             finalWordList.push({
                 ...systemWord, 
-                ...userMatch, // ÖNEMLİ: Kullanıcı düzenlemeleri (sentence, definition) sistemin üzerine yazar
+                ...userMatch,
                 id: userMatch.id, 
                 source: "user",
-                ...stats // Level 6 bilgisi buradan gelecek
+                ...stats 
             });
         } else {
             finalWordList.push({ 
@@ -277,7 +278,7 @@ export const DataProvider = ({ children }) => {
         }
     });
 
-    // 5. Sadece Kullanıcıda Olanlar (Custom Words)
+    // 5. Kullanıcı Kelimelerini İşle
     customRaw.forEach(userWord => {
         if (!processedUserIds.has(userWord.id)) {
             const stats = getWordStats(userWord.id);
@@ -305,95 +306,79 @@ export const DataProvider = ({ children }) => {
   };
 
   // --- YENİ SRS (AKILLI ÖĞRENME) FONKSİYONU ---
-  const handleSmartLearn = async (wordId, action) => {
+  const handleSmartLearn = async (rawWordId, action) => {
+    // GÜVENLİK: ID ne gelirse gelsin (Sayı/Obje) String'e çeviriyoruz.
+    const wordId = String(rawWordId); 
+
     try {
         const userRef = doc(db, "artifacts", appId, "users", user.uid, "vocab_game", "progress");
         const now = new Date();
 
-        // 1. "Ezberledim" butonu (Direkt seviye atlatıp bitir)
-        // ✅ MASTER AKSİYONU ARTIK SEVİYE KONTROLLÜ
-if (action === "master") {
-    const userRef = doc(
-        db,
-        "artifacts",
-        appId,
-        "users",
-        user.uid,
-        "vocab_game",
-        "progress"
-    );
+        // --- SENARYO 1: EZBERLEDİM (MASTER) ---
+        if (action === "master") {
+            // 1. Kuyruktan kesinlikle sil (ID'leri string olarak karşılaştır)
+            const newQueue = learningQueue.filter(q => String(q.wordId) !== wordId);
 
-    // 1️⃣ Kuyruktan tamamen çıkar
-    const newQueue = learningQueue.filter(
-        q => String(q.wordId) !== String(wordId)
-    );
-
-    // 2️⃣ Direkt Öğrendiklerim listesine ekle
-    await updateDoc(userRef, {
-        known_ids: arrayUnion(wordId),
-        learning_queue: newQueue
-    });
-
-    return;
-}
-
-
+            // 2. Hem Öğrendiklerime ekle hem Kuyruğu güncelle
+            await updateDoc(userRef, {
+                known_ids: arrayUnion(wordId), // String olarak kaydet
+                learning_queue: newQueue
+            });
+            return;
+        }
         
-        // Mevcut kelime kuyrukta var mı? Varsa seviyesi kaç?
-        const currentItem = learningQueue.find(q => String(q.wordId) === String(wordId));
+        // --- SENARYO 2: BİLİYORUM / BİLMİYORUM ---
+        // Mevcut kelime kuyrukta var mı?
+        const currentItem = learningQueue.find(q => String(q.wordId) === wordId);
         const currentLevel = currentItem ? (currentItem.level || 0) : 0;
         
-        // Kuyruğu önce temizle (Yeni halini aşağıda hesaplayıp ekleyeceğiz)
-        let newQueue = learningQueue.filter(q => String(q.wordId) !== String(wordId));
+        // Kuyruğu temizle (Yeni halini aşağıda ekleyeceğiz)
+        let newQueue = learningQueue.filter(q => String(q.wordId) !== wordId);
 
         if (action === "know") {
-            // Zaten biliyorsak işlem yapma
-            if (knownWordIds.includes(wordId)) return;
+            if (knownWordIds.includes(wordId)) return; // Zaten biliniyorsa dur
 
             const newLevel = currentLevel + 1;
             const nextDate = new Date();
             let daysToAdd = 0;
             let isMastered = false;
 
-            // --- SENİN İSTEDİĞİN GÜN ARALIKLARI ---
+            // Gün aralıkları
             switch (newLevel) {
-                case 1: daysToAdd = 1; break;   // 24 Saat (1 Gün) - Bekleme Listesine gider
-                case 2: daysToAdd = 3; break;   // 3 Gün - Bekleme Listesine gider
-                case 3: daysToAdd = 7; break;   // 1 Hafta - Bekleme Listesine gider
-                case 4: daysToAdd = 14; break;  // 2 Hafta - Bekleme Listesine gider
-                case 5: daysToAdd = 30; break;  // 1 Ay - Bekleme Listesine gider
-                case 6: isMastered = true; break; // SON SEVİYE: Öğrendiklerim (Known) Listesine
+                case 1: daysToAdd = 1; break;  
+                case 2: daysToAdd = 3; break;  
+                case 3: daysToAdd = 7; break;  
+                case 4: daysToAdd = 14; break; 
+                case 5: daysToAdd = 30; break; 
+                case 6: isMastered = true; break; // Level 6 = Master
                 default: isMastered = true; break;
             }
 
             if (isMastered) {
-                // Seviye 6 olduysa: Kuyruktan zaten sildik, şimdi Known'a ekle.
-                await addToKnown(wordId);
+                // Level 6 oldu -> Known listesine ekle
+                await updateDoc(userRef, {
+                    known_ids: arrayUnion(wordId),
+                    learning_queue: newQueue
+                });
             } else {
-                // Bekleme süresini ekle
+                // Seviye arttır -> Kuyruğa geri koy
                 nextDate.setDate(now.getDate() + daysToAdd);
-                
-                // Kuyruğa yeni seviyesi ve tarihiyle ekle
                 newQueue.push({ 
-                    wordId, 
+                    wordId: wordId, // String ID kullan
                     level: newLevel, 
                     nextReview: nextDate.toISOString() 
                 });
-                
-                // Veritabanını güncelle
                 await updateDoc(userRef, { learning_queue: newQueue });
             }
 
         } else if (action === "dont_know") {
-            // Bilmiyorum denirse:
-            // 1. Eğer "Öğrendiklerim" listesindeyse oradan çıkar.
-            if (knownWordIds.includes(wordId)) {
-                await removeFromKnown(wordId);
+            // Bilmiyorum -> Sıfırla
+            if (knownWordIds.map(String).includes(wordId)) {
+                await updateDoc(userRef, { known_ids: arrayRemove(wordId) });
+                // Not: Eğer sayı olarak kayıtlıysa onu da silmeyi dene
+                await updateDoc(userRef, { known_ids: arrayRemove(Number(wordId)) });
             }
-
-            // 2. Kuyruktan tamamen çıkar (newQueue zaten yukarıda filtrelenmişti).
-            // Böylece kelime "Hiç bilinmeyenler" (Mavi Kutu / Öğreneceklerim) havuzuna geri döner.
-            // Seviyesi sıfırlanmış olur.
+            // Kuyruğa eklemeden (veya sıfırlanmış kuyrukla) güncelle -> Maviye döner
             await updateDoc(userRef, { learning_queue: newQueue });
         }
     } catch (e) { console.error("Hata:", e); }
