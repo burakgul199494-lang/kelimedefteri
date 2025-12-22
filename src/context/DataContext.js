@@ -185,28 +185,35 @@ export const DataProvider = ({ children }) => {
   };
 
  
-  const normalizeWord = (w) => {
-    // Güvenlik: w boşsa boş dön
-    if (!w) return {}; 
+const normalizeWord = (w) => {
+  if (!w) return {};
 
-    return { 
-        ...w, 
-        
-        // 👇👇👇 EN ÖNEMLİ KISIM BURASI (Bunu eklemezsen oyuna gitmez) 👇👇👇
-        phonetic: w.phonetic || "", 
-        // 👆👆👆 -------------------------------------------------------- 👆👆👆
+  return {
+    ...w,
 
-        sentence_tr: w.sentence_tr || "",
-        tags: Array.isArray(w.tags) ? w.tags : [],
-        definitions: Array.isArray(w.definitions) 
-          ? w.definitions.map(def => ({ 
-              ...def, 
-              engExplanation: def.engExplanation || "",
-              trExplanation: def.trExplanation || "" 
-            })) 
-          : [{ type: "other", meaning: "", engExplanation: "", trExplanation: "" }] 
-    };
+    // ✅ her kelimede garanti alanlar
+    phonetic: w.phonetic || "",
+    plural: w.plural || "",
+    v2: w.v2 || "",
+    v3: w.v3 || "",
+    vIng: w.vIng || "",
+    thirdPerson: w.thirdPerson || "",
+    advLy: w.advLy || "",
+    compEr: w.compEr || "",
+    superEst: w.superEst || "",
+
+    sentence_tr: w.sentence_tr || "",
+    tags: Array.isArray(w.tags) ? w.tags : [],
+    definitions: Array.isArray(w.definitions)
+      ? w.definitions.map(def => ({
+          ...def,
+          engExplanation: def.engExplanation || "",
+          trExplanation: def.trExplanation || "",
+        }))
+      : [{ type: "other", meaning: "", engExplanation: "", trExplanation: "" }],
   };
+};
+
 
   // AŞAĞIDAKİ YENİ KODU SİLDİĞİN YERE YAPIŞTIR
 // -------------------------------------------------
@@ -424,20 +431,40 @@ switch (newLevel) {
                  await updateDoc(userRef, { known_ids: arrayUnion(existingByText.id) });
              }
          } else {
-             // --- DURUM 3: Yepyeni kopya oluştur ---
-             // Buraya da 'deleted_ids' eklemiyoruz.
-             await setDoc(wordRef, { 
-  ...systemOriginal,
-  ...newData,
+  // --- DURUM 3: Sistem kelimesinden user kopyası oluştur ---
+  const targetId = systemOriginal.id;
+  const wordRef = doc(
+    db,
+    "artifacts",
+    appId,
+    "users",
+    user.uid,
+    "words",
+    targetId
+  );
 
-  // 🔐 GARANTİ
-  phonetic: newData.phonetic || systemOriginal.phonetic || "",
+  await setDoc(wordRef, {
+    ...systemOriginal,
 
-  id: targetId,
-  source: "user",
-  createdAt: new Date()
-});
-         }
+    // 🔐 tüm alanları garantiye al
+    phonetic: newData.phonetic || systemOriginal.phonetic || "",
+    plural: systemOriginal.plural || "",
+    v2: systemOriginal.v2 || "",
+    v3: systemOriginal.v3 || "",
+    vIng: systemOriginal.vIng || "",
+    thirdPerson: systemOriginal.thirdPerson || "",
+    advLy: systemOriginal.advLy || "",
+    compEr: systemOriginal.compEr || "",
+    superEst: systemOriginal.superEst || "",
+
+    ...newData,
+
+    id: targetId,
+    source: "user",
+    createdAt: new Date()
+  });
+}
+
        }
      } catch (e) { console.error("Update Error:", e); }
   };
@@ -448,16 +475,27 @@ switch (newLevel) {
       const exists = dynamicSystemWords.some(w => w.word.toLowerCase() === normalizedInput);
       if(exists) return { success: false, message: "Bu kelime zaten sistemde var!" };
 
-      const newWord = {
+     const newWord = {
   word: wordData.word.trim(),
-  phonetic: wordData.phonetic || "",   // ✅ eklendi
+  phonetic: wordData.phonetic || "",
+
+  plural: wordData.plural || "",
+  v2: wordData.v2 || "",
+  v3: wordData.v3 || "",
+  vIng: wordData.vIng || "",
+  thirdPerson: wordData.thirdPerson || "",
+  advLy: wordData.advLy || "",
+  compEr: wordData.compEr || "",
+  superEst: wordData.superEst || "",
+
   sentence: wordData.sentence.trim(),
   sentence_tr: wordData.sentence_tr || "",
-  definitions: wordData.definitions,
+  definitions: Array.isArray(wordData.definitions) ? wordData.definitions : [],
   tags: wordData.tags || [],
   source: "system",
   createdAt: new Date()
 };
+
 
       await addDoc(collection(db, "artifacts", appId, "system_words"), newWord);
       
@@ -657,15 +695,26 @@ switch (newLevel) {
   const handleUpdateSystemWord = async (id, wordData) => {
       try {
           const docRef = doc(db, "artifacts", appId, "system_words", id);
-         await updateDoc(docRef, {
+        await updateDoc(docRef, {
   word: wordData.word?.trim() || "",
-  phonetic: wordData.phonetic || "",   // ✅ eklendi
+  phonetic: wordData.phonetic || "",
+
+  plural: wordData.plural || "",
+  v2: wordData.v2 || "",
+  v3: wordData.v3 || "",
+  vIng: wordData.vIng || "",
+  thirdPerson: wordData.thirdPerson || "",
+  advLy: wordData.advLy || "",
+  compEr: wordData.compEr || "",
+  superEst: wordData.superEst || "",
+
   sentence: wordData.sentence?.trim() || "",
   sentence_tr: wordData.sentence_tr || "",
-  definitions: wordData.definitions || [],
+  definitions: Array.isArray(wordData.definitions) ? wordData.definitions : [],
   tags: wordData.tags || [],
   updatedAt: new Date()
 });
+
           return { success: true };
       } catch(e) { return { success: false, message: e.message }; }
   };
