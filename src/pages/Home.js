@@ -30,46 +30,48 @@ export default function Home() {
   const [showStats, setShowStats] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   
-  // --- ABİNİN İSTEDİĞİ NET HESAPLAMA ---
+  // --- KESİN HESAPLAMA MANTIĞI (MUTUALLY EXCLUSIVE) ---
   const stats = useMemo(() => {
     const allWords = getAllWords();
     const now = new Date();
 
-    let unknownCount = 0; // list/unknown (Öğreneceklerim)
-    let waitingCount = 0; // list/waiting (Bekleme Listesi)
-    let activeKnownCount = 0; // list/known (Öğrendiklerim/Aktif)
-
+    // Sayaçları sıfırdan başlatıyoruz
+    let waitingCount = 0; // Sarı Kutu (Zamanı gelmemiş)
+    let reviewCount = 0;  // Tekrar (Zamanı gelmiş)
+    let newCount = 0;     // Mavi Kutu (Hiç bilinmeyen)
+    
     allWords.forEach(word => {
-        const isKnown = knownWordIds.includes(word.id);
+        allWords.forEach(word => {
+  const q = learningQueue?.find(item => item.wordId === word.id);
 
-        if (!isKnown) {
-            // 1. Grup: HİÇ BİLİNMEYENLER (Mavi Kutu)
-            unknownCount++;
-        } else {
-            // Bilinen kelime ise tarihe bakıp ayırıyoruz
-            const q = learningQueue ? learningQueue.find(item => item.wordId === word.id) : null;
-            
-            if (q && new Date(q.nextReview) > now) {
-                // 2. Grup: TARİHİ GELECEKTE OLANLAR (Sarı Kutu)
-                waitingCount++;
-            } else {
-                // 3. Grup: TARİHİ GELMİŞ OLANLAR (Yeşil Kutu)
-                // Burası "Öğrendiklerim" sayfasındaki aktif kelimelerdir.
-                activeKnownCount++;
-            }
-        }
+  if (!q) {
+    // learningQueue’da yok → gerçekten YENİ
+    newCount++;
+  } else if (new Date(q.nextReview) > now) {
+    // Tarihi gelmemiş → BEKLEME
+    waitingCount++;
+  } else {
+    // Tarihi gelmiş → TEKRAR
+    reviewCount++;
+  }
+});
     });
 
-    // Toplam öğrenilen (Yeşil + Sarı) - İlerleme çubuğu için
-    const totalLearned = activeKnownCount + waitingCount; 
-    const totalWords = allWords.length;
+    // Toplam Bildiğin Kelime Sayısı (Bekleyen + Tekrar edilen)
+    const totalLearned = waitingCount + reviewCount; 
+    
+    // Mavi Buton İçin Hedef (Yeniler + Tekrarlar)
+    // Game.js ikisini de oynattığı için burası toplam hedefi gösterir.
+    // Eğer sadece "Yeni" sayısını görmek istersen burayı 'newCount' yapabilirsin.
+    const todayTarget = newCount + reviewCount; 
 
     return {
-        unknown: unknownCount,   // Örn: 15
-        waiting: waitingCount,   // Örn: 20
-        active: activeKnownCount,// Örn: 5
+        waiting: waitingCount, // Senin örneğinde: 20
+        review: reviewCount,   // Senin örneğinde: 5
+        new: newCount,         // Senin örneğinde: 15
         totalLearned: totalLearned,
-        progress: totalWords > 0 ? (totalLearned / totalWords) * 100 : 0
+        target: todayTarget,
+        progress: allWords.length > 0 ? (totalLearned / allWords.length) * 100 : 0
     };
   }, [getAllWords, knownWordIds, learningQueue]);
 
@@ -100,28 +102,28 @@ export default function Home() {
            </div>
         </div>
 
-        {/* Başlık */}
+        {/* Başlık & Profil */}
         <div className="text-center relative mt-4">
           <div className="flex justify-center mb-4 relative">
             <div className="bg-indigo-600 p-4 rounded-2xl shadow-lg transform rotate-3"><Brain className="w-12 h-12 text-white" /></div>
             <div className="absolute -right-4 -top-4 flex flex-col items-end gap-2">
-               <div className="flex flex-col items-center">
+              <div className="flex flex-col items-center">
                   <div className="flex items-center gap-1 bg-orange-500 text-white px-3 py-1 rounded-full shadow-lg border-2 border-white min-w-[60px] justify-center">
                     <Flame className="w-3 h-3 fill-white" /><span className="font-bold text-xs">{streak}</span>
                   </div>
-               </div>
-               <div className="flex flex-col items-center">
+              </div>
+              <div className="flex flex-col items-center">
                   <div className="flex items-center gap-1 bg-yellow-400 text-yellow-900 px-3 py-1 rounded-full shadow-lg border-2 border-white min-w-[60px] justify-center">
                     <Star className="w-3 h-3 fill-yellow-900" /><span className="font-bold text-xs">{myScore}</span>
                   </div>
-               </div>
+              </div>
             </div>
           </div>
           <h1 className="text-3xl font-extrabold text-slate-800 tracking-tight">Kelime Defteri</h1>
           <p className="text-slate-500 mt-2 text-sm">Merhaba, <span className="font-bold text-indigo-600">{user?.displayName || user?.email}</span></p>
         </div>
 
-        {/* --- İSTATİSTİK KUTULARI (SENİN İSTEDİĞİN SAYILAR) --- */}
+        {/* --- İSTATİSTİK KARTI (DÜZELTİLMİŞ) --- */}
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
            <div className="flex justify-between items-end mb-2">
              <span className="text-sm font-medium text-slate-500">Genel İlerleme</span>
@@ -133,15 +135,15 @@ export default function Home() {
            
            <div className="flex justify-between text-sm divide-x divide-slate-100">
              
-             {/* 1. ÖĞRENDİKLERİM (YEŞİL) - Şu an 5 ise 5 yazar */}
+             {/* 1. ÖĞRENİLEN (Aktif/Tekrar Edilebilir olanlar) */}
              <div onClick={() => navigate("/list/known")} className="text-center flex-1 px-1 cursor-pointer hover:bg-slate-50 rounded transition-colors group">
                 <div className="font-bold text-slate-800 group-hover:text-green-600 transition-colors text-lg flex items-center justify-center gap-1">
-                   {stats.active} <RotateCcw size={12} className="text-green-500"/>
+                   {stats.review} <RotateCcw size={12} className="text-green-500"/>
                 </div>
-                <div className="text-slate-400 text-xs">Öğrenilen</div>
+                <div className="text-slate-400 text-xs">Tekrar</div>
              </div>
 
-             {/* 2. BEKLEME LİSTESİ (SARI) - Şu an 20 ise 20 yazar */}
+             {/* 2. BEKLEME (Yarına kalanlar) */}
              <div onClick={() => navigate("/list/waiting")} className="text-center flex-1 px-1 cursor-pointer hover:bg-slate-50 rounded transition-colors group">
                 <div className="font-bold text-slate-800 group-hover:text-amber-500 transition-colors text-lg flex items-center justify-center gap-1">
                    {stats.waiting} <Hourglass size={12} className="text-amber-400"/>
@@ -149,10 +151,10 @@ export default function Home() {
                 <div className="text-slate-400 text-xs">Beklemede</div>
              </div>
 
-             {/* 3. ÖĞRENECEKLERİM / KALAN (MAVİ) - Şu an 15 ise 15 yazar */}
+             {/* 3. KALAN (Yeni Öğreneceklerin) */}
              <div onClick={() => navigate("/list/unknown")} className="text-center flex-1 px-1 cursor-pointer hover:bg-slate-50 rounded transition-colors group">
-                <div className="font-bold text-slate-800 group-hover:text-blue-500 transition-colors text-lg">{stats.unknown}</div>
-                <div className="text-slate-400 text-xs">Öğreneceklerim</div>
+                <div className="font-bold text-slate-800 group-hover:text-blue-500 transition-colors text-lg">{stats.new}</div>
+                <div className="text-slate-400 text-xs">Öğrenilecek</div>
              </div>
            </div>
         </div>
@@ -160,25 +162,27 @@ export default function Home() {
         {/* --- AKSİYON BUTONLARI --- */}
         <div className="space-y-3 pb-8">
           
+          {/* SÖZLÜK */}
           <button onClick={() => navigate("/dictionary")} className="w-full bg-sky-500 text-white font-bold py-4 px-6 rounded-xl shadow-md flex items-center justify-between group active:scale-95 transition-transform">
              <div className="flex items-center gap-3"><div className="bg-white/20 p-2 rounded-lg"><Book className="w-6 h-6"/></div><div className="text-left"><div className="text-lg">Sözlük</div><div className="text-xs text-sky-100 font-normal">Kelime ara ve öğren</div></div></div>
           </button>
 
-          {/* Flash Kart Butonu: Aktif Çalışılacak Sayısı (Yeni + Tekrar) */}
+          {/* FLASH KART (Ana Oyun) */}
           <button onClick={() => navigate("/game")} className="w-full bg-indigo-600 text-white font-bold py-5 px-6 rounded-2xl shadow-lg flex items-center justify-between group active:scale-95 transition-transform mb-2">
              <div className="flex items-center gap-4">
                 <div className="bg-white/20 p-3 rounded-xl"><Play className="w-8 h-8" fill="currentColor"/></div>
                 <div className="text-left">
                    <div className="text-xl">Flash Kart</div>
                    <div className="text-xs text-indigo-200 font-normal">
-                      {/* Burada çalışılabilecek toplam kelimeyi (Öğreneceklerim + Öğrenilen) gösterir */}
-                      {stats.unknown + stats.active} kelime çalışılabilir
+                      {/* Burada toplam oynanabilir (Yeni + Tekrar) sayısı yazar */}
+                      {stats.target} kelime çalışılmayı bekliyor
                    </div>
                 </div>
             </div>
              <Play className="w-6 h-6 opacity-60 group-hover:translate-x-1 transition-transform"/>
           </button>
 
+          {/* GRAMER */}
           <button onClick={() => navigate("/exercise")} className="w-full bg-slate-800 text-white font-bold py-5 px-6 rounded-2xl shadow-lg flex items-center justify-between group active:scale-95 transition-transform mb-3">
              <div className="flex items-center gap-4">
                 <div className="bg-white/20 p-3 rounded-xl"><Dumbbell className="w-8 h-8"/></div>
@@ -186,6 +190,7 @@ export default function Home() {
             </div>
           </button>
 
+          {/* MENÜLER (Kısaltıldı) */}
           <div className="grid grid-cols-2 gap-3">
               <button onClick={() => navigate("/quiz")} className="bg-amber-500 text-white font-bold py-4 px-4 rounded-xl shadow-md flex flex-col items-center gap-2 active:scale-95"><HelpCircle className="w-6 h-6"/><span className="text-sm">Quiz</span></button>
               <button onClick={() => navigate("/quiz2")} className="bg-emerald-500 text-white font-bold py-4 px-4 rounded-xl shadow-md flex flex-col items-center gap-2 active:scale-95"><Languages className="w-6 h-6"/><span className="text-sm">Ters Quiz</span></button>
