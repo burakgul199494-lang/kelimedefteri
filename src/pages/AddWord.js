@@ -29,6 +29,7 @@ export default function AddWord() {
     ? { ...editingWord, sentence_tr: editingWord.sentence_tr || "", definitions: (editingWord.definitions || []).map((d) => ({ ...d })) }
     : {
         word: initialWord || "",
+        phonetic: "", // <--- BU SATIRI EKLE (Varsayılan boş)
         tags: [],
         plural: "", v2: "", v3: "", vIng: "", thirdPerson: "",
         advLy: "", compEr: "", superEst: "",
