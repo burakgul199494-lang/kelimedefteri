@@ -268,20 +268,30 @@ export const DataProvider = ({ children }) => {
         // 1. "Ezberledim" butonu (Direkt seviye atlatıp bitir)
         // ✅ MASTER AKSİYONU ARTIK SEVİYE KONTROLLÜ
 if (action === "master") {
-    const currentItem = learningQueue.find(
-        q => String(q.wordId) === String(wordId)
+    const userRef = doc(
+        db,
+        "artifacts",
+        appId,
+        "users",
+        user.uid,
+        "vocab_game",
+        "progress"
     );
-    const currentLevel = currentItem ? (currentItem.level || 0) : 0;
 
-    // SADECE level 5 ve üstü master olabilir
-    if (currentLevel >= 5) {
-        await addToKnown(wordId);
-    } else {
-        // Henüz master değil → normal know gibi davran
-        await handleSmartLearn(wordId, "know");
-    }
+    // 1️⃣ Kuyruktan tamamen çıkar
+    const newQueue = learningQueue.filter(
+        q => String(q.wordId) !== String(wordId)
+    );
+
+    // 2️⃣ Direkt Öğrendiklerim listesine ekle
+    await updateDoc(userRef, {
+        known_ids: arrayUnion(wordId),
+        learning_queue: newQueue
+    });
+
     return;
 }
+
 
         
         // Mevcut kelime kuyrukta var mı? Varsa seviyesi kaç?
