@@ -364,7 +364,7 @@ switch (newLevel) {
                 });
             } else {
                 // Seviye arttır -> Kuyruğa geri koy
-                nextDate.setDate(now.getDate() + daysToAdd);
+                nextDate.setMinutes(now.getMinutes() + minutesToAdd);
                 newQueue.push({ 
                     wordId: wordId, // String ID kullan
                     level: newLevel, 
