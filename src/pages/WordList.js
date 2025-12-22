@@ -6,6 +6,7 @@ import { ArrowLeft, Volume2, RotateCcw, Check, Trophy, ArrowDownCircle, Hourglas
 export default function WordList() {
   const { type } = useParams(); 
   const navigate = useNavigate();
+  // learningQueue verisini de çekiyoruz
   const { knownWordIds, getAllWords, removeFromKnown, addToKnown, learningQueue } = useData();
 
   const [search, setSearch] = useState("");
@@ -20,34 +21,36 @@ export default function WordList() {
   const all = getAllWords();
   const now = new Date();
 
-  // --- KELİME DETAYLARINI VE SEVİYELERİNİ HAZIRLA ---
+  // --- DÜZELTME 1: SEVİYE HESAPLAMA MANTIĞI ---
   const wordsWithDetails = all.map(word => {
-      const qItem = learningQueue ? learningQueue.find(q => q.wordId === word.id) : null;
+      // String ID dönüşümü yaparak güvenli arama yapalım
+      const qItem = learningQueue ? learningQueue.find(q => String(q.wordId) === String(word.id)) : null;
       let level = 0;
       
-      if (knownWordIds.includes(word.id)) {
-          level = 3; // Mezun
+      // Eğer bilinenlerdeyse ARTIK SEVİYE 6 (MASTER)
+      if (knownWordIds.map(String).includes(String(word.id))) {
+          level = 6; 
       } else if (qItem) {
-          level = qItem.level || 0; // 1 veya 2
+          // Kuyruktaysa gerçek seviyesini al (3, 4, 5 olabilir)
+          level = qItem.level || 0; 
       } else {
-          level = 0; // Hiç başlanmamış
+          level = 0; 
       }
 
       return { ...word, queueData: qItem, level };
   });
 
-  // --- LİSTELEME MANTIĞI (Senin yeni sistemine göre) ---
+  // --- LİSTELEME MANTIĞI ---
   if (isKnown) {
-    title = "Öğrendiğim Kelimeler (Lvl 3)";
-    wordList = wordsWithDetails.filter(w => w.level === 3);
+    title = "Öğrendiğim Kelimeler (Master)";
+    // DÜZELTME 2: Seviye 3 değil, Seviye 6 olanları getir
+    wordList = wordsWithDetails.filter(w => w.level === 6);
 
   } else if (isWaiting) {
     title = "Bekleyen Kelimeler";
-    // Sadece süresi gelmeyenler
     wordList = wordsWithDetails.filter(w => w.queueData && new Date(w.queueData.nextReview) > now);
 
   } else {
-    // UNKNOWN (Öğreneceğim) = Lvl 0 + Süresi Gelenler
     title = "Öğreneceğim Kelimeler";
     wordList = wordsWithDetails.filter(w => {
         if (w.level === 0) return true; // Yeni
@@ -60,14 +63,12 @@ export default function WordList() {
   const filteredWords = wordList
     .filter(w => w.word.toLowerCase().includes(search.toLowerCase()))
     .sort((a, b) => {
-        // Seviyesi yüksek olanlar aşağıda dursun (veya yukarıda, tercihe bağlı)
         if (a.level !== b.level) return a.level - b.level;
         return a.word.localeCompare(b.word);
     });
 
   const displayedWords = filteredWords.slice(0, visibleCount);
 
-  // --- YARDIMCI ---
   useEffect(() => { setVisibleCount(PER_PAGE); }, [search, type]);
   const handleLoadMore = () => { setVisibleCount(prev => prev + PER_PAGE); };
   const speak = (txt, e) => { e.stopPropagation(); const u = new SpeechSynthesisUtterance(txt); u.lang = "en-US"; window.speechSynthesis.speak(u); };
@@ -76,14 +77,24 @@ export default function WordList() {
       const diff = new Date(dateString) - new Date();
       if (diff <= 0) return "Şimdi!";
       const hours = Math.floor(diff / (1000 * 60 * 60));
+      const days = Math.floor(hours / 24);
+      if (days > 0) return `${days} gün`;
       return `${hours} saat`;
   };
 
+  // --- DÜZELTME 3: ROZETLER (BADGES) ---
+  // Artık 4, 5 ve 6. seviyeleri de tanıyor
   const getLevelBadge = (level) => {
-      if (level === 0) return <span className="bg-slate-100 text-slate-500 text-[10px] px-2 py-0.5 rounded border border-slate-200">Lvl 0 (Yeni)</span>;
-      if (level === 1) return <span className="bg-blue-100 text-blue-600 text-[10px] px-2 py-0.5 rounded border border-blue-200">Lvl 1</span>;
-      if (level === 2) return <span className="bg-purple-100 text-purple-600 text-[10px] px-2 py-0.5 rounded border border-purple-200">Lvl 2</span>;
-      if (level === 3) return <span className="bg-green-100 text-green-600 text-[10px] px-2 py-0.5 rounded border border-green-200">Lvl 3 (Mezun)</span>;
+      switch(level) {
+        case 0: return <span className="bg-slate-100 text-slate-500 text-[10px] px-2 py-0.5 rounded border border-slate-200">Lvl 0 (Yeni)</span>;
+        case 1: return <span className="bg-blue-100 text-blue-600 text-[10px] px-2 py-0.5 rounded border border-blue-200">Lvl 1 (24s)</span>;
+        case 2: return <span className="bg-indigo-100 text-indigo-600 text-[10px] px-2 py-0.5 rounded border border-indigo-200">Lvl 2 (3g)</span>;
+        case 3: return <span className="bg-violet-100 text-violet-600 text-[10px] px-2 py-0.5 rounded border border-violet-200">Lvl 3 (1h)</span>;
+        case 4: return <span className="bg-purple-100 text-purple-600 text-[10px] px-2 py-0.5 rounded border border-purple-200">Lvl 4 (2h)</span>;
+        case 5: return <span className="bg-fuchsia-100 text-fuchsia-600 text-[10px] px-2 py-0.5 rounded border border-fuchsia-200">Lvl 5 (1ay)</span>;
+        case 6: return <span className="bg-green-100 text-green-600 text-[10px] px-2 py-0.5 rounded border border-green-200 font-bold flex items-center gap-1"><Trophy className="w-3 h-3"/> Master</span>;
+        default: return null;
+      }
   };
 
   return (
@@ -114,7 +125,7 @@ export default function WordList() {
                     <div className="flex items-center gap-2 mb-2 flex-wrap">
                       <span className="text-lg font-bold text-slate-800 leading-none">{item.word}</span>
                       
-                      {/* --- SEVİYE VE SÜRE GÖSTERGESİ --- */}
+                      {/* --- SEVİYE GÖSTERGESİ --- */}
                       {getLevelBadge(item.level)}
                       
                       {item.queueData && new Date(item.queueData.nextReview) > new Date() && (
@@ -130,7 +141,8 @@ export default function WordList() {
                   </div>
 
                   <div className="flex flex-col gap-1 ml-1">
-                        {isKnown ? (
+                        {/* Seviye 6 (Master) ise geri al butonu, değilse tamamla butonu */}
+                        {item.level === 6 ? (
                           <button onClick={() => removeFromKnown(item.id)} className="p-2 text-slate-300 hover:text-amber-500 rounded-lg"><RotateCcw className="w-5 h-5"/></button>
                         ) : (
                           <button onClick={() => addToKnown(item.id)} className="p-2 text-slate-300 hover:text-green-500 rounded-lg"><Check className="w-5 h-5"/></button>
