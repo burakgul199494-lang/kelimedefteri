@@ -425,6 +425,14 @@ const getWordPools = () => {
                     )}
                     
                     <h2 className="text-4xl font-extrabold text-slate-800">{current.wordObj.word}</h2>
+
+                      {current.wordObj.phonetic && (
+  <div className="flex justify-center animate-in fade-in slide-in-from-top-1">
+    <span className="text-indigo-400 font-serif italic text-lg tracking-wide px-3 py-1 bg-indigo-50 rounded-lg border border-indigo-100">
+      /{current.wordObj.phonetic.replace(/\//g, "")}/
+    </span>
+  </div>
+)}
                     
                     <button 
                         onClick={(e) => {
