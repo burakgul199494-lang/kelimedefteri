@@ -444,7 +444,7 @@ const learnPool = validWords.filter(w => {
           </div>
           <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden"><div className="bg-blue-500 h-full transition-all duration-500" style={{width:`${progress}%`}}></div></div>
           
-       {/* OYUN KARTI */}
+      {/* OYUN KARTI */}
           <div className="bg-white p-6 rounded-3xl shadow-xl border border-slate-100 text-center space-y-4 relative overflow-hidden min-h-[480px] flex flex-col justify-between">
              <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-blue-400 to-cyan-400"></div>
              
@@ -534,6 +534,20 @@ const learnPool = validWords.filter(w => {
 
              {/* 2. CEVAP ALANI (KUTULAR + FONETİK) */}
              <div className="space-y-3">
+                 
+                 {/* 🔥🔥🔥 FONETİK GÖSTERİMİ (BURADA) 🔥🔥🔥 */}
+                 {currentWordObj?.phonetic ? (
+                     <div className="flex justify-center animate-in fade-in slide-in-from-top-1 mb-2">
+                         <span className="text-indigo-400 font-serif italic text-lg tracking-wide px-3 py-0.5 bg-indigo-50/50 rounded-lg border border-indigo-100/50">
+                             /{currentWordObj.phonetic.replace(/\//g, '')}/
+                         </span>
+                     </div>
+                 ) : (
+                     /* Fonetik yoksa boşluk bırak ki zıplama olmasın */
+                     <div className="h-8"></div>
+                 )}
+                 {/* 🔥🔥🔥 FONETİK BİTİŞ 🔥🔥🔥 */}
+
                  {/* YAZI ALANI (Harf Kutucukları) */}
                  <div className="flex flex-wrap justify-center gap-1 min-h-[50px] items-end content-center">
                     {targetWord.split('').map((_, idx) => {
@@ -553,18 +567,6 @@ const learnPool = validWords.filter(w => {
                       );
                     })}
                  </div>
-
-                 {/* 🔥 FONETİK GÖSTERİMİ (BURASI DÜZELTİLDİ) 🔥 */}
-                 {currentWordObj?.phonetic ? (
-                     <div className="flex justify-center animate-in fade-in slide-in-from-top-1">
-                         <span className="text-indigo-400 font-serif italic text-lg tracking-wide px-3 py-0.5 bg-indigo-50/50 rounded-lg border border-indigo-100/50">
-                             /{currentWordObj.phonetic.replace(/\//g, '')}/
-                         </span>
-                     </div>
-                 ) : (
-                     // Boşluk koruyucu (Fonetik yoksa zıplama yapmasın diye)
-                     <div className="h-8"></div>
-                 )}
              </div>
 
              {/* 3. KARIŞIK HARFLER (BUTONLAR) */}
