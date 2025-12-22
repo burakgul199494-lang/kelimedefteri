@@ -184,9 +184,18 @@ export const DataProvider = ({ children }) => {
       } catch (e) { console.error("İstatistik hatası:", e); }
   };
 
+ 
   const normalizeWord = (w) => {
+    // Güvenlik: w boşsa boş dön
+    if (!w) return {}; 
+
     return { 
         ...w, 
+        
+        // 👇👇👇 EN ÖNEMLİ KISIM BURASI (Bunu eklemezsen oyuna gitmez) 👇👇👇
+        phonetic: w.phonetic || "", 
+        // 👆👆👆 -------------------------------------------------------- 👆👆👆
+
         sentence_tr: w.sentence_tr || "",
         tags: Array.isArray(w.tags) ? w.tags : [],
         definitions: Array.isArray(w.definitions) 
