@@ -199,16 +199,24 @@ export const DataProvider = ({ children }) => {
     };
   };
 
-  // --- KELİMELERİ GETİR (SİSTEM DİKTATÖRLÜĞÜ) ---
+  // AŞAĞIDAKİ YENİ KODU SİLDİĞİN YERE YAPIŞTIR
+// -------------------------------------------------
+  // --- KELİMELERİ GETİR (DÜZELTİLMİŞ VERSİYON) ---
   const getAllWords = () => {
     const deletedSet = new Set(deletedWordIds.map(String));
     
-    // 1. Ham Listeler
-    // Silinmişler hariç (Kullanıcının MANUEL sildikleri)
+    // 1. SRS Kuyruğunu Haritala (Hız için)
+    // Hangi kelime kaçıncı seviyede buradan bakacağız.
+    const queueMap = {};
+    learningQueue.forEach(item => {
+        queueMap[String(item.wordId)] = item;
+    });
+
+    // 2. Ham Listeler (Silinmişler hariç)
     const systemRaw = dynamicSystemWords.filter(w => !deletedSet.has(String(w.id)));
     const customRaw = customWords.filter(w => !deletedSet.has(String(w.id)));
     
-    // 2. Kullanıcı kelimelerini "ID" anahtarıyla haritala
+    // 3. Kullanıcı kelimelerini haritala
     const userMapById = {};
     const userMapByText = {};
     const processedUserIds = new Set(); 
@@ -220,28 +228,64 @@ export const DataProvider = ({ children }) => {
 
     const finalWordList = [];
 
-    // 3. SİSTEM KELİMELERİNİ DÖN
+    // --- YENİ YARDIMCI FONKSİYON: SEVİYE HESAPLA ---
+    // Bu fonksiyon kelimenin durumuna bakıp gerçek seviyesini söyler.
+    const getWordStats = (wordId) => {
+        const strId = String(wordId);
+        
+        // KURAL 1 (EN ÖNEMLİSİ): Eğer kelime "BİLİNENLER" listesindeyse, direkt Level 6 (Master) kabul et.
+        if (knownWordIds.includes(strId) || knownWordIds.includes(Number(strId))) {
+            return { level: 6, nextReview: null, isMastered: true };
+        }
+        
+        // KURAL 2: Eğer kuyruktaysa, kuyruktaki seviyesini al (Örn: Level 3)
+        if (queueMap[strId]) {
+            return { 
+                level: queueMap[strId].level, 
+                nextReview: queueMap[strId].nextReview, 
+                isMastered: false 
+            };
+        }
+
+        // KURAL 3: Hiçbiri değilse 0 (Mavi/Öğrenilmemiş)
+        return { level: 0, nextReview: null, isMastered: false };
+    };
+
+    // 4. SİSTEM KELİMELERİNİ DÖN
     systemRaw.forEach(systemWord => {
         let userMatch = userMapById[systemWord.id];
         if (!userMatch) userMatch = userMapByText[systemWord.word.toLowerCase().trim()];
 
+        // İstatistikleri hesapla (Yukarıdaki yardımcı fonksiyonu kullan)
+        const stats = getWordStats(userMatch ? userMatch.id : systemWord.id);
+
         if (userMatch) {
             processedUserIds.add(userMatch.id);
             finalWordList.push({
-                ...systemWord, // GÜNCEL İÇERİK
+                ...systemWord, 
+                ...userMatch, // ÖNEMLİ: Kullanıcı düzenlemeleri (sentence, definition) sistemin üzerine yazar
                 id: userMatch.id, 
                 source: "user",
-                ...extractUserStats(userMatch) // Sadece Tarih/Level
+                ...stats // Level 6 bilgisi buradan gelecek
             });
         } else {
-            finalWordList.push({ ...systemWord, source: "system" });
+            finalWordList.push({ 
+                ...systemWord, 
+                source: "system",
+                ...stats 
+            });
         }
     });
 
-    // 4. Sadece Kullanıcıda Olanlar (Özel Kelimeler)
+    // 5. Sadece Kullanıcıda Olanlar (Custom Words)
     customRaw.forEach(userWord => {
         if (!processedUserIds.has(userWord.id)) {
-            finalWordList.push({ ...userWord, source: "user" });
+            const stats = getWordStats(userWord.id);
+            finalWordList.push({ 
+                ...userWord, 
+                source: "user",
+                ...stats 
+            });
         }
     });
 
@@ -251,6 +295,7 @@ export const DataProvider = ({ children }) => {
     }
     return all;
   };
+// -------------------------------------------------
   
   const getDeletedWords = () => {
     const deletedSet = new Set(deletedWordIds.map(String));
