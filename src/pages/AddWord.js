@@ -24,18 +24,23 @@ export default function AddWord() {
   const initialWord = location.state?.initialWord;
   const isEditMode = !!editingWord;
 
-  // Initial Data Ayarları (sentence_tr EKLENDİ)
+  // --- DÜZELTME BURADA YAPILDI (Güvenli Başlangıç Verisi) ---
   const initialData = editingWord
-    ? { ...editingWord, sentence_tr: editingWord.sentence_tr || "", definitions: (editingWord.definitions || []).map((d) => ({ ...d })) }
+    ? { 
+        ...editingWord, 
+        phonetic: editingWord.phonetic || "", // <--- ESKİ KELİMELER İÇİN GÜVENLİK KONTROLÜ
+        sentence_tr: editingWord.sentence_tr || "", 
+        definitions: (editingWord.definitions || []).map((d) => ({ ...d })) 
+      }
     : {
         word: initialWord || "",
-        phonetic: "", // <--- BU SATIRI EKLE (Varsayılan boş)
+        phonetic: "", // Varsayılan boş
         tags: [],
         plural: "", v2: "", v3: "", vIng: "", thirdPerson: "",
         advLy: "", compEr: "", superEst: "",
         definitions: [{ type: "noun", meaning: "", engExplanation: "" }],
         sentence: "",
-        sentence_tr: "", // YENİ ALAN
+        sentence_tr: "", 
       };
 
   const [formData, setFormData] = useState(initialData);
@@ -59,7 +64,6 @@ export default function AddWord() {
   useEffect(() => {
     const autoRun = async () => {
         if (initialWord && !isEditMode) {
-            // ... (Mevcut mantık aynı)
             setRootLoading(true);
             let searchWord = initialWord;
             try {
@@ -71,12 +75,12 @@ export default function AddWord() {
             } catch(e) { console.error(e); }
             setRootLoading(false);
 
-            handleAIFill(); // Fonksiyonu çağır
+            handleAIFill(); 
         }
     };
     // eslint-disable-next-line
     if(initialWord && !isEditMode) autoRun();
-  }, []); // Dependency array boşaltıldı, sadece mountta çalışsın
+  }, []); 
 
   const handleConvertToRoot = async () => {
     if (!formData.word) return;
@@ -95,11 +99,11 @@ export default function AddWord() {
     try {
       const data = await fetchWordAnalysisFromAI(targetWord);
       if (data) { 
-          // Gelen veride sentence_tr varsa onu da state'e atıyoruz
           setFormData((prev) => ({ 
               ...prev, 
               ...data,
-              sentence_tr: data.sentence_tr || "" // AI'dan geleni al
+              sentence_tr: data.sentence_tr || "",
+              phonetic: data.phonetic || prev.phonetic || "" // AI'dan gelirse doldur, yoksa eskisi kalsın
           })); 
       } 
       else { alert("Veri alınamadı."); }
@@ -111,7 +115,6 @@ export default function AddWord() {
     if (!formData.word || !formData.sentence) { alert("Eksik alanları doldurun."); return; }
     setSaving(true);
 
-    // Form verisini gönderiyoruz (sentence_tr içinde var)
     if (isEditMode) {
       await handleUpdateWord(editingWord.id, formData);
       navigate(-1); 
@@ -141,9 +144,18 @@ export default function AddWord() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Kelime</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Kelime ve Okunuş</label>
             <div className="flex gap-2">
               <input value={formData.word} onChange={(e) => setFormData({ ...formData, word: e.target.value })} className="flex-1 p-3 border border-slate-200 rounded-xl font-bold outline-none focus:border-indigo-500" placeholder="Örn: Run" autoFocus />
+              
+              {/* FONETİK INPUTU */}
+              <input 
+                value={formData.phonetic} 
+                onChange={(e) => setFormData({ ...formData, phonetic: e.target.value })} 
+                className="w-24 p-3 border border-slate-200 rounded-xl font-serif italic text-slate-500 text-center outline-none focus:border-indigo-500 placeholder:text-slate-300" 
+                placeholder="/rʌn/" 
+              />
+              
               <button type="button" onClick={handleConvertToRoot} disabled={rootLoading || !formData.word} className="bg-orange-100 hover:bg-orange-200 text-orange-600 p-3 rounded-xl transition-colors" title="Kök Bul">{rootLoading ? <Loader2 className="animate-spin w-5 h-5" /> : <Wand2 className="w-5 h-5" />}</button>
               <button type="button" onClick={handleAIFill} disabled={aiLoading || !formData.word} className="bg-purple-600 hover:bg-purple-700 text-white px-3 rounded-xl transition-colors" title="AI Doldur">{aiLoading ? <Loader2 className="animate-spin w-5 h-5" /> : <Brain className="w-5 h-5" />}</button>
             </div>
@@ -169,7 +181,6 @@ export default function AddWord() {
 
           <div className="space-y-3"><div className="flex justify-between items-center"><label className="block text-sm font-medium text-slate-700">Anlamlar</label><button type="button" onClick={addDefinition} className="text-sm text-indigo-600 flex items-center gap-1 font-medium hover:text-indigo-800"><Plus className="w-4 h-4" /> Ekle</button></div>{formData.definitions.map((def, index) => (<div key={index} className="flex flex-col gap-2 bg-slate-50 p-3 rounded-xl border border-slate-100 shadow-sm"><div className="flex gap-2 items-start"><div className="flex-1 space-y-2"><select value={def.type} onChange={(e) => updateDefinition(index, "type", e.target.value)} className="w-full p-2 text-sm border border-slate-200 rounded-lg outline-none bg-white">{WORD_TYPES.map((t) => ( <option key={t.value} value={t.value}>{t.label}</option> ))}</select><input value={def.meaning} onChange={(e) => updateDefinition(index, "meaning", e.target.value)} className="w-full p-2 text-sm border border-slate-200 rounded-lg outline-none placeholder:text-slate-400" placeholder="Türkçe anlam..." /></div>{formData.definitions.length > 1 && (<button type="button" onClick={() => removeDefinition(index)} className="p-2 text-slate-400 hover:text-red-500 mt-1"><Trash2 className="w-4 h-4" /></button>)}</div><input value={def.engExplanation} onChange={(e) => updateDefinition(index, "engExplanation", e.target.value)} className="w-full p-2 text-sm border border-indigo-100 bg-indigo-50/50 rounded-lg outline-none placeholder:text-slate-400" placeholder="Bu anlam için İngilizce açıklama (Opsiyonel)..." /></div>))}</div>
 
-          {/* 🔥 GÜNCELLENEN ALAN: Örnek Cümle ve Çevirisi 🔥 */}
           <div className="space-y-3">
              <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Örnek Cümle (İngilizce)</label>
@@ -181,7 +192,6 @@ export default function AddWord() {
                 />
              </div>
              
-             {/* YENİ INPUT: Cümlenin Türkçe Çevirisi */}
              <div>
                 <label className="block text-sm font-medium text-indigo-700 mb-1 flex items-center gap-2">
                     <Languages className="w-4 h-4" />
