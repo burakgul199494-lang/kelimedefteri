@@ -30,16 +30,16 @@ export const DataProvider = ({ children }) => {
   const [learningQueue, setLearningQueue] = useState([]);
   const [leaderboardData, setLeaderboardData] = useState([]);
 
-  // --- GÜNLÜK GÖREV STATE'LERİ ---
+  // --- YENİ EKLENEN: GÜNLÜK GÖREV STATE'LERİ ---
   const [questProgress, setQuestProgress] = useState({ flashcard: 0, quiz: 0, writing: 0, word_added: 0 });
   const [questHistory, setQuestHistory] = useState({});
 
-  // --- GÜNLÜK GÖREV HEDEFLERİ ---
+  // --- YENİ EKLENEN: HEDEFLER ---
   const DAILY_QUESTS_TARGETS = {
-    flashcard: 15, 
-    quiz: 2,       
-    writing: 1,    
-    word_added: 1  
+    flashcard: 15, // 15 kelime çalış
+    quiz: 2,       // 2 Quiz bitir
+    writing: 1,    // 1 Yazma/Egzersiz yap
+    word_added: 1  // 1 Kelime ekle (Opsiyonel)
   };
 
   const loading = authLoading || systemLoading || (user ? profileLoading : false);
@@ -56,17 +56,24 @@ export const DataProvider = ({ children }) => {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
-      if (currentUser && ADMIN_EMAILS.includes(currentUser.email)) setIsAdmin(true);
-      else setIsAdmin(false);
+      if (currentUser && ADMIN_EMAILS.includes(currentUser.email)) {
+          setIsAdmin(true);
+      } else {
+          setIsAdmin(false);
+      }
 
       setAuthLoading(false);
 
       if (!currentUser) {
-        setKnownWordIds([]); setCustomWords([]); setDeletedWordIds([]); 
-        setLearningQueue([]); setStreak(0);
+        setKnownWordIds([]); 
+        setCustomWords([]); 
+        setDeletedWordIds([]); 
+        setLearningQueue([]); 
+        setStreak(0);
         setBlacklistedWords([]);
+        // Çıkış yapınca görevleri sıfırla
         setQuestProgress({ flashcard: 0, quiz: 0, writing: 0, word_added: 0 }); 
-        setQuestHistory({}); 
+        setQuestHistory({});
         setProfileLoading(false); 
       } else {
         setProfileLoading(true); 
@@ -174,11 +181,11 @@ export const DataProvider = ({ children }) => {
     refreshToken();
   }, [user]);
 
-  // 6. GÜNLÜK GÖREVLERİ DİNLE
+  // 6. YENİ EKLENEN: GÜNLÜK GÖREVLERİ DİNLEME
   useEffect(() => {
     if (!user) return;
     
-    // Basit ve güvenli tarih formatı (Local YYYY-MM-DD)
+    // Saat dilimi ayarı (Local Time)
     const now = new Date();
     const offset = now.getTimezoneOffset();
     const localDate = new Date(now.getTime() - (offset*60*1000));
@@ -252,7 +259,6 @@ export const DataProvider = ({ children }) => {
   };
 
   // --- GÜNCELLENMİŞ FONKSİYON: İSTATİSTİK VE GÖREV SAYACI ---
-  // 👇 BU KISIM DÜZELTİLDİ: İç içe obje yapısı kullanılarak veritabanına doğru yazılması sağlandı.
   const updateGameStats = async (gameType, count = 1) => {
       if (!user) return;
       
@@ -278,20 +284,26 @@ export const DataProvider = ({ children }) => {
           const dailyRef = doc(db, "artifacts", appId, "users", user.uid, "daily_history", today);
           
           let questType = null;
-          if (["flashcard", "word-match"].includes(gameType)) questType = "flashcard";
-          else if (["quiz", "quiz2"].includes(gameType)) questType = "quiz";
-          else if (["writing", "writing2", "gap-filling", "sentence-builder", "pronunciation", "exercise"].includes(gameType)) questType = "writing";
-          else if (gameType === "word_added") questType = "word_added";
+          // Hangi oyun hangi göreve sayılacak?
+          if (["flashcard", "word-match"].includes(gameType)) {
+              questType = "flashcard";
+          } else if (["quiz", "quiz2"].includes(gameType)) {
+              questType = "quiz";
+          } else if (["writing", "writing2", "gap-filling", "sentence-builder", "pronunciation", "exercise"].includes(gameType)) {
+              questType = "writing";
+          } else if (gameType === "word_added") {
+              questType = "word_added";
+          }
 
           if (questType) {
              // 🛠️ DÜZELTME: "progress.flashcard" yerine { progress: { flashcard: ... } } yapısı kullanıldı.
-             // Böylece setDoc merge işlemi iç içe objeyi doğru birleştirir.
              const progressUpdate = {
                  progress: {
                     [questType]: increment(count)
                  },
                  lastUpdated: new Date()
              };
+             // Merge: true ile mevcut veriyi koruyarak güncelle
              batch.set(dailyRef, progressUpdate, { merge: true });
           }
 
@@ -500,7 +512,7 @@ const normalizeWord = (w) => {
     } catch (e) { console.error("Hata:", e); }
   };
 
-  // --- KELİME GÜNCELLEME (SİLME YOK - SADECE TARİH) ---
+  // --- KELİME GÜNCELLEME ---
   const handleUpdateWord = async (originalId, newData) => {
      try {
        let isCustom = customWords.find((w) => String(w.id) === String(originalId));
@@ -563,7 +575,9 @@ const normalizeWord = (w) => {
     try {
       const normalizedInput = wordData.word.toLowerCase().trim();
       const exists = dynamicSystemWords.some(w => w.word.toLowerCase() === normalizedInput);
-      if(exists) return { success: false, message: "Bu kelime zaten sistemde var!" };
+      if(exists) {
+          return { success: false, message: "Bu kelime zaten sistemde var!" };
+      }
 
       const newWord = {
         word: wordData.word.trim(),
@@ -616,8 +630,9 @@ const normalizeWord = (w) => {
       } catch(e) { console.error(e); }
   };
 
+  // 👇 GÜNCELLENEN: PROFİL SIFIRLAMA (GÜNLÜK GEÇMİŞ SİLME EKLENDİ) 👇
   const resetProfile = async () => {
-      if(!window.confirm("TÜM İLERLEMEN SİLİNECEK! Çift kayıtlar ve geçmiş temizlenecek.\nOnaylıyor musun?")) return;
+      if(!window.confirm("TÜM İLERLEMEN SİLİNECEK! Çift kayıtlar, geçmiş ve günlük görevler temizlenecek.\nOnaylıyor musun?")) return;
       try {
         setProfileLoading(true);
         const userRef = doc(db, "artifacts", appId, "users", user.uid, "vocab_game", "progress");
@@ -629,6 +644,20 @@ const normalizeWord = (w) => {
         await deleteDoc(leaderboardRef);
         const statsRef = doc(db, "artifacts", appId, "weekly_stats", weekKey, "user_activities", user.uid);
         await deleteDoc(statsRef);
+
+        // --- YENİ EKLENDİ: GÜNLÜK GÖREV GEÇMİŞİNİ SİL ---
+        const historyRef = collection(db, "artifacts", appId, "users", user.uid, "daily_history");
+        const historySnapshot = await getDocs(historyRef);
+        const historyBatch = writeBatch(db);
+        historySnapshot.forEach((doc) => {
+            historyBatch.delete(doc.ref);
+        });
+        await historyBatch.commit();
+        
+        // State'leri de sıfırla (görsel olarak anında yansıması için)
+        setQuestProgress({ flashcard: 0, quiz: 0, writing: 0, word_added: 0 });
+        setQuestHistory({});
+        // --------------------------------------------------
 
         const wordsRef = collection(db, "artifacts", appId, "users", user.uid, "words");
         const snapshot = await getDocs(wordsRef);
@@ -693,49 +722,49 @@ const normalizeWord = (w) => {
   };
 
   const handleSaveNewWord = async (wordData) => {
-  const normalizedInput = wordData.word.toLowerCase().trim();
-  const allWords = getAllWords();
-  if (allWords.some(w => w.word.toLowerCase() === normalizedInput)) {
-    return { success: false, message: "Zaten mevcut!" };
-  }
+    const normalizedInput = wordData.word.toLowerCase().trim();
+    const allWords = getAllWords();
+    if (allWords.some(w => w.word.toLowerCase() === normalizedInput)) {
+        return { success: false, message: "Zaten mevcut!" };
+    }
 
-  const newId = Date.now().toString();
-  const newWord = {
-    id: newId, 
-    word: wordData.word.trim(), 
-    phonetic: wordData.phonetic || "",
-    tags: wordData.tags || [],
-    plural: wordData.plural || "",
-    v2: wordData.v2 || "",
-    v3: wordData.v3 || "",
-    vIng: wordData.vIng || "",
-    thirdPerson: wordData.thirdPerson || "",
-    advLy: wordData.advLy || "",
-    compEr: wordData.compEr || "",
-    superEst: wordData.superEst || "",
-    definitions: wordData.definitions,
-    sentence: wordData.sentence.trim(),
-    sentence_tr: wordData.sentence_tr || "",
-    source: "user",
-    createdAt: new Date()
+    const newId = Date.now().toString();
+    const newWord = {
+        id: newId, 
+        word: wordData.word.trim(), 
+        phonetic: wordData.phonetic || "",
+        tags: wordData.tags || [],
+        plural: wordData.plural || "",
+        v2: wordData.v2 || "",
+        v3: wordData.v3 || "",
+        vIng: wordData.vIng || "",
+        thirdPerson: wordData.thirdPerson || "",
+        advLy: wordData.advLy || "",
+        compEr: wordData.compEr || "",
+        superEst: wordData.superEst || "",
+        definitions: wordData.definitions,
+        sentence: wordData.sentence.trim(),
+        sentence_tr: wordData.sentence_tr || "",
+        source: "user",
+        createdAt: new Date()
+    };
+
+    try {
+        const wordRef = doc(
+        db,
+        "artifacts",
+        appId,
+        "users",
+        user.uid,
+        "words",
+        newId
+        );
+        await setDoc(wordRef, newWord);
+        return { success: true };
+    } catch (e) {
+        return { success: false, message: "Hata" };
+    }
   };
-
-  try {
-    const wordRef = doc(
-      db,
-      "artifacts",
-      appId,
-      "users",
-      user.uid,
-      "words",
-      newId
-    );
-    await setDoc(wordRef, newWord);
-    return { success: true };
-  } catch (e) {
-    return { success: false, message: "Hata" };
-  }
-};
 
 
   const handleDeleteWord = async (wordId) => {
@@ -784,26 +813,23 @@ const normalizeWord = (w) => {
   const handleUpdateSystemWord = async (id, wordData) => {
       try {
           const docRef = doc(db, "artifacts", appId, "system_words", id);
-        await updateDoc(docRef, {
-  word: wordData.word?.trim() || "",
-  phonetic: wordData.phonetic || "",
-
-  plural: wordData.plural || "",
-  v2: wordData.v2 || "",
-  v3: wordData.v3 || "",
-  vIng: wordData.vIng || "",
-  thirdPerson: wordData.thirdPerson || "",
-  advLy: wordData.advLy || "",
-  compEr: wordData.compEr || "",
-  superEst: wordData.superEst || "",
-
-  sentence: wordData.sentence?.trim() || "",
-  sentence_tr: wordData.sentence_tr || "",
-  definitions: Array.isArray(wordData.definitions) ? wordData.definitions : [],
-  tags: wordData.tags || [],
-  updatedAt: new Date()
-});
-
+          await updateDoc(docRef, {
+            word: wordData.word?.trim() || "",
+            phonetic: wordData.phonetic || "",
+            plural: wordData.plural || "",
+            v2: wordData.v2 || "",
+            v3: wordData.v3 || "",
+            vIng: wordData.vIng || "",
+            thirdPerson: wordData.thirdPerson || "",
+            advLy: wordData.advLy || "",
+            compEr: wordData.compEr || "",
+            superEst: wordData.superEst || "",
+            sentence: wordData.sentence?.trim() || "",
+            sentence_tr: wordData.sentence_tr || "",
+            definitions: Array.isArray(wordData.definitions) ? wordData.definitions : [],
+            tags: wordData.tags || [],
+            updatedAt: new Date()
+          });
           return { success: true };
       } catch(e) { return { success: false, message: e.message }; }
   };
