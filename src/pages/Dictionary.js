@@ -3,7 +3,7 @@ import { useData } from "../context/DataContext";
 import WordCard2 from "../components/WordCard2";
 import { ArrowLeft, Search, X, BookOpen, AlertCircle, ArrowDownCircle, PlusCircle } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
-// 👇 1. IMPORT EKLENDİ
+// ✅ 1. IMPORT EKLENDİ
 import QuickAddModal from "../components/QuickAddModal"; 
 
 export default function Dictionary() {
@@ -17,7 +17,7 @@ export default function Dictionary() {
   const [visibleCount, setVisibleCount] = useState(50);
   const PER_PAGE = 50;
 
-  // 👇 2. MODAL STATE'İ
+  // ✅ 2. MODAL STATE'İ
   const [showQuickAdd, setShowQuickAdd] = useState(false);
 
   useEffect(() => {
@@ -37,9 +37,9 @@ export default function Dictionary() {
 
     const allWords = getAllWords();
     
-    // Filtreleme yaparken güvenlik kontrolleri (Hata vermemesi için)
     const filtered = allWords.filter(item => {
         if (!item) return false;
+        
         const wordText = item.word ? item.word.toLowerCase() : "";
         const definitions = item.definitions || [];
 
@@ -47,13 +47,21 @@ export default function Dictionary() {
         if (definitions.some(d => d.meaning && d.meaning.toLowerCase().includes(cleanTerm))) return true;
         if (item.v2?.toLowerCase().includes(cleanTerm)) return true;
         if (item.v3?.toLowerCase().includes(cleanTerm)) return true;
+        if (item.vIng?.toLowerCase().includes(cleanTerm)) return true;
+        if (item.plural?.toLowerCase().includes(cleanTerm)) return true;
+        if (item.thirdPerson?.toLowerCase().includes(cleanTerm)) return true;
         
         return false;
     }).sort((a, b) => {
         const aWord = a.word ? a.word.toLowerCase() : "";
         const bWord = b.word ? b.word.toLowerCase() : "";
+        
         if (aWord === cleanTerm && bWord !== cleanTerm) return -1;
         if (bWord === cleanTerm && aWord !== cleanTerm) return 1;
+        const aStarts = aWord.startsWith(cleanTerm);
+        const bStarts = bWord.startsWith(cleanTerm);
+        if (aStarts && !bStarts) return -1;
+        if (bStarts && !aStarts) return 1;
         return aWord.localeCompare(bWord);
     });
 
@@ -71,11 +79,10 @@ export default function Dictionary() {
     setVisibleCount(prev => prev + PER_PAGE);
   };
 
-  // 👇 3. MODAL KAPANINCA YAPILACAKLAR
+  // ✅ 3. MODAL KAPANDIĞINDA
   const handleModalClose = () => {
       setShowQuickAdd(false); 
-      // Sayfa donmasın, liste yenilensin diye state'i tetikle
-      setDebouncedTerm(term); 
+      setDebouncedTerm(term); // Listeyi yenile
   };
 
   const displayedResults = results.slice(0, visibleCount);
@@ -83,18 +90,20 @@ export default function Dictionary() {
   return (
     <div className="min-h-screen bg-slate-50 p-6 flex flex-col items-center relative">
       
-      {/* 👇 4. MODAL BURADA ÇAĞRILIYOR (EN ÖNEMLİ KISIM) */}
+      {/* ✅ 4. MODAL BURADA VE SAĞLAM BİR YAPIYLA ÇAĞRILIYOR */}
       {showQuickAdd && isAdmin && (
           <QuickAddModal 
               onClose={handleModalClose}
-              // BURASI KRİTİK: Çökmemesi için 'definitions' dizisini boş gönderiyoruz.
-              // 'id' göndermediğimiz için Modal bunu "YENİ KAYIT" olarak algılıyor.
+              // 👇 İŞTE ÇÖZÜM BURASI: Eksik veri göndermiyoruz, her şeyi gönderiyoruz.
               prefillData={{ 
-                  word: term,         // Aranan kelimeyi yaz
-                  definitions: [],    // HATA ÖNLEYİCİ: Boş dizi
+                  id: null,  // ID yok (Bu sayede Yeni Kayıt olduğunu anlar)
+                  word: term, 
+                  definitions: [{ meaning: "", type: "noun" }], // HATA VERMEMESİ İÇİN
+                  tags: [], // INDEXOF HATASINI ÖNLEMEK İÇİN
                   phonetic: "",
                   sentence: "",
-                  id: null            // ID YOK -> YENİ KAYIT MODU
+                  v2: "", v3: "", vIng: "", plural: "", thirdPerson: "",
+                  advLy: "", compEr: "", superEst: ""
               }} 
           />
       )}
@@ -135,7 +144,7 @@ export default function Dictionary() {
                         <p>Sözlükte bulunamadı.</p>
                     </div>
 
-                    {/* 👇 5. SADECE ADMIN GÖRÜR - MODALI AÇAR */}
+                    {/* ✅ 5. SADECE ADMIN GÖRÜR - MODALI AÇAR */}
                     {isAdmin && (
                         <button 
                             onClick={() => setShowQuickAdd(true)}
