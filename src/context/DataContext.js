@@ -30,16 +30,16 @@ export const DataProvider = ({ children }) => {
   const [learningQueue, setLearningQueue] = useState([]);
   const [leaderboardData, setLeaderboardData] = useState([]);
 
-  // --- YENİ EKLENEN: GÜNLÜK GÖREV STATE'LERİ ---
+  // --- GÜNLÜK GÖREV STATE'LERİ ---
   const [questProgress, setQuestProgress] = useState({ flashcard: 0, quiz: 0, writing: 0, word_added: 0 });
   const [questHistory, setQuestHistory] = useState({});
 
-  // --- YENİ EKLENEN: HEDEFLER ---
+  // --- GÜNLÜK GÖREV HEDEFLERİ ---
   const DAILY_QUESTS_TARGETS = {
-    flashcard: 15, // 15 kelime çalış
-    quiz: 2,       // 2 Quiz bitir
-    writing: 1,    // 1 Yazma/Egzersiz yap
-    word_added: 1  // 1 Kelime ekle (Opsiyonel)
+    flashcard: 15, 
+    quiz: 2,       
+    writing: 1,    
+    word_added: 1  
   };
 
   const loading = authLoading || systemLoading || (user ? profileLoading : false);
@@ -65,9 +65,8 @@ export const DataProvider = ({ children }) => {
         setKnownWordIds([]); setCustomWords([]); setDeletedWordIds([]); 
         setLearningQueue([]); setStreak(0);
         setBlacklistedWords([]);
-        // Çıkış yapınca görevleri sıfırla
         setQuestProgress({ flashcard: 0, quiz: 0, writing: 0, word_added: 0 }); 
-        setQuestHistory({});
+        setQuestHistory({}); 
         setProfileLoading(false); 
       } else {
         setProfileLoading(true); 
@@ -175,11 +174,11 @@ export const DataProvider = ({ children }) => {
     refreshToken();
   }, [user]);
 
-  // 6. YENİ EKLENEN: GÜNLÜK GÖREVLERİ DİNLEME
+  // 6. GÜNLÜK GÖREVLERİ DİNLE
   useEffect(() => {
     if (!user) return;
     
-    // Saat dilimi ayarı (Local Time)
+    // Basit ve güvenli tarih formatı (Local YYYY-MM-DD)
     const now = new Date();
     const offset = now.getTimezoneOffset();
     const localDate = new Date(now.getTime() - (offset*60*1000));
@@ -253,10 +252,10 @@ export const DataProvider = ({ children }) => {
   };
 
   // --- GÜNCELLENMİŞ FONKSİYON: İSTATİSTİK VE GÖREV SAYACI ---
+  // 👇 BU KISIM DÜZELTİLDİ: İç içe obje yapısı kullanılarak veritabanına doğru yazılması sağlandı.
   const updateGameStats = async (gameType, count = 1) => {
       if (!user) return;
       
-      // Saat dilimi düzeltmesi (Tarih kaymasını önlemek için)
       const now = new Date();
       const offset = now.getTimezoneOffset();
       const localDate = new Date(now.getTime() - (offset*60*1000));
@@ -267,7 +266,7 @@ export const DataProvider = ({ children }) => {
       try {
           const batch = writeBatch(db);
 
-          // 1. Haftalık İstatistik (Mevcut Mantık)
+          // 1. Haftalık İstatistik
           const weeklyRef = doc(db, "artifacts", appId, "weekly_stats", weekKey, "user_activities", user.uid);
           batch.set(weeklyRef, {
               [gameType]: increment(count),
@@ -275,22 +274,24 @@ export const DataProvider = ({ children }) => {
               displayName: user.displayName || user.email
           }, { merge: true });
 
-          // 2. Günlük Görev İlerlemesi (YENİ)
+          // 2. Günlük Görev İlerlemesi
           const dailyRef = doc(db, "artifacts", appId, "users", user.uid, "daily_history", today);
           
           let questType = null;
-          // Hangi oyun hangi göreve sayılacak?
           if (["flashcard", "word-match"].includes(gameType)) questType = "flashcard";
           else if (["quiz", "quiz2"].includes(gameType)) questType = "quiz";
           else if (["writing", "writing2", "gap-filling", "sentence-builder", "pronunciation", "exercise"].includes(gameType)) questType = "writing";
           else if (gameType === "word_added") questType = "word_added";
 
           if (questType) {
+             // 🛠️ DÜZELTME: "progress.flashcard" yerine { progress: { flashcard: ... } } yapısı kullanıldı.
+             // Böylece setDoc merge işlemi iç içe objeyi doğru birleştirir.
              const progressUpdate = {
-                 [`progress.${questType}`]: increment(count),
+                 progress: {
+                    [questType]: increment(count)
+                 },
                  lastUpdated: new Date()
              };
-             // Merge: true ile mevcut veriyi koruyarak güncelle
              batch.set(dailyRef, progressUpdate, { merge: true });
           }
 
@@ -499,7 +500,7 @@ const normalizeWord = (w) => {
     } catch (e) { console.error("Hata:", e); }
   };
 
-  // --- KELİME GÜNCELLEME ---
+  // --- KELİME GÜNCELLEME (SİLME YOK - SADECE TARİH) ---
   const handleUpdateWord = async (originalId, newData) => {
      try {
        let isCustom = customWords.find((w) => String(w.id) === String(originalId));
@@ -815,7 +816,6 @@ const normalizeWord = (w) => {
       handleSaveNewWord, handleDeleteWord, handleUpdateWord,
       addToKnown, removeFromKnown, restoreWord, permanentlyDeleteWord, resetProfile,
       handleSaveSystemWord, handleDeleteSystemWord, handleUpdateSystemWord, cleanUpDuplicates,
-      // 👇 EKLENEN YENİ DEĞERLER (FONKSİYON VE DEĞİŞKENLER) 👇
       updateGameStats, getCurrentWeekKey, handleSmartLearn, addScore,
       questProgress, questHistory, DAILY_QUESTS_TARGETS
     }}>
