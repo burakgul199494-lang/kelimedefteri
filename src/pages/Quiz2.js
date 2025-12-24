@@ -134,7 +134,8 @@ const getWordPools = () => {
     if (option === questions[index].correct) setScore(s => s + 5);
 
     // İSTATİSTİK
-    updateGameStats('quiz2', 1);
+    updateGameStats('reverse_quiz', 1); // Haftalık istatistik (Eski sistem)
+    updateGameStats('quiz2', 1);        // Günlük Görev (Yeni sistem)
     
     // GEÇİŞ MANTIĞI
     setTimeout(() => {
