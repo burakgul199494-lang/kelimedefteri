@@ -1,16 +1,14 @@
-import React, { useState } from "react";
+import React from "react";
 import { useData } from "../context/DataContext";
 import { 
-    CheckCircle2, Zap, BookOpen, PenTool, ChevronDown, ChevronUp,
-    Languages, Dumbbell, Headphones, Quote, Layout, Puzzle, Mic
+    CheckCircle2, Zap, BookOpen, PenTool, 
+    Languages, Dumbbell, Headphones, Quote, Layout, Puzzle, Mic, X, CalendarCheck
 } from "lucide-react";
 
-export default function DailyQuests() {
+export default function DailyQuests({ onClose }) {
   const { questProgress, DAILY_QUESTS_TARGETS } = useData();
   
-  const [isOpen, setIsOpen] = useState(true);
-
-  // Güvenlik
+  // Güvenlik: Veri yoksa boş obje
   const progress = questProgress || {};
 
   const quests = [
@@ -86,7 +84,7 @@ export default function DailyQuests() {
     }
   ];
 
-  // Her görev için mevcut değeri çek ve tamamlanma durumunu hesapla
+  // Hesaplamalar
   const questsWithData = quests.map(q => ({
       ...q,
       current: progress[q.id] || 0
@@ -96,36 +94,35 @@ export default function DailyQuests() {
   const allCompleted = questsWithData.every(q => q.current >= q.target);
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 w-full mb-6 overflow-hidden transition-all">
+    // ARKAPLAN (KARARTMA)
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[60] p-4 animate-in fade-in">
         
-        {/* --- BAŞLIK --- */}
-        <div 
-            onClick={() => setIsOpen(!isOpen)}
-            className="flex justify-between items-center p-5 cursor-pointer bg-white hover:bg-slate-50 transition-colors"
-        >
-            <div className="flex items-center gap-3">
-                <h3 className="font-bold text-slate-700 flex items-center gap-2">
-                    📅 Günlük Görevler
-                </h3>
-                
-                {!isOpen && (
-                    <span className={`text-xs font-bold px-2 py-0.5 rounded-md ${allCompleted ? "bg-green-100 text-green-700" : "bg-slate-100 text-slate-500"}`}>
-                        {allCompleted ? "Tamamlandı! 🎉" : `${completedCount}/${quests.length} Yapıldı`}
-                    </span>
-                )}
+        {/* PENCERE (MODAL) */}
+        <div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl relative max-h-[85vh] overflow-y-auto">
+            
+            {/* BAŞLIK VE KAPAT BUTONU */}
+            <div className="flex justify-between items-center mb-6 sticky top-0 bg-white z-10 pb-2 border-b border-slate-50">
+                <div className="flex items-center gap-3">
+                    <div className="bg-indigo-100 p-2 rounded-xl">
+                        <CalendarCheck className="w-6 h-6 text-indigo-600"/>
+                    </div>
+                    <div>
+                        <h3 className="text-lg font-bold text-slate-800 leading-none">Günlük Görevler</h3>
+                        <span className="text-xs text-slate-400 font-medium">
+                            {allCompleted ? "Tümü Tamamlandı! 🎉" : `${completedCount}/${quests.length} Tamamlandı`}
+                        </span>
+                    </div>
+                </div>
+                <button onClick={onClose} className="p-2 bg-slate-100 rounded-full hover:bg-slate-200 transition-colors">
+                    <X className="w-5 h-5 text-slate-500"/>
+                </button>
             </div>
 
-            <div className="text-slate-400">
-                {isOpen ? <ChevronUp size={20}/> : <ChevronDown size={20}/>}
-            </div>
-        </div>
-
-        {/* --- İÇERİK --- */}
-        {isOpen && (
-            <div className="px-5 pb-5 space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+            {/* İÇERİK LİSTESİ */}
+            <div className="space-y-4">
                 {allCompleted && (
-                    <div className="bg-green-50 text-green-700 text-sm font-bold p-2 rounded-xl text-center mb-2 flex items-center justify-center gap-2">
-                        <CheckCircle2 className="w-4 h-4"/> Tüm görevler tamamlandı! Harikasın!
+                    <div className="bg-green-50 text-green-700 text-sm font-bold p-3 rounded-xl text-center flex items-center justify-center gap-2 mb-4 animate-bounce">
+                        <CheckCircle2 className="w-5 h-5"/> Harikasın! Bugünlük bu kadar.
                     </div>
                 )}
 
@@ -135,16 +132,16 @@ export default function DailyQuests() {
 
                     return (
                         <div key={quest.id}>
-                            <div className="flex justify-between text-xs mb-1 font-medium text-slate-600">
-                                <span className="flex items-center gap-1.5">
+                            <div className="flex justify-between text-xs mb-1.5 font-medium text-slate-600">
+                                <span className="flex items-center gap-2">
                                     {isDone ? <CheckCircle2 className="w-4 h-4 text-green-500"/> : quest.icon}
                                     {quest.label}
                                 </span>
-                                <span className={isDone ? "text-green-600" : "text-slate-400"}>
+                                <span className={isDone ? "text-green-600 font-bold" : "text-slate-400"}>
                                     {quest.current}/{quest.target}
                                 </span>
                             </div>
-                            <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                            <div className="h-2.5 w-full bg-slate-100 rounded-full overflow-hidden border border-slate-50">
                                 <div 
                                     className={`h-full rounded-full transition-all duration-500 ${isDone ? "bg-green-500" : quest.color}`} 
                                     style={{ width: `${percent}%` }}
@@ -154,7 +151,12 @@ export default function DailyQuests() {
                     );
                 })}
             </div>
-        )}
+
+            {/* KAPAT BUTONU (ALT) */}
+            <button onClick={onClose} className="w-full mt-6 bg-slate-100 text-slate-600 font-bold py-3 rounded-xl hover:bg-slate-200 transition-colors">
+                Kapat
+            </button>
+        </div>
     </div>
   );
 }
