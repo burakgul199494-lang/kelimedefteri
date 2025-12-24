@@ -255,7 +255,8 @@ export default function WritingGame2() {
   const handleSuccess = (wordToSpeak, pointsOverride = null) => {
     setIsWordComplete(true);
     handleSpeak(wordToSpeak);
-    updateGameStats('listening', 1);
+    updateGameStats('listening', 1); // Haftalık Skor için
+    updateGameStats('writing2', 1);  // Günlük Görev için
     
     const currentQ = questions[currentIndex];
     handleUpdateWord(currentQ.id, { lastSeen_listening: new Date().toISOString() });
@@ -274,7 +275,8 @@ export default function WritingGame2() {
       setCompletedLetters(targetWord.split('')); 
       setIsWordComplete(true);
       handleSpeak(wordToSpeak); 
-      updateGameStats('listening', 1);
+      updateGameStats('listening', 1); // Haftalık Skor için
+    updateGameStats('writing2', 1);  // Günlük Görev için
       
       const currentQ = questions[currentIndex];
       handleUpdateWord(currentQ.id, { lastSeen_listening: new Date().toISOString() });
