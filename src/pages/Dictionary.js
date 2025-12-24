@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useData } from "../context/DataContext";
 import WordCard2 from "../components/WordCard2";
 import QuickAddModal from "../components/QuickAddModal";
-import { ArrowLeft, Search, X, BookOpen, AlertCircle, ArrowDownCircle } from "lucide-react";
+import { ArrowLeft, Search, X, BookOpen, AlertCircle, ArrowDownCircle, Plus } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 
 export default function Dictionary() {
@@ -47,8 +47,11 @@ export default function Dictionary() {
     }).sort((a, b) => {
         const aWord = a.word.toLowerCase();
         const bWord = b.word.toLowerCase();
+        
+        // Tam eşleşmeleri en üste al
         if (aWord === cleanTerm && bWord !== cleanTerm) return -1;
         if (bWord === cleanTerm && aWord !== cleanTerm) return 1;
+        
         const aStarts = aWord.startsWith(cleanTerm);
         const bStarts = bWord.startsWith(cleanTerm);
         if (aStarts && !bStarts) return -1;
@@ -70,7 +73,6 @@ export default function Dictionary() {
     setVisibleCount(prev => prev + PER_PAGE);
   };
 
-  // Ekleme başarılı olunca modal kapansın ve arama yenilensin
   const handleSuccess = () => {
       setShowQuickAdd(false);
       setDebouncedTerm(term); 
@@ -78,18 +80,21 @@ export default function Dictionary() {
 
   const displayedResults = results.slice(0, visibleCount);
 
+  // --- KRİTİK KONTROL: Aranan kelime tam olarak listede var mı? ---
+  // Örneğin: "key" arandı, listede "keyboard" var ama "key" yoksa false döner.
+  const cleanSearch = debouncedTerm.toLowerCase().trim();
+  const exactMatchFound = results.some(r => r.word.toLowerCase() === cleanSearch);
+
   return (
     <div className="min-h-screen bg-slate-50 p-6 flex flex-col items-center">
 
-      {/* 👇 BURAYA SADECE 'initialWord' EKLENDİ VE 'onSuccess' EKLENDİ 👇 */}
       {showQuickAdd && (
         <QuickAddModal 
-            initialWord={term}  // <--- Kelimeyi kutuya yazar ama "Düzenle" moduna girmez
+            initialWord={term}
             onClose={() => setShowQuickAdd(false)} 
-            onSuccess={handleSuccess} // <--- Eklendikten sonra çalışır
+            onSuccess={handleSuccess}
         />
       )}
-      {/* 👆 -------------------------------------------------------- 👆 */}
 
       <div className="w-full max-w-md space-y-6">
         
@@ -119,22 +124,27 @@ export default function Dictionary() {
 
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10">
             
+            {/* --- 1. HİÇ SONUÇ YOKSA --- */}
             {debouncedTerm && results.length === 0 && (
               <div className="text-center text-slate-400 mt-4 space-y-3">
                 <AlertCircle className="w-8 h-8 mx-auto mb-2 opacity-50"/>
                 <p>Sözlükte bulunamadı.</p>
-
-                {isAdmin && (
-                  <button
-                    onClick={() => setShowQuickAdd(true)}
-                    className="mx-auto px-4 py-2 bg-indigo-600 text-white font-bold rounded-xl shadow hover:bg-indigo-700 transition"
-                  >
-                    Bu kelimeyi ekle
-                  </button>
-                )}
               </div>
             )}
 
+            {/* --- 2. ADMİN EKLEME BUTONU (Tam eşleşme yoksa her zaman göster) --- */}
+            {/* Sonuç olsa bile, aranan kelime tam olarak yoksa bu buton en üstte çıkar */}
+            {isAdmin && debouncedTerm && !exactMatchFound && (
+                <button
+                    onClick={() => setShowQuickAdd(true)}
+                    className="w-full py-3 bg-indigo-50 border-2 border-dashed border-indigo-200 text-indigo-600 font-bold rounded-xl hover:bg-indigo-100 transition flex items-center justify-center gap-2"
+                >
+                    <Plus className="w-5 h-5"/>
+                    "{term}" kelimesini ekle
+                </button>
+            )}
+
+            {/* --- 3. SONUÇ LİSTESİ --- */}
             {displayedResults.length > 0 && (
                 <>
                     <div className="text-center text-sm font-bold text-slate-400 uppercase tracking-wider">
