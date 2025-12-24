@@ -254,7 +254,8 @@ const learnPool = validWords.filter(w => {
     setSessionScore(prev => prev + earnedPoints);
     setFeedback({ score: earnedPoints, type, msg });
     setIsRoundDone(true);
-    updateGameStats('pronunciation', 1);
+    updateGameStats('speech', 1);        // Haftalık Skor (Orijinal isim)
+updateGameStats('pronunciation', 1); // Günlük Görev (Yeni isim)
   };
 
   // --- 5. DİĞER AKSİYONLAR ---
