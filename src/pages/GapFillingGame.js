@@ -267,7 +267,8 @@ export default function GapFillingGame() {
 
   // --- KELİME BİTİRME (BAŞARILI) - Puan Parametresi Eklendi ---
   const handleWordComplete = (pointsOverride = null) => {
-    updateGameStats('gap_filling', 1); 
+    updateGameStats('gap_filling', 1);  // Haftalık Skor (Alt çizgili)
+    updateGameStats('gap-filling', 1);  // Günlük Görev (Tireli - Context bunu bekliyor)
     setIsWordComplete(true);
     handleSpeak(targetWord, 'word'); 
     
@@ -298,7 +299,8 @@ export default function GapFillingGame() {
       setIsWordComplete(true);
       handleSpeak(targetWord, 'word'); 
 
-      updateGameStats('gap_filling', 1);
+     updateGameStats('gap_filling', 1);  // Haftalık Skor (Alt çizgili)
+    updateGameStats('gap-filling', 1);  // Günlük Görev (Tireli - Context bunu bekliyor)
       const currentQ = questions[currentIndex];
       handleUpdateWord(currentQ.id, { lastSeen_gap_filling: new Date().toISOString() });
       
