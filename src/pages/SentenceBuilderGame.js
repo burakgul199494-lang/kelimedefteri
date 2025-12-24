@@ -210,8 +210,8 @@ export default function SentenceBuilderGame() {
   // --- TURU BİTİR ---
   const finishRound = (success) => {
       setIsRoundFinished(true); 
-      updateGameStats('sentence_builder', 1);
-
+      updateGameStats('sentence_builder', 1); // Haftalık Skor (Alt çizgili)
+    updateGameStats('sentence-builder', 1); // Günlük Görev (Tireli)
       const currentWordObj = questions[currentIndex];
       handleUpdateWord(currentWordObj.id, { lastSeen_sentence_builder: new Date().toISOString() });
 
