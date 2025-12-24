@@ -8,12 +8,16 @@ const WORD_TYPES = [
   { value: "conj", label: "Bağlaç" }, { value: "article", label: "Tanımlık" }, { value: "other", label: "Diğer" },
 ];
 
-const QuickAddModal = ({ word, prefillData, onClose }) => {
+// 👇 Props kısmına 'initialWord' eklendi
+const QuickAddModal = ({ prefillData, onClose, initialWord = "" }) => {
   const { handleSaveNewWord, handleSaveSystemWord, handleUpdateSystemWord, isAdmin } = useData();
    
-  const initialData = prefillData ? {
+  // 👇 Eğer prefillData varsa ve ID'si varsa bu bir DÜZENLEME işlemidir.
+  const isEditing = !!(prefillData && prefillData.id);
+
+  const initialData = isEditing ? {
       ...prefillData,
-      phonetic: prefillData.phonetic || "", // <--- MEVCUT VERİ VARSA ÇEK
+      phonetic: prefillData.phonetic || "", 
       sentence_tr: prefillData.sentence_tr || "",
       tags: Array.isArray(prefillData.tags) ? prefillData.tags : [],
       definitions: prefillData.definitions.map(d => ({ 
@@ -23,8 +27,9 @@ const QuickAddModal = ({ word, prefillData, onClose }) => {
           trExplanation: d.trExplanation || "" 
       }))
   } : {
-    word: word || "", 
-    phonetic: "", // <--- YENİ EKLENDİ
+    // 👇 EĞER DÜZENLEME DEĞİLSE, SÖZLÜKTEN GELEN KELİMEYİ (initialWord) KULLAN
+    word: initialWord || "", 
+    phonetic: "", 
     tags: [], plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
     definitions: [{ type: "noun", meaning: "", engExplanation: "", trExplanation: "" }], 
     sentence: "", 
@@ -41,14 +46,14 @@ const QuickAddModal = ({ word, prefillData, onClose }) => {
   // --- MANUEL ETİKET FONKSİYONLARI ---
   const handleAddTag = () => {
     const trimmedTag = tagInput.trim();
-    if (!trimmedTag) return; // Boşsa ekleme
+    if (!trimmedTag) return; 
     if (formData.tags.includes(trimmedTag)) {
-        setTagInput(""); // Zaten varsa kutuyu temizle çık
+        setTagInput(""); 
         return; 
     }
     
     setFormData(prev => ({ ...prev, tags: [...prev.tags, trimmedTag] }));
-    setTagInput(""); // Kutuyu temizle
+    setTagInput(""); 
   };
 
   const handleRemoveTag = (tagToRemove) => {
@@ -57,7 +62,7 @@ const QuickAddModal = ({ word, prefillData, onClose }) => {
 
   const handleKeyDown = (e) => {
       if (e.key === 'Enter') {
-          e.preventDefault(); // Formu göndermeyi engelle
+          e.preventDefault(); 
           handleAddTag();
       }
   };
@@ -69,16 +74,26 @@ const QuickAddModal = ({ word, prefillData, onClose }) => {
     // Temiz Veri Hazırlığı
     const cleanData = {
         ...formData,
-        phonetic: formData.phonetic || "", // Boşsa boş string gitsin
+        phonetic: formData.phonetic || "", 
     };
 
     setSaving(true);
     let result;
-    if (prefillData && isAdmin) result = await handleUpdateSystemWord(prefillData.id, cleanData);
+    
+    // 👇 isEditing kontrolü ile güncelleme mi yeni kayıt mı olduğunu anlıyoruz
+    if (isEditing && isAdmin) result = await handleUpdateSystemWord(prefillData.id, cleanData);
     else if (isAdmin) result = await handleSaveSystemWord(cleanData);
     else result = await handleSaveNewWord(cleanData);
+    
     setSaving(false);
-    if(result && result.success) { alert("Kaydedildi!"); onClose(); }
+    
+    // 👇 Başarılı olduğunda onClose çağırıyoruz (Dictionary'deki onSuccess'i tetikleyecek)
+    if(result && result.success) { 
+        alert("Kaydedildi!"); 
+        // Eğer dışarıdan bir onSuccess fonksiyonu prop olarak geldiyse onu da çağırabiliriz
+        // ama Dictionary.js'de onClose içinde yenileme yaptığımız için bu yeterli.
+        onClose(); 
+    }
     else if(result) alert(result.message);
     else { alert("Kaydedildi!"); onClose(); }
   };
@@ -92,7 +107,7 @@ const QuickAddModal = ({ word, prefillData, onClose }) => {
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
       <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="font-bold text-lg"> {prefillData ? "Kelimeyi Düzenle" : "Hızlı Kelime Ekle"} </h3>
+          <h3 className="font-bold text-lg"> {isEditing ? "Kelimeyi Düzenle" : "Hızlı Kelime Ekle"} </h3>
           <button onClick={onClose} className="p-2 bg-slate-100 rounded-full"><X className="w-5 h-5" /></button>
         </div>
         
@@ -211,7 +226,7 @@ const QuickAddModal = ({ word, prefillData, onClose }) => {
               </div>
           </div>
           
-          <button onClick={handleSave} disabled={saving} className="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl flex justify-center gap-2">{saving ? <Loader2 className="animate-spin" /> : <Save className="w-5 h-5" />} {prefillData ? "Güncelle" : "Kaydet"}
+          <button onClick={handleSave} disabled={saving} className="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl flex justify-center gap-2">{saving ? <Loader2 className="animate-spin" /> : <Save className="w-5 h-5" />} {isEditing ? "Güncelle" : "Kaydet"}
           </button>
         </div>
       </div>
