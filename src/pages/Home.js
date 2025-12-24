@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useData } from "../context/DataContext";
 import { 
@@ -16,7 +16,7 @@ import {
   Dumbbell,
   RotateCcw,
   Calendar,
-  Target // <--- YENİ: Hedef İkonu eklendi
+  Target 
 } from "lucide-react"; 
 import ProfileModal from "../components/ProfileModal"; 
 import LeaderboardModal from "../components/LeaderboardModal";
@@ -29,14 +29,43 @@ export default function Home() {
   const { user, knownWordIds, getAllWords, streak, isAdmin, leaderboardData, learningQueue } = useData();
   const navigate = useNavigate();
   
+  // --- STATE TANIMLARI ---
   const [showProfileModal, setShowProfileModal] = useState(false); 
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [showStats, setShowStats] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
-  // 👇 YENİ: Günlük Görevler Modal State'i
-  const [showDailyQuests, setShowDailyQuests] = useState(false);
+
+  // 👇 ÖZEL MANTIK: SADECE İLK GİRİŞTE AÇILIR 👇
+  // Sayfa her yüklendiğinde bu fonksiyon çalışır:
+  const [showDailyQuests, setShowDailyQuests] = useState(() => {
+    // Tarayıcı hafızasına bak: "Daha önce gösterdik mi?"
+    const hasSeen = sessionStorage.getItem("hasSeenDailyQuests");
+    
+    if (!hasSeen) {
+      // Hayır, ilk defa giriyor -> Göster ve not al
+      sessionStorage.setItem("hasSeenDailyQuests", "true");
+      return true; // AÇIK BAŞLA
+    }
+    
+    // Evet, daha önce görmüş -> Tekrar gösterme
+    return false; // KAPALI BAŞLA
+  });
+
+  // 👇 SCROLL (KAYDIRMA) KİLİDİ 👇
+  // Herhangi bir modal açıldığında arka planı dondurur.
+  useEffect(() => {
+    if (showProfileModal || showLeaderboard || showStats || showSettings || showCalendar || showDailyQuests) {
+      document.body.style.overflow = "hidden"; // Kaydırmayı kapat
+    } else {
+      document.body.style.overflow = "auto";   // Kaydırmayı aç
+    }
+
+    // Temizlik: Sayfadan çıkarsa kilidi kaldır
+    return () => { document.body.style.overflow = "auto"; };
+  }, [showProfileModal, showLeaderboard, showStats, showSettings, showCalendar, showDailyQuests]);
   
+  // --- İSTATİSTİK HESAPLAMA (Mevcut Kod) ---
   const stats = useMemo(() => {
     const all = getAllWords();
     const now = new Date();
@@ -75,20 +104,18 @@ export default function Home() {
     };
   }, [getAllWords, knownWordIds, learningQueue]);
 
-
   const myScore = leaderboardData.find(u => u.id === user?.uid)?.score || 0;
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center p-6 w-full overflow-x-hidden">
       
-      {/* --- MODALLAR (PENCERELER) --- */}
+      {/* --- MODALLAR --- */}
+      {/* Her biri sadece 'true' olduğunda ekrana gelir */}
       {showProfileModal && <ProfileModal user={user} onClose={() => setShowProfileModal(false)} />}
       {showLeaderboard && <LeaderboardModal onClose={() => setShowLeaderboard(false)} />}
       {showStats && <StatisticsModal onClose={() => setShowStats(false)} />}
       {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
       {showCalendar && <CalendarModal onClose={() => setShowCalendar(false)} />}
-      
-      {/* 👇 YENİ: Günlük Görevler Penceresi */}
       {showDailyQuests && <DailyQuests onClose={() => setShowDailyQuests(false)} />}
 
       <div className="w-full max-w-md space-y-6 mt-2">
@@ -97,20 +124,20 @@ export default function Home() {
         <div className="flex justify-between items-center w-full px-1">
            <div className="flex gap-2 w-full justify-between">
              
-             {/* Sol Grup */}
+             {/* Sol Grup: Profil & Ayarlar */}
              <div className="flex gap-2">
                 <button onClick={() => setShowProfileModal(true)} className="p-2.5 bg-white rounded-xl shadow-sm border border-slate-200 text-slate-600 hover:text-indigo-600 active:scale-95 transition-transform"><User size={18} /></button>
                 <button onClick={() => setShowSettings(true)} className="p-2.5 bg-white rounded-xl shadow-sm border border-slate-200 text-slate-600 hover:text-slate-900 active:scale-95 transition-transform"><Settings size={18} /></button>
              </div>
 
-             {/* Sağ Grup (Araçlar) */}
+             {/* Sağ Grup: Araçlar */}
              <div className="flex gap-2">
                 {/* 1. Takvim */}
                 <button onClick={() => setShowCalendar(true)} className="p-2.5 bg-white rounded-xl shadow-sm border border-slate-200 text-slate-600 hover:text-indigo-600 active:scale-95 transition-transform">
                     <Calendar size={18} />
                 </button>
 
-                {/* 2. 👇 YENİ: Günlük Görevler Butonu */}
+                {/* 2. Günlük Görevler */}
                 <button onClick={() => setShowDailyQuests(true)} className="p-2.5 bg-white rounded-xl shadow-sm border border-slate-200 text-slate-600 hover:text-red-500 active:scale-95 transition-transform">
                     <Target size={18} />
                 </button>
@@ -124,7 +151,7 @@ export default function Home() {
            </div>
         </div>
 
-        {/* Başlık & Profil */}
+        {/* --- BAŞLIK & LEVEL BİLGİSİ --- */}
         <div className="text-center relative mt-4">
           <div className="flex justify-center mb-4 relative">
             <div className="bg-indigo-600 p-4 rounded-2xl shadow-lg transform rotate-3"><Brain className="w-12 h-12 text-white" /></div>
@@ -145,7 +172,7 @@ export default function Home() {
           <p className="text-slate-500 mt-2 text-sm">Merhaba, <span className="font-bold text-indigo-600">{user?.displayName || user?.email}</span></p>
         </div>
 
-        {/* --- İSTATİSTİK KARTI --- */}
+        {/* --- ANA İLERLEME KARTI --- */}
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
            <div className="flex justify-between items-end mb-2">
              <span className="text-sm font-medium text-slate-500">Genel İlerleme</span>
@@ -157,7 +184,7 @@ export default function Home() {
            
            <div className="flex justify-between text-sm divide-x divide-slate-100">
              
-             {/* 1. ÖĞRENİLEN */}
+             {/* Tekrar */}
              <div onClick={() => navigate("/list/known")} className="text-center flex-1 px-1 cursor-pointer hover:bg-slate-50 rounded transition-colors group">
                 <div className="font-bold text-slate-800 group-hover:text-green-600 transition-colors text-lg flex items-center justify-center gap-1">
                    {stats.review} <RotateCcw size={12} className="text-green-500"/>
@@ -165,7 +192,7 @@ export default function Home() {
                 <div className="text-slate-400 text-xs">Tekrar</div>
              </div>
 
-             {/* 2. BEKLEME */}
+             {/* Bekleme */}
              <div onClick={() => navigate("/list/waiting")} className="text-center flex-1 px-1 cursor-pointer hover:bg-slate-50 rounded transition-colors group">
                 <div className="font-bold text-slate-800 group-hover:text-amber-500 transition-colors text-lg flex items-center justify-center gap-1">
                    {stats.waiting} <Hourglass size={12} className="text-amber-400"/>
@@ -173,7 +200,7 @@ export default function Home() {
                 <div className="text-slate-400 text-xs">Beklemede</div>
              </div>
 
-             {/* 3. KALAN */}
+             {/* Öğrenilecek */}
              <div onClick={() => navigate("/list/unknown")} className="text-center flex-1 px-1 cursor-pointer hover:bg-slate-50 rounded transition-colors group">
                 <div className="font-bold text-slate-800 group-hover:text-blue-500 transition-colors text-lg">{stats.new}</div>
                 <div className="text-slate-400 text-xs">Öğrenilecek</div>
@@ -181,22 +208,19 @@ export default function Home() {
            </div>
         </div>
 
-        {/* --- AKSİYON BUTONLARI --- */}
+        {/* --- OYUN BUTONLARI --- */}
         <div className="space-y-3 pb-8">
           
-          {/* --- ADMIN PANELİ --- */}
           {isAdmin && (
             <button onClick={() => navigate("/admin")} className="w-full bg-slate-800 text-white font-bold py-3 px-6 rounded-xl shadow-md flex items-center justify-center gap-3">
                 <Shield className="w-5 h-5 text-yellow-400"/> Admin Paneli
             </button>
           )}
 
-          {/* SÖZLÜK */}
           <button onClick={() => navigate("/dictionary")} className="w-full bg-sky-500 text-white font-bold py-4 px-6 rounded-xl shadow-md flex items-center justify-between group active:scale-95 transition-transform">
               <div className="flex items-center gap-3"><div className="bg-white/20 p-2 rounded-lg"><Book className="w-6 h-6"/></div><div className="text-left"><div className="text-lg">Sözlük</div><div className="text-xs text-sky-100 font-normal">Kelime ara ve öğren</div></div></div>
           </button>
 
-          {/* FLASH KART (Ana Oyun) */}
           <button onClick={() => navigate("/game")} className="w-full bg-indigo-600 text-white font-bold py-5 px-6 rounded-2xl shadow-lg flex items-center justify-between group active:scale-95 transition-transform mb-2">
               <div className="flex items-center gap-4">
                 <div className="bg-white/20 p-3 rounded-xl"><Play className="w-8 h-8" fill="currentColor"/></div>
@@ -210,7 +234,6 @@ export default function Home() {
              <Play className="w-6 h-6 opacity-60 group-hover:translate-x-1 transition-transform"/>
           </button>
 
-          {/* GRAMER */}
           <button onClick={() => navigate("/exercise")} className="w-full bg-slate-800 text-white font-bold py-5 px-6 rounded-2xl shadow-lg flex items-center justify-between group active:scale-95 transition-transform mb-3">
               <div className="flex items-center gap-4">
                 <div className="bg-white/20 p-3 rounded-xl"><Dumbbell className="w-8 h-8"/></div>
@@ -218,7 +241,6 @@ export default function Home() {
             </div>
           </button>
 
-          {/* MENÜLER */}
           <div className="grid grid-cols-2 gap-3">
               <button onClick={() => navigate("/quiz")} className="bg-amber-500 text-white font-bold py-4 px-4 rounded-xl shadow-md flex flex-col items-center gap-2 active:scale-95"><HelpCircle className="w-6 h-6"/><span className="text-sm">Quiz</span></button>
               <button onClick={() => navigate("/quiz2")} className="bg-emerald-500 text-white font-bold py-4 px-4 rounded-xl shadow-md flex flex-col items-center gap-2 active:scale-95"><Languages className="w-6 h-6"/><span className="text-sm">Ters Quiz</span></button>
