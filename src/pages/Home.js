@@ -15,13 +15,13 @@ import {
   User,
   Dumbbell,
   RotateCcw,
-  Calendar // <--- YENİ: Takvim İkonu Eklendi
+  Calendar,
+  Target // <--- YENİ: Hedef İkonu eklendi
 } from "lucide-react"; 
 import ProfileModal from "../components/ProfileModal"; 
 import LeaderboardModal from "../components/LeaderboardModal";
 import StatisticsModal from "../components/StatisticsModal";
 import SettingsModal from "../components/SettingsModal";
-// 👇 YENİ BİLEŞENLER IMPORT EDİLDİ
 import DailyQuests from "../components/DailyQuests";
 import CalendarModal from "../components/CalendarModal";
 
@@ -33,8 +33,9 @@ export default function Home() {
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [showStats, setShowStats] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  // 👇 YENİ: Takvim Modal State'i
   const [showCalendar, setShowCalendar] = useState(false);
+  // 👇 YENİ: Günlük Görevler Modal State'i
+  const [showDailyQuests, setShowDailyQuests] = useState(false);
   
   const stats = useMemo(() => {
     const all = getAllWords();
@@ -67,7 +68,7 @@ export default function Home() {
       review: reviewPool.length,
       new: learnPool.length,
       totalLearned,
-      target: learnPool.length, // Sadece öğrenilecekler
+      target: learnPool.length,
       progress: all.length > 0
         ? (totalLearned / all.length) * 100
         : 0
@@ -80,29 +81,44 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center p-6 w-full overflow-x-hidden">
       
-      {/* Modallar */}
+      {/* --- MODALLAR (PENCERELER) --- */}
       {showProfileModal && <ProfileModal user={user} onClose={() => setShowProfileModal(false)} />}
       {showLeaderboard && <LeaderboardModal onClose={() => setShowLeaderboard(false)} />}
       {showStats && <StatisticsModal onClose={() => setShowStats(false)} />}
       {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
-      {/* 👇 YENİ: Takvim Modalı */}
       {showCalendar && <CalendarModal onClose={() => setShowCalendar(false)} />}
+      
+      {/* 👇 YENİ: Günlük Görevler Penceresi */}
+      {showDailyQuests && <DailyQuests onClose={() => setShowDailyQuests(false)} />}
 
       <div className="w-full max-w-md space-y-6 mt-2">
         
-        {/* Üst Bar */}
+        {/* --- ÜST BUTON BAR --- */}
         <div className="flex justify-between items-center w-full px-1">
            <div className="flex gap-2 w-full justify-between">
+             
+             {/* Sol Grup */}
              <div className="flex gap-2">
                 <button onClick={() => setShowProfileModal(true)} className="p-2.5 bg-white rounded-xl shadow-sm border border-slate-200 text-slate-600 hover:text-indigo-600 active:scale-95 transition-transform"><User size={18} /></button>
                 <button onClick={() => setShowSettings(true)} className="p-2.5 bg-white rounded-xl shadow-sm border border-slate-200 text-slate-600 hover:text-slate-900 active:scale-95 transition-transform"><Settings size={18} /></button>
              </div>
+
+             {/* Sağ Grup (Araçlar) */}
              <div className="flex gap-2">
-                {/* 👇 YENİ: Takvim Butonu */}
+                {/* 1. Takvim */}
                 <button onClick={() => setShowCalendar(true)} className="p-2.5 bg-white rounded-xl shadow-sm border border-slate-200 text-slate-600 hover:text-indigo-600 active:scale-95 transition-transform">
                     <Calendar size={18} />
                 </button>
+
+                {/* 2. 👇 YENİ: Günlük Görevler Butonu */}
+                <button onClick={() => setShowDailyQuests(true)} className="p-2.5 bg-white rounded-xl shadow-sm border border-slate-200 text-slate-600 hover:text-red-500 active:scale-95 transition-transform">
+                    <Target size={18} />
+                </button>
+
+                {/* 3. Liderlik */}
                 <button onClick={() => setShowLeaderboard(true)} className="p-2.5 bg-white rounded-xl shadow-sm border border-slate-200 text-slate-600 hover:text-yellow-500 active:scale-95 transition-transform"><Trophy size={18} /></button>
+                
+                {/* 4. İstatistik */}
                 <button onClick={() => setShowStats(true)} className="p-2.5 bg-white rounded-xl shadow-sm border border-slate-200 text-slate-600 hover:text-emerald-500 active:scale-95 transition-transform"><BarChart2 size={18} /></button>
              </div>
            </div>
@@ -165,14 +181,10 @@ export default function Home() {
            </div>
         </div>
 
-        {/* 👇 YENİ: GÜNLÜK GÖREVLER KUTUSU 👇 */}
-        <DailyQuests />
-        {/* 👆 ---------------------------- 👆 */}
-
         {/* --- AKSİYON BUTONLARI --- */}
         <div className="space-y-3 pb-8">
           
-          {/* --- ADMIN PANELİ (SÖZLÜĞÜN HEMEN ÜSTÜNDE) --- */}
+          {/* --- ADMIN PANELİ --- */}
           {isAdmin && (
             <button onClick={() => navigate("/admin")} className="w-full bg-slate-800 text-white font-bold py-3 px-6 rounded-xl shadow-md flex items-center justify-center gap-3">
                 <Shield className="w-5 h-5 text-yellow-400"/> Admin Paneli
@@ -213,7 +225,6 @@ export default function Home() {
               <button onClick={() => navigate("/writing")} className="bg-purple-600 text-white font-bold py-4 px-4 rounded-xl shadow-md flex flex-col items-center gap-2 active:scale-95"><Edit className="w-6 h-6"/><span className="text-sm">Yazma</span></button>
               <button onClick={() => navigate("/writing2")} className="bg-pink-600 text-white font-bold py-4 px-4 rounded-xl shadow-md flex flex-col items-center gap-2 active:scale-95"><Headphones className="w-6 h-6"/><span className="text-sm">Dinle & Yaz</span></button>
               <button onClick={() => navigate("/gap-filling")} className="bg-cyan-600 text-white font-bold py-4 px-4 rounded-xl shadow-md flex flex-col items-center gap-2 active:scale-95"><Quote className="w-6 h-6"/><span className="text-sm">Boşluk</span></button>
-              {/* İSİM GÜNCELLENDİ: Cümle Kurma */}
               <button onClick={() => navigate("/game/sentence-builder")} className="bg-teal-600 text-white font-bold py-4 px-4 rounded-xl shadow-md flex flex-col items-center gap-2 active:scale-95"><Layout className="w-6 h-6"/><span className="text-sm">Cümle Kurma</span></button>
               <button onClick={() => navigate("/game/word-match")} className="bg-orange-500 text-white font-bold py-4 px-4 rounded-xl shadow-md flex flex-col items-center gap-2 active:scale-95"><Puzzle className="w-6 h-6"/><span className="text-sm">Eşleşme</span></button>
               <button onClick={() => navigate("/pronunciation")} className="bg-rose-500 text-white font-bold py-4 px-4 rounded-xl shadow-md flex flex-col items-center gap-2 active:scale-95"><Mic className="w-6 h-6"/><span className="text-sm">Telaffuz</span></button>
