@@ -30,16 +30,16 @@ export const DataProvider = ({ children }) => {
   const [learningQueue, setLearningQueue] = useState([]);
   const [leaderboardData, setLeaderboardData] = useState([]);
 
-  // --- YENİ EKLENEN STATE'LER (GÜNLÜK GÖREVLER) ---
+  // --- YENİ EKLENEN: GÜNLÜK GÖREV STATE'LERİ ---
   const [questProgress, setQuestProgress] = useState({ flashcard: 0, quiz: 0, writing: 0, word_added: 0 });
   const [questHistory, setQuestHistory] = useState({});
 
-  // --- GÜNLÜK GÖREV HEDEFLERİ ---
+  // --- YENİ EKLENEN: HEDEFLER ---
   const DAILY_QUESTS_TARGETS = {
     flashcard: 15, // 15 kelime çalış
     quiz: 2,       // 2 Quiz bitir
     writing: 1,    // 1 Yazma/Egzersiz yap
-    word_added: 1  // 1 Kelime ekle
+    word_added: 1  // 1 Kelime ekle (Opsiyonel)
   };
 
   const loading = authLoading || systemLoading || (user ? profileLoading : false);
@@ -65,8 +65,9 @@ export const DataProvider = ({ children }) => {
         setKnownWordIds([]); setCustomWords([]); setDeletedWordIds([]); 
         setLearningQueue([]); setStreak(0);
         setBlacklistedWords([]);
-        setQuestProgress({ flashcard: 0, quiz: 0, writing: 0, word_added: 0 }); // Sıfırla
-        setQuestHistory({}); // Sıfırla
+        // Çıkış yapınca görevleri sıfırla
+        setQuestProgress({ flashcard: 0, quiz: 0, writing: 0, word_added: 0 }); 
+        setQuestHistory({});
         setProfileLoading(false); 
       } else {
         setProfileLoading(true); 
@@ -174,22 +175,29 @@ export const DataProvider = ({ children }) => {
     refreshToken();
   }, [user]);
 
-  // 6. YENİ: GÜNLÜK GÖREV VE GEÇMİŞ DİNLEME
+  // 6. YENİ EKLENEN: GÜNLÜK GÖREVLERİ DİNLEME
   useEffect(() => {
     if (!user) return;
-    const today = new Date().toISOString().split("T")[0];
     
-    // Bugünün görevlerini dinle
+    // Saat dilimi ayarı (Local Time)
+    const now = new Date();
+    const offset = now.getTimezoneOffset();
+    const localDate = new Date(now.getTime() - (offset*60*1000));
+    const today = localDate.toISOString().split("T")[0];
+    
+    // a. Bugünün görevlerini dinle
     const dailyRef = doc(db, "artifacts", appId, "users", user.uid, "daily_history", today);
     const unsubDaily = onSnapshot(dailyRef, (docSnap) => {
       if (docSnap.exists()) {
-        setQuestProgress(docSnap.data().progress || { flashcard: 0, quiz: 0, writing: 0, word_added: 0 });
+        const data = docSnap.data();
+        setQuestProgress(data.progress || { flashcard: 0, quiz: 0, writing: 0, word_added: 0 });
       } else {
+        // Bugün için kayıt yoksa sıfırla
         setQuestProgress({ flashcard: 0, quiz: 0, writing: 0, word_added: 0 });
       }
     });
 
-    // Geçmiş takvimi dinle
+    // b. Geçmiş takvimi dinle
     const historyCol = collection(db, "artifacts", appId, "users", user.uid, "daily_history");
     const unsubHistory = onSnapshot(historyCol, (snapshot) => {
         const historyData = {};
@@ -201,6 +209,7 @@ export const DataProvider = ({ children }) => {
 
     return () => { unsubDaily(); unsubHistory(); };
   }, [user]);
+
 
   // --- YARDIMCI: Sadece İstatistikleri Çek ---
   const extractUserStats = (wordObj) => {
@@ -243,17 +252,22 @@ export const DataProvider = ({ children }) => {
       } catch (e) { console.error("Puan hatası:", e); }
   };
 
-  // --- GÜNCELLENMİŞ: İSTATİSTİK VE GÖREV KAYDI ---
+  // --- GÜNCELLENMİŞ FONKSİYON: İSTATİSTİK VE GÖREV SAYACI ---
   const updateGameStats = async (gameType, count = 1) => {
       if (!user) return;
       
-      const today = new Date().toISOString().split("T")[0];
+      // Saat dilimi düzeltmesi (Tarih kaymasını önlemek için)
+      const now = new Date();
+      const offset = now.getTimezoneOffset();
+      const localDate = new Date(now.getTime() - (offset*60*1000));
+      const today = localDate.toISOString().split("T")[0];
+      
       const weekKey = getCurrentWeekKey();
       
       try {
           const batch = writeBatch(db);
 
-          // 1. Haftalık İstatistik (Eski Mantık - Korunuyor)
+          // 1. Haftalık İstatistik (Mevcut Mantık)
           const weeklyRef = doc(db, "artifacts", appId, "weekly_stats", weekKey, "user_activities", user.uid);
           batch.set(weeklyRef, {
               [gameType]: increment(count),
@@ -261,11 +275,11 @@ export const DataProvider = ({ children }) => {
               displayName: user.displayName || user.email
           }, { merge: true });
 
-          // 2. Günlük Görev İlerlemesi (Yeni Mantık)
+          // 2. Günlük Görev İlerlemesi (YENİ)
           const dailyRef = doc(db, "artifacts", appId, "users", user.uid, "daily_history", today);
           
-          // Oyun tipini görev tipine çevir
           let questType = null;
+          // Hangi oyun hangi göreve sayılacak?
           if (["flashcard", "word-match"].includes(gameType)) questType = "flashcard";
           else if (["quiz", "quiz2"].includes(gameType)) questType = "quiz";
           else if (["writing", "writing2", "gap-filling", "sentence-builder", "pronunciation", "exercise"].includes(gameType)) questType = "writing";
@@ -276,6 +290,7 @@ export const DataProvider = ({ children }) => {
                  [`progress.${questType}`]: increment(count),
                  lastUpdated: new Date()
              };
+             // Merge: true ile mevcut veriyi koruyarak güncelle
              batch.set(dailyRef, progressUpdate, { merge: true });
           }
 
@@ -484,7 +499,7 @@ const normalizeWord = (w) => {
     } catch (e) { console.error("Hata:", e); }
   };
 
-  // --- KELİME GÜNCELLEME (SİLME YOK - SADECE TARİH) ---
+  // --- KELİME GÜNCELLEME ---
   const handleUpdateWord = async (originalId, newData) => {
      try {
        let isCustom = customWords.find((w) => String(w.id) === String(originalId));
@@ -800,6 +815,7 @@ const normalizeWord = (w) => {
       handleSaveNewWord, handleDeleteWord, handleUpdateWord,
       addToKnown, removeFromKnown, restoreWord, permanentlyDeleteWord, resetProfile,
       handleSaveSystemWord, handleDeleteSystemWord, handleUpdateSystemWord, cleanUpDuplicates,
+      // 👇 EKLENEN YENİ DEĞERLER (FONKSİYON VE DEĞİŞKENLER) 👇
       updateGameStats, getCurrentWeekKey, handleSmartLearn, addScore,
       questProgress, questHistory, DAILY_QUESTS_TARGETS
     }}>
