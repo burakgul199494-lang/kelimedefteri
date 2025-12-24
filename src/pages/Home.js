@@ -14,12 +14,16 @@ import {
   BarChart2,
   User,
   Dumbbell,
-  RotateCcw
+  RotateCcw,
+  Calendar // <--- YENİ: Takvim İkonu Eklendi
 } from "lucide-react"; 
 import ProfileModal from "../components/ProfileModal"; 
 import LeaderboardModal from "../components/LeaderboardModal";
 import StatisticsModal from "../components/StatisticsModal";
 import SettingsModal from "../components/SettingsModal";
+// 👇 YENİ BİLEŞENLER IMPORT EDİLDİ
+import DailyQuests from "../components/DailyQuests";
+import CalendarModal from "../components/CalendarModal";
 
 export default function Home() {
   const { user, knownWordIds, getAllWords, streak, isAdmin, leaderboardData, learningQueue } = useData();
@@ -29,6 +33,8 @@ export default function Home() {
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [showStats, setShowStats] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  // 👇 YENİ: Takvim Modal State'i
+  const [showCalendar, setShowCalendar] = useState(false);
   
   const stats = useMemo(() => {
     const all = getAllWords();
@@ -79,6 +85,8 @@ export default function Home() {
       {showLeaderboard && <LeaderboardModal onClose={() => setShowLeaderboard(false)} />}
       {showStats && <StatisticsModal onClose={() => setShowStats(false)} />}
       {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
+      {/* 👇 YENİ: Takvim Modalı */}
+      {showCalendar && <CalendarModal onClose={() => setShowCalendar(false)} />}
 
       <div className="w-full max-w-md space-y-6 mt-2">
         
@@ -90,6 +98,10 @@ export default function Home() {
                 <button onClick={() => setShowSettings(true)} className="p-2.5 bg-white rounded-xl shadow-sm border border-slate-200 text-slate-600 hover:text-slate-900 active:scale-95 transition-transform"><Settings size={18} /></button>
              </div>
              <div className="flex gap-2">
+                {/* 👇 YENİ: Takvim Butonu */}
+                <button onClick={() => setShowCalendar(true)} className="p-2.5 bg-white rounded-xl shadow-sm border border-slate-200 text-slate-600 hover:text-indigo-600 active:scale-95 transition-transform">
+                    <Calendar size={18} />
+                </button>
                 <button onClick={() => setShowLeaderboard(true)} className="p-2.5 bg-white rounded-xl shadow-sm border border-slate-200 text-slate-600 hover:text-yellow-500 active:scale-95 transition-transform"><Trophy size={18} /></button>
                 <button onClick={() => setShowStats(true)} className="p-2.5 bg-white rounded-xl shadow-sm border border-slate-200 text-slate-600 hover:text-emerald-500 active:scale-95 transition-transform"><BarChart2 size={18} /></button>
              </div>
@@ -152,6 +164,10 @@ export default function Home() {
              </div>
            </div>
         </div>
+
+        {/* 👇 YENİ: GÜNLÜK GÖREVLER KUTUSU 👇 */}
+        <DailyQuests />
+        {/* 👆 ---------------------------- 👆 */}
 
         {/* --- AKSİYON BUTONLARI --- */}
         <div className="space-y-3 pb-8">
