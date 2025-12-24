@@ -3,7 +3,7 @@ import { useData } from "../context/DataContext";
 import WordCard2 from "../components/WordCard2";
 import { ArrowLeft, Search, X, BookOpen, AlertCircle, ArrowDownCircle, PlusCircle } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
-// ✅ 1. IMPORT: QuickAddModal'ı ekledik
+// 👇 1. IMPORT EKLENDİ
 import QuickAddModal from "../components/QuickAddModal"; 
 
 export default function Dictionary() {
@@ -17,7 +17,7 @@ export default function Dictionary() {
   const [visibleCount, setVisibleCount] = useState(50);
   const PER_PAGE = 50;
 
-  // ✅ 2. MODAL STATE'İ
+  // 👇 2. MODAL STATE'İ
   const [showQuickAdd, setShowQuickAdd] = useState(false);
 
   useEffect(() => {
@@ -28,7 +28,7 @@ export default function Dictionary() {
   }, [term]);
 
   useEffect(() => {
-    const cleanTerm = debouncedTerm.toLowerCase().trim();
+    const cleanTerm = debouncedTerm ? debouncedTerm.toLowerCase().trim() : "";
     
     if (!cleanTerm) {
         setResults([]);
@@ -37,24 +37,23 @@ export default function Dictionary() {
 
     const allWords = getAllWords();
     
+    // Filtreleme yaparken güvenlik kontrolleri (Hata vermemesi için)
     const filtered = allWords.filter(item => {
-        if (item.word.toLowerCase().includes(cleanTerm)) return true;
-        if (item.definitions.some(d => d.meaning.toLowerCase().includes(cleanTerm))) return true;
+        if (!item) return false;
+        const wordText = item.word ? item.word.toLowerCase() : "";
+        const definitions = item.definitions || [];
+
+        if (wordText.includes(cleanTerm)) return true;
+        if (definitions.some(d => d.meaning && d.meaning.toLowerCase().includes(cleanTerm))) return true;
         if (item.v2?.toLowerCase().includes(cleanTerm)) return true;
         if (item.v3?.toLowerCase().includes(cleanTerm)) return true;
-        if (item.vIng?.toLowerCase().includes(cleanTerm)) return true;
-        if (item.plural?.toLowerCase().includes(cleanTerm)) return true;
-        if (item.thirdPerson?.toLowerCase().includes(cleanTerm)) return true;
+        
         return false;
     }).sort((a, b) => {
-        const aWord = a.word.toLowerCase();
-        const bWord = b.word.toLowerCase();
+        const aWord = a.word ? a.word.toLowerCase() : "";
+        const bWord = b.word ? b.word.toLowerCase() : "";
         if (aWord === cleanTerm && bWord !== cleanTerm) return -1;
         if (bWord === cleanTerm && aWord !== cleanTerm) return 1;
-        const aStarts = aWord.startsWith(cleanTerm);
-        const bStarts = bWord.startsWith(cleanTerm);
-        if (aStarts && !bStarts) return -1;
-        if (bStarts && !aStarts) return 1;
         return aWord.localeCompare(bWord);
     });
 
@@ -72,11 +71,11 @@ export default function Dictionary() {
     setVisibleCount(prev => prev + PER_PAGE);
   };
 
-  // ✅ 3. MODAL KAPANDIĞINDA VEYA BAŞARI DURUMUNDA
-  const handleSuccess = () => {
-      setShowQuickAdd(false); // Modalı kapat
-      setDebouncedTerm(term); // Listeyi zorla yenile (kelimeyi getirir)
-      alert("Kelime Eklendi! 🎉"); // Kullanıcıya bilgi ver
+  // 👇 3. MODAL KAPANINCA YAPILACAKLAR
+  const handleModalClose = () => {
+      setShowQuickAdd(false); 
+      // Sayfa donmasın, liste yenilensin diye state'i tetikle
+      setDebouncedTerm(term); 
   };
 
   const displayedResults = results.slice(0, visibleCount);
@@ -84,19 +83,19 @@ export default function Dictionary() {
   return (
     <div className="min-h-screen bg-slate-50 p-6 flex flex-col items-center relative">
       
-      {/* ✅ 4. MODAL BURADA ÇAĞRILIYOR */}
-      {/* ÇÖKMEMESİ İÇİN definitions: [] GÖNDERİYORUZ */}
+      {/* 👇 4. MODAL BURADA ÇAĞRILIYOR (EN ÖNEMLİ KISIM) */}
       {showQuickAdd && isAdmin && (
           <QuickAddModal 
+              onClose={handleModalClose}
+              // BURASI KRİTİK: Çökmemesi için 'definitions' dizisini boş gönderiyoruz.
+              // 'id' göndermediğimiz için Modal bunu "YENİ KAYIT" olarak algılıyor.
               prefillData={{ 
-                  word: term, // "school" buraya otomatik gelir
-                  definitions: [], // BOŞ ARRAY (Çökmemesi için kritik)
+                  word: term,         // Aranan kelimeyi yaz
+                  definitions: [],    // HATA ÖNLEYİCİ: Boş dizi
                   phonetic: "",
                   sentence: "",
-                  v2: "", v3: "", vIng: ""
-              }}
-              onClose={() => setShowQuickAdd(false)}
-              onSuccess={handleSuccess} // Admin panelindeki modalda bu prop varsa çalışır
+                  id: null            // ID YOK -> YENİ KAYIT MODU
+              }} 
           />
       )}
 
@@ -128,7 +127,7 @@ export default function Dictionary() {
 
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10">
             
-            {/* ✅ 5. BULUNAMADI UYARISI VE BUTON */}
+            {/* BULUNAMADI & ADMİN EKLEME BUTONU */}
             {debouncedTerm && results.length === 0 && (
                 <div className="text-center text-slate-400 mt-4 flex flex-col items-center gap-3">
                     <div className="flex flex-col items-center">
@@ -136,7 +135,7 @@ export default function Dictionary() {
                         <p>Sözlükte bulunamadı.</p>
                     </div>
 
-                    {/* SADECE ADMIN GÖRÜR */}
+                    {/* 👇 5. SADECE ADMIN GÖRÜR - MODALI AÇAR */}
                     {isAdmin && (
                         <button 
                             onClick={() => setShowQuickAdd(true)}
