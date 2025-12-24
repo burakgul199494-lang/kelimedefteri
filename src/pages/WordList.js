@@ -13,6 +13,18 @@ export default function WordList() {
   const [visibleCount, setVisibleCount] = useState(50);
   const PER_PAGE = 50;
 
+  // --- YENİ EKLENEN: SANİYE SAYACI ---
+  // Bu state her saniye değişerek sayfanın içindeki saatlerin güncellenmesini sağlar.
+  const [tick, setTick] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTick(t => t + 1);
+    }, 1000); // Her 1 saniyede bir tetikle
+    return () => clearInterval(timer);
+  }, []);
+  // -----------------------------------
+
   const isKnown = type === "known";
   const isWaiting = type === "waiting";
 
@@ -21,17 +33,14 @@ export default function WordList() {
   const all = getAllWords();
   const now = new Date();
 
-  // --- DÜZELTME 1: SEVİYE HESAPLAMA MANTIĞI ---
+  // --- SEVİYE HESAPLAMA MANTIĞI ---
   const wordsWithDetails = all.map(word => {
-      // String ID dönüşümü yaparak güvenli arama yapalım
       const qItem = learningQueue ? learningQueue.find(q => String(q.wordId) === String(word.id)) : null;
       let level = 0;
       
-      // Eğer bilinenlerdeyse ARTIK SEVİYE 6 (MASTER)
       if (knownWordIds.map(String).includes(String(word.id))) {
           level = 6; 
       } else if (qItem) {
-          // Kuyruktaysa gerçek seviyesini al (3, 4, 5 olabilir)
           level = qItem.level || 0; 
       } else {
           level = 0; 
@@ -43,7 +52,6 @@ export default function WordList() {
   // --- LİSTELEME MANTIĞI ---
   if (isKnown) {
     title = "Öğrendiğim Kelimeler (Master)";
-    // DÜZELTME 2: Seviye 3 değil, Seviye 6 olanları getir
     wordList = wordsWithDetails.filter(w => w.level === 6);
 
   } else if (isWaiting) {
@@ -73,17 +81,28 @@ export default function WordList() {
   const handleLoadMore = () => { setVisibleCount(prev => prev + PER_PAGE); };
   const speak = (txt, e) => { e.stopPropagation(); const u = new SpeechSynthesisUtterance(txt); u.lang = "en-US"; window.speechSynthesis.speak(u); };
 
+  // --- YENİ EKLENEN: DETAYLI SÜRE HESAPLAMA ---
   const getTimeRemaining = (dateString) => {
       const diff = new Date(dateString) - new Date();
       if (diff <= 0) return "Şimdi!";
-      const hours = Math.floor(diff / (1000 * 60 * 60));
-      const days = Math.floor(hours / 24);
-      if (days > 0) return `${days} gün`;
-      return `${hours} saat`;
+
+      // Gün, Saat, Dakika, Saniye Hesaplaması
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+      const minutes = Math.floor((diff / 1000 / 60) % 60);
+      const seconds = Math.floor((diff / 1000) % 60);
+
+      let parts = [];
+      if (days > 0) parts.push(`${days}g`);
+      if (hours > 0) parts.push(`${hours}sa`);
+      if (minutes > 0) parts.push(`${minutes}dk`);
+      parts.push(`${seconds}sn`);
+
+      // Çok uzun olmaması için sadece en anlamlı 3 parçayı gösterelim (İsteğe bağlı hepsini de gösterebilirsin)
+      return parts.join(" ");
   };
 
-  // --- DÜZELTME 3: ROZETLER (BADGES) ---
-  // Artık 4, 5 ve 6. seviyeleri de tanıyor
+  // --- ROZETLER (BADGES) ---
   const getLevelBadge = (level) => {
       switch(level) {
         case 0: return <span className="bg-slate-100 text-slate-500 text-[10px] px-2 py-0.5 rounded border border-slate-200">Lvl 0 (Yeni)</span>;
@@ -129,8 +148,10 @@ export default function WordList() {
                       {getLevelBadge(item.level)}
                       
                       {item.queueData && new Date(item.queueData.nextReview) > new Date() && (
-                          <div className="flex items-center gap-1 text-[10px] text-amber-600 bg-amber-50 px-2 py-0.5 rounded border border-amber-100">
-                              <Clock className="w-3 h-3"/> {getTimeRemaining(item.queueData.nextReview)}
+                          <div className="flex items-center gap-1 text-[10px] text-amber-600 bg-amber-50 px-2 py-0.5 rounded border border-amber-100 font-mono">
+                              <Clock className="w-3 h-3"/> 
+                              {/* Saniye her saniye güncellenecek */}
+                              {getTimeRemaining(item.queueData.nextReview)}
                           </div>
                       )}
 
