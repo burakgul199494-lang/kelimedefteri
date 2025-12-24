@@ -30,6 +30,18 @@ export const DataProvider = ({ children }) => {
   const [learningQueue, setLearningQueue] = useState([]);
   const [leaderboardData, setLeaderboardData] = useState([]);
 
+  // --- YENİ EKLENEN STATE'LER (GÜNLÜK GÖREVLER) ---
+  const [questProgress, setQuestProgress] = useState({ flashcard: 0, quiz: 0, writing: 0, word_added: 0 });
+  const [questHistory, setQuestHistory] = useState({});
+
+  // --- GÜNLÜK GÖREV HEDEFLERİ ---
+  const DAILY_QUESTS_TARGETS = {
+    flashcard: 15, // 15 kelime çalış
+    quiz: 2,       // 2 Quiz bitir
+    writing: 1,    // 1 Yazma/Egzersiz yap
+    word_added: 1  // 1 Kelime ekle
+  };
+
   const loading = authLoading || systemLoading || (user ? profileLoading : false);
 
   const getCurrentWeekKey = () => {
@@ -53,6 +65,8 @@ export const DataProvider = ({ children }) => {
         setKnownWordIds([]); setCustomWords([]); setDeletedWordIds([]); 
         setLearningQueue([]); setStreak(0);
         setBlacklistedWords([]);
+        setQuestProgress({ flashcard: 0, quiz: 0, writing: 0, word_added: 0 }); // Sıfırla
+        setQuestHistory({}); // Sıfırla
         setProfileLoading(false); 
       } else {
         setProfileLoading(true); 
@@ -160,6 +174,34 @@ export const DataProvider = ({ children }) => {
     refreshToken();
   }, [user]);
 
+  // 6. YENİ: GÜNLÜK GÖREV VE GEÇMİŞ DİNLEME
+  useEffect(() => {
+    if (!user) return;
+    const today = new Date().toISOString().split("T")[0];
+    
+    // Bugünün görevlerini dinle
+    const dailyRef = doc(db, "artifacts", appId, "users", user.uid, "daily_history", today);
+    const unsubDaily = onSnapshot(dailyRef, (docSnap) => {
+      if (docSnap.exists()) {
+        setQuestProgress(docSnap.data().progress || { flashcard: 0, quiz: 0, writing: 0, word_added: 0 });
+      } else {
+        setQuestProgress({ flashcard: 0, quiz: 0, writing: 0, word_added: 0 });
+      }
+    });
+
+    // Geçmiş takvimi dinle
+    const historyCol = collection(db, "artifacts", appId, "users", user.uid, "daily_history");
+    const unsubHistory = onSnapshot(historyCol, (snapshot) => {
+        const historyData = {};
+        snapshot.forEach(doc => {
+            historyData[doc.id] = doc.data();
+        });
+        setQuestHistory(historyData);
+    });
+
+    return () => { unsubDaily(); unsubHistory(); };
+  }, [user]);
+
   // --- YARDIMCI: Sadece İstatistikleri Çek ---
   const extractUserStats = (wordObj) => {
       const stats = {};
@@ -201,16 +243,44 @@ export const DataProvider = ({ children }) => {
       } catch (e) { console.error("Puan hatası:", e); }
   };
 
+  // --- GÜNCELLENMİŞ: İSTATİSTİK VE GÖREV KAYDI ---
   const updateGameStats = async (gameType, count = 1) => {
       if (!user) return;
+      
+      const today = new Date().toISOString().split("T")[0];
+      const weekKey = getCurrentWeekKey();
+      
       try {
-          const weekKey = getCurrentWeekKey();
-          const statsRef = doc(db, "artifacts", appId, "weekly_stats", weekKey, "user_activities", user.uid);
-          await setDoc(statsRef, {
+          const batch = writeBatch(db);
+
+          // 1. Haftalık İstatistik (Eski Mantık - Korunuyor)
+          const weeklyRef = doc(db, "artifacts", appId, "weekly_stats", weekKey, "user_activities", user.uid);
+          batch.set(weeklyRef, {
               [gameType]: increment(count),
               lastUpdated: new Date(),
               displayName: user.displayName || user.email
           }, { merge: true });
+
+          // 2. Günlük Görev İlerlemesi (Yeni Mantık)
+          const dailyRef = doc(db, "artifacts", appId, "users", user.uid, "daily_history", today);
+          
+          // Oyun tipini görev tipine çevir
+          let questType = null;
+          if (["flashcard", "word-match"].includes(gameType)) questType = "flashcard";
+          else if (["quiz", "quiz2"].includes(gameType)) questType = "quiz";
+          else if (["writing", "writing2", "gap-filling", "sentence-builder", "pronunciation", "exercise"].includes(gameType)) questType = "writing";
+          else if (gameType === "word_added") questType = "word_added";
+
+          if (questType) {
+             const progressUpdate = {
+                 [`progress.${questType}`]: increment(count),
+                 lastUpdated: new Date()
+             };
+             batch.set(dailyRef, progressUpdate, { merge: true });
+          }
+
+          await batch.commit();
+
       } catch (e) { console.error("İstatistik hatası:", e); }
   };
 
@@ -730,7 +800,8 @@ const normalizeWord = (w) => {
       handleSaveNewWord, handleDeleteWord, handleUpdateWord,
       addToKnown, removeFromKnown, restoreWord, permanentlyDeleteWord, resetProfile,
       handleSaveSystemWord, handleDeleteSystemWord, handleUpdateSystemWord, cleanUpDuplicates,
-      updateGameStats, getCurrentWeekKey, handleSmartLearn, addScore
+      updateGameStats, getCurrentWeekKey, handleSmartLearn, addScore,
+      questProgress, questHistory, DAILY_QUESTS_TARGETS
     }}>
       {children}
     </DataContext.Provider>
