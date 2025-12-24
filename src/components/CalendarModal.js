@@ -1,64 +1,87 @@
-import React from "react";
+import React, { useState } from "react";
 import { X, Check, X as XIcon, Calendar as CalIcon, ChevronLeft, ChevronRight } from "lucide-react";
 import { useData } from "../context/DataContext";
 
 export default function CalendarModal({ onClose }) {
   const { questHistory, DAILY_QUESTS_TARGETS } = useData();
 
-  const today = new Date();
-  const currentYear = today.getFullYear();
-  const currentMonth = today.getMonth(); // 0 = Ocak, 11 = Aralık
+  // Gerçek "Bugün" (Sabit kalır)
+  const realToday = new Date();
+  
+  // Takvimde görüntülenen Ay/Yıl (Değişebilir)
+  const [viewDate, setViewDate] = useState(new Date());
+
+  const currentYear = viewDate.getFullYear();
+  const currentMonth = viewDate.getMonth(); // 0 = Ocak
+
+  // Ay değiştirme fonksiyonu
+  const changeMonth = (offset) => {
+      const newDate = new Date(viewDate.getFullYear(), viewDate.getMonth() + offset, 1);
+      setViewDate(newDate);
+  };
 
   // Ayın ismini al (Örn: "Aralık")
-  const monthName = today.toLocaleDateString("tr-TR", { month: "long" });
+  const monthName = viewDate.toLocaleDateString("tr-TR", { month: "long" });
 
   // Ayın kaç çektiğini bul
   const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
 
-  // Ayın ilk günü haftanın kaçıncı günü? (0: Pazar, 1: Pzt ... 6: Cmt)
+  // Ayın ilk günü haftanın kaçıncı günü? (Pazartesi'den başlatmak için ayar)
   let firstDayIndex = new Date(currentYear, currentMonth, 1).getDay();
-  // Pazartesi(1) ile başlaması için ayarlama (Pazar 0 ise 6 yap, diğerlerini 1 azalt)
-  // TR Takvimi: Pzt(0), Sal(1)... Pazar(6) mantığına çeviriyoruz
   const startOffset = firstDayIndex === 0 ? 6 : firstDayIndex - 1;
 
   // Takvim kutucuklarını oluştur
   const days = [];
   
-  // 1. Boşlukları doldur (Ayın 1'inden önceki günler)
+  // 1. Boşlukları doldur
   for (let i = 0; i < startOffset; i++) {
       days.push({ type: "empty", key: `empty-${i}` });
   }
 
   // 2. Günleri doldur
   for (let d = 1; d <= daysInMonth; d++) {
-      // Tarih formatı: YYYY-MM-DD (Tek haneli aylara/günlere 0 ekle)
+      // Veritabanı anahtarı formatı: YYYY-MM-DD (Yerel saat farkını yoksayarak string oluşturma)
+      // Ay +1 çünkü getMonth() 0 indeksli
       const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
       
-      const isToday = d === today.getDate();
-      const isFuture = d > today.getDate();
+      // Bu gün, gerçek hayattaki bugün mü?
+      const isToday = 
+          d === realToday.getDate() && 
+          currentMonth === realToday.getMonth() && 
+          currentYear === realToday.getFullYear();
+
+      // Gelecek bir gün mü? (Görüntülenen ay/yıl ile gerçek bugünü kıyasla)
+      const checkDate = new Date(currentYear, currentMonth, d);
+      const isFuture = checkDate > realToday; // Saat farkını önemsememek için basit kıyaslama yeterli olabilir ama setHours daha garanti.
+      checkDate.setHours(0,0,0,0);
+      const realTodayZero = new Date(realToday);
+      realTodayZero.setHours(0,0,0,0);
+      const isFutureDay = checkDate.getTime() > realTodayZero.getTime();
 
       // Geçmiş veri kontrolü
       const dayData = questHistory[dateStr];
       const progress = dayData?.progress || {};
 
-      // Görevler tamamlandı mı?
-      const isFlashcardDone = (progress.flashcard || 0) >= DAILY_QUESTS_TARGETS.flashcard;
-      const isQuizDone = (progress.quiz || 0) >= DAILY_QUESTS_TARGETS.quiz;
-      const isWritingDone = (progress.writing || 0) >= DAILY_QUESTS_TARGETS.writing;
+      // DİNAMİK KONTROL: Tüm hedefler tutturuldu mu?
+      const isAllDone = Object.keys(DAILY_QUESTS_TARGETS).every(key => {
+          const currentVal = progress[key] || 0;
+          const targetVal = DAILY_QUESTS_TARGETS[key];
+          return currentVal >= targetVal;
+      });
       
-      const isAllDone = isFlashcardDone && isQuizDone && isWritingDone;
-      
-      // Eğer geçmiş bir günse ve veri varsa ama tamamlanmamışsa -> Başarısız (X)
-      // Eğer veri hiç yoksa -> Nötr
-      const isMissed = !isFuture && !isToday && dayData && !isAllDone;
+      // Kaçırılan gün mü? (Gelecek değil + Bugün Değil + Tamamlanmamış)
+      // Not: Eğer o gün için HİÇ veri yoksa (dayData undefined) ve geçmişse, gri kalabilir veya kırmızı olabilir.
+      // Şu anki mantık: Veri varsa ve eksikse kırmızı. Hiç girmemişse gri.
+      // Eğer "Hiç girmediği günleri de başarısız say" istersen `&& dayData` kısmını kaldırabilirsin.
+      const isMissed = !isFutureDay && !isToday && dayData && !isAllDone;
 
       days.push({ 
           type: "day", 
           dayNum: d, 
           dateStr, 
           isToday, 
-          isFuture,
-          isAllDone,
+          isFuture: isFutureDay,
+          isAllDone, 
           isMissed,
           hasData: !!dayData
       });
@@ -68,18 +91,31 @@ export default function CalendarModal({ onClose }) {
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[60] p-4 animate-in fade-in">
       <div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl">
         
-        {/* Başlık */}
+        {/* Başlık ve Navigasyon */}
         <div className="flex justify-between items-center mb-6">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
                 <div className="bg-indigo-100 p-2 rounded-xl">
                     <CalIcon className="w-6 h-6 text-indigo-600"/>
                 </div>
                 <div>
-                    <h3 className="text-lg font-bold text-slate-800 leading-none">{monthName} {currentYear}</h3>
+                    <h3 className="text-lg font-bold text-slate-800 leading-none capitalize">
+                        {monthName} {currentYear}
+                    </h3>
                     <span className="text-xs text-slate-400 font-medium">Günlük Takip</span>
                 </div>
             </div>
-            <button onClick={onClose} className="p-2 bg-slate-100 rounded-full hover:bg-slate-200">
+            
+            {/* Ay Değiştirme Butonları */}
+            <div className="flex items-center gap-1 bg-slate-100 rounded-lg p-1">
+                <button onClick={() => changeMonth(-1)} className="p-1.5 hover:bg-white rounded-md transition-colors text-slate-600">
+                    <ChevronLeft className="w-5 h-5"/>
+                </button>
+                <button onClick={() => changeMonth(1)} className="p-1.5 hover:bg-white rounded-md transition-colors text-slate-600">
+                    <ChevronRight className="w-5 h-5"/>
+                </button>
+            </div>
+
+            <button onClick={onClose} className="p-2 ml-2 bg-slate-100 rounded-full hover:bg-slate-200">
                 <X className="w-5 h-5 text-slate-500"/>
             </button>
         </div>
@@ -102,10 +138,11 @@ export default function CalendarModal({ onClose }) {
                     <div 
                         key={item.dateStr} 
                         className={`
-                            aspect-square rounded-xl flex items-center justify-center text-sm font-bold relative border transition-all
-                            ${item.isToday ? "border-indigo-500 ring-2 ring-indigo-100 bg-white text-indigo-700" : "border-slate-100 bg-slate-50 text-slate-400"}
-                            ${item.isAllDone ? "bg-green-100 border-green-200 text-green-700" : ""}
+                            aspect-square rounded-xl flex items-center justify-center text-sm font-bold relative border transition-all select-none
+                            ${item.isToday ? "border-indigo-500 ring-2 ring-indigo-100 bg-white text-indigo-700 z-10" : "border-slate-100 bg-slate-50 text-slate-400"}
+                            ${!item.isToday && item.isAllDone ? "bg-green-100 border-green-200 text-green-700" : ""}
                             ${item.isMissed ? "bg-red-50 border-red-100 text-red-400" : ""}
+                            ${item.isFuture ? "opacity-40" : ""}
                         `}
                     >
                         {item.dayNum}
