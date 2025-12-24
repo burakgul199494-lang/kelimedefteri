@@ -174,7 +174,8 @@ export default function WordMatchGame() {
 
       if (first.wordId === second.wordId) {
           // --- DOĞRU ---
-          updateGameStats('word_match', 1);
+          updateGameStats('word_match', 1); // Haftalık Skor
+    updateGameStats('word-match', 1); // Günlük Görev (Tireli hali)
           
           // --- GÜVENLİ KAYIT ---
           // Word Match tarihinde bu kelimeyi işaretle (Sona at)
