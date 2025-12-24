@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { useData } from "../context/DataContext";
 import WordCard2 from "../components/WordCard2";
-import { ArrowLeft, Search, X, BookOpen, AlertCircle, ArrowDownCircle, PlusCircle, Save, Check } from "lucide-react";
+import { ArrowLeft, Search, X, BookOpen, AlertCircle, ArrowDownCircle, PlusCircle } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
+// 👇 1. IMPORT EKLENDİ
+import QuickAddModal from "../components/QuickAddModal"; 
 
 export default function Dictionary() {
-  // isAdmin ve handleSaveSystemWord'ü buradan çekiyoruz
-  const { getAllWords, isAdmin, handleSaveSystemWord } = useData(); 
+  const { getAllWords, isAdmin } = useData(); 
   const navigate = useNavigate();
   const location = useLocation();
   
@@ -16,14 +17,8 @@ export default function Dictionary() {
   const [visibleCount, setVisibleCount] = useState(50);
   const PER_PAGE = 50;
 
-  // --- YENİ: MODAL STATE'LERİ ---
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [addForm, setAddForm] = useState({
-      word: "",
-      meaning: "",
-      type: "noun",
-      sentence: ""
-  });
+  // 👇 2. SADECE MODALIN AÇIK/KAPALI DURUMUNU TUTAN STATE
+  const [showQuickAdd, setShowQuickAdd] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -77,56 +72,26 @@ export default function Dictionary() {
     setVisibleCount(prev => prev + PER_PAGE);
   };
 
-  // --- YENİ: MODAL AÇMA FONKSİYONU ---
-  const openAddModal = () => {
-      setAddForm({
-          word: term, // Aranan kelimeyi otomatik doldur
-          meaning: "",
-          type: "noun",
-          sentence: ""
-      });
-      setShowAddModal(true);
-  };
-
-  // --- YENİ: KAYDETME FONKSİYONU ---
-  const handleSaveWord = async () => {
-      if (!addForm.word || !addForm.meaning) {
-          alert("Kelime ve Anlam zorunludur!");
-          return;
-      }
-
-      const newWordData = {
-          word: addForm.word,
-          definitions: [{
-              type: addForm.type,
-              meaning: addForm.meaning,
-              engExplanation: "",
-              trExplanation: ""
-          }],
-          sentence: addForm.sentence,
-          sentence_tr: "",
-          // Diğer boş alanlar context içinde zaten dolduruluyor
-      };
-
-      const result = await handleSaveSystemWord(newWordData);
-
-      if (result.success) {
-          // Modal'ı kapat
-          setShowAddModal(false);
-          // Arama kutusunu eklenen kelimeye eşitle (Listeyi tetikler)
-          setTerm(addForm.word); 
-          // Hemen tetiklenmesi için debounce beklemeden state güncelle
-          setDebouncedTerm(addForm.word); 
-          alert("Eklendi! 🎉");
-      } else {
-          alert(result.message);
-      }
+  // 👇 3. MODAL KAPANDIĞINDA ÇALIŞACAK FONKSİYON
+  const handleModalClose = () => {
+      setShowQuickAdd(false);
+      // Modal kapanınca aramayı yenilemek için (eklenen kelime görünsün diye)
+      setDebouncedTerm(term); 
   };
 
   const displayedResults = results.slice(0, visibleCount);
 
   return (
     <div className="min-h-screen bg-slate-50 p-6 flex flex-col items-center relative">
+      
+      {/* 👇 4. MODAL BURAYA EKLENDİ (Admin panelindeki aynısı) */}
+      {showQuickAdd && isAdmin && (
+          <QuickAddModal 
+              prefillData={{ word: term }} // Kelimeyi otomatik doldurur
+              onClose={handleModalClose}   // Kapanınca listeyi yeniler
+          />
+      )}
+
       <div className="w-full max-w-md space-y-6">
         
         <div className="sticky top-0 bg-slate-50 py-2 z-20 flex items-center gap-3 mb-2">
@@ -163,10 +128,10 @@ export default function Dictionary() {
                         <p>Sözlükte bulunamadı.</p>
                     </div>
 
-                    {/* SADECE ADMIN GÖRÜR - DİREKT MODAL AÇAR */}
+                    {/* SADECE ADMIN GÖRÜR */}
                     {isAdmin && (
                         <button 
-                            onClick={openAddModal}
+                            onClick={() => setShowQuickAdd(true)} // 👇 Modalı açar
                             className="bg-indigo-600 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2 hover:bg-indigo-700 active:scale-95 transition-all shadow-md"
                         >
                             <PlusCircle className="w-5 h-5"/>
@@ -208,74 +173,6 @@ export default function Dictionary() {
             )}
         </div>
       </div>
-
-      {/* --- MİNİ QUICK ADD MODAL (SAYFA İÇİ) --- */}
-      {showAddModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-              <div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl">
-                  <div className="flex justify-between items-center mb-4">
-                      <h3 className="text-xl font-bold text-slate-800">Hızlı Ekle</h3>
-                      <button onClick={() => setShowAddModal(false)} className="p-2 bg-slate-100 rounded-full hover:bg-slate-200"><X className="w-5 h-5 text-slate-500"/></button>
-                  </div>
-                  
-                  <div className="space-y-3">
-                      <div>
-                          <label className="text-xs font-bold text-slate-400 uppercase ml-1">Kelime</label>
-                          <input 
-                              value={addForm.word} 
-                              onChange={e => setAddForm({...addForm, word: e.target.value})}
-                              className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800 focus:ring-2 focus:ring-indigo-500 outline-none"
-                          />
-                      </div>
-                      
-                      <div className="flex gap-2">
-                          <div className="flex-1">
-                              <label className="text-xs font-bold text-slate-400 uppercase ml-1">Tür</label>
-                              <select 
-                                  value={addForm.type} 
-                                  onChange={e => setAddForm({...addForm, type: e.target.value})}
-                                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 outline-none"
-                              >
-                                  <option value="noun">İsim</option>
-                                  <option value="verb">Fiil</option>
-                                  <option value="adjective">Sıfat</option>
-                                  <option value="adverb">Zarf</option>
-                                  <option value="other">Diğer</option>
-                              </select>
-                          </div>
-                      </div>
-
-                      <div>
-                          <label className="text-xs font-bold text-slate-400 uppercase ml-1">Türkçesi</label>
-                          <input 
-                              value={addForm.meaning} 
-                              onChange={e => setAddForm({...addForm, meaning: e.target.value})}
-                              placeholder="Örn: Okul"
-                              className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:ring-2 focus:ring-indigo-500 outline-none"
-                          />
-                      </div>
-
-                      <div>
-                          <label className="text-xs font-bold text-slate-400 uppercase ml-1">Örnek Cümle (Opsiyonel)</label>
-                          <input 
-                              value={addForm.sentence} 
-                              onChange={e => setAddForm({...addForm, sentence: e.target.value})}
-                              placeholder="Örn: I go to school."
-                              className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:ring-2 focus:ring-indigo-500 outline-none"
-                          />
-                      </div>
-
-                      <button 
-                          onClick={handleSaveWord}
-                          className="w-full bg-indigo-600 text-white font-bold py-4 rounded-xl shadow-lg hover:bg-indigo-700 active:scale-95 transition-transform flex items-center justify-center gap-2 mt-2"
-                      >
-                          <Save className="w-5 h-5"/> Kaydet ve Gör
-                      </button>
-                  </div>
-              </div>
-          </div>
-      )}
-
     </div>
   );
 }
