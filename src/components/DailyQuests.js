@@ -1,16 +1,19 @@
 import React from "react";
 import { useData } from "../context/DataContext";
-import { CheckCircle2, Circle, Zap, BookOpen, PenTool, Plus } from "lucide-react";
+import { CheckCircle2, Zap, BookOpen, PenTool } from "lucide-react";
 
 export default function DailyQuests() {
   const { questProgress, DAILY_QUESTS_TARGETS } = useData();
+
+  // Güvenlik: questProgress undefined gelirse boş obje varsay
+  const progress = questProgress || { flashcard: 0, quiz: 0, writing: 0 };
 
   const quests = [
     { 
         id: "flashcard", 
         label: "15 Kelime Çalış", 
         icon: <Zap className="w-4 h-4 text-yellow-500" />,
-        current: questProgress.flashcard || 0,
+        current: progress.flashcard || 0,
         target: DAILY_QUESTS_TARGETS.flashcard,
         color: "bg-yellow-500"
     },
@@ -18,7 +21,7 @@ export default function DailyQuests() {
         id: "quiz", 
         label: "2 Quiz Tamamla", 
         icon: <BookOpen className="w-4 h-4 text-blue-500" />,
-        current: questProgress.quiz || 0,
+        current: progress.quiz || 0,
         target: DAILY_QUESTS_TARGETS.quiz,
         color: "bg-blue-500"
     },
@@ -26,21 +29,10 @@ export default function DailyQuests() {
         id: "writing", 
         label: "1 Egzersiz Yap", 
         icon: <PenTool className="w-4 h-4 text-purple-500" />,
-        current: questProgress.writing || 0,
+        current: progress.writing || 0,
         target: DAILY_QUESTS_TARGETS.writing,
         color: "bg-purple-500"
-    },
-    // İstersen kelime eklemeyi de görev yapabilirsin
-    /*
-    { 
-        id: "word_added", 
-        label: "1 Yeni Kelime Ekle", 
-        icon: <Plus className="w-4 h-4 text-emerald-500" />,
-        current: questProgress.word_added || 0,
-        target: DAILY_QUESTS_TARGETS.word_added,
-        color: "bg-emerald-500"
     }
-    */
   ];
 
   const allCompleted = quests.every(q => q.current >= q.target);
