@@ -3,7 +3,7 @@ import { useData } from "../context/DataContext";
 import WordCard2 from "../components/WordCard2";
 import { ArrowLeft, Search, X, BookOpen, AlertCircle, ArrowDownCircle, PlusCircle } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
-// 👇 1. IMPORT'UN DOĞRU OLDUĞUNDAN EMİN OL
+// ✅ 1. IMPORT: QuickAddModal'ı ekledik
 import QuickAddModal from "../components/QuickAddModal"; 
 
 export default function Dictionary() {
@@ -17,7 +17,7 @@ export default function Dictionary() {
   const [visibleCount, setVisibleCount] = useState(50);
   const PER_PAGE = 50;
 
-  // 👇 2. MODAL STATE'İ
+  // ✅ 2. MODAL STATE'İ
   const [showQuickAdd, setShowQuickAdd] = useState(false);
 
   useEffect(() => {
@@ -72,19 +72,11 @@ export default function Dictionary() {
     setVisibleCount(prev => prev + PER_PAGE);
   };
 
-  // 👇 3. MODAL KAPANDIĞINDA
-  const handleModalClose = () => {
-      setShowQuickAdd(false); 
-      // Sayfa donmasın diye aramayı tekrar tetikle
-      setDebouncedTerm(term); 
-  };
-  
-  // 👇 4. BAŞARILI EKLEME OLURSA
-  // (QuickAddModal içinde onSuccess prop'u varsa çalışır, yoksa handleModalClose yeterli)
+  // ✅ 3. MODAL KAPANDIĞINDA VEYA BAŞARI DURUMUNDA
   const handleSuccess = () => {
-      setShowQuickAdd(false);
-      setDebouncedTerm(term);
-      alert("Kelime Eklendi!");
+      setShowQuickAdd(false); // Modalı kapat
+      setDebouncedTerm(term); // Listeyi zorla yenile (kelimeyi getirir)
+      alert("Kelime Eklendi! 🎉"); // Kullanıcıya bilgi ver
   };
 
   const displayedResults = results.slice(0, visibleCount);
@@ -92,18 +84,19 @@ export default function Dictionary() {
   return (
     <div className="min-h-screen bg-slate-50 p-6 flex flex-col items-center relative">
       
-      {/* 👇 5. KRİTİK DÜZELTME BURADA 👇 */}
-      {/* prefillData içine sadece word değil, boş arrayler de gönderdik ki modal çökmesin */}
+      {/* ✅ 4. MODAL BURADA ÇAĞRILIYOR */}
+      {/* ÇÖKMEMESİ İÇİN definitions: [] GÖNDERİYORUZ */}
       {showQuickAdd && isAdmin && (
           <QuickAddModal 
               prefillData={{ 
-                  word: term, 
-                  definitions: [], // Boş array önemli! Modal bunu arıyor olabilir.
+                  word: term, // "school" buraya otomatik gelir
+                  definitions: [], // BOŞ ARRAY (Çökmemesi için kritik)
+                  phonetic: "",
                   sentence: "",
-                  phonetic: ""
-              }} 
-              onClose={handleModalClose}
-              onSuccess={handleSuccess} 
+                  v2: "", v3: "", vIng: ""
+              }}
+              onClose={() => setShowQuickAdd(false)}
+              onSuccess={handleSuccess} // Admin panelindeki modalda bu prop varsa çalışır
           />
       )}
 
@@ -135,6 +128,7 @@ export default function Dictionary() {
 
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10">
             
+            {/* ✅ 5. BULUNAMADI UYARISI VE BUTON */}
             {debouncedTerm && results.length === 0 && (
                 <div className="text-center text-slate-400 mt-4 flex flex-col items-center gap-3">
                     <div className="flex flex-col items-center">
@@ -142,6 +136,7 @@ export default function Dictionary() {
                         <p>Sözlükte bulunamadı.</p>
                     </div>
 
+                    {/* SADECE ADMIN GÖRÜR */}
                     {isAdmin && (
                         <button 
                             onClick={() => setShowQuickAdd(true)}
