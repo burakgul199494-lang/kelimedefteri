@@ -1,50 +1,104 @@
 import React, { useState } from "react";
 import { useData } from "../context/DataContext";
-import { CheckCircle2, Zap, BookOpen, PenTool, ChevronDown, ChevronUp } from "lucide-react";
+import { 
+    CheckCircle2, Zap, BookOpen, PenTool, ChevronDown, ChevronUp,
+    Languages, Dumbbell, Headphones, Quote, Layout, Puzzle, Mic
+} from "lucide-react";
 
 export default function DailyQuests() {
   const { questProgress, DAILY_QUESTS_TARGETS } = useData();
   
-  // Kutunun açık/kapalı durumu (Varsayılan: true/açık)
   const [isOpen, setIsOpen] = useState(true);
 
-  // Güvenlik: questProgress undefined gelirse boş obje varsay
-  const progress = questProgress || { flashcard: 0, quiz: 0, writing: 0 };
+  // Güvenlik
+  const progress = questProgress || {};
 
   const quests = [
     { 
         id: "flashcard", 
-        label: "15 Kelime Çalış", 
+        label: "Kelime Çalış", 
         icon: <Zap className="w-4 h-4 text-yellow-500" />,
-        current: progress.flashcard || 0,
         target: DAILY_QUESTS_TARGETS.flashcard,
         color: "bg-yellow-500"
     },
     { 
         id: "quiz", 
-        label: "2 Quiz Tamamla", 
-        icon: <BookOpen className="w-4 h-4 text-blue-500" />,
-        current: progress.quiz || 0,
+        label: "Quiz", 
+        icon: <BookOpen className="w-4 h-4 text-amber-500" />,
         target: DAILY_QUESTS_TARGETS.quiz,
-        color: "bg-blue-500"
+        color: "bg-amber-500"
+    },
+    { 
+        id: "quiz2", 
+        label: "Ters Quiz", 
+        icon: <Languages className="w-4 h-4 text-emerald-500" />,
+        target: DAILY_QUESTS_TARGETS.quiz2,
+        color: "bg-emerald-500"
+    },
+    { 
+        id: "exercise", 
+        label: "Egzersiz Modu", 
+        icon: <Dumbbell className="w-4 h-4 text-slate-500" />,
+        target: DAILY_QUESTS_TARGETS.exercise,
+        color: "bg-slate-500"
     },
     { 
         id: "writing", 
-        label: "1 Egzersiz Yap", 
+        label: "Yazma", 
         icon: <PenTool className="w-4 h-4 text-purple-500" />,
-        current: progress.writing || 0,
         target: DAILY_QUESTS_TARGETS.writing,
         color: "bg-purple-500"
+    },
+    { 
+        id: "writing2", 
+        label: "Dinle Yaz", 
+        icon: <Headphones className="w-4 h-4 text-pink-500" />,
+        target: DAILY_QUESTS_TARGETS.writing2,
+        color: "bg-pink-500"
+    },
+    { 
+        id: "gap_filling", 
+        label: "Boşluk Doldurma", 
+        icon: <Quote className="w-4 h-4 text-cyan-500" />,
+        target: DAILY_QUESTS_TARGETS.gap_filling,
+        color: "bg-cyan-500"
+    },
+    { 
+        id: "sentence_builder", 
+        label: "Cümle Kurma", 
+        icon: <Layout className="w-4 h-4 text-teal-500" />,
+        target: DAILY_QUESTS_TARGETS.sentence_builder,
+        color: "bg-teal-500"
+    },
+    { 
+        id: "word_match", 
+        label: "Eşleştirme", 
+        icon: <Puzzle className="w-4 h-4 text-orange-500" />,
+        target: DAILY_QUESTS_TARGETS.word_match,
+        color: "bg-orange-500"
+    },
+    { 
+        id: "pronunciation", 
+        label: "Telaffuz", 
+        icon: <Mic className="w-4 h-4 text-rose-500" />,
+        target: DAILY_QUESTS_TARGETS.pronunciation,
+        color: "bg-rose-500"
     }
   ];
 
-  const completedCount = quests.filter(q => q.current >= q.target).length;
-  const allCompleted = quests.every(q => q.current >= q.target);
+  // Her görev için mevcut değeri çek ve tamamlanma durumunu hesapla
+  const questsWithData = quests.map(q => ({
+      ...q,
+      current: progress[q.id] || 0
+  }));
+
+  const completedCount = questsWithData.filter(q => q.current >= q.target).length;
+  const allCompleted = questsWithData.every(q => q.current >= q.target);
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-slate-100 w-full mb-6 overflow-hidden transition-all">
         
-        {/* --- BAŞLIK KISMI (HER ZAMAN GÖRÜNÜR) --- */}
+        {/* --- BAŞLIK --- */}
         <div 
             onClick={() => setIsOpen(!isOpen)}
             className="flex justify-between items-center p-5 cursor-pointer bg-white hover:bg-slate-50 transition-colors"
@@ -54,7 +108,6 @@ export default function DailyQuests() {
                     📅 Günlük Görevler
                 </h3>
                 
-                {/* Kapalıyken Özet Bilgi Göster */}
                 {!isOpen && (
                     <span className={`text-xs font-bold px-2 py-0.5 rounded-md ${allCompleted ? "bg-green-100 text-green-700" : "bg-slate-100 text-slate-500"}`}>
                         {allCompleted ? "Tamamlandı! 🎉" : `${completedCount}/${quests.length} Yapıldı`}
@@ -62,23 +115,21 @@ export default function DailyQuests() {
                 )}
             </div>
 
-            {/* Ok İkonu */}
             <div className="text-slate-400">
                 {isOpen ? <ChevronUp size={20}/> : <ChevronDown size={20}/>}
             </div>
         </div>
 
-        {/* --- İÇERİK KISMI (SADECE AÇIKKEN GÖRÜNÜR) --- */}
+        {/* --- İÇERİK --- */}
         {isOpen && (
             <div className="px-5 pb-5 space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
-                {/* Hepsi bitince çıkan tebrik mesajı */}
                 {allCompleted && (
                     <div className="bg-green-50 text-green-700 text-sm font-bold p-2 rounded-xl text-center mb-2 flex items-center justify-center gap-2">
                         <CheckCircle2 className="w-4 h-4"/> Tüm görevler tamamlandı! Harikasın!
                     </div>
                 )}
 
-                {quests.map((quest) => {
+                {questsWithData.map((quest) => {
                     const percent = Math.min(100, (quest.current / quest.target) * 100);
                     const isDone = quest.current >= quest.target;
 
