@@ -1,12 +1,18 @@
 import React, { useState, useEffect } from "react";
+
 import { useData } from "../context/DataContext";
+
 import WordCard2 from "../components/WordCard2";
 import QuickAddModal from "../components/QuickAddModal";
+
 import { ArrowLeft, Search, X, BookOpen, AlertCircle, ArrowDownCircle } from "lucide-react";
+
 import { useNavigate, useLocation } from "react-router-dom";
 
 export default function Dictionary() {
+
   const { getAllWords, isAdmin } = useData(); 
+
   const navigate = useNavigate();
   const location = useLocation();
   
@@ -70,34 +76,14 @@ export default function Dictionary() {
     setVisibleCount(prev => prev + PER_PAGE);
   };
 
-  // Ekleme başarılı olunca çalışacak fonksiyon
-  const handleSuccess = () => {
-      setShowQuickAdd(false);
-      setDebouncedTerm(term); // Listeyi yenile
-      alert("Kelime Eklendi! 🎉");
-  };
-
   const displayedResults = results.slice(0, visibleCount);
 
   return (
     <div className="min-h-screen bg-slate-50 p-6 flex flex-col items-center">
 
-      {/* 👇 DÜZELTME BURADA YAPILDI 👇 */}
       {showQuickAdd && (
-        <QuickAddModal 
-            onClose={() => setShowQuickAdd(false)} 
-            onSuccess={handleSuccess}
-            // Kelimeyi modala gönderiyoruz:
-            prefillData={{
-                id: null,        // Yeni kayıt olduğu için ID yok
-                word: term,      // Aranan kelime (keybord) buraya gelir
-                definitions: [], // Boş array (Hata vermemesi için)
-                phonetic: "",
-                sentence: ""
-            }}
-        />
+        <QuickAddModal onClose={() => setShowQuickAdd(false)} />
       )}
-      {/* 👆 ----------------------- 👆 */}
 
       <div className="w-full max-w-md space-y-6">
         
