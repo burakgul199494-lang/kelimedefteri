@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useData } from "../context/DataContext";
 import { useNavigate } from "react-router-dom";
 import { 
-  X, Trophy, Loader2, Quote, Volume2, Languages, Lightbulb, RefreshCw, BrainCircuit, Hourglass, Home, Star, ArrowRight
+  X, Trophy, Loader2, Quote, Volume2, Languages, Lightbulb, RefreshCw, BrainCircuit, Hourglass, Home, Star, ArrowRight, Square, CheckCircle2, AlertTriangle, Tag
 } from "lucide-react";
 
 export default function GapFillingGame() {
@@ -23,24 +23,56 @@ export default function GapFillingGame() {
   const [isWordComplete, setIsWordComplete] = useState(false); 
 
   const [hintCount, setHintCount] = useState(0);
-  // Başlangıç Puanı 5
   const [currentWordPoints, setCurrentWordPoints] = useState(5); 
   const [mistakeCount, setMistakeCount] = useState(0);
 
   const [showHintTr, setShowHintTr] = useState(false);
   const [activeAudio, setActiveAudio] = useState(null); 
 
+  // 🔥 YARDIMCI FONKSİYON: Cümlede hangi formun geçtiğini bulur 🔥
+  const findTargetForm = (w) => {
+      if (!w.sentence) return null;
+
+      // Kontrol edilecek tüm formları bir listeye alalım
+      const formsToCheck = [
+          w.word,       // Base (go)
+          w.v2,         // Past (went)
+          w.v3,         // Participle (gone)
+          w.vIng,       // Progressive (going)
+          w.plural,     // Plural (apples)
+          w.thirdPerson,// 3rd Person (goes)
+          w.advLy,      // Adverb (quickly)
+          w.compEr,     // Comparative (faster)
+          w.superEst    // Superlative (fastest)
+      ];
+
+      // Boş veya undefined olanları temizle
+      const validForms = formsToCheck.filter(f => f && typeof f === 'string' && f.trim().length > 0);
+
+      // Uzunluklarına göre sırala (Önce en uzunu kontrol et ki 'going' varken 'go'yu bulmasın)
+      validForms.sort((a, b) => b.length - a.length);
+
+      // Cümle içinde tam kelime eşleşmesi ara
+      for (const form of validForms) {
+          const regex = new RegExp(`\\b${form}\\b`, "i");
+          if (regex.test(w.sentence)) {
+              return form.trim(); // Eşleşen formu döndür (Örn: "went")
+          }
+      }
+      return null; // Hiçbiri yoksa null
+  };
+
   // --- KELİME HAVUZLARI ---
   const getWordPools = () => {
     const all = getAllWords();
     const now = new Date();
 
-    const validWords = all.filter(w => 
-        w.sentence && 
-        w.word && 
-        w.sentence.toLowerCase().includes(w.word.toLowerCase()) &&
-        w.definitions && w.definitions[0]?.meaning
-    );
+    // Filtreleme: Cümlede kelimenin HERHANGİ BİR HALİ geçiyor mu?
+    const validWords = all.filter(w => {
+        if (!w.definitions || !w.definitions[0]?.meaning) return false;
+        const target = findTargetForm(w);
+        return target !== null; // Eğer bir form bulduysak geçerli kelimedir
+    });
 
     const getQueueItem = (id) =>
         learningQueue ? learningQueue.find(q => q.wordId === id) : null;
@@ -97,7 +129,16 @@ export default function GapFillingGame() {
     const selectedCandidates = smartSortedPool.slice(0, 20);
     const selected = selectedCandidates.sort(() => 0.5 - Math.random());
 
-    setQuestions(selected);
+    // Soruları hazırlarken HEDEF KELİMEYİ (Target) belirle
+    const preparedQuestions = selected.map(w => {
+        const foundForm = findTargetForm(w); // Örn: "went"
+        return {
+            ...w,
+            targetWord: foundForm // Artık hedef "go" değil "went"
+        };
+    });
+
+    setQuestions(preparedQuestions);
     setCurrentIndex(0);
     setScore(0);
     setGameStatus("playing");
@@ -110,7 +151,7 @@ export default function GapFillingGame() {
     if (length <= 11) return { box: "w-6 h-9", text: "text-lg" };    
     if (length <= 14) return { box: "w-4 h-8", text: "text-sm" }; 
     if (length <= 17) return { box: "w-3 h-6", text: "text-[10px]" }; 
-    return { box: "w-2 h-5", text: "text-[8px]" };                          
+    return { box: "w-2 h-5", text: "text-[8px]" };                           
   };
 
   // --- SORU YÜKLEME ---
@@ -119,7 +160,9 @@ export default function GapFillingGame() {
     setActiveAudio(null);
 
     if (gameStatus === "playing" && questions[currentIndex]) {
-      const word = questions[currentIndex].word.trim();
+      // Hedef kelime artık dinamik (targetWord)
+      const word = questions[currentIndex].targetWord.trim(); 
+      
       const letters = word.split('').map((char, index) => ({
         id: `${char}-${index}-${Math.random()}`,
         char: char,
@@ -141,12 +184,15 @@ export default function GapFillingGame() {
   }, [currentIndex, gameStatus]);
 
   const currentWordObj = questions[currentIndex];
-  const targetWord = currentWordObj?.word.trim() || "";
+  // Target word artık veritabanındaki ana kelime değil, cümlede geçen form (went, going vs.)
+  const targetWord = currentWordObj?.targetWord || ""; 
   
   const getMaskedSentence = () => {
       if (!currentWordObj) return "";
-      const regex = new RegExp(`\\b${currentWordObj.word}\\b`, "gi");
-      // Eğer kelime tamamlandıysa kelimenin kendisini göster, yoksa boşluk
+      
+      // Tam olarak hedef kelimeyi maskele (Case insensitive)
+      const regex = new RegExp(`\\b${targetWord}\\b`, "gi");
+      
       return isWordComplete 
         ? currentWordObj.sentence 
         : currentWordObj.sentence.replace(regex, "________");
@@ -237,10 +283,10 @@ export default function GapFillingGame() {
         setHintCount(newHintCount);
 
         if (newHintCount === 1) {
-            nextPoints = 2; // Maliyet: 3 puan
+            nextPoints = 2; 
         } 
         else {
-            nextPoints = 0; // Maliyet: 2 puan
+            nextPoints = 0; 
         }
 
         const isLastLetter = (completedLetters.length + 1) === targetWord.length;
@@ -420,13 +466,24 @@ export default function GapFillingGame() {
           <div className="bg-white p-6 rounded-3xl shadow-xl border border-slate-100 text-center space-y-4 relative overflow-hidden min-h-[480px] flex flex-col justify-between">
              <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-blue-400 to-cyan-400"></div>
              
-             {/* Soru Değeri Göstergesi */}
+             {/* Soru Değeri Göstergesi (SAĞ ÜST) */}
              <div className="absolute top-4 right-4 flex items-center gap-1 bg-green-50 text-green-700 px-2 py-1 rounded-lg text-xs font-bold border border-green-100 animate-in fade-in">
                  <Star className="w-3 h-3 fill-current"/> Soru: {currentWordPoints}p
              </div>
 
-             {/* 1. SORU (CÜMLE) KISMI */}
-             <div className="space-y-2 mt-2">
+             {/* 🔥 SOL ÜST: ETİKETLER (top-0) 🔥 */}
+             {currentWordObj.tags && currentWordObj.tags.length > 0 && (
+                <div className="absolute top-0 left-4 mt-4 flex gap-1 max-w-[50%] flex-wrap justify-start">
+                    {currentWordObj.tags.map((tag, i) => (
+                        <span key={i} className="text-[9px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200 truncate max-w-full">
+                            {tag}
+                        </span>
+                    ))}
+                </div>
+             )}
+
+             {/* 1. SORU (CÜMLE) KISMI (mt-8 ile aşağı itildi) */}
+             <div className="space-y-2 mt-8">
                <div className="flex justify-center"><div className="bg-blue-50 p-3 rounded-full"><Quote className="w-6 h-6 text-blue-400"/></div></div>
                
                <div className="flex flex-col items-center gap-2">
@@ -511,8 +568,6 @@ export default function GapFillingGame() {
 
              {/* 2. CEVAP ALANI (KUTULAR) */}
              <div className="space-y-3">
-                 {/* FONETİK GÖSTERGESİ SİLİNDİ */}
-
                  {/* YAZI ALANI */}
                  <div className="flex flex-wrap justify-center gap-1 min-h-[50px] items-end content-center">
                     {targetWord.split('').map((_, idx) => {
