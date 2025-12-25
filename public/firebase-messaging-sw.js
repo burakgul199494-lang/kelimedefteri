@@ -13,18 +13,20 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const messaging = firebase.messaging();
 
-// 👇 iPHONE İÇİN KRİTİK: ARKA PLAN MESAJINI MANUEL GÖSTER 👇
 messaging.onBackgroundMessage(function(payload) {
-  console.log('[firebase-messaging-sw.js] Arka plan bildirimi alındı:', payload);
+  console.log('[firebase-messaging-sw.js] Bildirim alındı:', payload);
   
-  // Bildirim başlığı ve içeriği
   const notificationTitle = payload.notification?.title || "Kelime Defteri";
+  
   const notificationOptions = {
     body: payload.notification?.body || "Yeni bir bildirimin var!",
-    icon: '/icon-192.png', // İkon dosyanın adı neyse onu yaz
-    badge: '/icon-192.png'
+    icon: '/icon-192.png',
+    
+    // 🔥 ÇİFT BİLDİRİM ENGELLEYİCİ SİHİRLİ KOD 🔥
+    // Eğer Firebase de gösterirse, bu etiket sayesinde ikisi birleşir.
+    tag: 'unique-app-notification', 
+    renotify: true // Eski bildirim varsa onu titretip günceller
   };
 
-  // Tarayıcıya bildirimi zorla göster
   self.registration.showNotification(notificationTitle, notificationOptions);
 });
