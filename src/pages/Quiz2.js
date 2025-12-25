@@ -17,7 +17,7 @@ export default function Quiz2() {
   const [gameStatus, setGameStatus] = useState("mode-selection");
   const [isTransitioning, setIsTransitioning] = useState(false);
 
-// --- KELİME HAVUZLARI (Game.js ile BİREBİR) ---
+// --- KELİME HAVUZLARI ---
 const getWordPools = () => {
   const all = getAllWords();
   const validWords = all.filter(
@@ -84,13 +84,22 @@ const getWordPools = () => {
     const selectedCandidates = smartSortedPool.slice(0, 20);
     const selectedWords = selectedCandidates.sort(() => 0.5 - Math.random());
 
+    // Yanlış şık havuzu
     const allValidWords = getAllWords().filter(w => w.definitions && w.definitions[0]?.meaning);
 
     const generated = selectedWords.map(target => {
       const correct = target.word;
       const questionText = target.definitions[0].meaning;
+      
+      // 🔥 DEĞİŞİKLİK BURADA: İsim Benzerliği Filtresi 🔥
+      // Şıklarda aynı kelimenin (Bank vs Bank) çıkmasını engelliyoruz.
       const others = allValidWords
-        .filter(w => w.id !== target.id)
+        .filter(w => 
+            // 1. ID Kontrolü
+            w.id !== target.id && 
+            // 2. İsim Kontrolü (Aynı yazılan kelime şıklara giremez)
+            w.word.toLowerCase().trim() !== target.word.toLowerCase().trim()
+        )
         .sort(() => 0.5 - Math.random())
         .slice(0, 3)
         .map(w => w.word);
@@ -116,11 +125,10 @@ const getWordPools = () => {
 
   // --- TEMİZLİK ---
   useEffect(() => { 
-      // useEffect artık state resetlemiyor, sadece yan etkileri temizliyor (örn: ses iptali)
-      // Resetleme işlemi handleAnswer içinde senkron yapılıyor.
+      // useEffect artık state resetlemiyor, sadece yan etkileri temizliyor
   }, [index]);
 
-  // --- CEVAP VERME (FLASH FIX & GÜVENLİ KAYIT) ---
+  // --- CEVAP VERME ---
   const handleAnswer = (option) => {
     if (isAnswered) return;
     setIsAnswered(true); 
@@ -142,7 +150,6 @@ const getWordPools = () => {
       if (index + 1 < questions.length) {
         setIsTransitioning(true);
         setTimeout(() => {
-            // FLASH FIX: Hepsini aynı anda yapıyoruz
             setIndex(i => i + 1);
             setSelected(null);
             setIsAnswered(false);
@@ -168,7 +175,6 @@ const getWordPools = () => {
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
             
-            {/* CSS FIX */}
             <style>{`
                 * { -webkit-tap-highlight-color: transparent !important; }
                 
@@ -188,7 +194,6 @@ const getWordPools = () => {
 
                 @media (hover: hover) {
                     .menu-btn:hover { border-color: #e2e8f0 !important; background-color: #f8fafc !important; }
-                    /* Özel renkler için inline classlar zaten var, burası genel hover */
                 }
             `}</style>
 
