@@ -708,13 +708,10 @@ export const DataProvider = ({ children }) => {
   };
 
   const handleSaveNewWord = async (wordData) => {
-    const normalizedInput = wordData.word.toLowerCase().trim();
-    const allWords = getAllWords();
-    if (allWords.some(w => w.word.toLowerCase() === normalizedInput)) {
-        return { success: false, message: "Zaten mevcut!" };
-    }
-
+    // 🔥 GÜNCELLENDİ: Aynı kelimeyi farklı anlamlarla eklemeye izin veriyoruz.
+    
     const newId = Date.now().toString();
+    
     const newWord = {
         id: newId, 
         word: wordData.word.trim(), 
