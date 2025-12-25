@@ -398,11 +398,8 @@ const getWordPools = () => {
                         </div>
                     )}
 
-                    {/* 🔥 DÜZELTME BURADA 🔥
-                        İçerik kapsayıcısı eklendi ve mt-12 ile üstten boşluk bırakıldı.
-                        Böylece etiketler ile içerik çakışmayacak.
-                    */}
-                    <div className="mt-12 flex flex-col items-center gap-6">
+                    {/* 🔥 DÜZELTME: mt-6 yapıldı. Hem yukarı çıktı hem çakışmaz. */}
+                    <div className="mt-6 flex flex-col items-center gap-4">
 
                         {/* İngilizce İpucu Alanı */}
                         {hintEng && (
