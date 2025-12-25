@@ -61,7 +61,7 @@ const WordCard = ({ wordObj }) => {
         transition-colors duration-200
         ${isActive 
           ? 'bg-indigo-600 text-white border-indigo-600' 
-          : 'bg-white text-slate-400 border-slate-200'   
+          : 'bg-white text-slate-400 border-slate-200'    
         }
       `}
     >
@@ -98,27 +98,39 @@ const WordCard = ({ wordObj }) => {
   return (
     <div className="relative w-full max-w-sm bg-white rounded-3xl shadow-lg p-6 text-center border border-slate-100 mb-6 mx-auto transition-shadow duration-300">
       
+      {/* 🔥 GÜNCELLEME: ETİKETLER BURAYA TAŞINDI 🔥 
+          (absolute, top-4, right-4 ile sağ üste sabitlendi)
+      */}
+      {wordObj.tags && Array.isArray(wordObj.tags) && wordObj.tags.length > 0 && (
+          <div className="absolute top-4 right-4 flex flex-col items-end gap-1 z-10 max-w-[80px]">
+              {wordObj.tags.map((tag, i) => (
+                  <span key={i} className="text-[9px] font-bold text-indigo-500 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100 truncate max-w-full">
+                      {tag}
+                  </span>
+              ))}
+          </div>
+      )}
+
       {/* =============================================
-          1. KELİME BAŞLIĞI (DÜZELTİLDİ - ORTALI) 
+          1. KELİME BAŞLIĞI
           =============================================
       */}
-      <div className="flex items-center justify-center gap-3 mb-6 mt-2">
+      <div className="flex items-center justify-center gap-3 mb-6 mt-4"> {/* mt-4 ile üstten biraz boşluk verdik */}
         
-        {/* SOL: Kelime ve Altında Fonetik (Tek Sütun) */}
+        {/* SOL: Kelime ve Altında Fonetik */}
         <div className="flex flex-col items-center">
             <h2 className="text-4xl font-extrabold text-slate-800 break-words leading-tight text-center">
                 {wordObj.word}
             </h2>
             
-            {/* Fonetik tam kelimenin altına gelir */}
             {wordObj.phonetic && (
                 <span className="text-slate-400 font-serif italic text-lg -mt-1 tracking-wide">
-                    /{wordObj.phonetic.replace(/\//g, '')}/ 
+                    {wordObj.phonetic.replace(/\//g, '')} 
                 </span>
             )}
         </div>
 
-        {/* SAĞ: Ses Butonu (Kelime grubundan bağımsız durur) */}
+        {/* SAĞ: Ses Butonu */}
         <div className="scale-110 shrink-0 self-center ml-2"> 
             <ActionButton 
                 icon={playingText === wordObj.word ? Square : Volume2}
@@ -236,16 +248,7 @@ const WordCard = ({ wordObj }) => {
         )}
       </div>
 
-      {/* 5. ETİKETLER */}
-      {wordObj.tags && Array.isArray(wordObj.tags) && wordObj.tags.length > 0 && (
-          <div className="flex flex-wrap gap-2 mt-4 justify-center">
-              {wordObj.tags.map((tag, i) => (
-                  <span key={i} className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-1 rounded-full flex items-center gap-1 border border-slate-200">
-                      <Tag className="w-3 h-3 opacity-50"/> {tag}
-                  </span>
-              ))}
-          </div>
-      )}
+      {/* Eski etiketler alanı silindi */}
 
     </div>
   );
