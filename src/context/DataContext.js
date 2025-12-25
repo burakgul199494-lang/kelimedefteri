@@ -353,7 +353,7 @@ export const DataProvider = ({ children }) => {
     };
   };
 
-  const getAllWords = () => {
+const getAllWords = () => {
     const deletedSet = new Set(deletedWordIds.map(String));
     
     const queueMap = {};
@@ -367,12 +367,13 @@ export const DataProvider = ({ children }) => {
     const customRaw = customWords.filter(w => !deletedSet.has(String(w.id)));
     
     const userMapById = {};
-    const userMapByText = {};
     const processedUserIds = new Set(); 
+
+    // 🔥 DÜZELTME 1: userMapByText (İsim haritası) tamamen kaldırıldı.
+    // Artık kelimeleri ismine göre değil, sadece ID'sine göre eşleştireceğiz.
 
     customRaw.forEach(w => {
         userMapById[w.id] = w;
-        userMapByText[w.word.toLowerCase().trim()] = w;
     });
 
     const finalWordList = [];
@@ -394,19 +395,20 @@ export const DataProvider = ({ children }) => {
 
     // 4. Sistem Kelimelerini İşle
     systemRaw.forEach(systemWord => {
-        let userMatch = userMapById[systemWord.id];
-        if (!userMatch) userMatch = userMapByText[systemWord.word.toLowerCase().trim()];
+        // 🔥 DÜZELTME 2: Sadece ID eşleşmesi aranıyor.
+        // Eskiden burada "|| userMapByText[...]" vardı, o yüzden karışıyordu.
+        const userMatch = userMapById[systemWord.id]; 
 
         const stats = getWordStats(userMatch ? userMatch.id : systemWord.id);
 
         if (userMatch) {
             processedUserIds.add(userMatch.id);
             finalWordList.push({
-                ...userMatch,     
-                ...systemWord,    
+                ...userMatch,      
+                ...systemWord,     
                 id: userMatch.id, 
-                source: "user",   
-                ...stats          
+                source: "user",    
+                ...stats           
             });
         } else {
             finalWordList.push({ 
