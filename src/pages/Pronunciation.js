@@ -16,7 +16,8 @@ import {
   X,
   Target,
   Layers,
-  SkipForward // Pas geç ikonu
+  SkipForward,
+  Tag // Etiket ikonu eklendi
 } from "lucide-react";
 
 export default function Pronunciation() {
@@ -122,10 +123,9 @@ export default function Pronunciation() {
     setIsRoundDone(false);
   };
 
-  // --- 3. MİKROFON YÖNETİMİ (GÜÇLENDİRİLDİ) ---
+  // --- 3. MİKROFON YÖNETİMİ ---
   
   const startListening = () => {
-    // Önceki varsa kapat
     if (recognitionRef.current) {
         recognitionRef.current.abort();
     }
@@ -172,8 +172,8 @@ export default function Pronunciation() {
 
   const stopMicrophone = () => {
     if (recognitionRef.current) {
-        recognitionRef.current.onend = null; // Eventleri temizle ki hata vermesin
-        recognitionRef.current.abort(); // Kesin durdurma
+        recognitionRef.current.onend = null;
+        recognitionRef.current.abort();
         recognitionRef.current = null;
     }
     setIsListening(false);
@@ -188,7 +188,6 @@ export default function Pronunciation() {
     }
   };
 
-  // Sayfa kapanırsa veya component silinirse mikrofonu kapat
   useEffect(() => {
     return () => {
         stopMicrophone();
@@ -237,7 +236,7 @@ export default function Pronunciation() {
     updateGameStats('pronunciation', 1); 
   };
 
-  // --- 5. AKSİYONLAR (PAS GEÇ EKLENDİ) ---
+  // --- 5. AKSİYONLAR ---
   
   const handleNext = (e) => {
     handleBlur(e); 
@@ -252,16 +251,13 @@ export default function Pronunciation() {
     }
   };
 
-  // 🔥 YENİ: PAS GEÇ FONKSİYONU 🔥
   const handleSkip = (e) => {
       handleBlur(e);
-      stopMicrophone(); // Mikrofonu hemen kapat
+      stopMicrophone();
 
-      // Kelimeyi "Görüldü" olarak işaretle (Tarih güncelle) ama puan verme
       const currentWord = sessionWords[currentIndex];
       handleUpdateWord(currentWord.id, { lastSeen_pronunciation: new Date().toISOString() });
 
-      // Sonraki kelimeye geçiş mantığı (handleNext ile aynı)
       if (currentIndex + 1 < sessionWords.length) {
           setCurrentIndex(p => p + 1);
           resetRound();
@@ -290,11 +286,11 @@ export default function Pronunciation() {
   // === UI RENDER ===
   // ===========================
   if (gameStage === "selection") {
-    // ... (Selection Ekranı aynı, kod kalabalığı olmasın diye ellemedim, aynı kalacak)
-    // Sadece return kısmını kopyalaman yeterli, değişen bir şey yok burada.
-    // Ama tam kod bütünlüğü için aşağıya ekliyorum.
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
+            <style>{`
+                * { -webkit-tap-highlight-color: transparent !important; }
+            `}</style>
             <div className="w-full max-w-sm space-y-6">
                 <div className="flex items-center justify-between">
                     <button onClick={() => navigate("/")} className="p-2 bg-white rounded-full shadow-sm hover:bg-slate-100">
@@ -390,30 +386,45 @@ export default function Pronunciation() {
            <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden"><div className="bg-indigo-500 h-full transition-all duration-500" style={{width:`${progress}%`}}></div></div>
 
            {/* Kelime Kartı */}
-           <div className="bg-white p-8 rounded-3xl shadow-xl border border-slate-100 text-center space-y-6 min-h-[300px] flex flex-col justify-center items-center">
-               <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">OKUMAN GEREKEN KELİME</div>
+           <div className="bg-white p-8 rounded-3xl shadow-xl border border-slate-100 text-center space-y-6 min-h-[300px] flex flex-col justify-center items-center relative overflow-hidden">
                
-               <h2 className="text-5xl font-black text-slate-800 tracking-tight">{currentWord.word}</h2>
-               
-               <button onClick={(e) => speakWord(e)} style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }} className="action-btn flex items-center gap-2 bg-indigo-50 text-indigo-600 px-4 py-2 rounded-full text-sm font-bold transition-colors focus:outline-none focus:ring-0">
-                   <Volume2 className="w-4 h-4" /> Doğrusunu Dinle
-               </button>
-
-               {/* Geri Bildirim */}
-               {feedback && (
-                   <div className={`w-full p-4 rounded-2xl border-2 animate-in fade-in zoom-in duration-300 ${
-                       feedback.type === 'success' ? 'bg-green-50 border-green-200 text-green-700' :
-                       feedback.type === 'warning' ? 'bg-orange-50 border-orange-200 text-orange-700' :
-                       'bg-red-50 border-red-200 text-red-700'
-                   }`}>
-                       <div className="text-xs font-bold opacity-70 uppercase mb-1">Senin Okuduğun</div>
-                       <div className="text-lg font-bold italic">"{spokenText}"</div>
-                       <div className="mt-2 text-sm font-black flex items-center justify-center gap-1">
-                           {feedback.type === 'success' ? <CheckCircle2 className="w-4 h-4"/> : <AlertCircle className="w-4 h-4"/>}
-                           {feedback.msg}
-                       </div>
-                   </div>
+               {/* 🔥 SOL ÜST KÖŞE: ETİKETLER (top-0) 🔥 */}
+               {currentWord.tags && currentWord.tags.length > 0 && (
+                    <div className="absolute top-0 left-4 mt-4 flex gap-1 max-w-[50%] flex-wrap justify-start">
+                        {currentWord.tags.map((tag, i) => (
+                            <span key={i} className="text-[9px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200 truncate max-w-full">
+                                {tag}
+                            </span>
+                        ))}
+                    </div>
                )}
+
+               {/* İçerik (mt-6 ile aşağı itildi) */}
+               <div className="mt-6 flex flex-col items-center gap-6 w-full">
+                   <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">OKUMAN GEREKEN KELİME</div>
+                   
+                   <h2 className="text-5xl font-black text-slate-800 tracking-tight">{currentWord.word}</h2>
+                   
+                   <button onClick={(e) => speakWord(e)} style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }} className="action-btn flex items-center gap-2 bg-indigo-50 text-indigo-600 px-4 py-2 rounded-full text-sm font-bold transition-colors focus:outline-none focus:ring-0">
+                       <Volume2 className="w-4 h-4" /> Doğrusunu Dinle
+                   </button>
+
+                   {/* Geri Bildirim */}
+                   {feedback && (
+                       <div className={`w-full p-4 rounded-2xl border-2 animate-in fade-in zoom-in duration-300 ${
+                           feedback.type === 'success' ? 'bg-green-50 border-green-200 text-green-700' :
+                           feedback.type === 'warning' ? 'bg-orange-50 border-orange-200 text-orange-700' :
+                           'bg-red-50 border-red-200 text-red-700'
+                       }`}>
+                           <div className="text-xs font-bold opacity-70 uppercase mb-1">Senin Okuduğun</div>
+                           <div className="text-lg font-bold italic">"{spokenText}"</div>
+                           <div className="mt-2 text-sm font-black flex items-center justify-center gap-1">
+                               {feedback.type === 'success' ? <CheckCircle2 className="w-4 h-4"/> : <AlertCircle className="w-4 h-4"/>}
+                               {feedback.msg}
+                           </div>
+                       </div>
+                   )}
+               </div>
            </div>
 
            {/* Mikrofon / Sonraki Butonu */}
@@ -436,7 +447,7 @@ export default function Pronunciation() {
                            <span className="text-slate-400 text-sm font-medium">{isListening ? "Dinliyorum..." : "Bas ve Oku"}</span>
                        </div>
 
-                       {/* 🔥 PAS GEÇ BUTONU (Sadece round bitmemişse görünür) 🔥 */}
+                       {/* PAS GEÇ BUTONU */}
                        <button 
                            onClick={handleSkip}
                            className="skip-btn text-slate-400 font-bold text-sm py-2 px-6 rounded-full border border-transparent hover:border-slate-200 hover:bg-slate-50 flex items-center gap-2 transition-all active:scale-95"
