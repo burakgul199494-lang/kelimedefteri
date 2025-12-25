@@ -109,8 +109,15 @@ const getWordPools = () => {
 
     const generated = selectedWords.map(target => {
       const correct = target.definitions[0].meaning;
+      
+      // 🔥 DEĞİŞİKLİK BURADA: İsim Benzerliği Filtresi Eklendi 🔥
       const others = allValidWords
-        .filter(w => w.id !== target.id)
+        .filter(w => 
+            // 1. ID kontrolü (Aynı kayıt olmasın)
+            w.id !== target.id && 
+            // 2. İsim kontrolü (Yazılışı aynı olan başka kelime girmesin - Örn: Bank vs Bank)
+            w.word.toLowerCase().trim() !== target.word.toLowerCase().trim()
+        )
         .sort(() => 0.5 - Math.random())
         .slice(0, 3)
         .map(w => w.definitions[0].meaning);
