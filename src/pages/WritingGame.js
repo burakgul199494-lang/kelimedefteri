@@ -3,7 +3,7 @@ import { useData } from "../context/DataContext";
 import { useNavigate } from "react-router-dom";
 import { 
   X, Trophy, Loader2, Home, Volume2, CheckCircle2, 
-  PenTool, RefreshCw, BrainCircuit, Hourglass, Lightbulb, AlertTriangle, ArrowRight, Square, Star
+  PenTool, RefreshCw, BrainCircuit, Hourglass, Lightbulb, AlertTriangle, ArrowRight, Square, Star, Tag
 } from "lucide-react";
 
 export default function WritingGame() {
@@ -369,7 +369,7 @@ export default function WritingGame() {
 
         <div className="w-full max-w-md space-y-4 mt-2">
             
-            {/* ÜST BAR (GÜNCELLENDİ) */}
+            {/* ÜST BAR */}
             <div className="flex justify-between items-center">
                 <button onClick={handleQuitEarly} className="p-2 bg-white rounded-full shadow-sm active:bg-slate-100 transition-colors"><X className="w-5 h-5 text-slate-400"/></button>
                 
@@ -393,13 +393,24 @@ export default function WritingGame() {
             <div className="bg-white p-6 rounded-3xl shadow-xl border border-slate-100 text-center relative overflow-hidden min-h-[450px] flex flex-col justify-between">
                 <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-blue-400 to-cyan-400"></div>
 
-                {/* SORU DEĞERİ GÖSTERGESİ (YENİ) */}
+                {/* --- SAĞ ÜST KÖŞE: PUAN --- */}
                 <div className="absolute top-4 right-4 flex items-center gap-1 bg-green-50 text-green-700 px-2 py-1 rounded-lg text-xs font-bold border border-green-100 animate-in fade-in">
                     <Star className="w-3 h-3 fill-current"/> Soru: {currentWordPoints}p
                 </div>
 
-                {/* ORTA ALAN: TÜRKÇE KELİME + SES BUTONU */}
-                <div className="flex-1 flex flex-col items-center justify-center gap-4 py-4">
+                {/* --- 🔥 SOL ÜST KÖŞE: ETİKETLER (top-0: en tepeye yaslı) 🔥 --- */}
+                {currentQ.wordObj.tags && currentQ.wordObj.tags.length > 0 && (
+                    <div className="absolute top-0 left-4 mt-4 flex flex-col items-start gap-1 max-w-[80px]">
+                        {currentQ.wordObj.tags.map((tag, i) => (
+                            <span key={i} className="text-[9px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200 truncate max-w-full">
+                                {tag}
+                            </span>
+                        ))}
+                    </div>
+                )}
+
+                {/* ORTA ALAN: TÜRKÇE KELİME + SES BUTONU (mt-8 ile aşağı itildi) */}
+                <div className="flex-1 flex flex-col items-center justify-center gap-4 py-4 mt-8">
                     <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">TÜRKÇE ANLAMI</div>
                     
                     <div className="bg-slate-50 px-6 py-8 rounded-3xl border-2 border-slate-100 w-full flex items-center justify-center">
@@ -459,7 +470,7 @@ export default function WritingGame() {
                             ))}
                         </div>
 
-                        {/* İPUCU BUTONU (YENİLENMİŞ METİN) */}
+                        {/* İPUCU BUTONU */}
                         <div className="flex justify-center border-t border-slate-100 pt-3">
                              <button 
                                 onClick={handleHint}
@@ -470,7 +481,6 @@ export default function WritingGame() {
                                 `}
                              >
                                 <Lightbulb className="w-5 h-5"/> 
-                                {/* METİN GÜNCELLENDİ: ARTIK MALİYET YAZIYOR (-5p) */}
                                 <span>İpucu {targetWord.length <= 1 ? "(Yok)" : "(-5p)"}</span>
                                 <span className="text-[10px] bg-white/50 px-1.5 rounded ml-1">Hata: {mistakeCount}/2</span>
                              </button>
