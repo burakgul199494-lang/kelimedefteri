@@ -191,7 +191,7 @@ export default function ExerciseGame() {
     }
   };
 
-  // --- İPUCU FONKSİYONU (YENİLENMİŞ) ---
+  // --- İPUCU FONKSİYONU ---
   const handleHint = (e) => {
       handleBlur(e);
       if (isWordComplete) return;
@@ -240,7 +240,7 @@ export default function ExerciseGame() {
       }
   };
 
-  // --- BAŞARI (Puan Parametresi Eklendi) ---
+  // --- BAŞARI ---
   const handleSuccess = (wordToSpeak, pointsOverride = null) => {
       setIsWordComplete(true);
       speak(wordToSpeak, 'main'); 
@@ -250,7 +250,6 @@ export default function ExerciseGame() {
       const dateKey = `lastExercise_${currentQ.formKey}`;
       handleUpdateWord(currentQ.baseWordObj.id, { [dateKey]: new Date().toISOString() });
 
-      // Override varsa onu kullan, yoksa state
       const finalPoints = pointsOverride !== null ? pointsOverride : currentWordPoints;
 
       if (finalPoints > 0) {
@@ -290,7 +289,7 @@ export default function ExerciseGame() {
       return (
         <div className="min-h-screen bg-slate-50 flex flex-col items-center p-6">
             
-            {/* CSS FİX: SADECE MOUSE VARSA HOVER ET */}
+            {/* CSS FİX */}
             <style>{`
                 * { -webkit-tap-highlight-color: transparent !important; }
                 
@@ -308,13 +307,11 @@ export default function ExerciseGame() {
                     cursor: not-allowed;
                 }
 
-                /* Sadece mouse ile hover (Telefonda yapışmayı engeller) */
                 @media (hover: hover) {
                     .menu-btn:hover { 
                         border-color: #a5b4fc !important; /* indigo-300 */
                         background-color: #f8fafc !important; /* slate-50 */
                     }
-                    /* İkon kutusu hover */
                     .menu-btn:hover .icon-box {
                         background-color: #eef2ff !important; /* indigo-50 */
                         color: #4f46e5 !important; /* indigo-600 */
@@ -437,12 +434,17 @@ export default function ExerciseGame() {
             <div className="bg-white p-5 rounded-3xl shadow-xl border border-slate-100 text-center relative overflow-hidden min-h-[450px] flex flex-col justify-between">
                 <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-indigo-400 to-purple-400"></div>
 
-                {/* Soru Değeri Göstergesi (YENİ) */}
+                {/* Soru Değeri (SAĞ ÜST) */}
                 <div className="absolute top-4 right-4 flex items-center gap-1 bg-green-50 text-green-700 px-2 py-1 rounded-lg text-xs font-bold border border-green-100 animate-in fade-in">
                     <Star className="w-3 h-3 fill-current"/> Soru: {currentWordPoints}p
                 </div>
 
-                <div className="mt-2 flex flex-col items-center gap-1">
+                {/* 🔥 YENİ: İstenen Form Bilgisi (SOL ÜST) 🔥 */}
+                <div className="absolute top-4 left-4 text-[10px] font-bold text-white uppercase tracking-wider bg-indigo-500 px-2 py-1 rounded-md shadow-sm">
+                    İSTENEN: {activeForm?.label.split('(')[0]}
+                </div>
+
+                <div className="mt-8 flex flex-col items-center gap-1"> {/* mt-8: Üstteki etiketler için yer açıldı */}
                     <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">ANA KELİME (BASE)</div>
                     <div className="flex items-center gap-2">
                         <h2 className="text-3xl font-black text-slate-800">{baseWordObj.word}</h2>
@@ -506,9 +508,7 @@ export default function ExerciseGame() {
                 )}
 
                 <div className="space-y-3 mt-4">
-                    <div className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider bg-slate-50 inline-block px-2 py-1 rounded">
-                        İSTENEN: {activeForm?.label.split('(')[0]}
-                    </div>
+                    {/* Eski "İstenen" etiketi buradan kaldırıldı, yukarı taşındı */}
                     <div className="flex flex-wrap justify-center gap-1 min-h-[50px] items-end content-center">
                         {targetWord.split('').map((_, idx) => {
                             const char = completedLetters[idx];
@@ -553,7 +553,6 @@ export default function ExerciseGame() {
                                 `}
                              >
                                 <Lightbulb className="w-4 h-4"/> 
-                                {/* YENİ METİN */}
                                 <span>İpucu {targetWord.length <= 1 ? "(Yok)" : "(-5p)"}</span>
                                 <span className="text-[10px] bg-white/50 px-1.5 rounded ml-1">Hata: {mistakeCount}/3</span>
                              </button>
