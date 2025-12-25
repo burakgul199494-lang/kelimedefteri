@@ -35,40 +35,39 @@ export default function Quiz() {
   // --- SES TAKİBİ ---
   const [activeAudio, setActiveAudio] = useState(null);
 
-const getWordPools = () => {
-  const all = getAllWords();
-  const validWords = all.filter(
-    w => w.definitions && w.definitions[0]?.meaning
-  );
-  const now = new Date();
+  const getWordPools = () => {
+    const all = getAllWords();
+    const validWords = all.filter(
+      w => w.definitions && w.definitions[0]?.meaning
+    );
+    const now = new Date();
 
-  const getQueueItem = (id) =>
-    learningQueue ? learningQueue.find(q => q.wordId === id) : null;
+    const getQueueItem = (id) =>
+      learningQueue ? learningQueue.find(q => q.wordId === id) : null;
 
-  const waitingPool = validWords.filter(w => {
-    const q = getQueueItem(w.id);
-    return q && new Date(q.nextReview) > now;
-  });
+    const waitingPool = validWords.filter(w => {
+      const q = getQueueItem(w.id);
+      return q && new Date(q.nextReview) > now;
+    });
 
-  const reviewPool = validWords.filter(w =>
-    knownWordIds.includes(w.id)
-  );
+    const reviewPool = validWords.filter(w =>
+      knownWordIds.includes(w.id)
+    );
 
-  const learnPool = validWords.filter(w => {
-    if (knownWordIds.includes(w.id)) return false;
-    const q = getQueueItem(w.id);
-    if (!q) return true;
-    if (new Date(q.nextReview) <= now) return true;
-    return false;
-  });
+    const learnPool = validWords.filter(w => {
+      if (knownWordIds.includes(w.id)) return false;
+      const q = getQueueItem(w.id);
+      if (!q) return true;
+      if (new Date(q.nextReview) <= now) return true;
+      return false;
+    });
 
-  return { learnPool, reviewPool, waitingPool };
-};
-
+    return { learnPool, reviewPool, waitingPool };
+  };
 
   const { learnPool, reviewPool, waitingPool } = getWordPools();
 
-  // --- IPHONE FIX: FOCUS TEMİZLEME ---
+  // --- IPHONE FIX ---
   const handleBlur = (e) => {
       if (e && e.currentTarget) e.currentTarget.blur();
   };
@@ -132,7 +131,6 @@ const getWordPools = () => {
     setIndex(0);
     setScore(0);
     
-    // State'leri sıfırla
     setSelected(null);
     setIsAnswered(false);
     setShowHintTr(false);
@@ -154,27 +152,22 @@ const getWordPools = () => {
     setIsAnswered(true); 
     setSelected(option);
     
-    // TARİH GÜNCELLEME
     const currentWord = questions[index].wordObj;
     handleUpdateWord(currentWord.id, { lastSeen_quiz: new Date().toISOString() });
 
-    // PUANLAMA
     if (option === questions[index].correct) {
         setScore(s => s + 5);
     }
 
-    // İSTATİSTİK
     updateGameStats('quiz', 1);
     
-    // SONRAKİ SORUYA GEÇİŞ (FLASH FIX BURADA)
     setTimeout(() => {
       if (index + 1 < questions.length) {
         setIsTransitioning(true);
         setTimeout(() => {
-            // BATCH UPDATE: Hepsi aynı anda değişmeli ki yanıp sönme olmasın
             setIndex(i => i + 1);
             setSelected(null);
-            setIsAnswered(false); // Yeni soruya temiz başla
+            setIsAnswered(false); 
             setShowHintTr(false);
             setIsTransitioning(false);
         }, 150); 
@@ -191,7 +184,6 @@ const getWordPools = () => {
       setGameStatus("finished"); 
   };
 
-  // --- SES FONKSİYONU ---
   const handleSpeak = (txt, id) => { 
     if(!txt) return;
 
@@ -215,14 +207,11 @@ const getWordPools = () => {
   if (gameStatus === "mode-selection") {
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
-            
-            {/* CSS FIX: Sadece mouse ile hover, mobil için sticky fix */}
             <style>{`
                 * { -webkit-tap-highlight-color: transparent !important; }
-                
                 .menu-btn { 
                     background-color: white;
-                    border: 2px solid #f1f5f9; /* slate-100 */
+                    border: 2px solid #f1f5f9; 
                     transition: all 0.2s ease;
                 }
                 .menu-btn:active {
@@ -233,7 +222,6 @@ const getWordPools = () => {
                     opacity: 0.6;
                     cursor: not-allowed;
                 }
-
                 @media (hover: hover) {
                     .btn-review:hover { border-color: #fed7aa !important; background-color: #fff7ed !important; }
                     .btn-learn:hover { border-color: #c7d2fe !important; background-color: #eef2ff !important; }
@@ -318,53 +306,25 @@ const getWordPools = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center p-4">
-       
-       {/* --- MOBİL TIKLAMA VE YAPIŞMA SORUNU ÇÖZÜMÜ --- */}
        <style>{`
-         * {
-           -webkit-tap-highlight-color: transparent !important;
-         }
-         
-         /* Butonların Temel Hali */
+         * { -webkit-tap-highlight-color: transparent !important; }
          .quiz-option-btn {
-            background-color: white;
-            border: 2px solid #e2e8f0;
-            color: #334155;
-            transition: all 0.2s ease;
+            background-color: white; border: 2px solid #e2e8f0; color: #334155; transition: all 0.2s ease;
          }
-         .quiz-option-btn:active {
-            background-color: #f1f5f9; /* slate-100 */
-            transform: scale(0.98);
-         }
-
-         /* Kontrol Butonu Temel */
+         .quiz-option-btn:active { background-color: #f1f5f9; transform: scale(0.98); }
          .quiz-action-btn {
-            background-color: white;
-            border: 1px solid #e2e8f0;
-            color: #94a3b8;
-            transition: all 0.2s ease;
+            background-color: white; border: 1px solid #e2e8f0; color: #94a3b8; transition: all 0.2s ease;
          }
-         .quiz-action-btn:active {
-            background-color: #f1f5f9;
-            transform: scale(0.95);
-         }
-
-         /* Sadece Mouse ile Hover (Mobilde çalışmaz) */
+         .quiz-action-btn:active { background-color: #f1f5f9; transform: scale(0.95); }
          @media (hover: hover) {
-            .quiz-option-btn:hover {
-                border-color: #a5b4fc !important;
-                background-color: #eef2ff !important;
-            }
-            .quiz-action-btn:hover {
-                background-color: #f1f5f9;
-                border-color: #cbd5e1;
-                color: #4f46e5;
-            }
+            .quiz-option-btn:hover { border-color: #a5b4fc !important; background-color: #eef2ff !important; }
+            .quiz-action-btn:hover { background-color: #f1f5f9; border-color: #cbd5e1; color: #4f46e5; }
          }
        `}</style>
 
        <div className="w-full max-w-md space-y-6 mt-4">
           
+          {/* Header */}
           <div className="flex justify-between items-center">
              <button onClick={handleQuitEarly} className="p-2 rounded-full active:bg-slate-100 transition-colors"><X className="w-6 h-6 text-slate-400"/></button>
              <div className="font-bold text-indigo-600">
@@ -382,14 +342,14 @@ const getWordPools = () => {
               <>
                 <div className="bg-white p-8 rounded-3xl shadow-lg border border-slate-100 text-center space-y-6 mt-6 animate-in fade-in zoom-in duration-300 relative overflow-hidden">
                     
-                    {/* --- 🔥 SAĞ ÜST KÖŞE: PUAN GÖSTERGESİ --- */}
+                    {/* --- SAĞ ÜST KÖŞE: PUAN --- */}
                     <div className="absolute top-4 right-4 flex items-center gap-1 bg-green-50 text-green-700 px-2 py-1 rounded-lg text-xs font-bold border border-green-100">
-                        <Star className="w-3 h-3 fill-current"/> Soru: 5p
+                        <Star className="w-3 h-3 fill-current"/> 5p
                     </div>
 
-                    {/* --- 🔥 SOL ÜST KÖŞE: KELİME ETİKETLERİ --- */}
+                    {/* --- 🔥 SOL ÜST KÖŞE: ETİKETLER (Aynı Hizada) 🔥 --- */}
                     {current.wordObj.tags && current.wordObj.tags.length > 0 && (
-                        <div className="absolute top-4 left-4 flex flex-col items-start gap-1 max-w-[80px] z-10">
+                        <div className="absolute top-4 left-4 flex gap-1 max-w-[50%] flex-wrap justify-start">
                             {current.wordObj.tags.map((tag, i) => (
                                 <span key={i} className="text-[9px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200 truncate max-w-full">
                                     {tag}
@@ -398,8 +358,8 @@ const getWordPools = () => {
                         </div>
                     )}
 
-                    {/* 🔥 DÜZELTME: mt-6 yapıldı. Hem yukarı çıktı hem çakışmaz. */}
-                    <div className="mt-6 flex flex-col items-center gap-4">
+                    {/* --- ANA İÇERİK (mt-8 ile aşağı itildi, çakışma engellendi) --- */}
+                    <div className="mt-8 flex flex-col items-center gap-4">
 
                         {/* İngilizce İpucu Alanı */}
                         {hintEng && (
@@ -413,11 +373,7 @@ const getWordPools = () => {
                                             handleSpeak(hintEng, 'hint');
                                         }}
                                         style={{ outline: 'none' }}
-                                        className={`
-                                            quiz-action-btn p-1.5 rounded-lg border flex items-center justify-center
-                                            focus:outline-none focus:ring-0
-                                            ${activeAudio === 'hint' ? '!text-red-500 !border-red-200' : ''}
-                                        `}
+                                        className={`quiz-action-btn p-1.5 rounded-lg border flex items-center justify-center focus:outline-none focus:ring-0 ${activeAudio === 'hint' ? '!text-red-500 !border-red-200' : ''}`}
                                         title={activeAudio === 'hint' ? "Durdur" : "Oku"}
                                     >
                                         {activeAudio === 'hint' ? <Square className="w-3 h-3 fill-current"/> : <Volume2 className="w-3 h-3"/>}
@@ -430,11 +386,7 @@ const getWordPools = () => {
                                                 setShowHintTr(!showHintTr);
                                             }} 
                                             style={{ outline: 'none' }}
-                                            className={`
-                                                quiz-action-btn p-1.5 rounded-lg border flex items-center justify-center
-                                                focus:outline-none focus:ring-0
-                                                ${showHintTr ? '!bg-indigo-100 !text-indigo-600 !border-indigo-200' : ''}
-                                            `}
+                                            className={`quiz-action-btn p-1.5 rounded-lg border flex items-center justify-center focus:outline-none focus:ring-0 ${showHintTr ? '!bg-indigo-100 !text-indigo-600 !border-indigo-200' : ''}`}
                                             title="Çeviri"
                                         >
                                             <Languages className="w-3 h-3"/>
