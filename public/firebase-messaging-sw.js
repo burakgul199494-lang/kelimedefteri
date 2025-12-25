@@ -13,26 +13,14 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const messaging = firebase.messaging();
 
-// 🔥 BU BLOĞU GERİ GETİRDİK (iPHONE İÇİN ŞARTMIŞ) 🔥
+// 🔥 ÇİFT BİLDİRİM ÇÖZÜMÜ 🔥
+// Bu fonksiyon mesaj geldiğinde uygulamayı "uyandırır" (Background Process).
+// Ama ekrana bir şey basmaz (showNotification sildik).
+// Ekrana basma işini artık iOS'un kendisine bırakıyoruz.
 messaging.onBackgroundMessage(function(payload) {
-  console.log('[firebase-messaging-sw.js] Bildirim alındı:', payload);
+  console.log('[firebase-messaging-sw.js] Mesaj alındı (Sessiz mod):', payload);
   
-  // Başlık ve İçerik Kontrolü
-  const notificationTitle = payload.notification?.title || payload.data?.title || "Kelime Defteri";
-  const notificationBody = payload.notification?.body || payload.data?.body || "Yeni bir hedefin var!";
-  
-  const notificationOptions = {
-    body: notificationBody,
-    icon: '/icon-192.png', // İkon dosyanın adı
-    badge: '/icon-192.png',
-    
-    // 🔥 ÇİFT BİLDİRİMİ ÖNLEMEK İÇİN ETİKET 🔥
-    // Aynı anda hem sistem hem biz göstermeye çalışırsak, 
-    // bu etiket (tag) sayesinde telefon bunları "aynı mesaj" sayar ve tek gösterir.
-    tag: 'daily-notification', 
-    renotify: true
-  };
-
-  // Tarayıcıya "Bunu Kullanıcıya Göster!" emrini veriyoruz.
-  self.registration.showNotification(notificationTitle, notificationOptions);
+  // Burada "self.registration.showNotification" YOK.
+  // Böylece biz ikinci bir bildirim oluşturmuyoruz.
+  // DataContext'teki ayarımız sayesinde iOS kendi bildirimini oluşturacak.
 });
