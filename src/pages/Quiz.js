@@ -347,16 +347,17 @@ export default function Quiz() {
                         <Star className="w-3 h-3 fill-current"/> 5p
                     </div>
 
-                    {/* --- 🔥 SOL ÜST KÖŞE: ETİKETLER (top-0: en tepeye yaslı) 🔥 --- */}
-                    {current.wordObj.tags && current.wordObj.tags.length > 0 && (
-                        <div className="absolute top-0 left-4 mt-4 flex gap-1 max-w-[50%] flex-wrap justify-start">
-                            {current.wordObj.tags.map((tag, i) => (
-                                <span key={i} className="text-[9px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200 truncate max-w-full">
-                                    {tag}
-                                </span>
-                            ))}
-                        </div>
-                    )}
+                    {/* --- 🔥 SOL ÜST KÖŞE: ETİKETLER (PUANLA AYNI HİZA) 🔥 --- */}
+{current.wordObj.tags && current.wordObj.tags.length > 0 && (
+    <div className="absolute top-4 left-4 flex gap-1 max-w-[50%] flex-wrap justify-start">
+        {current.wordObj.tags.map((tag, i) => (
+            <span key={i} className="text-[9px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200 truncate max-w-full">
+                {tag}
+            </span>
+        ))}
+    </div>
+)}
+
 
                     {/* --- ANA İÇERİK (mt-8 ile aşağı itildi) --- */}
                     <div className="mt-8 flex flex-col items-center gap-4">
