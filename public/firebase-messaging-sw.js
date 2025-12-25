@@ -13,7 +13,18 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const messaging = firebase.messaging();
 
-// --- KESİN ÇÖZÜM ---
-// onBackgroundMessage bloğunu TAMAMEN SİLDİM.
-// Artık manuel olarak "showNotification" çağırmıyoruz.
-// Firebase SDK'sı gelen bildirimi otomatik olarak tek sefer gösterecek.
+// 👇 iPHONE İÇİN KRİTİK: ARKA PLAN MESAJINI MANUEL GÖSTER 👇
+messaging.onBackgroundMessage(function(payload) {
+  console.log('[firebase-messaging-sw.js] Arka plan bildirimi alındı:', payload);
+  
+  // Bildirim başlığı ve içeriği
+  const notificationTitle = payload.notification?.title || "Kelime Defteri";
+  const notificationOptions = {
+    body: payload.notification?.body || "Yeni bir bildirimin var!",
+    icon: '/icon-192.png', // İkon dosyanın adı neyse onu yaz
+    badge: '/icon-192.png'
+  };
+
+  // Tarayıcıya bildirimi zorla göster
+  self.registration.showNotification(notificationTitle, notificationOptions);
+});
