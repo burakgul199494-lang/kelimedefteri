@@ -277,8 +277,6 @@ export default function GapFillingGame() {
         addScore(finalPoints);
         setScore(s => s + finalPoints);
     }
-    
-    // 🔥 DEĞİŞİKLİK: Otomatik geçiş kaldırıldı. Kullanıcı butona basacak.
   };
 
   // --- KELİME BİTİRME (BAŞARISIZ) ---
@@ -292,8 +290,6 @@ export default function GapFillingGame() {
       updateGameStats('gap-filling', 1); 
       const currentQ = questions[currentIndex];
       handleUpdateWord(currentQ.id, { lastSeen_gap_filling: new Date().toISOString() });
-      
-      // 🔥 DEĞİŞİKLİK: Otomatik geçiş kaldırıldı.
   };
 
   // --- SONRAKİ SORUYA GEÇİŞ (BUTON İLE) ---
@@ -513,18 +509,9 @@ export default function GapFillingGame() {
                )}
              </div>
 
-             {/* 2. CEVAP ALANI (KUTULAR + FONETİK) */}
+             {/* 2. CEVAP ALANI (KUTULAR) */}
              <div className="space-y-3">
-                 {/* FONETİK */}
-                 {currentWordObj?.phonetic ? (
-                     <div className="flex justify-center animate-in fade-in slide-in-from-top-1 mb-2">
-                         <span className="text-indigo-400 font-serif italic text-lg tracking-wide px-3 py-0.5 bg-indigo-50/50 rounded-lg border border-indigo-100/50">
-                             /{currentWordObj.phonetic.replace(/\//g, '')}/
-                         </span>
-                     </div>
-                 ) : (
-                     <div className="h-8"></div>
-                 )}
+                 {/* FONETİK GÖSTERGESİ SİLİNDİ */}
 
                  {/* YAZI ALANI */}
                  <div className="flex flex-wrap justify-center gap-1 min-h-[50px] items-end content-center">
