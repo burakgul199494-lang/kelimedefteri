@@ -347,9 +347,9 @@ export default function Quiz() {
                         <Star className="w-3 h-3 fill-current"/> 5p
                     </div>
 
-                    {/* --- 🔥 SOL ÜST KÖŞE: ETİKETLER (Yukarı Çekildi: top-2) 🔥 --- */}
+                    {/* --- 🔥 SOL ÜST KÖŞE: ETİKETLER (Yukarı Çekildi: top-0) 🔥 --- */}
                     {current.wordObj.tags && current.wordObj.tags.length > 0 && (
-                        <div className="absolute top-2 left-4 flex gap-1 max-w-[50%] flex-wrap justify-start">
+                        <div className="absolute top-0 left-4 flex gap-1 max-w-[50%] flex-wrap justify-start">
                             {current.wordObj.tags.map((tag, i) => (
                                 <span key={i} className="text-[9px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200 truncate max-w-full">
                                     {tag}
