@@ -11,7 +11,9 @@ import {
   RefreshCw, 
   BrainCircuit, 
   Hourglass,
-  Square // Durdurma ikonu
+  Square,
+  Star, // Puan ikonu
+  Tag // Etiket ikonu
 } from "lucide-react";
 
 export default function Quiz() {
@@ -110,12 +112,9 @@ const getWordPools = () => {
     const generated = selectedWords.map(target => {
       const correct = target.definitions[0].meaning;
       
-      // 🔥 DEĞİŞİKLİK BURADA: İsim Benzerliği Filtresi Eklendi 🔥
       const others = allValidWords
         .filter(w => 
-            // 1. ID kontrolü (Aynı kayıt olmasın)
             w.id !== target.id && 
-            // 2. İsim kontrolü (Yazılışı aynı olan başka kelime girmesin - Örn: Bank vs Bank)
             w.word.toLowerCase().trim() !== target.word.toLowerCase().trim()
         )
         .sort(() => 0.5 - Math.random())
@@ -381,10 +380,27 @@ const getWordPools = () => {
               </div>
           ) : (
               <>
-                <div className="bg-white p-8 rounded-3xl shadow-lg border border-slate-100 text-center space-y-6 mt-6 animate-in fade-in zoom-in duration-300">
+                <div className="bg-white p-8 rounded-3xl shadow-lg border border-slate-100 text-center space-y-6 mt-6 animate-in fade-in zoom-in duration-300 relative overflow-hidden">
+                    
+                    {/* --- 🔥 SAĞ ÜST KÖŞE: PUAN GÖSTERGESİ --- */}
+                    <div className="absolute top-4 right-4 flex items-center gap-1 bg-green-50 text-green-700 px-2 py-1 rounded-lg text-xs font-bold border border-green-100">
+                        <Star className="w-3 h-3 fill-current"/> Soru: 5p
+                    </div>
+
+                    {/* --- 🔥 SOL ÜST KÖŞE: KELİME ETİKETLERİ --- */}
+                    {current.wordObj.tags && current.wordObj.tags.length > 0 && (
+                        <div className="absolute top-4 left-4 flex flex-col items-start gap-1 max-w-[80px]">
+                            {current.wordObj.tags.map((tag, i) => (
+                                <span key={i} className="text-[9px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200 truncate max-w-full">
+                                    {tag}
+                                </span>
+                            ))}
+                        </div>
+                    )}
+
                     {/* İngilizce İpucu Alanı */}
                     {hintEng && (
-                        <div className="flex flex-col items-center gap-2">
+                        <div className="flex flex-col items-center gap-2 mt-4"> {/* mt-4: Etiketler için yer açıldı */}
                             <div className="bg-indigo-50 text-indigo-800 px-4 py-2 rounded-xl border border-indigo-100 flex items-center gap-2">
                                 <span className="text-sm italic">"{hintEng}"</span>
                                 
