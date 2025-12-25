@@ -159,7 +159,7 @@ export const DataProvider = ({ children }) => {
     return () => { unsubUserWords(); unsubProfile(); unsubLeaderboard(); };
   }, [user?.uid]);
 
-// 5. TOKEN TAZELEME VE CANLI TUTMA (GÜNCELLENMİŞ VERSİYON)
+// 5. TOKEN TAZELEME VE CANLI TUTMA (DÜZELTİLMİŞ HALİ)
   useEffect(() => {
     const refreshToken = async () => {
       if (!user) return; 
@@ -168,25 +168,25 @@ export const DataProvider = ({ children }) => {
         // Tarayıcı ve Service Worker desteği kontrolü
         if ("serviceWorker" in navigator && Notification.permission === "granted") {
           
-          // 🔥 KRİTİK NOKTA: Aktif Service Worker'ı bekle
+          // 🔥 EKLENEN KISIM: Aktif Service Worker'ı bekle
           const registration = await navigator.serviceWorker.ready;
 
           // Token alırken bu registration'ı kullan
           const currentToken = await getToken(messaging, {
             vapidKey: "BAEv8tvoKaliQ-Dx3xxhUcPH-hDV_RylcMuPI4OtWMS3nYvHT_Gv7myuk_DsQ3kltls8moIe9WSdbLjBrE-Ui54",
-            serviceWorkerRegistration: registration // <--- İŞTE BU EKSİKTİ
+            serviceWorkerRegistration: registration // <--- İŞTE BU EKSİKTİ, ARTIK TAMAM ✅
           });
 
           if (currentToken) {
             const userRef = doc(db, "artifacts", appId, "users", user.uid);
-            // setDoc + merge kullanmak, updateDoc'a göre daha hatasızdır (doküman yoksa yaratır)
+            // setDoc + merge kullanmak daha güvenlidir
             await setDoc(userRef, { 
               fcmToken: currentToken,
               lastTokenUpdate: new Date().toISOString(),
               platform: /iPhone|iPad|iPod/.test(navigator.userAgent) ? "ios_pwa" : "web"
             }, { merge: true });
             
-            console.log("Token tazelendi ve kayıt güncellendi.");
+            console.log("Token başarıyla tazelendi ve kaydedildi.");
           }
         }
       } catch (error) {
