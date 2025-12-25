@@ -564,11 +564,8 @@ export const DataProvider = ({ children }) => {
 
   const handleSaveSystemWord = async (wordData) => {
     try {
-      const normalizedInput = wordData.word.toLowerCase().trim();
-      const exists = dynamicSystemWords.some(w => w.word.toLowerCase() === normalizedInput);
-      if(exists) {
-          return { success: false, message: "Bu kelime zaten sistemde var!" };
-      }
+      // 🔥 GÜNCEL: Duplicate (çift kayıt) kontrolü kaldırıldı.
+      // Admin aynı kelimeyi farklı anlamlarla ekleyebilir.
 
       const newWord = {
         word: wordData.word.trim(),
@@ -591,19 +588,13 @@ export const DataProvider = ({ children }) => {
 
       await addDoc(collection(db, "artifacts", appId, "system_words"), newWord);
       
+      // --- Ekstra Temizlik İşlemleri (Aynen kalsın) ---
+      
+      // 1. Eğer bu kelime daha önce kara listeye alındıysa, kara listeden çıkar.
+      const normalizedInput = wordData.word.toLowerCase().trim();
       const blacklistRef = collection(db, "artifacts", appId, "blacklist");
       const q = query(blacklistRef, where("word", "==", normalizedInput));
       const querySnapshot = await getDocs(q);
-      querySnapshot.forEach(async (doc) => { await deleteDoc(doc.ref); });
-
-      const conflictingCustom = customWords.find(w => w.word.toLowerCase() === normalizedInput);
-      if (conflictingCustom) {
-          const userRef = doc(db, "artifacts", appId, "users", user.uid, "vocab_game", "progress");
-          await setDoc(userRef, { deleted_ids: arrayUnion(conflictingCustom.id) }, { merge: true });
-      }
-      return { success: true };
-    } catch (e) { return { success: false, message: e.message }; }
-  };
 
   const handleDeleteSystemWord = async (wordId) => {
       if(!window.confirm("Bu kelime tüm kullanıcılardan silinecek (Yasaklanacak). Emin misin?")) return;
