@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { useData } from "../context/DataContext";
 import { useNavigate } from "react-router-dom";
 import { 
-  X, Trophy, Loader2, RefreshCw, BrainCircuit, Hourglass, Home, Lightbulb, Volume2, Square, Headphones, Star, ArrowRight, CheckCircle2, AlertTriangle
+  X, Trophy, Loader2, RefreshCw, BrainCircuit, Hourglass, Home, Lightbulb, Volume2, Square, Headphones, Star, ArrowRight, CheckCircle2, AlertTriangle, Tag
 } from "lucide-react";
 
 export default function WritingGame2() {
@@ -24,7 +24,6 @@ export default function WritingGame2() {
 
   // Puanlama ve Hata Takibi
   const [hintCount, setHintCount] = useState(0);
-  // DEĞİŞİKLİK 1: Başlangıç puanı 5 oldu
   const [currentWordPoints, setCurrentWordPoints] = useState(5); 
   const [mistakeCount, setMistakeCount] = useState(0); 
 
@@ -135,7 +134,6 @@ export default function WritingGame2() {
       
       setHintCount(0);
       setMistakeCount(0); 
-      // DEĞİŞİKLİK 2: Her soru 5 puanla başlar
       setCurrentWordPoints(5); 
     }
     
@@ -202,12 +200,11 @@ export default function WritingGame2() {
     }
   };
 
-  // --- İPUCU KULLANIMI (YENİLENMİŞ MANTIK: 5 -> 2 -> 0) ---
+  // --- İPUCU KULLANIMI ---
   const handleHint = (e) => {
     handleBlur(e);
     if (isWordComplete) return;
 
-    // KURAL 1: Tek harfli kelimelerde ipucu çalışmasın
     if (targetWord.length <= 1) return;
 
     const nextIndex = completedLetters.length;
@@ -222,7 +219,6 @@ export default function WritingGame2() {
         const newHintCount = hintCount + 1;
         setHintCount(newHintCount);
 
-        // DEĞİŞİKLİK 3: Puanlama Mantığı (5 -> 2 -> 0)
         if (newHintCount === 1) {
             nextPoints = 2; // 5'ten 2'ye düşer
         } 
@@ -230,7 +226,6 @@ export default function WritingGame2() {
             nextPoints = 0; // 2'den 0'a düşer
         }
 
-        // KURAL 3: Eğer son harfi ipucu açıyorsa puan 0 olur
         const isLastLetter = (completedLetters.length + 1) === targetWord.length;
         if (isLastLetter) {
             nextPoints = 0;
@@ -238,13 +233,11 @@ export default function WritingGame2() {
 
         setCurrentWordPoints(nextPoints);
 
-        // Harfi Yerleştir
         const newShuffled = shuffledLetters.map(l => l.id === correctLetterObj.id ? { ...l, isUsed: true } : l);
         setShuffledLetters(newShuffled);
         const newCompleted = [...completedLetters, correctLetterObj.char];
         setCompletedLetters(newCompleted);
 
-        // Kelime bitti mi?
         if (newCompleted.length === targetWord.length) {
             handleSuccess(targetWord, nextPoints);
         }
@@ -255,8 +248,8 @@ export default function WritingGame2() {
   const handleSuccess = (wordToSpeak, pointsOverride = null) => {
     setIsWordComplete(true);
     handleSpeak(wordToSpeak);
-    updateGameStats('listening', 1); // Haftalık Skor için
-    updateGameStats('writing2', 1);  // Günlük Görev için
+    updateGameStats('listening', 1); 
+    updateGameStats('writing2', 1);  
     
     const currentQ = questions[currentIndex];
     handleUpdateWord(currentQ.id, { lastSeen_listening: new Date().toISOString() });
@@ -275,8 +268,8 @@ export default function WritingGame2() {
       setCompletedLetters(targetWord.split('')); 
       setIsWordComplete(true);
       handleSpeak(wordToSpeak); 
-      updateGameStats('listening', 1); // Haftalık Skor için
-    updateGameStats('writing2', 1);  // Günlük Görev için
+      updateGameStats('listening', 1); 
+      updateGameStats('writing2', 1);  
       
       const currentQ = questions[currentIndex];
       handleUpdateWord(currentQ.id, { lastSeen_listening: new Date().toISOString() });
@@ -303,10 +296,8 @@ export default function WritingGame2() {
   if (gameStatus === "mode-selection") {
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
-            
             <style>{`
                 * { -webkit-tap-highlight-color: transparent !important; }
-                
                 @media (hover: hover) {
                     .btn-select:hover { border-color: #fb923c !important; background-color: #fff7ed !important; }
                     .btn-learn:hover { border-color: #818cf8 !important; background-color: #eef2ff !important; }
@@ -331,7 +322,6 @@ export default function WritingGame2() {
                 </div>
 
                 <div className="space-y-4">
-                    {/* Tekrar Modu */}
                     <button onClick={(e) => startSession('review', e)} disabled={reviewPool.length === 0} style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }} className="menu-btn btn-select w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 active:scale-95 disabled:opacity-60 focus:outline-none focus:ring-0">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-4">
@@ -342,7 +332,6 @@ export default function WritingGame2() {
                         </div>
                     </button>
 
-                    {/* Öğrenme Modu */}
                     <button onClick={(e) => startSession('learn', e)} disabled={learnPool.length === 0} style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }} className="menu-btn btn-learn w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 active:scale-95 disabled:opacity-60 focus:outline-none focus:ring-0">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-4">
@@ -353,7 +342,6 @@ export default function WritingGame2() {
                         </div>
                     </button>
 
-                    {/* Bekleme Modu */}
                     <button onClick={(e) => startSession('waiting', e)} disabled={waitingPool.length === 0} style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }} className="menu-btn btn-wait w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 active:scale-95 disabled:opacity-60 focus:outline-none focus:ring-0">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-4">
@@ -373,7 +361,6 @@ export default function WritingGame2() {
   // === 2. BİTİŞ EKRANI ===
   // ===========================
   if (gameStatus === "finished") {
-    // DEĞİŞİKLİK 4: Max puan hesabı (soru sayısı * 5)
     const max = questions.length * 5;
     let modeTitle = "Bitti";
     if (gameMode === "learn") modeTitle = "Bitti";
@@ -403,7 +390,6 @@ export default function WritingGame2() {
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center p-4">
-       
        <style>{`
          * { -webkit-tap-highlight-color: transparent !important; }
          @media (hover: hover) {
@@ -432,13 +418,24 @@ export default function WritingGame2() {
           <div className="bg-white p-6 rounded-3xl shadow-xl border border-slate-100 text-center space-y-6 relative overflow-hidden min-h-[450px] flex flex-col justify-between">
              <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-purple-400 to-pink-400"></div>
              
-             {/* Soru Değeri Göstergesi (5p) */}
+             {/* Soru Değeri Göstergesi (5p) (SAĞ ÜST) */}
              <div className="absolute top-4 right-4 flex items-center gap-1 bg-green-50 text-green-700 px-2 py-1 rounded-lg text-xs font-bold border border-green-100 animate-in fade-in">
                  <Star className="w-3 h-3 fill-current"/> Soru: {currentWordPoints}p
              </div>
 
-             {/* Orta Ses Butonu */}
-             <div className="flex-1 flex flex-col items-center justify-center gap-4 py-4">
+             {/* 🔥 SOL ÜST KÖŞE: ETİKETLER (top-0 + mt-4) 🔥 */}
+             {currentWordObj.tags && currentWordObj.tags.length > 0 && (
+                <div className="absolute top-0 left-4 mt-4 flex gap-1 max-w-[50%] flex-wrap justify-start">
+                    {currentWordObj.tags.map((tag, i) => (
+                        <span key={i} className="text-[9px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200 truncate max-w-full">
+                            {tag}
+                        </span>
+                    ))}
+                </div>
+             )}
+
+             {/* Orta Ses Butonu (mt-8 ile aşağı itildi) */}
+             <div className="flex-1 flex flex-col items-center justify-center gap-4 py-4 mt-8">
                 <button 
                    onClick={(e) => {
                        handleBlur(e);
@@ -512,7 +509,6 @@ export default function WritingGame2() {
                           `}
                         >
                           <Lightbulb className="w-5 h-5"/> 
-                          {/* DEĞİŞİKLİK 5: Buton yazısı (Maliyet gösterimi) */}
                           <span>İpucu {targetWord.length <= 1 ? "(Yok)" : (hintCount === 0 ? "(-3p)" : "(-2p)")}</span>
                           <span className="text-[10px] bg-white/50 px-1.5 rounded ml-1">Hata: {mistakeCount}/2</span>
                         </button>
