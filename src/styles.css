@@ -1,16 +1,40 @@
+/* 1. Tailwind Gerekli Kodları (En üstte olmalı) */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 2. iPhone ve Mobil Hızlandırma Ayarları */
+html, body {
+  touch-action: manipulation; /* 300ms tıklama gecikmesini iptal eder */
+  -webkit-tap-highlight-color: transparent; /* Tıklayınca çıkan gri kutuyu kaldırır */
+  overscroll-behavior-y: none; /* Sayfanın lastik gibi esnemesini engeller */
+  height: 100%;
+}
+
+/* 3. Butonlar için Hassasiyet Ayarı */
+button {
+  touch-action: manipulation; /* Dokunmayı anında algıla */
+  user-select: none; /* Seri tıklarken metin seçilmeyi engelle */
+  -webkit-user-select: none; /* Safari için metin seçim engeli */
+  -webkit-touch-callout: none; /* Uzun basınca menü çıkmasın */
+}
+
+/* 4. Oyun Kartları için GPU Hızlandırma (Daha akıcı hissettirir) */
+.letter-btn, .word-btn, .match-card, .quiz-option-btn {
+  transform: translateZ(0); 
+  cursor: pointer;
+}
+
+/* 5. Senin Eski Kodların */
 .App {
   font-family: sans-serif;
   text-align: center;
 }
-/* Mobil Zoom Engelleyici */
-:root {
-  touch-action: manipulation;
-}
 
+/* 6. Mobil Zoom Engelleyici (Inputlara girince ekranın büyümemesi için) */
 @media screen and (max-width: 768px) {
-  input, select, textarea, button {
+  input, select, textarea {
     font-size: 16px !important; /* 16px altı fontlarda iOS zoom yapar */
     max-height: 100% !important;
-    touch-action: manipulation; /* Çift tıklama zoomunu engeller */
   }
 }
