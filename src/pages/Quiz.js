@@ -389,7 +389,7 @@ const getWordPools = () => {
 
                     {/* --- 🔥 SOL ÜST KÖŞE: KELİME ETİKETLERİ --- */}
                     {current.wordObj.tags && current.wordObj.tags.length > 0 && (
-                        <div className="absolute top-4 left-4 flex flex-col items-start gap-1 max-w-[80px]">
+                        <div className="absolute top-4 left-4 flex flex-col items-start gap-1 max-w-[80px] z-10">
                             {current.wordObj.tags.map((tag, i) => (
                                 <span key={i} className="text-[9px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200 truncate max-w-full">
                                     {tag}
@@ -398,80 +398,87 @@ const getWordPools = () => {
                         </div>
                     )}
 
-                    {/* İngilizce İpucu Alanı */}
-                    {hintEng && (
-                        <div className="flex flex-col items-center gap-2 mt-4"> {/* mt-4: Etiketler için yer açıldı */}
-                            <div className="bg-indigo-50 text-indigo-800 px-4 py-2 rounded-xl border border-indigo-100 flex items-center gap-2">
-                                <span className="text-sm italic">"{hintEng}"</span>
-                                
-                                <button 
-                                    onClick={(e) => {
-                                        handleBlur(e);
-                                        handleSpeak(hintEng, 'hint');
-                                    }}
-                                    style={{ outline: 'none' }}
-                                    className={`
-                                        quiz-action-btn p-1.5 rounded-lg border flex items-center justify-center
-                                        focus:outline-none focus:ring-0
-                                        ${activeAudio === 'hint' ? '!text-red-500 !border-red-200' : ''}
-                                    `}
-                                    title={activeAudio === 'hint' ? "Durdur" : "Oku"}
-                                >
-                                    {activeAudio === 'hint' ? <Square className="w-3 h-3 fill-current"/> : <Volume2 className="w-3 h-3"/>}
-                                </button>
-                                
-                                {hintTr && (
+                    {/* 🔥 DÜZELTME BURADA 🔥
+                        İçerik kapsayıcısı eklendi ve mt-12 ile üstten boşluk bırakıldı.
+                        Böylece etiketler ile içerik çakışmayacak.
+                    */}
+                    <div className="mt-12 flex flex-col items-center gap-6">
+
+                        {/* İngilizce İpucu Alanı */}
+                        {hintEng && (
+                            <div className="flex flex-col items-center gap-2">
+                                <div className="bg-indigo-50 text-indigo-800 px-4 py-2 rounded-xl border border-indigo-100 flex items-center gap-2">
+                                    <span className="text-sm italic">"{hintEng}"</span>
+                                    
                                     <button 
                                         onClick={(e) => {
                                             handleBlur(e);
-                                            setShowHintTr(!showHintTr);
-                                        }} 
+                                            handleSpeak(hintEng, 'hint');
+                                        }}
                                         style={{ outline: 'none' }}
                                         className={`
                                             quiz-action-btn p-1.5 rounded-lg border flex items-center justify-center
                                             focus:outline-none focus:ring-0
-                                            ${showHintTr ? '!bg-indigo-100 !text-indigo-600 !border-indigo-200' : ''}
+                                            ${activeAudio === 'hint' ? '!text-red-500 !border-red-200' : ''}
                                         `}
-                                        title="Çeviri"
+                                        title={activeAudio === 'hint' ? "Durdur" : "Oku"}
                                     >
-                                        <Languages className="w-3 h-3"/>
+                                        {activeAudio === 'hint' ? <Square className="w-3 h-3 fill-current"/> : <Volume2 className="w-3 h-3"/>}
                                     </button>
+                                    
+                                    {hintTr && (
+                                        <button 
+                                            onClick={(e) => {
+                                                handleBlur(e);
+                                                setShowHintTr(!showHintTr);
+                                            }} 
+                                            style={{ outline: 'none' }}
+                                            className={`
+                                                quiz-action-btn p-1.5 rounded-lg border flex items-center justify-center
+                                                focus:outline-none focus:ring-0
+                                                ${showHintTr ? '!bg-indigo-100 !text-indigo-600 !border-indigo-200' : ''}
+                                            `}
+                                            title="Çeviri"
+                                        >
+                                            <Languages className="w-3 h-3"/>
+                                        </button>
+                                    )}
+                                </div>
+                                
+                                {showHintTr && hintTr && (
+                                    <div className="bg-green-50 text-green-700 px-3 py-1 text-xs font-bold rounded animate-in fade-in">
+                                        TR: {hintTr}
+                                    </div>
                                 )}
                             </div>
-                            
-                            {showHintTr && hintTr && (
-                                <div className="bg-green-50 text-green-700 px-3 py-1 text-xs font-bold rounded animate-in fade-in">
-                                    TR: {hintTr}
-                                </div>
-                            )}
-                        </div>
-                    )}
-                    
-                    <h2 className="text-4xl font-extrabold text-slate-800">{current.wordObj.word}</h2>
+                        )}
+                        
+                        <h2 className="text-4xl font-extrabold text-slate-800">{current.wordObj.word}</h2>
 
-                      {current.wordObj.phonetic && (
-  <div className="flex justify-center animate-in fade-in slide-in-from-top-1">
-    <span className="text-indigo-400 font-serif italic text-lg tracking-wide px-3 py-1 bg-indigo-50 rounded-lg border border-indigo-100">
-      /{current.wordObj.phonetic.replace(/\//g, "")}/
-    </span>
-  </div>
-)}
-                    
-                    <button 
-                        onClick={(e) => {
-                            handleBlur(e);
-                            handleSpeak(current.wordObj.word, 'main');
-                        }}
-                        style={{ outline: 'none' }}
-                        className={`
-                            quiz-action-btn mx-auto p-3 rounded-full border flex items-center justify-center
-                            focus:outline-none focus:ring-0
-                            ${activeAudio === 'main' ? '!text-white !bg-indigo-600 !border-indigo-600' : ''}
-                        `}
-                        title={activeAudio === 'main' ? "Durdur" : "Oku"}
-                    >
-                        {activeAudio === 'main' ? <Square className="w-6 h-6 fill-current"/> : <Volume2 className="w-6 h-6"/>}
-                    </button>
+                        {current.wordObj.phonetic && (
+                            <div className="flex justify-center animate-in fade-in slide-in-from-top-1">
+                                <span className="text-indigo-400 font-serif italic text-lg tracking-wide px-3 py-1 bg-indigo-50 rounded-lg border border-indigo-100">
+                                / {current.wordObj.phonetic.replace(/\//g, "")} /
+                                </span>
+                            </div>
+                        )}
+                        
+                        <button 
+                            onClick={(e) => {
+                                handleBlur(e);
+                                handleSpeak(current.wordObj.word, 'main');
+                            }}
+                            style={{ outline: 'none' }}
+                            className={`
+                                quiz-action-btn mx-auto p-3 rounded-full border flex items-center justify-center
+                                focus:outline-none focus:ring-0
+                                ${activeAudio === 'main' ? '!text-white !bg-indigo-600 !border-indigo-600' : ''}
+                            `}
+                            title={activeAudio === 'main' ? "Durdur" : "Oku"}
+                        >
+                            {activeAudio === 'main' ? <Square className="w-6 h-6 fill-current"/> : <Volume2 className="w-6 h-6"/>}
+                        </button>
+                    </div>
                 </div>
 
                 {/* ŞIKLAR */}
