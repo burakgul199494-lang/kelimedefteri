@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Volume2, Square, RotateCw, Quote } from "lucide-react";
+import { Volume2, Square, RotateCw, Quote, Tag } from "lucide-react";
 
 export default function WordCard({ wordObj }) {
   const [isFlipped, setIsFlipped] = useState(false);
@@ -83,11 +83,22 @@ export default function WordCard({ wordObj }) {
           `}
         >
           
-          {/* HERO BÖLÜMÜ (GÜNCELLENDİ) */}
+          {/* HERO BÖLÜMÜ */}
           <div className="relative bg-gradient-to-br from-indigo-600 to-violet-700 p-6 flex flex-col items-center justify-center min-h-[160px] text-center shrink-0">
             <div className="absolute top-0 left-0 w-full h-full opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
             
-            <div className="relative z-10 w-full flex items-center justify-center gap-4">
+            {/* 🔥 ETİKETLER BURADA (SAĞ ÜST - BEYAZ TRANSPARAN) 🔥 */}
+            {wordObj.tags && Array.isArray(wordObj.tags) && wordObj.tags.length > 0 && (
+                <div className="absolute top-4 right-4 flex flex-col items-end gap-1 z-20 max-w-[80px]">
+                    {wordObj.tags.map((tag, i) => (
+                        <span key={i} className="text-[9px] font-bold text-white bg-white/20 px-2 py-0.5 rounded-md border border-white/10 backdrop-blur-sm truncate max-w-full">
+                            {tag}
+                        </span>
+                    ))}
+                </div>
+            )}
+
+            <div className="relative z-10 w-full flex items-center justify-center gap-4 mt-2"> 
               
               {/* SOL: Kelime ve Fonetik Grubu */}
               <div className="flex flex-col items-center">
@@ -95,7 +106,7 @@ export default function WordCard({ wordObj }) {
                     {wordObj.word}
                   </h1>
                   
-                  {/* YENİ: Fonetik Gösterimi (Beyaz/Mor font) */}
+                  {/* Fonetik Gösterimi */}
                   {wordObj.phonetic && (
                     <span className="text-indigo-200 font-serif italic text-lg mt-1 tracking-wide">
                         /{wordObj.phonetic.replace(/\//g, '')}/
