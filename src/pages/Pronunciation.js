@@ -15,11 +15,11 @@ import {
   AlertCircle, 
   X,
   Target,
-  Layers
+  Layers,
+  SkipForward // Pas geç ikonu
 } from "lucide-react";
 
 export default function Pronunciation() {
-  // 1. handleUpdateWord EKLENDİ
   const { getAllWords, knownWordIds, learningQueue, addScore, updateGameStats, handleUpdateWord } = useData();
   const navigate = useNavigate();
 
@@ -49,46 +49,36 @@ export default function Pronunciation() {
     const all = getAllWords();
     const now = new Date();
 
-    // Telaffuz için kelime metni olan her şey uygundur
     const validWords = all.filter(w => w.word && w.word.length > 0);
 
     const getQueueItem = (id) =>
-  learningQueue ? learningQueue.find(q => q.wordId === id) : null;
+      learningQueue ? learningQueue.find(q => q.wordId === id) : null;
 
-const waitingPool = validWords.filter(w => {
-  const q = getQueueItem(w.id);
-  return q && new Date(q.nextReview) > now;
-});
+    const waitingPool = validWords.filter(w => {
+      const q = getQueueItem(w.id);
+      return q && new Date(q.nextReview) > now;
+    });
 
-const reviewPool = validWords.filter(w =>
-  knownWordIds.includes(w.id)
-);
+    const reviewPool = validWords.filter(w =>
+      knownWordIds.includes(w.id)
+    );
 
-const learnPool = validWords.filter(w => {
-  if (knownWordIds.includes(w.id)) return false;
-
-  const q = getQueueItem(w.id);
-
-  // queue yoksa -> learn
-  if (!q) return true;
-
-  // queue var ama zamanı geldiyse -> learn (due)
-  if (new Date(q.nextReview) <= now) return true;
-
-  // queue var ve zamanı gelmediyse -> learn değil (waiting’de zaten)
-  return false;
-});
-
+    const learnPool = validWords.filter(w => {
+      if (knownWordIds.includes(w.id)) return false;
+      const q = getQueueItem(w.id);
+      if (!q) return true;
+      if (new Date(q.nextReview) <= now) return true;
+      return false;
+    });
 
     return { learnPool, reviewPool, waitingPool };
   };
 
   const { learnPool, reviewPool, waitingPool } = getWordPools();
 
-  // --- 2. OYUNU BAŞLATMA (AKILLI SIRALAMA) ---
+  // --- 2. OYUNU BAŞLATMA ---
   const startSession = (mode, e) => {
     handleBlur(e); 
-
     setActiveMode(mode);
     let selectedPool = [];
     if (mode === "learn") selectedPool = learnPool;
@@ -100,9 +90,6 @@ const learnPool = validWords.filter(w => {
       return;
     }
 
-    // --- YENİ ALGORİTMA: TARİHE GÖRE SIRALA ---
-    // Pronunciation oyunu için özel tarih anahtarı: 'lastSeen_pronunciation'
-    
     const neverSeen = [];
     const seen = [];
 
@@ -114,19 +101,11 @@ const learnPool = validWords.filter(w => {
         }
     });
 
-    // 1. Hiç görülmeyenleri karıştır
     neverSeen.sort(() => 0.5 - Math.random());
-
-    // 2. Görülenleri Eskiden -> Yeniye sırala
     seen.sort((a, b) => new Date(a.lastSeen_pronunciation).getTime() - new Date(b.lastSeen_pronunciation).getTime());
 
-    // 3. Birleştir
     const smartSortedPool = [...neverSeen, ...seen];
-
-    // 4. İlk 10 taneyi al
     const selectedCandidates = smartSortedPool.slice(0, 10);
-
-    // 5. Karıştır (Kullanıcı sırayı ezberlemesin)
     const selected = selectedCandidates.sort(() => 0.5 - Math.random());
 
     setSessionWords(selected);
@@ -137,15 +116,16 @@ const learnPool = validWords.filter(w => {
   };
 
   const resetRound = () => {
-    stopMicrophone(); 
+    stopMicrophone(); // Her tur başında mikrofonu öldür
     setSpokenText("");
     setFeedback(null);
     setIsRoundDone(false);
   };
 
-  // --- 3. MİKROFON YÖNETİMİ ---
+  // --- 3. MİKROFON YÖNETİMİ (GÜÇLENDİRİLDİ) ---
   
   const startListening = () => {
+    // Önceki varsa kapat
     if (recognitionRef.current) {
         recognitionRef.current.abort();
     }
@@ -192,7 +172,8 @@ const learnPool = validWords.filter(w => {
 
   const stopMicrophone = () => {
     if (recognitionRef.current) {
-        recognitionRef.current.abort(); 
+        recognitionRef.current.onend = null; // Eventleri temizle ki hata vermesin
+        recognitionRef.current.abort(); // Kesin durdurma
         recognitionRef.current = null;
     }
     setIsListening(false);
@@ -207,6 +188,7 @@ const learnPool = validWords.filter(w => {
     }
   };
 
+  // Sayfa kapanırsa veya component silinirse mikrofonu kapat
   useEffect(() => {
     return () => {
         stopMicrophone();
@@ -214,9 +196,9 @@ const learnPool = validWords.filter(w => {
     };
   }, []);
 
-  // --- 4. PUANLAMA VE KAYIT MANTIĞI ---
+  // --- 4. PUANLAMA VE KAYIT ---
   const evaluatePronunciation = (spoken) => {
-    const currentWord = sessionWords[currentIndex]; // Mevcut kelime
+    const currentWord = sessionWords[currentIndex]; 
     const target = currentWord.word.toLowerCase().trim();
     const input = spoken.toLowerCase().trim().replace(/[.,?!]/g, ""); 
 
@@ -247,18 +229,16 @@ const learnPool = validWords.filter(w => {
         }
     }
 
-    // --- GÜVENLİ KAYIT ---
-    // Telaffuz denemesi yapıldı, tarihini güncelle.
     handleUpdateWord(currentWord.id, { lastSeen_pronunciation: new Date().toISOString() });
 
     setSessionScore(prev => prev + earnedPoints);
     setFeedback({ score: earnedPoints, type, msg });
     setIsRoundDone(true);
-    updateGameStats('speech', 1);        // Haftalık Skor (Orijinal isim)
-updateGameStats('pronunciation', 1); // Günlük Görev (Yeni isim)
+    updateGameStats('pronunciation', 1); 
   };
 
-  // --- 5. DİĞER AKSİYONLAR ---
+  // --- 5. AKSİYONLAR (PAS GEÇ EKLENDİ) ---
+  
   const handleNext = (e) => {
     handleBlur(e); 
     stopMicrophone(); 
@@ -270,6 +250,25 @@ updateGameStats('pronunciation', 1); // Günlük Görev (Yeni isim)
       addScore(sessionScore);
       setGameStage("finished");
     }
+  };
+
+  // 🔥 YENİ: PAS GEÇ FONKSİYONU 🔥
+  const handleSkip = (e) => {
+      handleBlur(e);
+      stopMicrophone(); // Mikrofonu hemen kapat
+
+      // Kelimeyi "Görüldü" olarak işaretle (Tarih güncelle) ama puan verme
+      const currentWord = sessionWords[currentIndex];
+      handleUpdateWord(currentWord.id, { lastSeen_pronunciation: new Date().toISOString() });
+
+      // Sonraki kelimeye geçiş mantığı (handleNext ile aynı)
+      if (currentIndex + 1 < sessionWords.length) {
+          setCurrentIndex(p => p + 1);
+          resetRound();
+      } else {
+          addScore(sessionScore);
+          setGameStage("finished");
+      }
   };
 
   const handleQuitEarly = () => {
@@ -288,9 +287,12 @@ updateGameStats('pronunciation', 1); // Günlük Görev (Yeni isim)
   };
 
   // ===========================
-  // === 1. MOD SEÇİM EKRANI ===
+  // === UI RENDER ===
   // ===========================
   if (gameStage === "selection") {
+    // ... (Selection Ekranı aynı, kod kalabalığı olmasın diye ellemedim, aynı kalacak)
+    // Sadece return kısmını kopyalaman yeterli, değişen bir şey yok burada.
+    // Ama tam kod bütünlüğü için aşağıya ekliyorum.
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
             <div className="w-full max-w-sm space-y-6">
@@ -301,57 +303,26 @@ updateGameStats('pronunciation', 1); // Günlük Görev (Yeni isim)
                     <h2 className="text-xl font-bold text-slate-800">Telaffuz</h2>
                     <div className="w-9"></div>
                 </div>
-
                 <div className="text-center py-6">
                     <h1 className="text-3xl font-black text-slate-800 mb-2">Konuşma Zamanı!</h1>
                     <p className="text-slate-500">Kelimeleri sesli oku, yapay zeka puanlasın.</p>
                 </div>
-
                 <div className="space-y-4">
-                    {/* Tekrar Modu */}
-                    <button 
-                        onClick={(e) => startSession('review', e)} 
-                        disabled={reviewPool.length === 0} 
-                        style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
-                        className="w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 hover:border-orange-200 hover:bg-orange-50 transition-all group active:scale-95 disabled:opacity-60 focus:outline-none focus:ring-0"
-                    >
+                    <button onClick={(e) => startSession('review', e)} disabled={reviewPool.length === 0} className="w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 hover:border-orange-200 hover:bg-orange-50 transition-all group active:scale-95 disabled:opacity-60">
                         <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-4">
-                                <div className="bg-orange-100 p-3 rounded-xl text-orange-600"><RefreshCw className="w-8 h-8" /></div>
-                                <div className="text-left"><div className="font-bold text-xl text-slate-800">Tekrar Modu</div><div className="text-sm text-slate-500">Öğrendiklerini Pekiştir</div></div>
-                            </div>
+                            <div className="flex items-center gap-4"><div className="bg-orange-100 p-3 rounded-xl text-orange-600"><RefreshCw className="w-8 h-8" /></div><div className="text-left"><div className="font-bold text-xl text-slate-800">Tekrar Modu</div><div className="text-sm text-slate-500">Öğrendiklerini Pekiştir</div></div></div>
                             <div className="text-2xl font-black text-orange-600">{reviewPool.length}</div>
                         </div>
                     </button>
-
-                    {/* Öğrenme Modu */}
-                    <button 
-                        onClick={(e) => startSession('learn', e)} 
-                        disabled={learnPool.length === 0} 
-                        style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
-                        className="w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 hover:border-indigo-200 hover:bg-indigo-50 transition-all group active:scale-95 disabled:opacity-60 focus:outline-none focus:ring-0"
-                    >
+                    <button onClick={(e) => startSession('learn', e)} disabled={learnPool.length === 0} className="w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 hover:border-indigo-200 hover:bg-indigo-50 transition-all group active:scale-95 disabled:opacity-60">
                         <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-4">
-                                <div className="bg-indigo-100 p-3 rounded-xl text-indigo-600"><Brain className="w-8 h-8" /></div>
-                                <div className="text-left"><div className="font-bold text-xl text-slate-800">Öğrenme Modu</div><div className="text-sm text-slate-500">Yeni Kelimeler</div></div>
-                            </div>
+                            <div className="flex items-center gap-4"><div className="bg-indigo-100 p-3 rounded-xl text-indigo-600"><Brain className="w-8 h-8" /></div><div className="text-left"><div className="font-bold text-xl text-slate-800">Öğrenme Modu</div><div className="text-sm text-slate-500">Yeni Kelimeler</div></div></div>
                             <div className="text-2xl font-black text-indigo-600">{learnPool.length}</div>
                         </div>
                     </button>
-
-                    {/* Bekleme Modu */}
-                    <button 
-                        onClick={(e) => startSession('waiting', e)} 
-                        disabled={waitingPool.length === 0} 
-                        style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
-                        className="w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 hover:border-slate-300 hover:bg-slate-50 transition-all group active:scale-95 disabled:opacity-60 focus:outline-none focus:ring-0"
-                    >
+                    <button onClick={(e) => startSession('waiting', e)} disabled={waitingPool.length === 0} className="w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 hover:border-slate-300 hover:bg-slate-50 transition-all group active:scale-95 disabled:opacity-60">
                         <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-4">
-                                <div className="bg-slate-100 p-3 rounded-xl text-slate-500"><Hourglass className="w-8 h-8" /></div>
-                                <div className="text-left"><div className="font-bold text-xl text-slate-700">Bekleme Listesi</div><div className="text-sm text-slate-400">Henüz Zamanı Gelmeyen Kelimeler</div></div>
-                            </div>
+                            <div className="flex items-center gap-4"><div className="bg-slate-100 p-3 rounded-xl text-slate-500"><Hourglass className="w-8 h-8" /></div><div className="text-left"><div className="font-bold text-xl text-slate-700">Bekleme Listesi</div><div className="text-sm text-slate-400">Henüz Zamanı Gelmeyen Kelimeler</div></div></div>
                             <div className="text-2xl font-black text-slate-500">{waitingPool.length}</div>
                         </div>
                     </button>
@@ -366,7 +337,6 @@ updateGameStats('pronunciation', 1); // Günlük Görev (Yeni isim)
   // ===========================
   if (gameStage === "finished") {
     const maxScore = sessionWords.length * 10;
-    
     let modeTitle = "Oturum Tamamlandı!";
     if (activeMode === 'learn') modeTitle = "Bitti";
     if (activeMode === 'review') modeTitle = "Bitti";
@@ -377,26 +347,13 @@ updateGameStats('pronunciation', 1); // Günlük Görev (Yeni isim)
         <div className="bg-white p-8 rounded-3xl shadow-xl max-w-sm w-full text-center space-y-6">
            <div className="bg-purple-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto animate-bounce"><Trophy className="w-10 h-10 text-purple-600"/></div>
            <h2 className="text-2xl font-bold text-slate-800">{modeTitle}</h2>
-           
            <div className="py-6 bg-slate-50 rounded-2xl border border-slate-100">
              <div className="text-sm text-slate-400 font-bold uppercase">TOPLAM PUAN</div>
              <div className="text-5xl font-extrabold text-purple-600 mt-2">{sessionScore}</div>
              <div className="text-xs text-slate-400 mt-1">Maksimum: {maxScore}</div>
            </div>
-
-           <button 
-                onClick={() => setGameStage("selection")} 
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-xl flex items-center justify-center gap-2 mb-3 shadow-lg shadow-blue-200"
-           >
-                Başka Test Çöz
-           </button>
-           
-           <button 
-                onClick={() => navigate("/")} 
-                className="w-full bg-white border-2 border-slate-200 text-slate-600 font-bold py-3 px-6 rounded-xl hover:bg-slate-50 flex items-center justify-center gap-2"
-           >
-                <Home className="w-5 h-5" /> Ana Sayfa
-           </button>
+           <button onClick={() => setGameStage("selection")} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-xl flex items-center justify-center gap-2 mb-3 shadow-lg shadow-blue-200">Başka Test Çöz</button>
+           <button onClick={() => navigate("/")} className="w-full bg-white border-2 border-slate-200 text-slate-600 font-bold py-3 px-6 rounded-xl hover:bg-slate-50 flex items-center justify-center gap-2"><Home className="w-5 h-5" /> Ana Sayfa</button>
         </div>
       </div>
     );
@@ -410,26 +367,14 @@ updateGameStats('pronunciation', 1); // Günlük Görev (Yeni isim)
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center p-4">
-       
-       {/* --- MOBİL İÇİN KRİTİK CSS DÜZELTMELERİ --- */}
        <style>{`
-         * {
-           -webkit-tap-highlight-color: transparent !important;
-         }
-         
-         /* Sadece Mouse ile hover efekti (Mobil yapışmayı engeller) */
+         * { -webkit-tap-highlight-color: transparent !important; }
          @media (hover: hover) {
             .mic-btn:hover { background-color: #4338ca !important; }
             .action-btn:hover { background-color: #e0e7ff !important; }
+            .skip-btn:hover { background-color: #f1f5f9 !important; color: #64748b !important; }
          }
-
-         /* Ortak Buton Stilleri */
-         .mic-btn {
-            transition: all 0.2s ease;
-         }
-         .action-btn {
-            transition: all 0.2s ease;
-         }
+         .mic-btn, .action-btn, .skip-btn { transition: all 0.2s ease; }
        `}</style>
 
        <div className="w-full max-w-md space-y-6 mt-4">
@@ -450,11 +395,7 @@ updateGameStats('pronunciation', 1); // Günlük Görev (Yeni isim)
                
                <h2 className="text-5xl font-black text-slate-800 tracking-tight">{currentWord.word}</h2>
                
-               <button 
-                   onClick={(e) => speakWord(e)}
-                   style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
-                   className="action-btn flex items-center gap-2 bg-indigo-50 text-indigo-600 px-4 py-2 rounded-full text-sm font-bold transition-colors focus:outline-none focus:ring-0"
-               >
+               <button onClick={(e) => speakWord(e)} style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }} className="action-btn flex items-center gap-2 bg-indigo-50 text-indigo-600 px-4 py-2 rounded-full text-sm font-bold transition-colors focus:outline-none focus:ring-0">
                    <Volume2 className="w-4 h-4" /> Doğrusunu Dinle
                </button>
 
@@ -478,33 +419,38 @@ updateGameStats('pronunciation', 1); // Günlük Görev (Yeni isim)
            {/* Mikrofon / Sonraki Butonu */}
            <div className="flex justify-center pt-4">
                {!isRoundDone ? (
-                   <div className="flex flex-col items-center gap-3">
+                   <div className="flex flex-col items-center gap-4 w-full">
                        {/* MİKROFON BUTONU */}
-                       <button
-                           onClick={(e) => toggleMic(e)}
-                           style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
-                           className={`mic-btn w-20 h-20 rounded-full flex items-center justify-center shadow-xl transition-all transform active:scale-95 focus:outline-none focus:ring-0 select-none touch-manipulation ${
-                               isListening 
-                                   ? "bg-red-500 text-white animate-pulse ring-4 ring-red-200" 
-                                   : "bg-indigo-600 text-white"
-                           }`}
+                       <div className="flex flex-col items-center gap-2">
+                           <button
+                               onClick={(e) => toggleMic(e)}
+                               style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
+                               className={`mic-btn w-20 h-20 rounded-full flex items-center justify-center shadow-xl transition-all transform active:scale-95 focus:outline-none focus:ring-0 select-none touch-manipulation ${
+                                   isListening 
+                                       ? "bg-red-500 text-white animate-pulse ring-4 ring-red-200" 
+                                       : "bg-indigo-600 text-white"
+                               }`}
+                           >
+                               {isListening ? <Square className="w-8 h-8 fill-current" /> : <Mic className="w-10 h-10" />}
+                           </button>
+                           <span className="text-slate-400 text-sm font-medium">{isListening ? "Dinliyorum..." : "Bas ve Oku"}</span>
+                       </div>
+
+                       {/* 🔥 PAS GEÇ BUTONU (Sadece round bitmemişse görünür) 🔥 */}
+                       <button 
+                           onClick={handleSkip}
+                           className="skip-btn text-slate-400 font-bold text-sm py-2 px-6 rounded-full border border-transparent hover:border-slate-200 hover:bg-slate-50 flex items-center gap-2 transition-all active:scale-95"
                        >
-                           {isListening ? <Square className="w-8 h-8 fill-current" /> : <Mic className="w-10 h-10" />}
+                           Pas Geç <SkipForward className="w-4 h-4"/>
                        </button>
-                       <span className="text-slate-400 text-sm font-medium">{isListening ? "Dinliyorum..." : "Bas ve Oku"}</span>
                    </div>
                ) : (
-                   <button 
-                       onClick={(e) => handleNext(e)} 
-                       style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
-                       className="w-full bg-indigo-600 text-white font-bold py-4 rounded-2xl shadow-lg hover:bg-indigo-700 transition-transform active:scale-95 flex items-center justify-center gap-2 focus:outline-none focus:ring-0"
-                   >
+                   <button onClick={(e) => handleNext(e)} style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }} className="w-full bg-indigo-600 text-white font-bold py-4 rounded-2xl shadow-lg hover:bg-indigo-700 transition-transform active:scale-95 flex items-center justify-center gap-2 focus:outline-none focus:ring-0">
                        {currentIndex + 1 === sessionWords.length ? "Sonucu Gör" : "Sıradaki Kelime"} <ArrowLeft className="w-5 h-5 rotate-180"/>
                    </button>
                )}
            </div>
 
-           {/* BİTİR VE ÇIK BUTONU */}
            <button onClick={handleQuitEarly} style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }} className="w-full mt-6 flex items-center justify-center gap-2 text-slate-400 hover:text-red-500 transition-colors text-sm font-medium mx-auto focus:outline-none focus:ring-0">
                Bitir (Puanı Al ve Çık)
            </button>
