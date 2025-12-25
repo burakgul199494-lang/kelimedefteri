@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { 
   X, Trophy, Loader2, Home, Volume2, CheckCircle2, 
   Dumbbell, Layers, ArrowRight, Languages, Square, 
-  Lightbulb, AlertTriangle, Star
+  Lightbulb, AlertTriangle, Star, Tag
 } from "lucide-react";
 
 const FORM_TYPES = [
@@ -198,7 +198,6 @@ export default function ExerciseGame() {
 
       const targetWord = questions[currentIndex].targetWord;
       
-      // KURAL 1: Tek harfli kelime engeli
       if (targetWord.length <= 1) return;
 
       const nextIndex = completedLetters.length;
@@ -206,21 +205,16 @@ export default function ExerciseGame() {
       const correctLetterObj = shuffledLetters.find(l => !l.isUsed && l.char.toLowerCase() === expectedChar.toLowerCase());
 
       if (correctLetterObj) {
-          // --- Puanlama Mantığı ---
           let nextPoints = currentWordPoints;
           const newHintCount = hintCount + 1;
           setHintCount(newHintCount);
 
-          // KURAL 2: İlk ipucu 5 puana düşürür
           if (newHintCount === 1) {
               nextPoints = 5;
-          } 
-          // Sonrakiler 0 yapar
-          else {
+          } else {
               nextPoints = 0;
           }
 
-          // KURAL 3: Son harfi ipucu açıyorsa 0 puan
           const isLastLetter = (completedLetters.length + 1) === targetWord.length;
           if (isLastLetter) {
               nextPoints = 0;
@@ -228,7 +222,6 @@ export default function ExerciseGame() {
 
           setCurrentWordPoints(nextPoints);
 
-          // Harfi Yerleştir
           const newShuffled = shuffledLetters.map(l => l.id === correctLetterObj.id ? { ...l, isUsed: true } : l);
           setShuffledLetters(newShuffled);
           const newCompleted = [...completedLetters, correctLetterObj.char];
@@ -283,16 +276,13 @@ export default function ExerciseGame() {
   };
 
   // ===================================
-  // === 1. MOD SEÇİM EKRANI (FİXED) ===
+  // === 1. MOD SEÇİM EKRANI ===
   // ===================================
   if (gameStatus === "selection") {
       return (
         <div className="min-h-screen bg-slate-50 flex flex-col items-center p-6">
-            
-            {/* CSS FİX */}
             <style>{`
                 * { -webkit-tap-highlight-color: transparent !important; }
-                
                 .menu-btn { 
                     background-color: white;
                     border: 1px solid #e2e8f0;
@@ -306,16 +296,9 @@ export default function ExerciseGame() {
                     opacity: 0.5;
                     cursor: not-allowed;
                 }
-
                 @media (hover: hover) {
-                    .menu-btn:hover { 
-                        border-color: #a5b4fc !important; /* indigo-300 */
-                        background-color: #f8fafc !important; /* slate-50 */
-                    }
-                    .menu-btn:hover .icon-box {
-                        background-color: #eef2ff !important; /* indigo-50 */
-                        color: #4f46e5 !important; /* indigo-600 */
-                    }
+                    .menu-btn:hover { border-color: #a5b4fc !important; background-color: #f8fafc !important; }
+                    .menu-btn:hover .icon-box { background-color: #eef2ff !important; color: #4f46e5 !important; }
                 }
             `}</style>
 
@@ -434,17 +417,23 @@ export default function ExerciseGame() {
             <div className="bg-white p-5 rounded-3xl shadow-xl border border-slate-100 text-center relative overflow-hidden min-h-[450px] flex flex-col justify-between">
                 <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-indigo-400 to-purple-400"></div>
 
-                {/* Soru Değeri (SAĞ ÜST) */}
+                {/* --- SAĞ ÜST: PUAN GÖSTERGESİ --- */}
                 <div className="absolute top-4 right-4 flex items-center gap-1 bg-green-50 text-green-700 px-2 py-1 rounded-lg text-xs font-bold border border-green-100 animate-in fade-in">
                     <Star className="w-3 h-3 fill-current"/> Soru: {currentWordPoints}p
                 </div>
 
-                {/* 🔥 YENİ: İstenen Form Bilgisi (SOL ÜST) 🔥 */}
-                <div className="absolute top-4 left-4 text-[10px] font-bold text-white uppercase tracking-wider bg-indigo-500 px-2 py-1 rounded-md shadow-sm">
-                    İSTENEN: {activeForm?.label.split('(')[0]}
-                </div>
+                {/* --- 🔥 SOL ÜST: KELİME ETİKETLERİ (TAGS) 🔥 --- */}
+                {baseWordObj.tags && baseWordObj.tags.length > 0 && (
+                    <div className="absolute top-4 left-4 flex flex-col items-start gap-1 z-10 max-w-[80px]">
+                        {baseWordObj.tags.map((tag, i) => (
+                            <span key={i} className="text-[9px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200 truncate max-w-full">
+                                {tag}
+                            </span>
+                        ))}
+                    </div>
+                )}
 
-                <div className="mt-8 flex flex-col items-center gap-1"> {/* mt-8: Üstteki etiketler için yer açıldı */}
+                <div className="mt-8 flex flex-col items-center gap-1"> 
                     <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">ANA KELİME (BASE)</div>
                     <div className="flex items-center gap-2">
                         <h2 className="text-3xl font-black text-slate-800">{baseWordObj.word}</h2>
@@ -508,7 +497,11 @@ export default function ExerciseGame() {
                 )}
 
                 <div className="space-y-3 mt-4">
-                    {/* Eski "İstenen" etiketi buradan kaldırıldı, yukarı taşındı */}
+                    {/* --- ORTA ALAN: İSTENEN FORM ETİKETİ (BURAYA TAŞINDI) --- */}
+                    <div className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider bg-slate-50 inline-block px-2 py-1 rounded">
+                        İSTENEN: {activeForm?.label.split('(')[0]}
+                    </div>
+
                     <div className="flex flex-wrap justify-center gap-1 min-h-[50px] items-end content-center">
                         {targetWord.split('').map((_, idx) => {
                             const char = completedLetters[idx];
