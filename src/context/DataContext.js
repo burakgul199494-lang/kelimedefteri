@@ -562,7 +562,7 @@ export const DataProvider = ({ children }) => {
      } catch (e) { console.error("Update Error:", e); }
   };
 
-  const handleSaveSystemWord = async (wordData) => {
+const handleSaveSystemWord = async (wordData) => {
     try {
       // 🔥 GÜNCEL: Duplicate (çift kayıt) kontrolü kaldırıldı.
       // Admin aynı kelimeyi farklı anlamlarla ekleyebilir.
@@ -595,6 +595,18 @@ export const DataProvider = ({ children }) => {
       const blacklistRef = collection(db, "artifacts", appId, "blacklist");
       const q = query(blacklistRef, where("word", "==", normalizedInput));
       const querySnapshot = await getDocs(q);
+      querySnapshot.forEach(async (doc) => { await deleteDoc(doc.ref); });
+
+      // 2. Eğer kullanıcının kendi eklediği aynı kelime varsa, sistem kelimesi baskın gelsin diye onu "silinmiş" işaretle.
+      const conflictingCustom = customWords.find(w => w.word.toLowerCase() === normalizedInput);
+      if (conflictingCustom) {
+          const userRef = doc(db, "artifacts", appId, "users", user.uid, "vocab_game", "progress");
+          await setDoc(userRef, { deleted_ids: arrayUnion(conflictingCustom.id) }, { merge: true });
+      }
+      return { success: true };
+
+    } catch (e) { return { success: false, message: e.message }; }
+  };
 
   const handleDeleteSystemWord = async (wordId) => {
       if(!window.confirm("Bu kelime tüm kullanıcılardan silinecek (Yasaklanacak). Emin misin?")) return;
