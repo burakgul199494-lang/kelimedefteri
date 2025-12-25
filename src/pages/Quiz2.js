@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { useData } from "../context/DataContext";
 import { useNavigate } from "react-router-dom";
-import { X, Trophy, Loader2, Home, RefreshCw, BrainCircuit, Hourglass } from "lucide-react";
+import { 
+  X, Trophy, Loader2, Home, RefreshCw, BrainCircuit, Hourglass, Star, Tag
+} from "lucide-react";
 
 export default function Quiz2() {
   const { getAllWords, knownWordIds, learningQueue, addScore, updateGameStats, handleUpdateWord } = useData();
@@ -17,37 +19,36 @@ export default function Quiz2() {
   const [gameStatus, setGameStatus] = useState("mode-selection");
   const [isTransitioning, setIsTransitioning] = useState(false);
 
-// --- KELİME HAVUZLARI ---
-const getWordPools = () => {
-  const all = getAllWords();
-  const validWords = all.filter(
-    w => w.definitions && w.definitions[0]?.meaning
-  );
-  const now = new Date();
+  // --- KELİME HAVUZLARI ---
+  const getWordPools = () => {
+    const all = getAllWords();
+    const validWords = all.filter(
+      w => w.definitions && w.definitions[0]?.meaning
+    );
+    const now = new Date();
 
-  const getQueueItem = (id) =>
-    learningQueue ? learningQueue.find(q => q.wordId === id) : null;
+    const getQueueItem = (id) =>
+      learningQueue ? learningQueue.find(q => q.wordId === id) : null;
 
-  const waitingPool = validWords.filter(w => {
-    const q = getQueueItem(w.id);
-    return q && new Date(q.nextReview) > now;
-  });
+    const waitingPool = validWords.filter(w => {
+      const q = getQueueItem(w.id);
+      return q && new Date(q.nextReview) > now;
+    });
 
-  const reviewPool = validWords.filter(w =>
-    knownWordIds.includes(w.id)
-  );
+    const reviewPool = validWords.filter(w =>
+      knownWordIds.includes(w.id)
+    );
 
-  const learnPool = validWords.filter(w => {
-    if (knownWordIds.includes(w.id)) return false;
-    const q = getQueueItem(w.id);
-    if (!q) return true;
-    if (new Date(q.nextReview) <= now) return true;
-    return false;
-  });
+    const learnPool = validWords.filter(w => {
+      if (knownWordIds.includes(w.id)) return false;
+      const q = getQueueItem(w.id);
+      if (!q) return true;
+      if (new Date(q.nextReview) <= now) return true;
+      return false;
+    });
 
-  return { learnPool, reviewPool, waitingPool };
-};
-
+    return { learnPool, reviewPool, waitingPool };
+  };
 
   const { learnPool, reviewPool, waitingPool } = getWordPools();
 
@@ -91,8 +92,6 @@ const getWordPools = () => {
       const correct = target.word;
       const questionText = target.definitions[0].meaning;
       
-      // 🔥 DEĞİŞİKLİK BURADA: İsim Benzerliği Filtresi 🔥
-      // Şıklarda aynı kelimenin (Bank vs Bank) çıkmasını engelliyoruz.
       const others = allValidWords
         .filter(w => 
             // 1. ID Kontrolü
@@ -338,8 +337,28 @@ const getWordPools = () => {
           ) : (
               <>
                 {/* SORU KARTI (TÜRKÇE ANLAM) */}
-                <div className="bg-white p-8 rounded-3xl shadow-lg border border-slate-100 text-center space-y-6 mt-6 animate-in fade-in zoom-in duration-300">
-                    <h2 className="text-3xl font-extrabold text-slate-800 break-words leading-tight">{current.questionText}</h2>
+                <div className="bg-white p-8 rounded-3xl shadow-lg border border-slate-100 text-center space-y-6 mt-6 animate-in fade-in zoom-in duration-300 relative overflow-hidden">
+                    
+                    {/* --- 🔥 SAĞ ÜST KÖŞE: PUAN --- */}
+                    <div className="absolute top-4 right-4 flex items-center gap-1 bg-green-50 text-green-700 px-2 py-1 rounded-lg text-xs font-bold border border-green-100">
+                        <Star className="w-3 h-3 fill-current"/> 5p
+                    </div>
+
+                    {/* --- 🔥 SOL ÜST KÖŞE: ETİKETLER (top-0 + mt-4) 🔥 --- */}
+                    {current.wordObj.tags && current.wordObj.tags.length > 0 && (
+                        <div className="absolute top-0 left-4 mt-4 flex gap-1 max-w-[50%] flex-wrap justify-start">
+                            {current.wordObj.tags.map((tag, i) => (
+                                <span key={i} className="text-[9px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200 truncate max-w-full">
+                                    {tag}
+                                </span>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Ana İçerik (mt-8 ile aşağı itildi) */}
+                    <div className="mt-8">
+                        <h2 className="text-3xl font-extrabold text-slate-800 break-words leading-tight">{current.questionText}</h2>
+                    </div>
                 </div>
 
                 {/* ŞIKLAR (İNGİLİZCE KELİMELER) */}
