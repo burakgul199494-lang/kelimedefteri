@@ -9,15 +9,10 @@ import {
   BrainCircuit, 
   Hourglass, 
   Home, 
-  Layers, 
-  Puzzle, 
-  CheckCircle2, 
-  Target, 
   ArrowRight
 } from "lucide-react";
 
 export default function WordMatchGame() {
-  // 1. handleUpdateWord EKLENDİ
   const { getAllWords, knownWordIds, learningQueue, addScore, updateGameStats, handleUpdateWord } = useData();
   const navigate = useNavigate();
 
@@ -31,11 +26,27 @@ export default function WordMatchGame() {
   
   const [cards, setCards] = useState([]); // Ekrandaki kartlar
   const [selectedCards, setSelectedCards] = useState([]); 
-  const [matchedPairsInRound, setMatchedPairsInRound] = useState(0); // O turdaki eşleşme
+  const [matchedPairsInRound, setMatchedPairsInRound] = useState(0); 
   const [score, setScore] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false); 
 
-  // --- IPHONE FIX: TIKLAYINCA ODAĞI KALDIR (BLUR) ---
+  // --- PROFESYONEL KARIŞTIRMA ALGORİTMASI (Fisher-Yates Shuffle) ---
+  // Bu algoritma kartların yan yana gelme ihtimalini tamamen rastgele hale getirir.
+  const shuffleArray = (array) => {
+    let currentIndex = array.length, randomIndex;
+    // Karıştırılacak eleman kalmayana kadar...
+    while (currentIndex !== 0) {
+      // Geriye kalanlardan rastgele birini seç
+      randomIndex = Math.floor(Math.random() * currentIndex);
+      currentIndex--;
+      // Ve mevcut elemanla yer değiştir
+      [array[currentIndex], array[randomIndex]] = [
+        array[randomIndex], array[currentIndex]];
+    }
+    return array;
+  };
+
+  // --- IPHONE FIX ---
   const handleBlur = (e) => {
       if (e && e.currentTarget) e.currentTarget.blur();
   };
@@ -63,7 +74,7 @@ export default function WordMatchGame() {
     return { learnPool, reviewPool, waitingPool };
   }, [getAllWords, knownWordIds, learningQueue]);
 
-  // --- OYUNU BAŞLATMA (AKILLI SIRALAMA) ---
+  // --- OYUNU BAŞLATMA ---
   const startSession = (mode, e) => {
     handleBlur(e);
     setGameMode(mode);
@@ -73,15 +84,12 @@ export default function WordMatchGame() {
     else if (mode === "review") selectedPool = pools.reviewPool;
     else if (mode === "waiting") selectedPool = pools.waitingPool;
 
-    // En az 10 kelime lazım (5+5)
     if (selectedPool.length < 10) {
       alert(`Bu mod için en az 10 kelime gerekiyor. (Mevcut: ${selectedPool.length})`);
       return;
     }
 
-    // --- YENİ ALGORİTMA: TARİHE GÖRE SIRALA ---
-    // Word Match oyunu için özel tarih anahtarı: 'lastSeen_word_match'
-    
+    // --- SIRALAMA VE FİLTRELEME ---
     const neverSeen = [];
     const seen = [];
 
@@ -93,20 +101,34 @@ export default function WordMatchGame() {
         }
     });
 
-    // 1. Hiç görülmeyenleri karıştır
     neverSeen.sort(() => 0.5 - Math.random());
-
-    // 2. Görülenleri Eskiden -> Yeniye sırala
     seen.sort((a, b) => new Date(a.lastSeen_word_match).getTime() - new Date(b.lastSeen_word_match).getTime());
 
-    // 3. Birleştir
     const smartSortedPool = [...neverSeen, ...seen];
 
-    // 4. İlk 10 taneyi al
-    const selected10 = smartSortedPool.slice(0, 10);
+    // 🔥 KRİTİK FİLTRE: Aynı yazılışa sahip kelimeleri havuza alma! 🔥
+    // Örn: "Bank" (ID:1) listeye girdiyse, "Bank" (ID:2) girmesin.
+    const uniqueSessionWords = [];
+    const usedSpellings = new Set();
 
-    // 5. Karıştır (Roundlara dağıtmadan önce)
-    const shuffled10 = selected10.sort(() => 0.5 - Math.random());
+    for (const w of smartSortedPool) {
+        const spelling = w.word.toLowerCase().trim();
+        if (!usedSpellings.has(spelling)) {
+            uniqueSessionWords.push(w);
+            usedSpellings.add(spelling);
+        }
+        // 10 kelimeye ulaşınca dur
+        if (uniqueSessionWords.length === 10) break;
+    }
+
+    // Eğer filtreleme sonrası 10 kelime çıkmadıysa (Çok nadir olur ama önlem)
+    if (uniqueSessionWords.length < 10) {
+        alert("Farklı yazılışa sahip yeterli kelime bulunamadı (En az 10).");
+        return;
+    }
+
+    // Seçilen 10 kelimeyi karıştır
+    const shuffled10 = shuffleArray([...uniqueSessionWords]);
     
     setAllSessionWords(shuffled10);
     setScore(0);
@@ -124,7 +146,7 @@ export default function WordMatchGame() {
 
       let generatedCards = [];
       roundWords.forEach(w => {
-          // İngilizce
+          // İngilizce Kart
           generatedCards.push({
               id: w.id + "-en",
               wordId: w.id,
@@ -133,7 +155,7 @@ export default function WordMatchGame() {
               isMatched: false,
               isWrong: false
           });
-          // Türkçe
+          // Türkçe Kart
           generatedCards.push({
               id: w.id + "-tr",
               wordId: w.id,
@@ -144,10 +166,10 @@ export default function WordMatchGame() {
           });
       });
 
-      // Karıştır
-      generatedCards.sort(() => 0.5 - Math.random());
+      // 🔥 KARIŞTIRMA: Fisher-Yates ile iyice dağıt (Yan yana gelmeyi önler)
+      const shuffledCards = shuffleArray([...generatedCards]);
 
-      setCards(generatedCards);
+      setCards(shuffledCards);
       setMatchedPairsInRound(0);
       setSelectedCards([]);
       setIsProcessing(false);
@@ -174,13 +196,11 @@ export default function WordMatchGame() {
 
       if (first.wordId === second.wordId) {
           // --- DOĞRU ---
-          updateGameStats('word_match', 1); // Haftalık Skor
-    updateGameStats('word-match', 1); // Günlük Görev (Tireli hali)
+          updateGameStats('word_match', 1); 
+          updateGameStats('word-match', 1);
           
-          // --- GÜVENLİ KAYIT ---
-          // Word Match tarihinde bu kelimeyi işaretle (Sona at)
           handleUpdateWord(first.wordId, { lastSeen_word_match: new Date().toISOString() });
-       
+        
           setCards(prev => prev.map(card => {
               if (card.id === first.id || card.id === second.id) {
                   return { ...card, isMatched: true };
@@ -195,15 +215,12 @@ export default function WordMatchGame() {
           setMatchedPairsInRound(prevCount => {
               const currentCount = prevCount + 1;
               
-              // TUR BİTTİ Mİ? (5 Çift Bulunduysa)
               if (currentCount === 5) {
                   setTimeout(() => {
                       if (round === 1) {
-                          // 2. Tura Geç
                           setRound(2);
                           setupRound(2, allSessionWords);
                       } else {
-                          // Oyun Bitti
                           setGameStatus("finished");
                       }
                   }, 800); 
@@ -249,11 +266,9 @@ export default function WordMatchGame() {
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
             
-            {/* --- GLOBAL CSS FIX --- */}
             <style>{`
                 * { -webkit-tap-highlight-color: transparent !important; }
                 
-                /* Sadece Mouse ile hover */
                 @media (hover: hover) {
                     .btn-select:hover { border-color: #fb923c !important; background-color: #fff7ed !important; }
                     .btn-learn:hover { border-color: #818cf8 !important; background-color: #eef2ff !important; }
@@ -333,7 +348,6 @@ export default function WordMatchGame() {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center p-4">
        
-       {/* --- EŞLEŞTİRME OYUNU İÇİN MOBİL CSS --- */}
        <style>{`
             * { -webkit-tap-highlight-color: transparent !important; }
             
