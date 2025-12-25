@@ -13,20 +13,7 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const messaging = firebase.messaging();
 
-messaging.onBackgroundMessage(function(payload) {
-  console.log('[firebase-messaging-sw.js] Bildirim alındı:', payload);
-  
-  const notificationTitle = payload.notification?.title || "Kelime Defteri";
-  
-  const notificationOptions = {
-    body: payload.notification?.body || "Yeni bir bildirimin var!",
-    icon: '/icon-192.png',
-    
-    // 🔥 ÇİFT BİLDİRİM ENGELLEYİCİ SİHİRLİ KOD 🔥
-    // Eğer Firebase de gösterirse, bu etiket sayesinde ikisi birleşir.
-    tag: 'unique-app-notification', 
-    renotify: true // Eski bildirim varsa onu titretip günceller
-  };
-
-  self.registration.showNotification(notificationTitle, notificationOptions);
-});
+// 🔥 BURASI BİLEREK BOŞ BIRAKILDI 🔥
+// iPhone zaten bildirimi otomatik gösteriyor.
+// İkinci kez bizim göstermemize gerek yok.
+// DataContext.js dosyasındaki "registration" ayarı bağlantıyı tutmaya yetiyor.
