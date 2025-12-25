@@ -37,15 +37,15 @@ export const DataProvider = ({ children }) => {
 
   // --- GÜNLÜK GÖREV HEDEFLERİ (Senin Belirlediğin Sayılar) ---
   const DAILY_QUESTS_TARGETS = {
-    flashcard: 20,
-    quiz: 40,
-    quiz2: 40,        // Ters Quiz
+    flashcard: 10,
+    quiz: 20,
+    quiz2: 20,        // Ters Quiz
     exercise: 20,     // Egzersiz Modu
-    writing: 20,
+    writing: 10,
     writing2: 10,     // Dinle Yaz
     gap_filling: 10,  // Boşluk Doldurma
-    sentence_builder: 20, // Cümle Kurma
-    word_match: 60,   // Eşleştirme
+    sentence_builder: 10, // Cümle Kurma
+    word_match: 20,   // Eşleştirme
     pronunciation: 5  // Telaffuz
   };
 
