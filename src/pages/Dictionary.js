@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useData } from "../context/DataContext";
 import WordCard2 from "../components/WordCard2";
 import QuickAddModal from "../components/QuickAddModal";
-import { ArrowLeft, Search, X, BookOpen, AlertCircle, ArrowDownCircle, Plus } from "lucide-react";
+import { ArrowLeft, Search, X, BookOpen, AlertCircle, ArrowDownCircle, Plus, CopyPlus } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 
 export default function Dictionary() {
@@ -75,13 +75,15 @@ export default function Dictionary() {
 
   const handleSuccess = () => {
       setShowQuickAdd(false);
-      setDebouncedTerm(term); 
+      // Listeyi tetiklemek için ufak bir state değişikliği simülasyonu
+      const currentTerm = term;
+      setTerm(""); 
+      setTimeout(() => setTerm(currentTerm), 50);
   };
 
   const displayedResults = results.slice(0, visibleCount);
 
-  // --- KRİTİK KONTROL: Aranan kelime tam olarak listede var mı? ---
-  // Örneğin: "key" arandı, listede "keyboard" var ama "key" yoksa false döner.
+  // Aranan kelime tam olarak listede var mı?
   const cleanSearch = debouncedTerm.toLowerCase().trim();
   const exactMatchFound = results.some(r => r.word.toLowerCase() === cleanSearch);
 
@@ -132,15 +134,24 @@ export default function Dictionary() {
               </div>
             )}
 
-            {/* --- 2. ADMİN EKLEME BUTONU (Tam eşleşme yoksa her zaman göster) --- */}
-            {/* Sonuç olsa bile, aranan kelime tam olarak yoksa bu buton en üstte çıkar */}
-            {isAdmin && debouncedTerm && !exactMatchFound && (
+            {/* --- 2. ADMİN EKLEME BUTONU (HER ZAMAN GÖRÜNSÜN) --- */}
+            {/* 🔥 GÜNCELLEME: "!exactMatchFound" şartını kaldırdık. Admin her zaman ekleyebilir. */}
+            {isAdmin && debouncedTerm && (
                 <button
                     onClick={() => setShowQuickAdd(true)}
-                    className="w-full py-3 bg-indigo-50 border-2 border-dashed border-indigo-200 text-indigo-600 font-bold rounded-xl hover:bg-indigo-100 transition flex items-center justify-center gap-2"
+                    className={`
+                        w-full py-3 border-2 border-dashed rounded-xl font-bold transition flex items-center justify-center gap-2
+                        ${exactMatchFound 
+                            ? "bg-orange-50 border-orange-200 text-orange-600 hover:bg-orange-100" // Zaten varsa turuncu yap (Dikkat çeksin)
+                            : "bg-indigo-50 border-indigo-200 text-indigo-600 hover:bg-indigo-100" // Yoksa mavi
+                        }
+                    `}
                 >
-                    <Plus className="w-5 h-5"/>
-                    "{term}" kelimesini ekle
+                    {exactMatchFound ? <CopyPlus className="w-5 h-5"/> : <Plus className="w-5 h-5"/>}
+                    {exactMatchFound 
+                        ? `"${term}" için YENİ ANLAM Ekle` 
+                        : `"${term}" kelimesini Ekle`
+                    }
                 </button>
             )}
 
