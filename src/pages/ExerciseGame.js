@@ -143,14 +143,14 @@ export default function ExerciseGame() {
     const uniqueValidWords = [];
     const seenTexts = new Set();
     
-    // HARD MODE İSE FİLTRELEME, DEĞİLSE FİLTRELE
-    const poolToProcess = isHardMode ? rawValidWords : rawValidWords; 
+    // HARD MODE İSE HEPSİNİ AL, DEĞİLSE BENZERSİZLEŞTİR
+    const poolToProcess = isHardMode ? rawValidWords : rawValidWords;
 
     poolToProcess.forEach(w => {
         if(w && w.word) {
             const text = String(w.word).toLowerCase().trim();
             if (isHardMode) {
-                 uniqueValidWords.push(w); // Hard mode'da hepsini al
+                 uniqueValidWords.push(w);
             } else {
                 if (!seenTexts.has(text)) {
                     seenTexts.add(text);
@@ -229,6 +229,7 @@ export default function ExerciseGame() {
     setShowDefTr(false);
 
     if (gameStatus === "playing" && questions[currentIndex]) {
+      // 🔥 CRASH ÖNLEYİCİ: targetWord'ü kesinlikle String yap 🔥
       const rawTarget = questions[currentIndex].targetWord;
       const target = rawTarget ? String(rawTarget).trim() : "";
       
@@ -324,12 +325,11 @@ export default function ExerciseGame() {
       setCurrentWordPoints(0);
       setIsWordComplete(true);
       
-      // 🔥 FIX: targetWord'ün String olduğundan emin ol (Crash Önleyici)
+      // 🔥 FIX: targetWord'ü kesinlikle String olduğundan emin ol
       const target = String(questions[currentIndex].targetWord || "").trim();
       
       setCompletedLetters(target.split(''));
       setUserInput(target);
-      
       speak(wordToSpeak, 'main');
       updateGameStats('exercise', 1);
       const currentQ = questions[currentIndex];
@@ -377,7 +377,7 @@ export default function ExerciseGame() {
       if (e) e.preventDefault();
       if (isWordComplete) return;
       
-      // 🔥 FIX: String Güvenliği (Klavye Çökmesini Önleyen Satır)
+      // 🔥 FIX: String Güvenliği
       const targetWord = String(questions[currentIndex].targetWord || "").trim();
       
       if (userInput.trim().toLowerCase() === targetWord.toLowerCase()) {
@@ -535,10 +535,12 @@ export default function ExerciseGame() {
   if (!questions[currentIndex]) return <div className="flex h-screen items-center justify-center"><Loader2 className="animate-spin w-10 h-10 text-indigo-600"/></div>;
 
   const currentQ = questions[currentIndex];
-  const targetWord = currentQ.targetWord;
-  const baseWordObj = currentQ.baseWordObj;
-  const formLabel = currentQ.formLabel || "Bilinmiyor"; 
-  const def = getSmartDefinition(baseWordObj, currentQ.formKey);
+  // 🔥 GÜVENLİK GÜNCELLEMESİ (BURASI KESİN ÇÖZÜM) 🔥
+  const targetWord = currentQ?.targetWord ? String(currentQ.targetWord).trim() : "";
+  const baseWordObj = currentQ?.baseWordObj || {};
+  const formLabel = currentQ?.formLabel ? String(currentQ.formLabel) : "Bilinmiyor";
+  
+  const def = getSmartDefinition(baseWordObj, currentQ?.formKey);
   const styles = getDynamicStyle(targetWord.length);
 
   return (
