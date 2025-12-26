@@ -57,21 +57,17 @@ export default function ExerciseGame() {
       return getAllWords() || [];
   }, [getAllWords]);
 
-  // 🔥 YARDIMCI: Düzensiz Kontrolü (GÜVENLİ HALE GETİRİLDİ) 🔥
+  // Güvenli Düzensiz Kontrolleri
   const isIrregularVerb = (w) => {
-      // Eğer w.v2 yoksa veya boşsa, işlem yapma (False dön)
-      const v2 = (w.v2 || "").trim().toLowerCase();
-      if (!v2) return false;
-      // "-ed" ile bitmiyorsa düzensizdir
-      return !v2.endsWith("ed");
+      if (!w || !w.v2) return false;
+      const v2 = w.v2.trim().toLowerCase();
+      return v2.length > 0 && !v2.endsWith("ed");
   };
 
   const isIrregularPlural = (w) => {
-      // Eğer w.plural yoksa işlem yapma
-      const pl = (w.plural || "").trim().toLowerCase();
-      if (!pl) return false;
-      // "-s" ile bitmiyorsa düzensizdir (Basit kural)
-      return !pl.endsWith("s"); 
+      if (!w || !w.plural) return false;
+      const pl = w.plural.trim().toLowerCase();
+      return pl.length > 0 && !pl.endsWith("s"); 
   };
 
   // 🔥 YARDIMCI: Benzersiz Sayı Alma (Aynı kelimeyi 2 kez saymaz) 🔥
@@ -79,10 +75,9 @@ export default function ExerciseGame() {
       const seen = new Set();
       let count = 0;
       allWords.forEach(w => {
-          if (filterFn(w)) {
-              // Word yoksa sayma (Güvenlik)
-              const text = (w.word || "").toLowerCase().trim();
-              if (text && !seen.has(text)) {
+          if (w && w.word && filterFn(w)) {
+              const text = w.word.toLowerCase().trim();
+              if (!seen.has(text)) {
                   seen.add(text);
                   count++;
               }
@@ -92,6 +87,9 @@ export default function ExerciseGame() {
   };
 
   const getCount = (key) => {
+      if (key === 'hard') {
+          return getUniqueCount(w => (w.mistakeCount || 0) >= 2);
+      }
       if (key === 'irregular_verbs') {
           return getUniqueCount(isIrregularVerb);
       }
@@ -105,82 +103,103 @@ export default function ExerciseGame() {
   };
 
   // --- 2. OYUNU BAŞLATMA ---
-  const startSession = (formTypeObj, e) => {
+  const startSession = (modeKey, e) => {
     handleBlur(e);
-    const key = formTypeObj.key;
-    const dateKey = `lastExercise_${key}`; 
+    const dateKey = `lastExercise_${modeKey}`; 
     
     let rawValidWords = [];
+    let isHardMode = false;
 
-    // 1. MODA GÖRE HAM LİSTEYİ AL
-    if (key === 'irregular_verbs') {
+    // 1. MODA GÖRE KELİME SEÇİMİ
+    if (modeKey === 'hard') {
+        isHardMode = true;
+        rawValidWords = allWords.filter(w => (w.mistakeCount || 0) >= 2);
+    } else if (modeKey === 'irregular_verbs') {
         rawValidWords = allWords.filter(isIrregularVerb);
-    } else if (key === 'irregular_plurals') {
+    } else if (modeKey === 'irregular_plurals') {
         rawValidWords = allWords.filter(isIrregularPlural);
     } else {
+        // Standart Mod
         rawValidWords = allWords.filter(w => {
-            const val = w[key];
+            const val = w[modeKey];
             return val && typeof val === 'string' && val.trim().length > 0;
         });
     }
 
     if (rawValidWords.length === 0) {
-      alert("Bu formda çalışılacak kelime bulunamadı.");
+      alert("Bu modda çalışılacak kelime bulunamadı.");
       return;
     }
 
-    // 2. BENZERSİZLEŞTİRME (DEDUPLICATION)
+    // 2. BENZERSİZLEŞTİRME (DEDUPLICATION) - Aynı kelimeden sadece 1 tane al
     const uniqueValidWords = [];
     const seenTexts = new Set();
 
     rawValidWords.forEach(w => {
-        const text = (w.word || "").toLowerCase().trim();
-        if (text && !seenTexts.has(text)) {
-            seenTexts.add(text);
-            uniqueValidWords.push(w);
+        if(w && w.word) {
+            const text = w.word.toLowerCase().trim();
+            if (!seenTexts.has(text)) {
+                seenTexts.add(text);
+                uniqueValidWords.push(w);
+            }
         }
     });
 
-    // 3. AKILLI SIRALAMA (Last Seen'e göre)
-    const neverSeen = [];
-    const seen = [];
-
-    uniqueValidWords.forEach(w => {
-        if (!w[dateKey]) { neverSeen.push(w); } 
-        else { seen.push(w); }
-    });
-
-    neverSeen.sort(() => 0.5 - Math.random());
-    seen.sort((a, b) => new Date(a[dateKey]).getTime() - new Date(b[dateKey]).getTime());
-
-    const smartPool = [...neverSeen, ...seen];
-    const selectedCandidates = smartPool.slice(0, 10);
+    // 3. KARIŞTIRMA VE SEÇME
+    const selectedCandidates = uniqueValidWords.sort(() => 0.5 - Math.random()).slice(0, 10);
     const selected = selectedCandidates.sort(() => 0.5 - Math.random());
 
+    // 4. SORU OLUŞTURMA
     const generatedQuestions = selected.map(w => {
         let target = "";
-        let targetKey = key;
+        let targetKey = "";
+        let targetLabel = "";
 
-        if (key === 'irregular_verbs') {
+        if (isHardMode) {
+            // Hard Mode: Rastgele bir form seç
+            const availableForms = FORM_TYPES.filter(ft => {
+                const val = w[ft.key];
+                return val && typeof val === 'string' && val.trim().length > 0;
+            });
+
+            if (availableForms.length > 0) {
+                const randomForm = availableForms[Math.floor(Math.random() * availableForms.length)];
+                target = (w[randomForm.key] || "").trim();
+                targetKey = randomForm.key;
+                targetLabel = randomForm.label;
+            } else {
+                target = (w.word || "").trim(); 
+                targetKey = "word";
+                targetLabel = "Kelime";
+            }
+        } 
+        else if (modeKey === 'irregular_verbs') {
             target = (w.v2 || "").trim();
             targetKey = 'v2';
-        } else if (key === 'irregular_plurals') {
+            targetLabel = 'V2 (Past)';
+        } 
+        else if (modeKey === 'irregular_plurals') {
             target = (w.plural || "").trim();
             targetKey = 'plural';
-        } else {
-            target = (w[key] || "").trim();
+            targetLabel = 'Plural (Çoğul)';
+        } 
+        else {
+            target = (w[modeKey] || "").trim();
+            targetKey = modeKey;
+            const fType = FORM_TYPES.find(f => f.key === modeKey);
+            targetLabel = fType ? fType.label : modeKey;
         }
 
         return {
             baseWordObj: w,
             targetWord: target,
-            formLabel: formTypeObj.label,
-            formKey: targetKey 
+            formLabel: targetLabel,
+            formKey: targetKey
         };
     });
 
     setQuestions(generatedQuestions);
-    setActiveForm(formTypeObj);
+    setActiveForm(isHardMode ? { label: "Karma (Zor)" } : { label: generatedQuestions[0]?.formLabel });
     setCurrentIndex(0);
     setScore(0);
     setGameStatus("playing");
@@ -230,9 +249,12 @@ export default function ExerciseGame() {
     return () => window.speechSynthesis.cancel();
   }, [currentIndex, gameStatus, questions, inputMethod]);
 
+  // 🔥 GÜVENLİ TANIM FONKSİYONU (Çökme Önleyici) 🔥
   const getSmartDefinition = (wordObj, formKey) => {
-      const defs = wordObj.definitions || [];
-      if (defs.length === 0) return { meaning: "Tanım yok", engExplanation: "" };
+      if (!wordObj || !wordObj.definitions) return { meaning: "", engExplanation: "", trExplanation: "" };
+      
+      const defs = wordObj.definitions;
+      if (defs.length === 0) return { meaning: "", engExplanation: "", trExplanation: "" };
 
       let targetType = "";
       if (['v2', 'v3', 'thirdPerson', 'vIng'].includes(formKey)) targetType = "verb";
@@ -240,7 +262,7 @@ export default function ExerciseGame() {
       else if (['compEr', 'superEst', 'advLy'].includes(formKey)) targetType = "adjective";
 
       const matchedDef = defs.find(d => d.type === targetType);
-      return matchedDef || defs[0];
+      return matchedDef || defs[0] || { meaning: "", engExplanation: "", trExplanation: "" };
   };
 
   const getDynamicStyle = (length) => {
@@ -441,6 +463,7 @@ export default function ExerciseGame() {
                 @media (hover: hover) {
                     .menu-btn:hover { border-color: #a5b4fc !important; background-color: #f8fafc !important; }
                     .btn-irregular:hover { border-color: #fca5a5 !important; background-color: #fef2f2 !important; }
+                    .btn-hard:hover { border-color: #ef4444 !important; background-color: #fef2f2 !important; }
                 }
             `}</style>
 
@@ -475,22 +498,37 @@ export default function ExerciseGame() {
 
                 <div className="space-y-3 pb-10">
                     
-                    {/* 🔥 ÖZEL MODLAR: IRREGULAR 🔥 */}
+                    {/* 🔥 1. ZORLANDIKLARIM BUTONU 🔥 */}
+                    {getCount('hard') > 0 && (
+                        <button 
+                            onClick={(e) => startSession('hard', e)}
+                            style={{ outline: 'none' }}
+                            className="menu-btn btn-hard w-full p-4 rounded-xl shadow-sm flex justify-between items-center focus:outline-none border-red-200 bg-red-50 text-red-800"
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className="bg-red-200 p-2 rounded-lg text-red-700 animate-pulse"><AlertTriangle className="w-5 h-5"/></div>
+                                <span className="font-bold">Zorlandıklarım</span>
+                            </div>
+                            <span className="text-xs font-bold px-3 py-1 rounded-full bg-red-200 text-red-900">{getCount('hard')}</span>
+                        </button>
+                    )}
+
+                    {/* 🔥 2. DÜZENSİZ MODLAR 🔥 */}
                     <button 
-                        onClick={(e) => startSession({ id: 'irr_v', label: 'Düzensiz Fiiller (Irregular Verbs)', key: 'irregular_verbs' }, e)}
+                        onClick={(e) => startSession('irregular_verbs', e)}
                         disabled={getCount('irregular_verbs') === 0}
                         style={{ outline: 'none' }}
-                        className="menu-btn btn-irregular w-full p-4 rounded-xl shadow-sm flex justify-between items-center focus:outline-none border-red-100 bg-red-50/50"
+                        className="menu-btn btn-irregular w-full p-4 rounded-xl shadow-sm flex justify-between items-center focus:outline-none border-rose-100 bg-rose-50/50"
                     >
                         <div className="flex items-center gap-3">
-                            <div className="bg-red-100 p-2 rounded-lg text-red-500"><Sparkles className="w-5 h-5"/></div>
-                            <span className="font-bold text-red-700">Düzensiz Fiiller</span>
+                            <div className="bg-rose-100 p-2 rounded-lg text-rose-500"><Sparkles className="w-5 h-5"/></div>
+                            <span className="font-bold text-rose-700">Düzensiz Fiiller</span>
                         </div>
-                        <span className="text-xs font-bold px-3 py-1 rounded-full bg-red-200 text-red-800">{getCount('irregular_verbs')}</span>
+                        <span className="text-xs font-bold px-3 py-1 rounded-full bg-rose-200 text-rose-800">{getCount('irregular_verbs')}</span>
                     </button>
 
                     <button 
-                        onClick={(e) => startSession({ id: 'irr_p', label: 'Düzensiz Çoğullar (Irregular Plurals)', key: 'irregular_plurals' }, e)}
+                        onClick={(e) => startSession('irregular_plurals', e)}
                         disabled={getCount('irregular_plurals') === 0}
                         style={{ outline: 'none' }}
                         className="menu-btn btn-irregular w-full p-4 rounded-xl shadow-sm flex justify-between items-center focus:outline-none border-orange-100 bg-orange-50/50"
@@ -504,13 +542,13 @@ export default function ExerciseGame() {
 
                     <div className="border-t border-slate-200 my-2"></div>
 
-                    {/* STANDART MODLAR */}
+                    {/* 3. STANDART MODLAR */}
                     {FORM_TYPES.map(form => {
                         const count = getCount(form.key);
                         return (
                             <button 
                                 key={form.id}
-                                onClick={(e) => startSession(form, e)}
+                                onClick={(e) => startSession(form.key, e)}
                                 disabled={count === 0}
                                 style={{ outline: 'none' }}
                                 className="menu-btn w-full p-4 rounded-xl shadow-sm flex justify-between items-center focus:outline-none focus:ring-0"
@@ -560,9 +598,12 @@ export default function ExerciseGame() {
   const currentQ = questions[currentIndex];
   const targetWord = currentQ.targetWord;
   const baseWordObj = currentQ.baseWordObj;
-  const formKey = currentQ.formKey;
+  
+  // 🔥 DİNAMİK FORM ETİKETİ 🔥
+  const formLabel = currentQ.formLabel || "Bilinmiyor"; 
 
-  const def = getSmartDefinition(baseWordObj, formKey);
+  // Güvenli Tanım Alma
+  const def = getSmartDefinition(baseWordObj, currentQ.formKey);
   const styles = getDynamicStyle(targetWord.length);
 
   return (
@@ -585,7 +626,7 @@ export default function ExerciseGame() {
             <div className="flex justify-between items-center">
                 <button onClick={handleQuitEarly} className="p-2 bg-white rounded-full shadow-sm"><X className="w-5 h-5 text-slate-400"/></button>
                 <div className="font-bold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-100 text-xs truncate max-w-[150px]">
-                    {activeForm?.label.split('(')[0]}: {currentIndex + 1} / {questions.length}
+                    {formLabel.split('(')[0]}: {currentIndex + 1} / {questions.length}
                 </div>
                 <div className="flex items-center gap-1 bg-amber-100 text-amber-700 px-3 py-1 rounded-full font-bold text-sm border border-amber-200">
                     <Trophy className="w-4 h-4"/> {score}
@@ -644,7 +685,8 @@ export default function ExerciseGame() {
                   </div>
                 ) : ( <div className="h-7" /> )}
                 
-                {def.engExplanation && (
+                {/* Tanım Alanı (Güvenli Erişim) */}
+                {def?.engExplanation && (
                     <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 relative mt-2 text-left">
                          <p className="text-slate-600 text-sm italic pr-16 leading-relaxed">"{def.engExplanation}"</p>
                          <div className="absolute right-2 top-2 flex gap-1">
@@ -664,7 +706,7 @@ export default function ExerciseGame() {
                 <div className="space-y-3 mt-4">
                     {/* --- ORTA ALAN: İSTENEN FORM ETİKETİ --- */}
                     <div className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider bg-slate-50 inline-block px-2 py-1 rounded">
-                        İSTENEN: {activeForm?.label.split('(')[0]}
+                        İSTENEN: {formLabel.split('(')[0]}
                     </div>
 
                     {/* HARF KUTULARI */}
@@ -715,10 +757,7 @@ export default function ExerciseGame() {
                                         <Lightbulb className="w-3 h-3" /> İpucu (-2p)
                                     </button>
                                 </div>
-                                
-                                <button type="submit" className="w-full bg-indigo-600 text-white font-bold py-4 rounded-xl shadow-md mt-4 flex items-center justify-center gap-2 hover:bg-indigo-700 active:scale-95 transition-all">
-                                    Kontrol Et <Check className="w-5 h-5"/>
-                                </button>
+                                <button type="submit" className="w-full bg-indigo-600 text-white font-bold py-4 rounded-xl shadow-md mt-4 flex items-center justify-center gap-2 hover:bg-indigo-700 active:scale-95 transition-all">Kontrol Et <Check className="w-5 h-5"/></button>
                             </form>
                         ) : null}
                     </>
