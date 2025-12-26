@@ -98,9 +98,7 @@ const WordCard = ({ wordObj }) => {
   return (
     <div className="relative w-full max-w-sm bg-white rounded-3xl shadow-lg p-6 text-center border border-slate-100 mb-6 mx-auto transition-shadow duration-300">
       
-      {/* 🔥 GÜNCELLEME: ETİKETLER BURAYA TAŞINDI 🔥 
-          (absolute, top-4, right-4 ile sağ üste sabitlendi)
-      */}
+      {/* SAĞ ÜST ETİKETLER */}
       {wordObj.tags && Array.isArray(wordObj.tags) && wordObj.tags.length > 0 && (
           <div className="absolute top-4 right-4 flex flex-col items-end gap-1 z-10 max-w-[80px]">
               {wordObj.tags.map((tag, i) => (
@@ -115,7 +113,7 @@ const WordCard = ({ wordObj }) => {
           1. KELİME BAŞLIĞI
           =============================================
       */}
-      <div className="flex items-center justify-center gap-3 mb-6 mt-4"> {/* mt-4 ile üstten biraz boşluk verdik */}
+      <div className="flex items-center justify-center gap-3 mb-6 mt-4">
         
         {/* SOL: Kelime ve Altında Fonetik */}
         <div className="flex flex-col items-center">
@@ -125,7 +123,8 @@ const WordCard = ({ wordObj }) => {
             
             {wordObj.phonetic && (
                 <span className="text-slate-400 font-serif italic text-lg -mt-1 tracking-wide">
-                    {wordObj.phonetic.replace(/\//g, '')} 
+                    {/* 🔥 DÜZELTME BURADA: Slaşları manuel ekliyoruz */}
+                    / {wordObj.phonetic.replace(/\//g, '')} /
                 </span>
             )}
         </div>
@@ -247,8 +246,6 @@ const WordCard = ({ wordObj }) => {
           </div>
         )}
       </div>
-
-      {/* Eski etiketler alanı silindi */}
 
     </div>
   );
