@@ -16,7 +16,8 @@ import {
   Dumbbell,
   RotateCcw,
   Calendar,
-  Target 
+  Target,
+  AlertTriangle // Yeni ikon
 } from "lucide-react"; 
 import ProfileModal from "../components/ProfileModal"; 
 import LeaderboardModal from "../components/LeaderboardModal";
@@ -37,35 +38,26 @@ export default function Home() {
   const [showCalendar, setShowCalendar] = useState(false);
 
   // 👇 ÖZEL MANTIK: SADECE İLK GİRİŞTE AÇILIR 👇
-  // Sayfa her yüklendiğinde bu fonksiyon çalışır:
   const [showDailyQuests, setShowDailyQuests] = useState(() => {
-    // Tarayıcı hafızasına bak: "Daha önce gösterdik mi?"
     const hasSeen = sessionStorage.getItem("hasSeenDailyQuests");
-    
     if (!hasSeen) {
-      // Hayır, ilk defa giriyor -> Göster ve not al
       sessionStorage.setItem("hasSeenDailyQuests", "true");
-      return true; // AÇIK BAŞLA
+      return true; 
     }
-    
-    // Evet, daha önce görmüş -> Tekrar gösterme
-    return false; // KAPALI BAŞLA
+    return false; 
   });
 
   // 👇 SCROLL (KAYDIRMA) KİLİDİ 👇
-  // Herhangi bir modal açıldığında arka planı dondurur.
   useEffect(() => {
     if (showProfileModal || showLeaderboard || showStats || showSettings || showCalendar || showDailyQuests) {
-      document.body.style.overflow = "hidden"; // Kaydırmayı kapat
+      document.body.style.overflow = "hidden"; 
     } else {
-      document.body.style.overflow = "auto";   // Kaydırmayı aç
+      document.body.style.overflow = "auto";   
     }
-
-    // Temizlik: Sayfadan çıkarsa kilidi kaldır
     return () => { document.body.style.overflow = "auto"; };
   }, [showProfileModal, showLeaderboard, showStats, showSettings, showCalendar, showDailyQuests]);
   
-  // --- İSTATİSTİK HESAPLAMA (Mevcut Kod) ---
+  // --- İSTATİSTİK HESAPLAMA ---
   const stats = useMemo(() => {
     const all = getAllWords();
     const now = new Date();
@@ -104,13 +96,17 @@ export default function Home() {
     };
   }, [getAllWords, knownWordIds, learningQueue]);
 
+  // 🔥 ZOR KELİMELERİ SAY 🔥
+  const hardWordsCount = useMemo(() => {
+      return getAllWords().filter(w => (w.mistakeCount || 0) >= 2).length;
+  }, [getAllWords]);
+
   const myScore = leaderboardData.find(u => u.id === user?.uid)?.score || 0;
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center p-6 w-full overflow-x-hidden">
       
       {/* --- MODALLAR --- */}
-      {/* Her biri sadece 'true' olduğunda ekrana gelir */}
       {showProfileModal && <ProfileModal user={user} onClose={() => setShowProfileModal(false)} />}
       {showLeaderboard && <LeaderboardModal onClose={() => setShowLeaderboard(false)} />}
       {showStats && <StatisticsModal onClose={() => setShowStats(false)} />}
@@ -132,20 +128,16 @@ export default function Home() {
 
              {/* Sağ Grup: Araçlar */}
              <div className="flex gap-2">
-                {/* 1. Takvim */}
                 <button onClick={() => setShowCalendar(true)} className="p-2.5 bg-white rounded-xl shadow-sm border border-slate-200 text-slate-600 hover:text-indigo-600 active:scale-95 transition-transform">
                     <Calendar size={18} />
                 </button>
 
-                {/* 2. Günlük Görevler */}
                 <button onClick={() => setShowDailyQuests(true)} className="p-2.5 bg-white rounded-xl shadow-sm border border-slate-200 text-slate-600 hover:text-red-500 active:scale-95 transition-transform">
                     <Target size={18} />
                 </button>
 
-                {/* 3. Liderlik */}
                 <button onClick={() => setShowLeaderboard(true)} className="p-2.5 bg-white rounded-xl shadow-sm border border-slate-200 text-slate-600 hover:text-yellow-500 active:scale-95 transition-transform"><Trophy size={18} /></button>
                 
-                {/* 4. İstatistik */}
                 <button onClick={() => setShowStats(true)} className="p-2.5 bg-white rounded-xl shadow-sm border border-slate-200 text-slate-600 hover:text-emerald-500 active:scale-95 transition-transform"><BarChart2 size={18} /></button>
              </div>
            </div>
@@ -184,7 +176,6 @@ export default function Home() {
            
            <div className="flex justify-between text-sm divide-x divide-slate-100">
              
-             {/* Tekrar */}
              <div onClick={() => navigate("/list/known")} className="text-center flex-1 px-1 cursor-pointer hover:bg-slate-50 rounded transition-colors group">
                 <div className="font-bold text-slate-800 group-hover:text-green-600 transition-colors text-lg flex items-center justify-center gap-1">
                    {stats.review} <RotateCcw size={12} className="text-green-500"/>
@@ -192,7 +183,6 @@ export default function Home() {
                 <div className="text-slate-400 text-xs">Tekrar</div>
              </div>
 
-             {/* Bekleme */}
              <div onClick={() => navigate("/list/waiting")} className="text-center flex-1 px-1 cursor-pointer hover:bg-slate-50 rounded transition-colors group">
                 <div className="font-bold text-slate-800 group-hover:text-amber-500 transition-colors text-lg flex items-center justify-center gap-1">
                    {stats.waiting} <Hourglass size={12} className="text-amber-400"/>
@@ -200,7 +190,6 @@ export default function Home() {
                 <div className="text-slate-400 text-xs">Beklemede</div>
              </div>
 
-             {/* Öğrenilecek */}
              <div onClick={() => navigate("/list/unknown")} className="text-center flex-1 px-1 cursor-pointer hover:bg-slate-50 rounded transition-colors group">
                 <div className="font-bold text-slate-800 group-hover:text-blue-500 transition-colors text-lg">{stats.new}</div>
                 <div className="text-slate-400 text-xs">Öğrenilecek</div>
@@ -233,6 +222,27 @@ export default function Home() {
             </div>
              <Play className="w-6 h-6 opacity-60 group-hover:translate-x-1 transition-transform"/>
           </button>
+
+          {/* 🔥 ZORLANDIKLARIM BUTONU (Sadece Hata >= 2 olanlar varsa) 🔥 */}
+          {hardWordsCount > 0 && (
+            <button 
+              onClick={() => navigate("/hard-words")}
+              className="w-full bg-red-50 border-2 border-red-200 p-4 rounded-2xl flex items-center justify-between mb-4 shadow-sm active:scale-95 transition-all animate-in fade-in"
+            >
+                <div className="flex items-center gap-3">
+                    <div className="bg-red-100 p-2 rounded-lg text-red-600">
+                        <AlertTriangle className="w-6 h-6"/>
+                    </div>
+                    <div className="text-left">
+                        <div className="font-bold text-slate-800">Zorlandıklarım</div>
+                        <div className="text-xs text-red-600 font-medium">Hata yapılanlar</div>
+                    </div>
+                </div>
+                <div className="bg-red-500 text-white text-sm font-bold px-3 py-1 rounded-full shadow-sm">
+                    {hardWordsCount}
+                </div>
+            </button>
+          )}
 
           <button onClick={() => navigate("/exercise")} className="w-full bg-slate-800 text-white font-bold py-5 px-6 rounded-2xl shadow-lg flex items-center justify-between group active:scale-95 transition-transform mb-3">
               <div className="flex items-center gap-4">
