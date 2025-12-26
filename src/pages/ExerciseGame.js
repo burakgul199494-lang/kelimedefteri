@@ -24,7 +24,7 @@ export default function ExerciseGame() {
   // --- STATE'LER ---
   const [gameStatus, setGameStatus] = useState("selection"); 
   const [activeForm, setActiveForm] = useState(null); 
-  const [inputMethod, setInputMethod] = useState("bubbles"); 
+  const [inputMethod, setInputMethod] = useState("keyboard"); 
 
   const [questions, setQuestions] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
