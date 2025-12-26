@@ -8,9 +8,9 @@ import {
 } from "lucide-react";
 
 const FORM_TYPES = [
-  { id: "plural", label: "Plural (Çoğul)", key: "plural" },
+  { id: "plural", label: "Plural (Çoğul - Düzenli)", key: "plural" }, // Label Güncellendi
   { id: "v2", label: "V2 (Past - Düzenli)", key: "v2" },
-  { id: "v3", label: "V3 (Participle)", key: "v3" },
+  { id: "v3", label: "V3 (Participle - Düzenli)", key: "v3" }, // Label Güncellendi
   { id: "thirdPerson", label: "3. Tekil (He/She)", key: "thirdPerson" },
   { id: "advLy", label: "Zarf (-ly)", key: "advLy" },
   { id: "compEr", label: "Comp (-er)", key: "compEr" },
@@ -57,19 +57,21 @@ export default function ExerciseGame() {
       return getAllWords() || [];
   }, [getAllWords]);
 
+  // Güvenli Düzensiz Kontrolleri
   const isIrregularVerb = (w) => {
       if (!w || !w.v2) return false;
       const v2 = String(w.v2).trim().toLowerCase();
+      // "-ed" ile bitmiyorsa düzensizdir
       return v2.length > 0 && !v2.endsWith("ed");
   };
 
   const isIrregularPlural = (w) => {
       if (!w || !w.plural) return false;
       const pl = String(w.plural).trim().toLowerCase();
+      // "-s" ile bitmiyorsa düzensizdir (Basit kural)
       return pl.length > 0 && !pl.endsWith("s"); 
   };
 
-  // 🔥 YARDIMCI: Benzersiz Sayı Alma (Standart modlar için) 🔥
   const getUniqueCount = (filterFn) => {
       const seen = new Set();
       let count = 0;
@@ -85,25 +87,28 @@ export default function ExerciseGame() {
       return count;
   };
 
-  // 🔥 YARDIMCI: Ham Sayı Alma (Hard Mode için - Filtresiz) 🔥
-  const getRawCount = (filterFn) => {
-      return allWords.filter(w => w && w.word && filterFn(w)).length;
-  };
-
   const getCount = (key) => {
-      // Hard Mode için BENZERSİZLEŞTİRME YAPMA! (Hepsini say)
-      if (key === 'hard') return getRawCount(w => (w.mistakeCount || 0) >= 2);
-      
-      // Diğerleri için benzersizleştirme yap (Go 3 tane ise 1 say)
+      if (key === 'hard') return getUniqueCount(w => (w.mistakeCount || 0) >= 2);
       if (key === 'irregular_verbs') return getUniqueCount(isIrregularVerb);
       if (key === 'irregular_verbs_v3') return getUniqueCount(isIrregularVerb);
       if (key === 'irregular_plurals') return getUniqueCount(isIrregularPlural);
       
+      // Standart Modlar İçin Filtreleme
       return getUniqueCount(w => {
           const val = w[key];
           const hasVal = val && typeof val === 'string' && String(val).trim().length > 0;
           if (!hasVal) return false;
+
+          // 🔥 FİLTRELER BURADA 🔥
+          // 1. V2 ise ve Düzensizse -> ÇIKAR
           if (key === 'v2' && isIrregularVerb(w)) return false;
+          
+          // 2. V3 ise ve Düzensizse -> ÇIKAR
+          if (key === 'v3' && isIrregularVerb(w)) return false;
+
+          // 3. Plural ise ve Düzensizse -> ÇIKAR
+          if (key === 'plural' && isIrregularPlural(w)) return false;
+
           return true;
       });
   };
@@ -128,11 +133,18 @@ export default function ExerciseGame() {
         rawValidWords = allWords.filter(isIrregularPlural);
     } 
     else {
+        // Standart Mod
         rawValidWords = allWords.filter(w => {
             const val = w[modeKey];
             const hasVal = val && typeof val === 'string' && String(val).trim().length > 0;
+            if (!hasVal) return false;
+
+            // 🔥 FİLTRELER BURADA DA GEÇERLİ 🔥
             if (modeKey === 'v2' && isIrregularVerb(w)) return false;
-            return hasVal;
+            if (modeKey === 'v3' && isIrregularVerb(w)) return false;
+            if (modeKey === 'plural' && isIrregularPlural(w)) return false;
+
+            return true;
         });
     }
 
@@ -141,30 +153,21 @@ export default function ExerciseGame() {
       return;
     }
 
-    // 🔥 2. BENZERSİZLEŞTİRME KONTROLÜ 🔥
-    let poolToUse = [];
-
-    if (isHardMode) {
-        // HARD MODE: Filtreleme YAPMA! Hepsini al.
-        // Böylece Bank(isim) ve Bank(fiil) ikisi de hatalıysa ikisi de gelir.
-        poolToUse = rawValidWords;
-    } else {
-        // STANDART MODLAR: Aynı kelimeden 1 tane al.
-        const seenTexts = new Set();
-        rawValidWords.forEach(w => {
-            if(w && w.word) {
-                const text = String(w.word).toLowerCase().trim();
-                if (!seenTexts.has(text)) {
-                    seenTexts.add(text);
-                    poolToUse.push(w);
-                }
+    // 2. DEDUPLICATION
+    const uniqueValidWords = [];
+    const seenTexts = new Set();
+    rawValidWords.forEach(w => {
+        if(w && w.word) {
+            const text = String(w.word).toLowerCase().trim();
+            if (!seenTexts.has(text)) {
+                seenTexts.add(text);
+                uniqueValidWords.push(w);
             }
-        });
-    }
+        }
+    });
 
     // 3. KARIŞTIRMA
-    // Hard Mode'da tamamen rastgele olsun
-    const selectedCandidates = poolToUse.sort(() => 0.5 - Math.random()).slice(0, 10);
+    const selectedCandidates = uniqueValidWords.sort(() => 0.5 - Math.random()).slice(0, 10);
     const selected = selectedCandidates.sort(() => 0.5 - Math.random());
 
     // 4. SORU OLUŞTURMA
@@ -174,13 +177,10 @@ export default function ExerciseGame() {
         let targetLabel = "";
 
         if (isHardMode) {
-            // Hard Mode: O kelime satırında hangi formlar doluysa onlardan birini sor.
-            // Örn: İsim olan "Bank" için sadece Plural sorar. Fiil olan "Bank" için V2/V3 sorar.
             const availableForms = FORM_TYPES.filter(ft => {
                 const val = w[ft.key];
                 return val && typeof val === 'string' && String(val).trim().length > 0;
             });
-
             if (availableForms.length > 0) {
                 const randomForm = availableForms[Math.floor(Math.random() * availableForms.length)];
                 target = String(w[randomForm.key] || "").trim();
@@ -245,6 +245,9 @@ export default function ExerciseGame() {
       setHintCount(0);
       setCurrentWordPoints(10);
       setHasRecordedMistake(false);
+      
+      setCompletedLetters([]);
+      setUserInput(""); 
 
       if (inputMethod === "bubbles") {
           let lettersArray = target.split('').map((char, index) => ({
@@ -264,9 +267,6 @@ export default function ExerciseGame() {
               }
           }
           setShuffledLetters(lettersArray);
-          setCompletedLetters([]);
-      } else {
-          setUserInput("");
       }
     }
     return () => window.speechSynthesis.cancel();
@@ -276,12 +276,10 @@ export default function ExerciseGame() {
       if (!wordObj || !wordObj.definitions) return { meaning: "", engExplanation: "", trExplanation: "" };
       const defs = wordObj.definitions;
       if (defs.length === 0) return { meaning: "", engExplanation: "", trExplanation: "" };
-
       let targetType = "";
       if (['v2', 'v3', 'thirdPerson', 'vIng'].includes(formKey)) targetType = "verb";
       else if (formKey === 'plural') targetType = "noun";
       else if (['compEr', 'superEst', 'advLy'].includes(formKey)) targetType = "adjective";
-
       const matchedDef = defs.find(d => d.type === targetType);
       return matchedDef || defs[0] || { meaning: "", engExplanation: "", trExplanation: "" };
   };
@@ -318,51 +316,33 @@ export default function ExerciseGame() {
       }
   };
 
-  // ==========================================
-  // OYUN MANTIĞI: ORTAK
-  // ==========================================
-
+  // --- OYUN MANTIĞI ---
   const handleSuccess = (wordToSpeak, pointsOverride = null) => {
       setIsWordComplete(true);
       speak(wordToSpeak, 'main'); 
       updateGameStats('exercise', 1);
-      
       const currentQ = questions[currentIndex];
       const dateKey = `lastExercise_${currentQ.formKey}`;
       handleUpdateWord(currentQ.baseWordObj.id, { [dateKey]: new Date().toISOString() });
-
       const finalPoints = pointsOverride !== null ? pointsOverride : currentWordPoints;
-
-      if (finalPoints > 0) {
-          addScore(finalPoints);
-          setScore(s => s + finalPoints);
-      }
+      if (finalPoints > 0) { addScore(finalPoints); setScore(s => s + finalPoints); }
   };
 
   const handleFail = (wordToSpeak) => {
       setCurrentWordPoints(0);
       setIsWordComplete(true);
-      
       const target = questions[currentIndex].targetWord;
-      if (inputMethod === "bubbles") {
-          setCompletedLetters(target.split(''));
-      } else {
-          setUserInput(target);
-      }
-
+      setCompletedLetters(target.split(''));
+      setUserInput(target);
       speak(wordToSpeak, 'main');
       updateGameStats('exercise', 1);
-
       const currentQ = questions[currentIndex];
       recordMistakeOnce(); 
-      
       const dateKey = `lastExercise_${currentQ.formKey}`;
       handleUpdateWord(currentQ.baseWordObj.id, { [dateKey]: new Date().toISOString() });
   };
 
-  const handlePass = () => {
-      handleFail(questions[currentIndex].targetWord);
-  };
+  const handlePass = () => { handleFail(questions[currentIndex].targetWord); };
 
   const handleNext = (e) => {
       handleBlur(e);
@@ -370,115 +350,82 @@ export default function ExerciseGame() {
       else setGameStatus("finished");
   };
 
-  // --- HARF TIKLAMA ---
+  // Harf Tıklama
   const handleLetterClick = (letterObj, e) => {
     handleBlur(e);
     if (isWordComplete || letterObj.isUsed) return;
-
     const targetWord = questions[currentIndex].targetWord;
     const nextIndex = completedLetters.length;
     const expectedChar = targetWord[nextIndex];
-
     if (letterObj.char.toLowerCase() === expectedChar.toLowerCase()) {
         const newShuffled = shuffledLetters.map(l => l.id === letterObj.id ? { ...l, isUsed: true } : l);
         setShuffledLetters(newShuffled);
         const newCompleted = [...completedLetters, letterObj.char];
         setCompletedLetters(newCompleted);
-
         if (newCompleted.length === targetWord.length) handleSuccess(targetWord);
     } else {
         const newMistakes = mistakeCount + 1;
         setMistakeCount(newMistakes);
         setCurrentWordPoints(p => Math.max(0, p - 2));
-        
         setWrongAnimationId(letterObj.id);
         setTimeout(() => setWrongAnimationId(null), 500);
-
         if (newMistakes > 3) handleFail(targetWord);
     }
   };
 
-  // --- KLAVYE ---
+  // Klavye Submit
   const handleKeyboardSubmit = (e) => {
       if (e) e.preventDefault();
       if (isWordComplete) return;
-
       const targetWord = questions[currentIndex].targetWord;
-      
       if (userInput.trim().toLowerCase() === targetWord.toLowerCase()) {
           handleSuccess(targetWord);
       } else {
           const newMistakes = mistakeCount + 1;
           setMistakeCount(newMistakes);
           setCurrentWordPoints(p => Math.max(0, p - 1));
-
           setWrongAnimationId("input");
           setTimeout(() => setWrongAnimationId(null), 500);
-
           if (newMistakes >= 3) handleFail(targetWord);
       }
   };
 
-  const handleKeyboardHint = () => {
-      if (isWordComplete) return;
-      const targetWord = questions[currentIndex].targetWord;
-      const len = targetWord.length;
-
-      const maxHints = len <= 2 ? 1 : 2;
-      if (hintCount >= maxHints) return;
-
-      const newHintCount = hintCount + 1;
-      setHintCount(newHintCount);
-      setCurrentWordPoints(p => Math.max(0, p - 2));
-
-      let correctPrefixLength = 0;
-      const cleanInput = userInput.trim().toLowerCase();
-      const cleanTarget = targetWord.toLowerCase();
-
-      for (let i = 0; i < cleanInput.length; i++) {
-          if (cleanInput[i] === cleanTarget[i]) {
-              correctPrefixLength++;
-          } else {
-              break; 
-          }
-      }
-
-      const newRevealLength = correctPrefixLength + 1;
-      const newInputValue = targetWord.substring(0, newRevealLength);
-      
-      setUserInput(newInputValue);
-      if(inputRef.current) inputRef.current.focus();
-  };
-
-  const handleQuitEarly = (e) => {
-    handleBlur(e);
-    if (score > 0) addScore(score);
-    setGameStatus("finished");
-  };
-
-  // --- İPUCU (BALON MODU) ---
+  // İpucu
   const handleHint = (e) => {
       handleBlur(e);
       if (isWordComplete) return;
       const targetWord = questions[currentIndex].targetWord;
       const len = targetWord.length;
-      
       const maxHints = len <= 2 ? 1 : 2;
       if (hintCount >= maxHints) return;
-
-      const newHintCount = hintCount + 1;
-      setHintCount(newHintCount);
+      
+      setHintCount(h => h + 1);
       setCurrentWordPoints(p => Math.max(0, p - 2));
 
       if (inputMethod === "bubbles") {
           const nextIndex = completedLetters.length;
           const expectedChar = targetWord[nextIndex];
           const correctLetterObj = shuffledLetters.find(l => !l.isUsed && l.char.toLowerCase() === expectedChar.toLowerCase());
-          
-          if (correctLetterObj) {
-              handleLetterClick(correctLetterObj, null);
+          if (correctLetterObj) handleLetterClick(correctLetterObj, null);
+      } else {
+          let correctPrefixLength = 0;
+          const cleanInput = userInput.trim().toLowerCase();
+          const cleanTarget = targetWord.toLowerCase();
+          for (let i = 0; i < cleanInput.length; i++) {
+              if (cleanInput[i] === cleanTarget[i]) correctPrefixLength++;
+              else break; 
           }
-      } 
+          const newInputValue = targetWord.substring(0, correctPrefixLength + 1);
+          setUserInput(newInputValue);
+          if(inputRef.current) inputRef.current.focus();
+          if(newInputValue.length === targetWord.length) handleSuccess(targetWord);
+      }
+  };
+
+  const handleQuitEarly = (e) => {
+    handleBlur(e);
+    if (score > 0) addScore(score);
+    setGameStatus("finished");
   };
 
   // ===================================
@@ -597,10 +544,13 @@ export default function ExerciseGame() {
             .mini-btn { transition: all 0.2s ease; }
             .mini-btn:active { transform: scale(0.9); }
             @media (hover: hover) { .mini-btn:hover { background-color: #f1f5f9; } }
+            .letter-btn { transition: all 0.2s ease; }
+            .letter-btn:active { transform: scale(0.95); }
         `}</style>
 
         <div className="w-full max-w-md space-y-4 mt-2">
             
+            {/* Header */}
             <div className="flex justify-between items-center">
                 <button onClick={handleQuitEarly} className="p-2 bg-white rounded-full shadow-sm"><X className="w-5 h-5 text-slate-400"/></button>
                 <div className="font-bold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-100 text-xs truncate max-w-[150px]">
@@ -613,97 +563,92 @@ export default function ExerciseGame() {
             
             <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden"><div className="bg-indigo-500 h-full transition-all duration-500" style={{width:`${((currentIndex + 1) / questions.length) * 100}%`}}></div></div>
 
-            <div className="bg-white p-5 rounded-3xl shadow-xl border border-slate-100 text-center relative overflow-hidden min-h-[450px] flex flex-col justify-between">
-                <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-indigo-400 to-purple-400"></div>
+            {/* OYUN KARTI - WritingGame Tasarımı */}
+            <div className="bg-white p-6 rounded-3xl shadow-xl border border-slate-100 text-center relative overflow-hidden min-h-[450px] flex flex-col justify-between">
+                <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-blue-400 to-cyan-400"></div>
 
                 <div className="absolute top-4 right-4 flex items-center gap-1 bg-green-50 text-green-700 px-2 py-1 rounded-lg text-xs font-bold border border-green-100 animate-in fade-in">
                     <Star className="w-3 h-3 fill-current"/> Soru: {Math.max(0, currentWordPoints)}p
                 </div>
 
                 {baseWordObj.tags && baseWordObj.tags.length > 0 && (
-                    <div className="absolute top-4 left-4 flex flex-col items-start gap-1 z-10 max-w-[80px]">
+                    <div className="absolute top-0 left-4 mt-4 flex flex-col items-start gap-1 max-w-[80px]">
                         {baseWordObj.tags.map((tag, i) => (<span key={i} className="text-[9px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200 truncate max-w-full">{tag}</span>))}
                     </div>
                 )}
 
-                <div className="mt-8 flex flex-col items-center gap-1"> 
-                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">ANA KELİME (BASE)</div>
-                    <div className="flex items-center gap-2">
-                        <h2 className="text-3xl font-black text-slate-800">{baseWordObj.word}</h2>
-                        <button onClick={(e) => { handleBlur(e); speak(baseWordObj.word, 'base'); }} className={`mini-btn p-1.5 rounded-lg border ${activeAudio === 'base' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-400 border-slate-200'}`}>{activeAudio === 'base' ? <Square size={14} fill="currentColor"/> : <Volume2 size={14}/>}</button>
-                        <button onClick={(e) => { handleBlur(e); setShowWordTr(!showWordTr); }} className={`mini-btn p-1.5 rounded-lg border ${showWordTr ? 'bg-indigo-100 text-indigo-600 border-indigo-200' : 'bg-white text-slate-400 border-slate-200'}`}><Languages size={14}/></button>
+                <div className="flex-1 flex flex-col items-center justify-center gap-4 py-4 mt-8"> 
+                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">ANA KELİME (BASE)</div>
+                    <div className="bg-slate-50 px-6 py-8 rounded-3xl border-2 border-slate-100 w-full flex items-center justify-center">
+                        <h2 className="text-3xl font-black text-slate-800 leading-tight break-words">{baseWordObj.word}</h2>
                     </div>
-                    {showWordTr && (<div className="text-sm font-bold text-green-600 bg-green-50 px-3 py-1 rounded-lg animate-in fade-in slide-in-from-top-1 mt-1">{def.meaning}</div>)}
+
+                    <div className="flex gap-2">
+                        <button onClick={(e) => { handleBlur(e); speak(baseWordObj.word, 'base'); }} className={`mini-btn p-3 rounded-full border flex items-center justify-center ${activeAudio === 'base' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-400 border-slate-200'}`}>
+                            {activeAudio === 'base' ? <Square size={18} fill="currentColor"/> : <Volume2 size={18}/>}
+                        </button>
+                        {def.meaning && (
+                            <button onClick={(e) => { handleBlur(e); setShowWordTr(!showWordTr); }} className={`mini-btn p-3 rounded-full border flex items-center justify-center ${showWordTr ? 'bg-indigo-100 text-indigo-600 border-indigo-200' : 'bg-white text-slate-400 border-slate-200'}`}>
+                                <Languages size={18}/>
+                            </button>
+                        )}
+                    </div>
+                    
+                    {showWordTr && (<div className="text-sm font-bold text-green-600 bg-green-50 px-3 py-1 rounded-lg animate-in fade-in slide-in-from-top-1">{def.meaning}</div>)}
                 </div>
 
-                {baseWordObj?.phonetic?.trim() ? (
-                  <div className="mt-1 flex justify-center animate-in fade-in slide-in-from-top-1"><span className="text-indigo-400 font-serif italic text-lg tracking-wide px-3 py-0.5 bg-indigo-50/50 rounded-lg border border-indigo-100/50">/{String(baseWordObj.phonetic).replace(/\//g, "")}/</span></div>
-                ) : ( <div className="h-7" /> )}
-                
-                {def.engExplanation && (
-                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 relative mt-2 text-left">
-                         <p className="text-slate-600 text-sm italic pr-16 leading-relaxed">"{def.engExplanation}"</p>
-                         <div className="absolute right-2 top-2 flex gap-1">
-                             <button onClick={(e) => { handleBlur(e); speak(def.engExplanation, 'desc'); }} className={`mini-btn p-1.5 rounded-lg border ${activeAudio === 'desc' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-400 border-slate-200'}`}>{activeAudio === 'desc' ? <Square size={12} fill="currentColor"/> : <Volume2 size={12}/>}</button>
-                             {def.trExplanation && (<button onClick={(e) => { handleBlur(e); setShowDefTr(!showDefTr); }} className={`mini-btn p-1.5 rounded-lg border ${showDefTr ? 'bg-indigo-100 text-indigo-600 border-indigo-200' : 'bg-white text-slate-400 border-slate-200'}`}><Languages size={12}/></button>)}
-                         </div>
-                         {showDefTr && def.trExplanation && <div className="mt-2 pt-2 border-t border-slate-200 text-indigo-700 text-xs font-bold animate-in fade-in">TR: {def.trExplanation}</div>}
-                    </div>
-                )}
-
-                <div className="space-y-3 mt-4">
-                    <div className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider bg-slate-50 inline-block px-2 py-1 rounded">İSTENEN: {formLabel.split('(')[0]}</div>
+                <div className="space-y-3 pb-2">
+                    <div className="text-[10px] font-bold text-blue-400 uppercase tracking-wider bg-slate-50 inline-block px-2 py-1 rounded">İSTENEN FORM: {formLabel.split('(')[0]}</div>
                     
-                    {/* KLAVYE MODUNDA BAŞARILI OLUNCA */}
-                    {isWordComplete && inputMethod === 'keyboard' ? (
-                        <div className="bg-green-50 border border-green-200 text-green-700 font-bold text-2xl py-4 rounded-xl animate-in zoom-in">{targetWord}</div>
+                    {/* INPUT ALANI */}
+                    {inputMethod === 'bubbles' ? (
+                        <>
+                            <div className="flex flex-wrap justify-center gap-1 min-h-[60px] items-end content-center">
+                                {targetWord.split('').map((_, idx) => {
+                                    const char = completedLetters[idx];
+                                    const isFilled = char !== undefined;
+                                    return (<div key={idx} className={`${styles.box} ${styles.text} flex items-center justify-center font-bold border-b-4 rounded-t-lg transition-all ${isFilled ? "border-blue-500 text-blue-700 bg-blue-50" : "border-slate-200 bg-slate-50 text-transparent"}`}>{char}</div>);
+                                })}
+                            </div>
+
+                            {!isWordComplete && (
+                                <div className="space-y-4">
+                                    <div className="flex flex-wrap justify-center gap-2 content-center pb-2">
+                                        {shuffledLetters.map((item) => (
+                                            <button key={item.id} onClick={(e) => handleLetterClick(item, e)} disabled={item.isUsed} className={`letter-btn w-10 h-10 md:w-11 md:h-11 rounded-xl font-bold text-lg shadow-[0_3px_0_rgb(0,0,0,0.1)] transition-all active:translate-y-[2px] active:shadow-none outline-none focus:outline-none ${item.isUsed ? "opacity-0 pointer-events-none scale-0" : wrongAnimationId === item.id ? "bg-red-500 text-white animate-[shake_0.5s_ease-in-out]" : "bg-white border-2 border-slate-200 text-slate-700 active:bg-blue-100"}`}>{item.char}</button>
+                                        ))}
+                                    </div>
+                                    <div className="flex justify-center border-t border-slate-100 pt-3">
+                                         <button onClick={handleHint} disabled={isWordComplete || targetWord.length <= 1} className={`flex items-center gap-2 px-5 py-3 bg-amber-100 text-amber-700 rounded-2xl font-bold transition-colors active:scale-95 focus:outline-none ${(isWordComplete || targetWord.length <= 1) ? 'opacity-50 cursor-not-allowed' : 'active:bg-amber-200'}`}>
+                                            <Lightbulb className="w-5 h-5"/> 
+                                            <span>İpucu {targetWord.length <= 1 ? "(Yok)" : (hintCount === 0 ? "(-5p)" : "(-0p)")}</span>
+                                            <span className="text-[10px] bg-white/50 px-1.5 rounded ml-1">Hata: {mistakeCount}/3</span>
+                                         </button>
+                                    </div>
+                                </div>
+                            )}
+                        </>
                     ) : (
-                        <div className="flex flex-wrap justify-center gap-1 min-h-[50px] items-end content-center">
-                            {targetWord.split('').map((_, idx) => {
-                                const char = completedLetters[idx];
-                                const isFilled = char !== undefined;
-                                return (<div key={idx} className={`${styles.box} ${styles.text} flex items-center justify-center font-bold border-b-4 rounded-t-lg transition-all ${isFilled ? "border-indigo-500 text-indigo-700 bg-indigo-50" : "border-slate-200 bg-white text-transparent"}`}>{char}</div>);
-                            })}
-                        </div>
+                        /* KLAVYE MODU */
+                        <>
+                            {!isWordComplete ? (
+                                <form onSubmit={handleKeyboardSubmit} className="space-y-3 pb-2">
+                                    <input ref={inputRef} type="text" value={userInput} onChange={(e) => setUserInput(e.target.value)} placeholder="Cevabı yaz..." className={`w-full text-center text-2xl font-bold p-3 border-b-4 rounded-xl outline-none transition-all ${wrongAnimationId === "input" ? "border-red-500 bg-red-50 text-red-600 animate-[shake_0.5s_ease-in-out]" : "border-indigo-200 bg-indigo-50 text-indigo-700 focus:border-indigo-500"}`} autoComplete="off" autoCorrect="off" autoCapitalize="none" />
+                                    <div className="flex justify-between items-center px-2">
+                                        <div className="text-xs font-bold text-slate-400">Hata Hakkı: <span className="text-red-500">{3 - mistakeCount}</span></div>
+                                        <button type="button" onClick={handleKeyboardHint} disabled={hintCount >= (targetWord.length <= 2 ? 1 : 2)} className="text-xs flex items-center gap-1 bg-amber-100 text-amber-700 px-3 py-1.5 rounded-lg font-bold active:scale-95 disabled:opacity-50"><Lightbulb className="w-3 h-3" /> İpucu (-2p)</button>
+                                    </div>
+                                    <button type="submit" className="w-full bg-indigo-600 text-white font-bold py-4 rounded-xl shadow-md mt-4 flex items-center justify-center gap-2 hover:bg-indigo-700 active:scale-95 transition-all">Kontrol Et <Check className="w-5 h-5"/></button>
+                                </form>
+                            ) : (
+                                <div className="bg-green-50 border border-green-200 text-green-700 font-bold text-2xl py-4 rounded-xl animate-in zoom-in">{targetWord}</div>
+                            )}
+                        </>
                     )}
                 </div>
 
-                {inputMethod === "bubbles" ? (
-                    <>
-                        {!isWordComplete ? (
-                            <div className="space-y-4">
-                                <div className="flex flex-wrap justify-center gap-2 content-center min-h-[100px]">
-                                    {shuffledLetters.map((item) => (
-                                        <button key={item.id} onClick={(e) => handleLetterClick(item, e)} disabled={item.isUsed} className={`w-10 h-10 rounded-xl font-bold text-lg shadow-[0_3px_0_rgb(0,0,0,0.1)] transition-all active:translate-y-[2px] active:shadow-none outline-none focus:outline-none ${item.isUsed ? "opacity-0 pointer-events-none scale-0" : wrongAnimationId === item.id ? "bg-red-500 text-white animate-[shake_0.5s_ease-in-out]" : "bg-white border-2 border-slate-200 text-slate-700 active:bg-indigo-100"}`}>{item.char}</button>
-                                    ))}
-                                </div>
-                                <div className="flex justify-center border-t border-slate-100 pt-3">
-                                     <button onClick={handleHint} disabled={isWordComplete || targetWord.length <= 1} className={`flex items-center gap-2 px-4 py-2 bg-amber-100 text-amber-700 rounded-xl font-bold text-sm active:scale-95 transition-transform focus:outline-none ${(isWordComplete || targetWord.length <= 1) ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                                        <Lightbulb className="w-4 h-4"/> 
-                                        <span>İpucu {targetWord.length <= 1 ? "(Yok)" : (hintCount === 0 ? "(-5p)" : "(-0p)")}</span>
-                                        <span className="text-[10px] bg-white/50 px-1.5 rounded ml-1">Hata: {mistakeCount}/3</span>
-                                     </button>
-                                </div>
-                            </div>
-                        ) : null}
-                    </>
-                ) : (
-                    <>
-                        {!isWordComplete ? (
-                            <form onSubmit={handleKeyboardSubmit} className="space-y-3 pb-2">
-                                <input ref={inputRef} type="text" value={userInput} onChange={(e) => setUserInput(e.target.value)} placeholder="Cevabı yaz..." className={`w-full text-center text-2xl font-bold p-3 border-b-4 rounded-xl outline-none transition-all ${wrongAnimationId === "input" ? "border-red-500 bg-red-50 text-red-600 animate-[shake_0.5s_ease-in-out]" : "border-indigo-200 bg-indigo-50 text-indigo-700 focus:border-indigo-500"}`} autoComplete="off" autoCorrect="off" autoCapitalize="none" />
-                                <div className="flex justify-between items-center px-2">
-                                    <div className="text-xs font-bold text-slate-400">Hata Hakkı: <span className="text-red-500">{3 - mistakeCount}</span></div>
-                                    <button type="button" onClick={handleKeyboardHint} disabled={hintCount >= (targetWord.length <= 2 ? 1 : 2)} className="text-xs flex items-center gap-1 bg-amber-100 text-amber-700 px-3 py-1.5 rounded-lg font-bold active:scale-95 disabled:opacity-50"><Lightbulb className="w-3 h-3" /> İpucu (-2p)</button>
-                                </div>
-                                <button type="submit" className="w-full bg-indigo-600 text-white font-bold py-4 rounded-xl shadow-md mt-4 flex items-center justify-center gap-2 hover:bg-indigo-700 active:scale-95 transition-all">Kontrol Et <Check className="w-5 h-5"/></button>
-                            </form>
-                        ) : null}
-                    </>
-                )}
-
                 {isWordComplete && (
-                    <div className="animate-in zoom-in duration-300 pb-2">
+                    <div className="animate-in zoom-in duration-300 pb-2 w-full">
                         <div className="flex items-center justify-center gap-2 mb-4 text-green-600 font-bold bg-green-50 p-3 rounded-xl border border-green-100">
                             {mistakeCount >= 3 ? <><AlertTriangle className="w-5 h-5 text-orange-500"/> Doğrusu Bu</> : <><CheckCircle2 className="w-6 h-6"/> Harika!</>}
                         </div>
@@ -715,7 +660,7 @@ export default function ExerciseGame() {
             </div>
 
             {!isWordComplete && (
-                <button onClick={handlePass} className="w-full bg-white border-2 border-red-100 text-red-500 font-bold py-4 rounded-xl shadow-sm flex items-center justify-center gap-2 mt-4 active:scale-95 transition-all hover:bg-red-50 hover:border-red-200"><Flag className="w-5 h-5"/><span>Pas Geç (Cevabı Gör)</span></button>
+                <button onClick={handlePass} className="w-full bg-white border-2 border-red-100 text-red-500 font-bold py-4 rounded-xl shadow-sm flex items-center justify-center gap-2 mt-2 active:scale-95 transition-all hover:bg-red-50 hover:border-red-200"><Flag className="w-5 h-5"/><span>Pas Geç (Cevabı Gör)</span></button>
             )}
 
             <button onClick={handleQuitEarly} className="w-full text-center text-slate-400 hover:text-red-500 text-sm font-medium transition-colors focus:outline-none p-2"><LogOut className="w-4 h-4 inline mr-1" /> Bitir (Puanı Al ve Çık)</button>
