@@ -51,7 +51,6 @@ export default function HardWordsGame() {
   };
 
   // --- 5. İLERİ / GERİ FONKSİYONLARI ---
-  
   const handleNextOrFinish = () => {
     if (currentIndex < currentList.length - 1) {
       setCurrentIndex(prev => prev + 1);
@@ -61,7 +60,6 @@ export default function HardWordsGame() {
     }
   };
 
-  // 🔥 YENİ: GERİ GİTME FONKSİYONU
   const handlePrevious = () => {
       if (currentIndex > 0) {
           setCurrentIndex(prev => prev - 1);
@@ -198,31 +196,17 @@ export default function HardWordsGame() {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center p-4 relative">
       
-      {/* ÜST BİLGİ VE NAVİGASYON */}
+      {/* ÜST BİLGİ */}
       <div className="w-full max-w-sm flex justify-between items-center mt-2 mb-4">
+        <button onClick={() => setSelectedLevel(null)} className="p-2 bg-white rounded-full shadow-sm text-slate-400 hover:text-slate-600">
+            <X className="w-5 h-5" />
+        </button>
         
-        {/* SOL GRUP: Çıkış ve Geri Tuşları */}
-        <div className="flex items-center gap-2">
-            <button onClick={() => setSelectedLevel(null)} className="p-2 bg-white rounded-full shadow-sm text-slate-400 hover:text-slate-600">
-                <X className="w-5 h-5" />
-            </button>
-
-            {/* 🔥 GERİ BUTONU: Sadece 2. karttan itibaren görünür */}
-            {currentIndex > 0 && (
-                <button 
-                    onClick={handlePrevious} 
-                    className="p-2 bg-white rounded-full shadow-sm text-slate-400 hover:text-slate-600 animate-in fade-in zoom-in"
-                    title="Önceki Kelime"
-                >
-                    <ArrowLeft className="w-5 h-5" />
-                </button>
-            )}
-        </div>
-        
-        {/* ETİKET */}
         <div className={`px-4 py-1.5 rounded-full text-xs font-bold border ${headerColor}`}>
             {headerText} ({currentIndex + 1} / {currentList.length})
         </div>
+
+        <div className="w-9"></div> {/* Dengeleyici */}
       </div>
 
       {/* FLASHCARD */}
@@ -230,23 +214,38 @@ export default function HardWordsGame() {
          <WordCard key={currentWord.id} wordObj={currentWord} />
       </div>
 
-      {/* KONTROL BUTONLARI */}
+      {/* KONTROL BUTONLARI (YENİ DÜZEN) */}
       <div className="w-full max-w-sm space-y-3 mb-6">
         
-        {/* 1. SIRADAKİ / BİTİR BUTONU */}
-        <button 
-            onClick={handleNextOrFinish}
-            className={`w-full p-4 rounded-2xl shadow-md flex items-center justify-center gap-2 active:scale-95 transition-all 
-                ${isLastCard 
-                    ? "bg-indigo-600 text-white hover:bg-indigo-700" 
-                    : "bg-white border-2 border-slate-200 text-slate-600 hover:bg-slate-50" 
-                }`}
-        >
-            <span className="font-bold text-lg">
-                {isLastCard ? "Bu Turu Bitir" : "Sıradaki Kelime"}
-            </span>
-            {isLastCard ? <Check className="w-6 h-6" /> : <ArrowRight className="w-6 h-6"/>}
-        </button>
+        {/* NAVİGASYON SATIRI (GERİ + İLERİ) */}
+        <div className="flex items-center gap-3">
+            
+            {/* GERİ BUTONU: Sadece 2. karttan itibaren görünür */}
+            {currentIndex > 0 && (
+                <button 
+                    onClick={handlePrevious} 
+                    className="bg-white border-2 border-slate-200 text-slate-500 p-4 rounded-2xl shadow-sm hover:bg-slate-50 active:scale-95 transition-all animate-in fade-in slide-in-from-right-2"
+                    title="Önceki"
+                >
+                    <ArrowLeft className="w-6 h-6" />
+                </button>
+            )}
+
+            {/* İLERİ / BİTİR BUTONU (Esnek Genişlik) */}
+            <button 
+                onClick={handleNextOrFinish}
+                className={`flex-1 p-4 rounded-2xl shadow-md flex items-center justify-center gap-2 active:scale-95 transition-all 
+                    ${isLastCard 
+                        ? "bg-indigo-600 text-white hover:bg-indigo-700" 
+                        : "bg-white border-2 border-slate-200 text-slate-600 hover:bg-slate-50" 
+                    }`}
+            >
+                <span className="font-bold text-lg">
+                    {isLastCard ? "Bu Turu Bitir" : "Sıradaki Kelime"}
+                </span>
+                {isLastCard ? <Check className="w-6 h-6" /> : <ArrowRight className="w-6 h-6"/>}
+            </button>
+        </div>
 
         {/* 2. HATADAN ÇIKAR BUTONU */}
         <button 
