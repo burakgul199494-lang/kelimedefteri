@@ -509,57 +509,34 @@ const getAllWords = () => {
     } catch (e) { console.error("Hata:", e); }
   };
 
-  const handleUpdateWord = async (originalId, newData) => {
+  // 🔥🔥🔥 DÜZELTME BURADA: Sadece ID ile eşleşme yapılıyor 🔥🔥🔥
+  const handleUpdateWord = async (targetId, newData) => {
      try {
-       let isCustom = customWords.find((w) => String(w.id) === String(originalId));
-       const isKnown = knownWordIds.includes(originalId);
-       const systemOriginal = dynamicSystemWords.find(w => String(w.id) === String(originalId));
+       const strId = String(targetId);
 
-       if (isCustom) {
-         const wordRef = doc(db, "artifacts", appId, "users", user.uid, "words", String(originalId));
+       // 1. Önce Kullanıcının Kendi Kelimelerinde (customWords) bu ID var mı bak.
+       const existingUserWord = customWords.find(w => String(w.id) === strId);
+
+       if (existingUserWord) {
+         // Zaten kullanıcının envanterinde var, direkt güncelle.
+         const wordRef = doc(db, "artifacts", appId, "users", user.uid, "words", strId);
          await updateDoc(wordRef, newData);
+       } 
+       else {
+         // Kullanıcıda yok, Sistemden bul.
+         const systemOriginal = dynamicSystemWords.find(w => String(w.id) === strId);
 
-       } else if (systemOriginal) {
-         const existingByText = customWords.find(w => w.word.toLowerCase() === systemOriginal.word.toLowerCase());
-
-         if (existingByText) {
-             const wordRef = doc(db, "artifacts", appId, "users", user.uid, "words", existingByText.id);
-             await updateDoc(wordRef, newData);
-
-             if(isKnown) {
-                 const userRef = doc(db, "artifacts", appId, "users", user.uid, "vocab_game", "progress");
-                 await updateDoc(userRef, { known_ids: arrayRemove(originalId) });
-                 await updateDoc(userRef, { known_ids: arrayUnion(existingByText.id) });
-             }
-         } else {
-            const targetId = systemOriginal.id;
-            const wordRef = doc(
-                db,
-                "artifacts",
-                appId,
-                "users",
-                user.uid,
-                "words",
-                targetId
-            );
+         if (systemOriginal) {
+            const wordRef = doc(db, "artifacts", appId, "users", user.uid, "words", strId);
 
             await setDoc(wordRef, {
-                ...systemOriginal,
-                phonetic: newData.phonetic || systemOriginal.phonetic || "",
-                plural: systemOriginal.plural || "",
-                v2: systemOriginal.v2 || "",
-                v3: systemOriginal.v3 || "",
-                vIng: systemOriginal.vIng || "",
-                thirdPerson: systemOriginal.thirdPerson || "",
-                advLy: systemOriginal.advLy || "",
-                compEr: systemOriginal.compEr || "",
-                superEst: systemOriginal.superEst || "",
-                ...newData,
-                id: targetId,
-                source: "user",
+                ...systemOriginal, // Sistemdeki veriler
+                ...newData,        // Yeni gelen veriler (lastSeen, mistakeCount vb.)
+                id: strId,         // ID AYNI KALIR
+                source: "user",    
                 createdAt: new Date()
             });
-        }
+         }
        }
      } catch (e) { console.error("Update Error:", e); }
   };
