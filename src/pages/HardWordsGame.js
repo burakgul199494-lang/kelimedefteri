@@ -3,7 +3,7 @@ import { useData } from "../context/DataContext";
 import { useNavigate } from "react-router-dom";
 import WordCard from "../components/WordCard"; 
 import { 
-  X, CheckCircle2, ArrowRight, Trash2, Home, LogOut, 
+  X, CheckCircle2, ArrowRight, ArrowLeft, Trash2, Home, LogOut, 
   AlertTriangle, Flame, AlertOctagon, Check, Layers 
 } from "lucide-react";
 
@@ -12,7 +12,7 @@ export default function HardWordsGame() {
   const navigate = useNavigate();
   
   // --- STATE'LER ---
-  const [selectedLevel, setSelectedLevel] = useState(null); // null: Menüdeyiz, 'low'/'mid'/'high': Oyundayız
+  const [selectedLevel, setSelectedLevel] = useState(null); 
   const [currentIndex, setCurrentIndex] = useState(0);
 
   // --- 1. TÜM ZOR KELİMELERİ ÇEK ---
@@ -23,9 +23,9 @@ export default function HardWordsGame() {
   // --- 2. KATEGORİLERE AYIR ---
   const categories = useMemo(() => {
       return {
-          low: allHardWords.filter(w => w.mistakeCount === 2),      // Hata Yaptıklarım
-          mid: allHardWords.filter(w => w.mistakeCount === 3),      // Orta Seviye
-          high: allHardWords.filter(w => w.mistakeCount >= 4)       // Çok Zorlandıklarım
+          low: allHardWords.filter(w => w.mistakeCount === 2),      
+          mid: allHardWords.filter(w => w.mistakeCount === 3),      
+          high: allHardWords.filter(w => w.mistakeCount >= 4)       
       };
   }, [allHardWords]);
 
@@ -47,19 +47,25 @@ export default function HardWordsGame() {
     const currentWord = currentList[currentIndex];
     if (currentWord) {
       await clearMistake(currentWord.id);
-      // Kelime silinince otomatik olarak listeden düşer, useEffect indexi düzeltir.
     }
   };
 
-  // --- 5. SIRADAKİ / BİTİR ---
+  // --- 5. İLERİ / GERİ FONKSİYONLARI ---
+  
   const handleNextOrFinish = () => {
     if (currentIndex < currentList.length - 1) {
       setCurrentIndex(prev => prev + 1);
     } else {
-      // O kategori bitti, menüye dön
       setSelectedLevel(null);
       setCurrentIndex(0);
     }
+  };
+
+  // 🔥 YENİ: GERİ GİTME FONKSİYONU
+  const handlePrevious = () => {
+      if (currentIndex > 0) {
+          setCurrentIndex(prev => prev - 1);
+      }
   };
 
   // ==========================================
@@ -157,7 +163,6 @@ export default function HardWordsGame() {
   // MOD 2: OYUN EKRANI (Seçilen Kategori)
   // ==========================================
   
-  // Eğer seçili kategoride kelime kalmadıysa (hepsi silindiyse)
   if (currentList.length === 0) {
       return (
         <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 text-center">
@@ -179,7 +184,6 @@ export default function HardWordsGame() {
   }
 
   const currentWord = currentList[currentIndex];
-  // Güvenlik
   if (!currentWord) return <div className="min-h-screen bg-slate-50"/>;
 
   // Başlık Rengi Belirle
@@ -194,17 +198,31 @@ export default function HardWordsGame() {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center p-4 relative">
       
-      {/* ÜST BİLGİ */}
+      {/* ÜST BİLGİ VE NAVİGASYON */}
       <div className="w-full max-w-sm flex justify-between items-center mt-2 mb-4">
-        <button onClick={() => setSelectedLevel(null)} className="p-2 bg-white rounded-full shadow-sm text-slate-400 hover:text-slate-600">
-            <X className="w-5 h-5" />
-        </button>
         
+        {/* SOL GRUP: Çıkış ve Geri Tuşları */}
+        <div className="flex items-center gap-2">
+            <button onClick={() => setSelectedLevel(null)} className="p-2 bg-white rounded-full shadow-sm text-slate-400 hover:text-slate-600">
+                <X className="w-5 h-5" />
+            </button>
+
+            {/* 🔥 GERİ BUTONU: Sadece 2. karttan itibaren görünür */}
+            {currentIndex > 0 && (
+                <button 
+                    onClick={handlePrevious} 
+                    className="p-2 bg-white rounded-full shadow-sm text-slate-400 hover:text-slate-600 animate-in fade-in zoom-in"
+                    title="Önceki Kelime"
+                >
+                    <ArrowLeft className="w-5 h-5" />
+                </button>
+            )}
+        </div>
+        
+        {/* ETİKET */}
         <div className={`px-4 py-1.5 rounded-full text-xs font-bold border ${headerColor}`}>
             {headerText} ({currentIndex + 1} / {currentList.length})
         </div>
-
-        <div className="w-9"></div> {/* Dengeleyici */}
       </div>
 
       {/* FLASHCARD */}
