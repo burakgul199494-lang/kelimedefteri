@@ -64,11 +64,11 @@ export default function Game() {
     return { learnPool, reviewPool, waitingPool };
   }, [getAllWords, knownWordIds, learningQueue]);
 
-  // --- OTURUM BAŞLATMA (AKILLI SIRALAMA EKLENDİ) ---
+  // --- OTURUM BAŞLATMA (AKILLI SIRALAMA) ---
   const startSession = (mode, e) => {
     handleBlur(e); 
     setActiveMode(mode);
-    let pool = []; // selectedPool yerine pool diyelim, daha kısa
+    let pool = []; 
 
     if (mode === "learn") pool = pools.learnPool;
     else if (mode === "review") pool = pools.reviewPool;
@@ -79,13 +79,11 @@ export default function Game() {
       return;
     }
 
-    // --- BURASI DEĞİŞTİ: TARİHE GÖRE SIRALAMA ---
-    
+    // --- TARİHE GÖRE SIRALAMA ---
     const neverSeen = [];
     const seen = [];
 
     pool.forEach(w => {
-        // Flashcard için 'lastSeen' tarihine bakıyoruz
         if (!w.lastSeen) {
             neverSeen.push(w);
         } else {
@@ -97,13 +95,12 @@ export default function Game() {
     neverSeen.sort(() => 0.5 - Math.random());
 
     // 2. Görülenleri TARİHE göre sırala (En Eski -> En Yeni)
-    // Az önce çözdüğün kelimenin tarihi "Şu an" olduğu için en sona gidecek.
     seen.sort((a, b) => new Date(a.lastSeen).getTime() - new Date(b.lastSeen).getTime());
 
     // 3. Listeleri birleştir
     const smartSortedPool = [...neverSeen, ...seen];
 
-    // 4. İlk 20 taneyi al ve kendi içinde karıştır (Oturum içinde sıra ezberlenmesin)
+    // 4. İlk 20 taneyi al ve kendi içinde karıştır
     const selected = smartSortedPool.slice(0, 10).sort(() => 0.5 - Math.random());
 
     setSessionWords(selected);
@@ -114,7 +111,7 @@ export default function Game() {
 
   // --- CEVAPLAMA ---
   const handleAnswerAction = async (dir, type, e) => {
-    handleBlur(e); // Mobile Fix
+    handleBlur(e); 
     if (currentIndex >= sessionWords.length) return;
 
     if (activeMode === 'waiting' && type === 'dont_know') {
@@ -126,30 +123,27 @@ export default function Game() {
     const currentWord = sessionWords[currentIndex];
 
     setTimeout(async () => {
-      // 1. Durum: TEKRAR MODU (Review) - Sadece geçer
+      // 1. Durum: TEKRAR MODU (Review)
       if (activeMode === 'review') {
           setStats((p) => ({ ...p, review: p.review + 1 }));
           updateGameStats('flashcard', 1);
       } 
-      // 2. Durum: BEKLEME MODU (Waiting) - "Sıradaki Kelime" basıldıysa
-      // Veritabanına (SRS) kayıt yapma, sadece istatistik güncelle ve geç.
+      // 2. Durum: BEKLEME MODU (Waiting)
       else if (activeMode === 'waiting' && type === 'waiting_pass') {
           setStats((p) => ({ ...p, review: p.review + 1 })); 
           updateGameStats('flashcard', 1);
       }
-      // 3. Durum: NORMAL ÖĞRENME (Learn/Master/DontKnow)
+      // 3. Durum: NORMAL ÖĞRENME (Learn)
       else {
-          // --- DEĞİŞİKLİK BURADA BAŞLIYOR ---
           if (type === "dont_know") {
-              // "Bilmiyorum" dendiğinde seviye düşürme (SmartLearn çağırma).
-              // Sadece "Son Görülme" tarihini güncelle ki listenin en sonuna gitsin.
+              // "PAS" durumu: Sadece tarihi güncelle, seviye düşürme.
               await handleUpdateWord(currentWord.id, { lastSeen: new Date().toISOString() });
 
               setStats((p) => ({ ...p, review: p.review + 1 })); 
               updateGameStats('flashcard', 1);
           } 
           else {
-              // "Biliyorum" veya "Ezberledim" ise normal sistem (Seviye atlatma) çalışsın
+              // "Öğreniyorum" veya "Bunu Öğrendim"
               await handleSmartLearn(currentWord.id, type);
               
               if (type === "know") {
@@ -161,7 +155,6 @@ export default function Game() {
                   updateGameStats('flashcard', 1);
               }
           }
-          // --- DEĞİŞİKLİK BURADA BİTİYOR ---
       }
 
       // Sonraki Soruya Geç
@@ -171,7 +164,6 @@ export default function Game() {
       } else {
         setGameStage("summary");
         setSwipeDirection(null);
-        // Puan sadece 'learn' modunda verilir (waiting'de verilmez)
         if (activeMode === 'learn') {
             const totalPoints = sessionWords.length * POINTS_PER_CARD; 
             if (totalPoints > 0) addScore(totalPoints);
@@ -221,7 +213,6 @@ export default function Game() {
     return (
       <div className="min-h-screen bg-slate-50 p-6 flex flex-col items-center">
         
-        {/* --- GLOBAL CSS: HOVER SADECE MOUSE İLE ÇALIŞIR --- */}
         <style>{`
             * { -webkit-tap-highlight-color: transparent !important; }
             .game-btn { transition: transform 0.1s ease, background-color 0.2s ease, border-color 0.2s ease; }
@@ -336,11 +327,11 @@ export default function Game() {
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-sm w-full text-center">
             <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4"><CheckCheck className="w-8 h-8" /></div>
-            <h3 className="text-xl font-bold text-slate-800 mb-2">Ezberledim!</h3>
+            <h3 className="text-xl font-bold text-slate-800 mb-2">Bunu Öğrendin mi?</h3>
             <p className="text-slate-500 mb-6">Bu kelimeyi tamamen öğrendiğin kelimeler listesine taşıyacağım. Emin misin?</p>
             <div className="flex gap-3">
               <button onClick={closeModal} style={{ WebkitTapHighlightColor: 'transparent' }} className="flex-1 py-3 px-4 border border-slate-200 rounded-xl font-bold text-slate-600 active:bg-slate-50 focus:outline-none">İptal</button>
-              <button onClick={confirmMastery} style={{ WebkitTapHighlightColor: 'transparent' }} className="flex-1 py-3 px-4 bg-blue-600 text-white rounded-xl font-bold active:bg-blue-700 focus:outline-none">Evet, Ezberledim</button>
+              <button onClick={confirmMastery} style={{ WebkitTapHighlightColor: 'transparent' }} className="flex-1 py-3 px-4 bg-blue-600 text-white rounded-xl font-bold active:bg-blue-700 focus:outline-none">Evet, Öğrendim</button>
             </div>
           </div>
         </div>
@@ -405,22 +396,25 @@ export default function Game() {
               </button>
               
               <button onClick={(e) => handleMasterClick(e)} disabled={!!swipeDirection || showMasterConfirm || showResetConfirm} style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }} className="game-btn btn-blue flex-1 bg-white border-2 border-blue-100 text-blue-600 font-bold py-4 rounded-2xl shadow-sm flex flex-col items-center gap-1 active:scale-95 focus:outline-none">
-                <CheckCheck className="w-6 h-6" /><span className="text-sm">Ezberledim</span>
+                <CheckCheck className="w-6 h-6" /><span className="text-sm">Bunu Öğrendim</span>
               </button>
             </div>
         ) : (
-            // --- ÖĞRENME MODU (Bilmiyorum + Biliyorum + Ezberledim) ---
+            // --- ÖĞRENME MODU (Pas + Öğreniyorum + Bunu Öğrendim) ---
             <div className="flex gap-3 justify-center">
+              {/* PAS (Eski Bilmiyorum) */}
               <button onClick={(e) => { handleBlur(e); handleAnswerAction("left", "dont_know", e); }} disabled={!!swipeDirection || showMasterConfirm || showResetConfirm} style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }} className="game-btn btn-orange flex-1 bg-white border-2 border-orange-100 text-orange-500 font-bold py-4 rounded-2xl shadow-sm flex flex-col items-center gap-1 active:scale-95 focus:outline-none">
-                <X className="w-6 h-6" /><span className="text-sm">Bilmiyorum</span>
+                <X className="w-6 h-6" /><span className="text-sm">Pas</span>
               </button>
               
+              {/* ÖĞRENİYORUM (Eski Biliyorum) */}
               <button onClick={(e) => { handleBlur(e); handleAnswerAction("right", "know", e); }} disabled={!!swipeDirection || showMasterConfirm || showResetConfirm} style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }} className="game-btn btn-green flex-1 bg-white border-2 border-green-100 text-green-600 font-bold py-4 rounded-2xl shadow-sm flex flex-col items-center gap-1 active:scale-95 focus:outline-none">
-                <Check className="w-6 h-6" /><span className="text-sm">Biliyorum</span>
+                <Check className="w-6 h-6" /><span className="text-sm">Öğreniyorum</span>
               </button>
               
+              {/* BUNU ÖĞRENDİM (Eski Ezberledim) */}
               <button onClick={(e) => handleMasterClick(e)} disabled={!!swipeDirection || showMasterConfirm || showResetConfirm} style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }} className="game-btn btn-blue flex-1 bg-white border-2 border-blue-100 text-blue-600 font-bold py-4 rounded-2xl shadow-sm flex flex-col items-center gap-1 active:scale-95 focus:outline-none">
-                <CheckCheck className="w-6 h-6" /><span className="text-sm">Ezberledim</span>
+                <CheckCheck className="w-6 h-6" /><span className="text-sm">Bunu Öğrendim</span>
               </button>
             </div>
         )}
