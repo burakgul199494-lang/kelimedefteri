@@ -57,17 +57,21 @@ export default function ExerciseGame() {
       return getAllWords() || [];
   }, [getAllWords]);
 
-  // Düzensiz Kontrolleri
+  // 🔥 YARDIMCI: Düzensiz Kontrolü (GÜVENLİ HALE GETİRİLDİ) 🔥
   const isIrregularVerb = (w) => {
-      const v2 = w.v2?.trim().toLowerCase();
-      // "-ed" ile bitmiyorsa düzensizdir (Basit kural)
-      return v2 && !v2.endsWith("ed");
+      // Eğer w.v2 yoksa veya boşsa, işlem yapma (False dön)
+      const v2 = (w.v2 || "").trim().toLowerCase();
+      if (!v2) return false;
+      // "-ed" ile bitmiyorsa düzensizdir
+      return !v2.endsWith("ed");
   };
 
   const isIrregularPlural = (w) => {
-      const pl = w.plural?.trim().toLowerCase();
+      // Eğer w.plural yoksa işlem yapma
+      const pl = (w.plural || "").trim().toLowerCase();
+      if (!pl) return false;
       // "-s" ile bitmiyorsa düzensizdir (Basit kural)
-      return pl && !pl.endsWith("s"); 
+      return !pl.endsWith("s"); 
   };
 
   // 🔥 YARDIMCI: Benzersiz Sayı Alma (Aynı kelimeyi 2 kez saymaz) 🔥
@@ -76,8 +80,9 @@ export default function ExerciseGame() {
       let count = 0;
       allWords.forEach(w => {
           if (filterFn(w)) {
-              const text = w.word.toLowerCase().trim();
-              if (!seen.has(text)) {
+              // Word yoksa sayma (Güvenlik)
+              const text = (w.word || "").toLowerCase().trim();
+              if (text && !seen.has(text)) {
                   seen.add(text);
                   count++;
               }
@@ -124,14 +129,13 @@ export default function ExerciseGame() {
       return;
     }
 
-    // 🔥 2. BENZERSİZLEŞTİRME (DEDUPLICATION) 🔥
-    // Aynı isme sahip kelimelerden sadece ilkini al.
+    // 2. BENZERSİZLEŞTİRME (DEDUPLICATION)
     const uniqueValidWords = [];
     const seenTexts = new Set();
 
     rawValidWords.forEach(w => {
-        const text = w.word.toLowerCase().trim();
-        if (!seenTexts.has(text)) {
+        const text = (w.word || "").toLowerCase().trim();
+        if (text && !seenTexts.has(text)) {
             seenTexts.add(text);
             uniqueValidWords.push(w);
         }
@@ -158,20 +162,20 @@ export default function ExerciseGame() {
         let targetKey = key;
 
         if (key === 'irregular_verbs') {
-            target = w.v2.trim();
+            target = (w.v2 || "").trim();
             targetKey = 'v2';
         } else if (key === 'irregular_plurals') {
-            target = w.plural.trim();
+            target = (w.plural || "").trim();
             targetKey = 'plural';
         } else {
-            target = w[key].trim();
+            target = (w[key] || "").trim();
         }
 
         return {
             baseWordObj: w,
             targetWord: target,
             formLabel: formTypeObj.label,
-            formKey: targetKey
+            formKey: targetKey 
         };
     });
 
@@ -192,6 +196,7 @@ export default function ExerciseGame() {
     if (gameStatus === "playing" && questions[currentIndex]) {
       const target = questions[currentIndex].targetWord;
       
+      // SIFIRLAMALAR
       setIsWordComplete(false);
       setMistakeCount(0);
       setHintCount(0);
@@ -205,6 +210,7 @@ export default function ExerciseGame() {
             isUsed: false
           }));
 
+          // Force Shuffle
           if (target.length > 1) {
               let isSame = true;
               while (isSame) {
@@ -709,7 +715,10 @@ export default function ExerciseGame() {
                                         <Lightbulb className="w-3 h-3" /> İpucu (-2p)
                                     </button>
                                 </div>
-                                <button type="submit" className="w-full bg-indigo-600 text-white font-bold py-4 rounded-xl shadow-md mt-4 flex items-center justify-center gap-2 hover:bg-indigo-700 active:scale-95 transition-all">Kontrol Et <Check className="w-5 h-5"/></button>
+                                
+                                <button type="submit" className="w-full bg-indigo-600 text-white font-bold py-4 rounded-xl shadow-md mt-4 flex items-center justify-center gap-2 hover:bg-indigo-700 active:scale-95 transition-all">
+                                    Kontrol Et <Check className="w-5 h-5"/>
+                                </button>
                             </form>
                         ) : null}
                     </>
