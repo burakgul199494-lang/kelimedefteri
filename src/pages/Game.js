@@ -14,7 +14,8 @@ import {
   Hourglass,
   Layers,
   ArrowRight,
-  AlertTriangle
+  AlertTriangle,
+  Flag // Bitiş bayrağı ikonu eklendi
 } from "lucide-react";
 
 export default function Game() {
@@ -91,7 +92,7 @@ export default function Game() {
         }
     });
 
-    // 1. Hiç görülmeyenleri rastgele karıştır (Önce bunlar gelsin)
+    // 1. Hiç görülmeyenleri rastgele karıştır
     neverSeen.sort(() => 0.5 - Math.random());
 
     // 2. Görülenleri TARİHE göre sırala (En Eski -> En Yeni)
@@ -136,16 +137,12 @@ export default function Game() {
       // 3. Durum: NORMAL ÖĞRENME (Learn)
       else {
           if (type === "dont_know") {
-              // "PAS" durumu: Sadece tarihi güncelle, seviye düşürme.
               await handleUpdateWord(currentWord.id, { lastSeen: new Date().toISOString() });
-
               setStats((p) => ({ ...p, review: p.review + 1 })); 
               updateGameStats('flashcard', 1);
           } 
           else {
-              // "Öğreniyorum" veya "Bunu Öğrendim"
               await handleSmartLearn(currentWord.id, type);
-              
               if (type === "know") {
                   setStats((p) => ({ ...p, learned: p.learned + 1 }));
                   updateGameStats('flashcard', 1);
@@ -305,6 +302,9 @@ export default function Game() {
   // ===========================
   const currentCard = sessionWords[currentIndex];
   const progress = sessionWords.length > 0 ? (currentIndex / sessionWords.length) * 100 : 0;
+  
+  // 🔥 SON KART MI?
+  const isLastCard = currentIndex === sessionWords.length - 1;
 
   return (
     <div className="flex flex-col min-h-screen bg-slate-100 overflow-hidden relative">
@@ -384,15 +384,17 @@ export default function Game() {
       {/* BUTONLAR (DÜZENLENDİ) */}
       <div className="pb-10 px-6 max-w-md mx-auto w-full">
         {activeMode === 'review' ? (
-            // --- TEKRAR MODU (Tek Buton) ---
+            // --- TEKRAR MODU (Dinamik Buton) ---
             <button onClick={(e) => { handleBlur(e); handleAnswerAction("right", "review_pass", e); }} style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }} className="game-btn btn-white w-full bg-white border-2 border-slate-200 text-slate-600 font-bold py-4 rounded-2xl shadow-sm flex items-center justify-center gap-2 active:scale-95 focus:outline-none">
-                <span>Sıradaki Kelime</span><ArrowRight className="w-5 h-5" />
+                <span>{isLastCard ? "Turu Bitir" : "Sıradaki Kelime"}</span>
+                {isLastCard ? <Flag className="w-5 h-5"/> : <ArrowRight className="w-5 h-5" />}
             </button>
         ) : activeMode === 'waiting' ? (
             // --- BEKLEME MODU (Sıradaki + Ezberledim) ---
             <div className="flex gap-3 justify-center">
               <button onClick={(e) => { handleBlur(e); handleAnswerAction("right", "waiting_pass", e); }} disabled={!!swipeDirection || showMasterConfirm || showResetConfirm} style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }} className="game-btn btn-white flex-1 bg-white border-2 border-slate-200 text-slate-600 font-bold py-4 rounded-2xl shadow-sm flex flex-col items-center gap-1 active:scale-95 focus:outline-none">
-                <ArrowRight className="w-6 h-6" /><span className="text-sm">Sıradaki Kelime</span>
+                {isLastCard ? <Flag className="w-6 h-6" /> : <ArrowRight className="w-6 h-6" />}
+                <span className="text-sm">{isLastCard ? "Turu Bitir" : "Sıradaki Kelime"}</span>
               </button>
               
               <button onClick={(e) => handleMasterClick(e)} disabled={!!swipeDirection || showMasterConfirm || showResetConfirm} style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }} className="game-btn btn-blue flex-1 bg-white border-2 border-blue-100 text-blue-600 font-bold py-4 rounded-2xl shadow-sm flex flex-col items-center gap-1 active:scale-95 focus:outline-none">
