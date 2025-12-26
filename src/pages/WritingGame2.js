@@ -16,7 +16,7 @@ export default function WritingGame2() {
   const [gameStatus, setGameStatus] = useState("mode-selection"); 
   
   // 🔥 GİRİŞ TERCİHİ: 'bubbles' (Harf Seç) veya 'keyboard' (Yaz)
-  const [inputMethod, setInputMethod] = useState("bubbles"); 
+  const [inputMethod, setInputMethod] = useState("keyboard"); 
 
   const [questions, setQuestions] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
