@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { 
   X, Trophy, Loader2, Home, Volume2, CheckCircle2, 
   Dumbbell, Layers, ArrowRight, Languages, Square, 
-  Lightbulb, AlertTriangle, Star, Tag, Keyboard, MousePointer2, Flag, Check, LogOut, Sparkles
+  Lightbulb, AlertTriangle, Star, Keyboard, MousePointer2, Flag, Check, LogOut, Sparkles
 } from "lucide-react";
 
 const FORM_TYPES = [
@@ -84,7 +84,6 @@ export default function ExerciseGame() {
       return count;
   };
 
-  // Hard Mode için özel (filtresiz) sayım
   const getRawCount = (filterFn) => {
       return allWords.filter(w => w && w.word && filterFn(w)).length;
   };
@@ -111,7 +110,6 @@ export default function ExerciseGame() {
   // --- 2. OYUNU BAŞLATMA ---
   const startSession = (modeKey, e) => {
     handleBlur(e);
-    const dateKey = `lastExercise_${modeKey}`; 
     
     let rawValidWords = [];
     let isHardMode = false;
@@ -145,24 +143,25 @@ export default function ExerciseGame() {
       return;
     }
 
-    // Deduplication (Hard Mode Hariç)
-    let poolToUse = [];
-    if (isHardMode) {
-        poolToUse = rawValidWords;
-    } else {
-        const seenTexts = new Set();
-        rawValidWords.forEach(w => {
-            if(w && w.word) {
-                const text = String(w.word).toLowerCase().trim();
+    const uniqueValidWords = [];
+    const seenTexts = new Set();
+    const poolToProcess = isHardMode ? rawValidWords : rawValidWords;
+
+    poolToProcess.forEach(w => {
+        if(w && w.word) {
+            const text = String(w.word).toLowerCase().trim();
+            if (isHardMode) {
+                 uniqueValidWords.push(w);
+            } else {
                 if (!seenTexts.has(text)) {
                     seenTexts.add(text);
-                    poolToUse.push(w);
+                    uniqueValidWords.push(w);
                 }
             }
-        });
-    }
+        }
+    });
 
-    const selectedCandidates = poolToUse.sort(() => 0.5 - Math.random()).slice(0, 10);
+    const selectedCandidates = uniqueValidWords.sort(() => 0.5 - Math.random()).slice(0, 10);
     const selected = selectedCandidates.sort(() => 0.5 - Math.random());
 
     const generatedQuestions = selected.map(w => {
@@ -187,19 +186,13 @@ export default function ExerciseGame() {
             }
         } 
         else if (modeKey === 'irregular_verbs') {
-            target = String(w.v2 || "").trim();
-            targetKey = 'v2';
-            targetLabel = 'V2 (Düzensiz)';
+            target = String(w.v2 || "").trim(); targetKey = 'v2'; targetLabel = 'V2 (Düzensiz)';
         } 
         else if (modeKey === 'irregular_verbs_v3') {
-            target = String(w.v3 || "").trim(); 
-            targetKey = 'v3';
-            targetLabel = 'V3 (Düzensiz)';
+            target = String(w.v3 || "").trim(); targetKey = 'v3'; targetLabel = 'V3 (Düzensiz)';
         }
         else if (modeKey === 'irregular_plurals') {
-            target = String(w.plural || "").trim();
-            targetKey = 'plural';
-            targetLabel = 'Plural (Düzensiz)';
+            target = String(w.plural || "").trim(); targetKey = 'plural'; targetLabel = 'Plural (Düzensiz)';
         } 
         else {
             target = String(w[modeKey] || "").trim();
@@ -219,12 +212,13 @@ export default function ExerciseGame() {
     setQuestions(generatedQuestions);
     setActiveForm(isHardMode ? { label: "Karma (Zor)" } : { label: generatedQuestions[0]?.formLabel });
     
-    // Her şeyi sıfırla
+    // Reset
     setCurrentIndex(0);
     setScore(0);
-    setUserInput("");
-    setCompletedLetters([]);
+    setUserInput(""); 
+    setCompletedLetters([]); 
     setIsWordComplete(false);
+    
     setGameStatus("playing");
   };
 
@@ -235,13 +229,11 @@ export default function ExerciseGame() {
     setShowWordTr(false);
     setShowDefTr(false);
 
-    // Her soru değişiminde temizlik
     setIsWordComplete(false);
     setMistakeCount(0);
     setHintCount(0);
     setCurrentWordPoints(10);
     setHasRecordedMistake(false);
-    setWrongAnimationId(null);
     
     setCompletedLetters([]);
     setUserInput(""); 
@@ -250,6 +242,7 @@ export default function ExerciseGame() {
       const rawTarget = questions[currentIndex].targetWord;
       const target = rawTarget ? String(rawTarget).trim() : "";
       
+      // Sadece Balon modundaysak balonları hazırla
       if (inputMethod === "bubbles") {
           let lettersArray = target.split('').map((char, index) => ({
             id: `${char}-${index}-${Math.random()}`,
@@ -268,11 +261,14 @@ export default function ExerciseGame() {
               }
           }
           setShuffledLetters(lettersArray);
+      } else {
+          // Klavye modunda balonları boşalt (Yükü azalt)
+          setShuffledLetters([]);
       }
     }
     
     return () => window.speechSynthesis.cancel();
-  }, [currentIndex, gameStatus, questions, inputMethod]); 
+  }, [currentIndex, gameStatus, questions, inputMethod]);
 
   const getSmartDefinition = (wordObj, formKey) => {
       if (!wordObj || !wordObj.definitions) return { meaning: "", engExplanation: "", trExplanation: "" };
@@ -323,24 +319,17 @@ export default function ExerciseGame() {
       setIsWordComplete(true);
       speak(wordToSpeak, 'main'); 
       updateGameStats('exercise', 1);
-      
       const currentQ = questions[currentIndex];
       const dateKey = `lastExercise_${currentQ.formKey}`;
       handleUpdateWord(currentQ.baseWordObj.id, { [dateKey]: new Date().toISOString() });
-
       const finalPoints = pointsOverride !== null ? pointsOverride : currentWordPoints;
-      if (finalPoints > 0) { 
-          addScore(finalPoints); 
-          setScore(s => s + finalPoints); 
-      }
+      if (finalPoints > 0) { addScore(finalPoints); setScore(s => s + finalPoints); }
   };
 
   const handleFail = (wordToSpeak) => {
       setCurrentWordPoints(0);
       setIsWordComplete(true);
-      
       const target = String(questions[currentIndex].targetWord || "").trim();
-      
       setCompletedLetters(target.split(''));
       setUserInput(target);
       speak(wordToSpeak, 'main');
@@ -369,7 +358,6 @@ export default function ExerciseGame() {
   const handleLetterClick = (letterObj, e) => {
     handleBlur(e);
     if (isWordComplete || letterObj.isUsed) return;
-    
     const targetWord = String(questions[currentIndex].targetWord || "").trim();
     const nextIndex = completedLetters.length;
     const expectedChar = targetWord[nextIndex];
@@ -406,45 +394,36 @@ export default function ExerciseGame() {
       }
   };
 
-  // İpucu (Klavye için özel versiyon)
-  const handleKeyboardHint = () => {
+  // İpucu
+  const handleHint = (e) => {
+      handleBlur(e);
       if (isWordComplete) return;
       const targetWord = String(questions[currentIndex].targetWord || "").trim();
-      const len = targetWord.length;
-      const maxHints = len <= 2 ? 1 : 2;
+      
+      const maxHints = targetWord.length <= 2 ? 1 : 2;
       if (hintCount >= maxHints) return;
       
       setHintCount(h => h + 1);
       setCurrentWordPoints(p => Math.max(0, p - 2));
 
-      let correctPrefixLength = 0;
-      const cleanInput = userInput.trim().toLowerCase();
-      const cleanTarget = targetWord.toLowerCase();
-      for (let i = 0; i < cleanInput.length; i++) {
-          if (cleanInput[i] === cleanTarget[i]) correctPrefixLength++;
-          else break; 
+      if (inputMethod === "bubbles") {
+          const nextIndex = completedLetters.length;
+          const correctLetterObj = shuffledLetters.find(l => !l.isUsed && l.char.toLowerCase() === targetWord[nextIndex].toLowerCase());
+          if (correctLetterObj) handleLetterClick(correctLetterObj, null);
+      } else {
+          // Klavye İpucu
+          let correctPrefixLength = 0;
+          const cleanInput = userInput.trim().toLowerCase();
+          const cleanTarget = targetWord.toLowerCase();
+          for (let i = 0; i < cleanInput.length; i++) {
+              if (cleanInput[i] === cleanTarget[i]) correctPrefixLength++;
+              else break; 
+          }
+          const newInputValue = targetWord.substring(0, correctPrefixLength + 1);
+          setUserInput(newInputValue);
+          if(inputRef.current) inputRef.current.focus();
+          if(newInputValue.length === targetWord.length) handleSuccess(targetWord);
       }
-      const newInputValue = targetWord.substring(0, correctPrefixLength + 1);
-      setUserInput(newInputValue);
-      if(inputRef.current) inputRef.current.focus();
-      if(newInputValue.length === targetWord.length) handleSuccess(targetWord);
-  };
-
-  // İpucu (Balon Modu)
-  const handleBubbleHint = () => {
-      if (isWordComplete) return;
-      const targetWord = String(questions[currentIndex].targetWord || "").trim();
-      const len = targetWord.length;
-      const maxHints = len <= 2 ? 1 : 2;
-      if (hintCount >= maxHints) return;
-      
-      setHintCount(h => h + 1);
-      setCurrentWordPoints(p => Math.max(0, p - 2));
-
-      const nextIndex = completedLetters.length;
-      const expectedChar = targetWord[nextIndex];
-      const correctLetterObj = shuffledLetters.find(l => !l.isUsed && l.char.toLowerCase() === expectedChar.toLowerCase());
-      if (correctLetterObj) handleLetterClick(correctLetterObj, null);
   };
 
   const handleQuitEarly = (e) => {
@@ -496,6 +475,7 @@ export default function ExerciseGame() {
                 </div>
 
                 <div className="space-y-3 pb-10">
+                    {/* ZORLANDIKLARIM */}
                     {getCount('hard') > 0 && (
                         <button onClick={(e) => startSession('hard', e)} style={{ outline: 'none' }} className="menu-btn btn-hard w-full p-4 rounded-xl shadow-sm flex justify-between items-center focus:outline-none border-red-200 bg-red-50 text-red-800">
                             <div className="flex items-center gap-3"><div className="bg-red-200 p-2 rounded-lg text-red-700 animate-pulse"><AlertTriangle className="w-5 h-5"/></div><span className="font-bold">Zorlandıklarım</span></div>
@@ -503,6 +483,7 @@ export default function ExerciseGame() {
                         </button>
                     )}
 
+                    {/* DÜZENSİZLER */}
                     <button onClick={(e) => startSession('irregular_verbs', e)} disabled={getCount('irregular_verbs') === 0} style={{ outline: 'none' }} className="menu-btn btn-irregular w-full p-4 rounded-xl shadow-sm flex justify-between items-center focus:outline-none border-rose-100 bg-rose-50/50">
                         <div className="flex items-center gap-3"><div className="bg-rose-100 p-2 rounded-lg text-rose-500"><Sparkles className="w-5 h-5"/></div><span className="font-bold text-rose-700">Düzensiz Fiiller (V2)</span></div>
                         <span className="text-xs font-bold px-3 py-1 rounded-full bg-rose-200 text-rose-800">{getCount('irregular_verbs')}</span>
@@ -520,6 +501,7 @@ export default function ExerciseGame() {
 
                     <div className="border-t border-slate-200 my-2"></div>
 
+                    {/* STANDART MODLAR */}
                     {FORM_TYPES.map(form => {
                         const count = getCount(form.key);
                         return (
@@ -558,7 +540,7 @@ export default function ExerciseGame() {
   if (!questions[currentIndex]) return <div className="flex h-screen items-center justify-center"><Loader2 className="animate-spin w-10 h-10 text-indigo-600"/></div>;
 
   const currentQ = questions[currentIndex];
-  // 🔥 GÜVENLİK: Crash Önleyici 🔥
+  // 🔥 GÜVENLİK KORUMASI: targetWord asla undefined olamaz 🔥
   const targetWord = currentQ?.targetWord ? String(currentQ.targetWord).trim() : "";
   const baseWordObj = currentQ?.baseWordObj || {};
   const formLabel = currentQ?.formLabel ? String(currentQ.formLabel) : "Bilinmiyor"; 
@@ -663,7 +645,7 @@ export default function ExerciseGame() {
                                         ))}
                                     </div>
                                     <div className="flex justify-center border-t border-slate-100 pt-3">
-                                         <button onClick={handleBubbleHint} disabled={isWordComplete || targetWord.length <= 1} className={`flex items-center gap-2 px-5 py-3 bg-amber-100 text-amber-700 rounded-2xl font-bold transition-colors active:scale-95 focus:outline-none ${(isWordComplete || targetWord.length <= 1) ? 'opacity-50 cursor-not-allowed' : 'active:bg-amber-200'}`}>
+                                         <button onClick={handleHint} disabled={isWordComplete || targetWord.length <= 1} className={`flex items-center gap-2 px-5 py-3 bg-amber-100 text-amber-700 rounded-2xl font-bold transition-colors active:scale-95 focus:outline-none ${(isWordComplete || targetWord.length <= 1) ? 'opacity-50 cursor-not-allowed' : 'active:bg-amber-200'}`}>
                                             <Lightbulb className="w-5 h-5"/> 
                                             <span>İpucu {targetWord.length <= 1 ? "(Yok)" : (hintCount === 0 ? "(-5p)" : "(-0p)")}</span>
                                             <span className="text-[10px] bg-white/50 px-1.5 rounded ml-1">Hata: {mistakeCount}/3</span>
@@ -677,25 +659,23 @@ export default function ExerciseGame() {
                         <>
                             {!isWordComplete ? (
                                 <form onSubmit={handleKeyboardSubmit} className="space-y-3 pb-2">
-                                    {/* 🔥 HIZLI ve TEMİZ INPUT 🔥 */}
+                                    {/* 🔥 HIZLI INPUT AYARLARI 🔥 */}
                                     <input 
-                                        key={currentIndex} // Sorular arası inputu yeniler
+                                        key={currentIndex} 
                                         ref={inputRef} 
                                         type="text" 
                                         value={userInput || ""} 
                                         onChange={(e) => setUserInput(e.target.value)} 
                                         placeholder="Cevabı yaz..." 
-                                        // Ağır 'animate-shake' yerine renk değişimi kullanıldı
                                         className={`w-full text-center text-2xl font-bold p-3 border-b-4 rounded-xl outline-none transition-colors duration-200 ${wrongAnimationId === "input" ? "border-red-500 bg-red-50 text-red-600" : "border-indigo-200 bg-indigo-50 text-indigo-700 focus:border-indigo-500"}`} 
                                         autoComplete="off" 
                                         autoCorrect="off" 
                                         autoCapitalize="none"
-                                        spellCheck="false" // iOS Takılmasını Önler
+                                        spellCheck="false" 
                                     />
                                     <div className="flex justify-between items-center px-2">
                                         <div className="text-xs font-bold text-slate-400">Hata Hakkı: <span className="text-red-500">{3 - mistakeCount}</span></div>
-                                        {/* Crash Önleyici: targetWord.length */}
-                                        <button type="button" onClick={handleKeyboardHint} disabled={hintCount >= ((targetWord || "").length <= 2 ? 1 : 2)} className="text-xs flex items-center gap-1 bg-amber-100 text-amber-700 px-3 py-1.5 rounded-lg font-bold active:scale-95 disabled:opacity-50"><Lightbulb className="w-3 h-3" /> İpucu (-2p)</button>
+                                        <button type="button" onClick={handleHint} disabled={hintCount >= ((targetWord || "").length <= 2 ? 1 : 2)} className="text-xs flex items-center gap-1 bg-amber-100 text-amber-700 px-3 py-1.5 rounded-lg font-bold active:scale-95 disabled:opacity-50"><Lightbulb className="w-3 h-3" /> İpucu (-2p)</button>
                                     </div>
                                     <button type="submit" className="w-full bg-indigo-600 text-white font-bold py-4 rounded-xl shadow-md mt-4 flex items-center justify-center gap-2 hover:bg-indigo-700 active:scale-95 transition-all">Kontrol Et <Check className="w-5 h-5"/></button>
                                 </form>
