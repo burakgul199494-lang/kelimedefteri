@@ -13,11 +13,11 @@ import {
   Hourglass, 
   Square, 
   Star, 
-  Tag
+  Tag,
+  AlertTriangle // Yeni ikon
 } from "lucide-react";
 
 export default function Quiz() {
-  // 🔥 registerMistake BURAYA EKLENDİ
   const { getAllWords, knownWordIds, learningQueue, addScore, updateGameStats, handleUpdateWord, registerMistake } = useData();
   const navigate = useNavigate();
 
@@ -63,10 +63,13 @@ export default function Quiz() {
       return false;
     });
 
-    return { learnPool, reviewPool, waitingPool };
+    // 🔥 YENİ HAVUZ: Hata Sayısı >= 2 olanlar
+    const hardPool = validWords.filter(w => (w.mistakeCount || 0) >= 2);
+
+    return { learnPool, reviewPool, waitingPool, hardPool };
   };
 
-  const { learnPool, reviewPool, waitingPool } = getWordPools();
+  const { learnPool, reviewPool, waitingPool, hardPool } = getWordPools();
 
   // --- IPHONE FIX ---
   const handleBlur = (e) => {
@@ -77,22 +80,35 @@ export default function Quiz() {
   const startQuiz = (mode, e) => {
     handleBlur(e);
     setGameMode(mode);
-    let pool = [];
+    
+    // 1. Hedef Kelimeleri Seç (Target Pool)
+    let targetPool = [];
 
-    if (mode === "learn") pool = learnPool;
-    else if (mode === "review") pool = reviewPool;
-    else if (mode === "waiting") pool = waitingPool;
+    if (mode === "learn") targetPool = learnPool;
+    else if (mode === "review") targetPool = reviewPool;
+    else if (mode === "waiting") targetPool = waitingPool;
+    else if (mode === "hard") targetPool = hardPool; // Yeni Mod
 
-    if (pool.length < 4) {
-      alert(`Quiz başlatmak için bu modda en az 4 kelimeye ihtiyaç var. (Şu an: ${pool.length})`);
+    // 🔥 GÜNCELLEME: Artık 1 kelime bile olsa Quiz başlar.
+    if (targetPool.length === 0) {
+      alert(`Bu modda hiç kelime yok.`);
       return;
+    }
+
+    // 🔥 GÜNCELLEME: Yanlış şıklar (Distractors) TÜM HAVUZDAN çekilecek.
+    const allValidWords = getAllWords().filter(w => w.definitions && w.definitions[0]?.meaning);
+    
+    // Eğer sistemde toplam kayıtlı kelime sayısı 4'ten azsa oyun başlamaz (Çünkü şık çıkmaz).
+    if (allValidWords.length < 4) {
+        alert("Sistemin şık üretebilmesi için sözlükte toplam en az 4 kelime olmalı.");
+        return;
     }
 
     // --- AKILLI SIRALAMA ---
     const neverSeen = [];
     const seen = [];
 
-    pool.forEach(w => {
+    targetPool.forEach(w => {
         if (!w.lastSeen_quiz) {
             neverSeen.push(w);
         } else {
@@ -104,23 +120,27 @@ export default function Quiz() {
     seen.sort((a, b) => new Date(a.lastSeen_quiz).getTime() - new Date(b.lastSeen_quiz).getTime());
 
     const smartSortedPool = [...neverSeen, ...seen];
-    const selectedCandidates = smartSortedPool.slice(0, 20);
+    const selectedCandidates = smartSortedPool.slice(0, 20); // Maksimum 20 soru sor
     const selectedWords = selectedCandidates.sort(() => 0.5 - Math.random());
-
-    const allValidWords = getAllWords().filter(w => w.definitions && w.definitions[0]?.meaning);
 
     const generated = selectedWords.map(target => {
       const correct = target.definitions[0].meaning;
       
+      // 🔥 ŞIKLARI OLUŞTUR (Tüm Havuzdan)
       const others = allValidWords
         .filter(w => 
+            // 1. ID Kontrolü: Kendisi olmasın
             w.id !== target.id && 
+            // 2. Metin Kontrolü (BANK KURALI): Eş sesli (aynı yazılan) başka bir kelime şıklara girmesin.
             w.word.toLowerCase().trim() !== target.word.toLowerCase().trim()
         )
         .sort(() => 0.5 - Math.random())
         .slice(0, 3)
         .map(w => w.definitions[0].meaning);
       
+      // Eğer yeterli yanlış şık bulunamazsa (çok nadir), kalanları boş string ile doldurma (Crash önlemi)
+      while (others.length < 3) { others.push("..."); }
+
       return { 
         wordObj: target, 
         correct, 
@@ -160,7 +180,7 @@ export default function Quiz() {
         // DOĞRU CEVAP
         setScore(s => s + 5);
     } else {
-        // 🔥 YANLIŞ CEVAP: Hata kaydı oluştur (+1 Puan)
+        // YANLIŞ CEVAP: Sadece hata puanı işle
         registerMistake(currentWord.id, 1);
     }
 
@@ -231,6 +251,7 @@ export default function Quiz() {
                     .btn-review:hover { border-color: #fed7aa !important; background-color: #fff7ed !important; }
                     .btn-learn:hover { border-color: #c7d2fe !important; background-color: #eef2ff !important; }
                     .btn-wait:hover { border-color: #cbd5e1 !important; background-color: #f8fafc !important; }
+                    .btn-hard:hover { border-color: #fecaca !important; background-color: #fef2f2 !important; }
                 }
             `}</style>
 
@@ -247,24 +268,47 @@ export default function Quiz() {
                     <p className="text-slate-500">Türkçesini bul.</p>
                 </div>
                 <div className="space-y-4">
-                    <button onClick={(e) => startQuiz('review', e)} disabled={reviewPool.length < 4} style={{ outline: 'none' }} className="menu-btn btn-review w-full p-5 rounded-2xl shadow-md focus:outline-none focus:ring-0">
+                    
+                    {/* 1. Tekrar Modu */}
+                    <button onClick={(e) => startQuiz('review', e)} disabled={reviewPool.length < 1} style={{ outline: 'none' }} className="menu-btn btn-review w-full p-5 rounded-2xl shadow-md focus:outline-none focus:ring-0">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-4"><div className="bg-orange-100 p-3 rounded-xl text-orange-600"><RefreshCw className="w-8 h-8" /></div><div className="text-left"><div className="font-bold text-xl text-slate-800">Tekrar Modu</div><div className="text-sm text-slate-500">Öğrendiklerini Pekiştir</div></div></div>
                             <div className="text-2xl font-black text-orange-600">{reviewPool.length}</div>
                         </div>
                     </button>
-                    <button onClick={(e) => startQuiz('learn', e)} disabled={learnPool.length < 4} style={{ outline: 'none' }} className="menu-btn btn-learn w-full p-5 rounded-2xl shadow-md focus:outline-none focus:ring-0">
+
+                    {/* 2. Öğrenme Modu */}
+                    <button onClick={(e) => startQuiz('learn', e)} disabled={learnPool.length < 1} style={{ outline: 'none' }} className="menu-btn btn-learn w-full p-5 rounded-2xl shadow-md focus:outline-none focus:ring-0">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-4"><div className="bg-indigo-100 p-3 rounded-xl text-indigo-600"><BrainCircuit className="w-8 h-8" /></div><div className="text-left"><div className="font-bold text-xl text-slate-800">Öğrenme Modu</div><div className="text-sm text-slate-500">Yeni Kelimeler</div></div></div>
                             <div className="text-2xl font-black text-indigo-600">{learnPool.length}</div>
                         </div>
                     </button>
-                    <button onClick={(e) => startQuiz('waiting', e)} disabled={waitingPool.length < 4} style={{ outline: 'none' }} className="menu-btn btn-wait w-full p-5 rounded-2xl shadow-md focus:outline-none focus:ring-0">
+
+                    {/* 3. Bekleme Listesi */}
+                    <button onClick={(e) => startQuiz('waiting', e)} disabled={waitingPool.length < 1} style={{ outline: 'none' }} className="menu-btn btn-wait w-full p-5 rounded-2xl shadow-md focus:outline-none focus:ring-0">
                         <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-4"><div className="bg-slate-100 p-3 rounded-xl text-slate-500"><Hourglass className="w-8 h-8" /></div><div className="text-left"><div className="font-bold text-xl text-slate-700">Bekleme Listesi</div><div className="text-sm text-slate-400">Henüz Zamanı Gelmeyen Kelimeler</div></div></div>
+                            <div className="flex items-center gap-4"><div className="bg-slate-100 p-3 rounded-xl text-slate-500"><Hourglass className="w-8 h-8" /></div><div className="text-left"><div className="font-bold text-xl text-slate-700">Bekleme Listesi</div><div className="text-sm text-slate-400">Henüz Zamanı Gelmeyenler</div></div></div>
                             <div className="text-2xl font-black text-slate-500">{waitingPool.length}</div>
                         </div>
                     </button>
+
+                    {/* 4. 🔥 HATA YAPTIKLARIM BUTONU (Dinamik) 🔥 */}
+                    {hardPool.length > 0 && (
+                        <button onClick={(e) => startQuiz('hard', e)} style={{ outline: 'none' }} className="menu-btn btn-hard w-full p-5 rounded-2xl shadow-md border-red-100 bg-red-50 focus:outline-none focus:ring-0">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-4">
+                                    <div className="bg-red-200 p-3 rounded-xl text-red-700 animate-pulse"><AlertTriangle className="w-8 h-8" /></div>
+                                    <div className="text-left">
+                                        <div className="font-bold text-xl text-red-700">Hata Yaptıklarım</div>
+                                        <div className="text-sm text-red-500">Zorlandığın Kelimeler</div>
+                                    </div>
+                                </div>
+                                <div className="text-2xl font-black text-red-600">{hardPool.length}</div>
+                            </div>
+                        </button>
+                    )}
+
                 </div>
             </div>
         </div>
@@ -277,9 +321,10 @@ export default function Quiz() {
   if (gameStatus === "finished") {
     const max = questions.length * 5;
     let modeTitle = "Test Tamamlandı!";
-    if (gameMode === "learn") modeTitle = "Bitti";
-    if (gameMode === "review") modeTitle = "Bitti";
-    if (gameMode === "waiting") modeTitle = "Bitti";
+    if (gameMode === "learn") modeTitle = "Öğrenme Bitti";
+    if (gameMode === "review") modeTitle = "Tekrar Bitti";
+    if (gameMode === "waiting") modeTitle = "Bekleme Bitti";
+    if (gameMode === "hard") modeTitle = "Zorlananlar Bitti";
 
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
@@ -333,7 +378,7 @@ export default function Quiz() {
           <div className="flex justify-between items-center">
              <button onClick={handleQuitEarly} className="p-2 rounded-full active:bg-slate-100 transition-colors"><X className="w-6 h-6 text-slate-400"/></button>
              <div className="font-bold text-indigo-600">
-                {gameMode === 'review' ? 'Tekrar' : gameMode === 'learn' ? 'Öğrenme' : 'Bekleme'}: {index+1} / {questions.length}
+                {gameMode === 'review' ? 'Tekrar' : gameMode === 'learn' ? 'Öğrenme' : gameMode === 'waiting' ? 'Bekleme' : 'Hata'}: {index+1} / {questions.length}
              </div>
              <div className="flex items-center gap-1 bg-amber-100 text-amber-600 px-2 py-1 rounded-lg font-bold text-sm"><Trophy className="w-4 h-4"/> {score}</div>
           </div>
@@ -352,7 +397,7 @@ export default function Quiz() {
                         <Star className="w-3 h-3 fill-current"/> 5p
                     </div>
 
-                    {/* --- 🔥 SOL ÜST KÖŞE: ETİKETLER (top-0: en tepeye yaslı) 🔥 --- */}
+                    {/* --- 🔥 SOL ÜST KÖŞE: ETİKETLER (top-0) 🔥 --- */}
                     {current.wordObj.tags && current.wordObj.tags.length > 0 && (
                         <div className="absolute top-0 left-4 mt-4 flex gap-1 max-w-[50%] flex-wrap justify-start">
                             {current.wordObj.tags.map((tag, i) => (
