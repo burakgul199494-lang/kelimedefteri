@@ -9,7 +9,7 @@ import {
 
 const FORM_TYPES = [
   { id: "plural", label: "Plural (Çoğul)", key: "plural" },
-  { id: "v2", label: "V2 (Past)", key: "v2" },
+  { id: "v2", label: "V2 (Past - Düzenli)", key: "v2" }, // Label güncellendi
   { id: "v3", label: "V3 (Participle)", key: "v3" },
   { id: "thirdPerson", label: "3. Tekil (He/She)", key: "thirdPerson" },
   { id: "advLy", label: "Zarf (-ly)", key: "advLy" },
@@ -57,15 +57,18 @@ export default function ExerciseGame() {
       return getAllWords() || [];
   }, [getAllWords]);
 
+  // Güvenli Düzensiz Kontrolleri
   const isIrregularVerb = (w) => {
       if (!w || !w.v2) return false;
       const v2 = String(w.v2).trim().toLowerCase();
+      // "-ed" ile bitmiyorsa düzensizdir
       return v2.length > 0 && !v2.endsWith("ed");
   };
 
   const isIrregularPlural = (w) => {
       if (!w || !w.plural) return false;
       const pl = String(w.plural).trim().toLowerCase();
+      // "-s" ile bitmiyorsa düzensizdir
       return pl.length > 0 && !pl.endsWith("s"); 
   };
 
@@ -75,7 +78,7 @@ export default function ExerciseGame() {
       allWords.forEach(w => {
           if (w && w.word && filterFn(w)) {
               const text = String(w.word).toLowerCase().trim();
-              if (text && !seen.has(text)) {
+              if (!seen.has(text)) {
                   seen.add(text);
                   count++;
               }
@@ -85,18 +88,21 @@ export default function ExerciseGame() {
   };
 
   const getCount = (key) => {
-      if (key === 'hard') {
-          return getUniqueCount(w => (w.mistakeCount || 0) >= 2);
-      }
-      if (key === 'irregular_verbs') {
-          return getUniqueCount(isIrregularVerb);
-      }
-      if (key === 'irregular_plurals') {
-          return getUniqueCount(isIrregularPlural);
-      }
+      if (key === 'hard') return getUniqueCount(w => (w.mistakeCount || 0) >= 2);
+      if (key === 'irregular_verbs') return getUniqueCount(isIrregularVerb);
+      if (key === 'irregular_verbs_v3') return getUniqueCount(isIrregularVerb); // V3 için de aynı havuz
+      if (key === 'irregular_plurals') return getUniqueCount(isIrregularPlural);
+      
+      // Standart Modlar İçin (V2 seçilirse düzensizleri hariç tut)
       return getUniqueCount(w => {
           const val = w[key];
-          return val && typeof val === 'string' && String(val).trim().length > 0;
+          const hasVal = val && typeof val === 'string' && String(val).trim().length > 0;
+          if (!hasVal) return false;
+
+          // Eğer V2 modundaysak ve kelime düzensizse, bu kelimeyi STANDART modda sayma/gösterme
+          if (key === 'v2' && isIrregularVerb(w)) return false;
+
+          return true;
       });
   };
 
@@ -108,30 +114,36 @@ export default function ExerciseGame() {
     let rawValidWords = [];
     let isHardMode = false;
 
-    // 1. KELİME SEÇİMİ
+    // 1. MODA GÖRE KELİME SEÇİMİ
     if (modeKey === 'hard') {
         isHardMode = true;
         rawValidWords = allWords.filter(w => (w.mistakeCount || 0) >= 2);
-    } else if (modeKey === 'irregular_verbs') {
+    } 
+    else if (modeKey === 'irregular_verbs' || modeKey === 'irregular_verbs_v3') {
         rawValidWords = allWords.filter(isIrregularVerb);
-    } else if (modeKey === 'irregular_plurals') {
+    } 
+    else if (modeKey === 'irregular_plurals') {
         rawValidWords = allWords.filter(isIrregularPlural);
-    } else {
+    } 
+    else {
+        // Standart Mod
         rawValidWords = allWords.filter(w => {
             const val = w[modeKey];
-            return val && typeof val === 'string' && String(val).trim().length > 0;
+            const hasVal = val && typeof val === 'string' && String(val).trim().length > 0;
+            // Düzensizleri standart moddan çıkar
+            if (modeKey === 'v2' && isIrregularVerb(w)) return false;
+            return hasVal;
         });
     }
 
     if (rawValidWords.length === 0) {
-      alert("Bu formda çalışılacak kelime bulunamadı.");
+      alert("Bu modda çalışılacak kelime bulunamadı.");
       return;
     }
 
-    // 2. DEDUPLICATION (Benzersizleştirme)
+    // 2. DEDUPLICATION
     const uniqueValidWords = [];
     const seenTexts = new Set();
-
     rawValidWords.forEach(w => {
         if(w && w.word) {
             const text = String(w.word).toLowerCase().trim();
@@ -142,7 +154,7 @@ export default function ExerciseGame() {
         }
     });
 
-    // 3. KARIŞTIRMA VE SEÇME
+    // 3. KARIŞTIRMA
     const selectedCandidates = uniqueValidWords.sort(() => 0.5 - Math.random()).slice(0, 10);
     const selected = selectedCandidates.sort(() => 0.5 - Math.random());
 
@@ -157,7 +169,6 @@ export default function ExerciseGame() {
                 const val = w[ft.key];
                 return val && typeof val === 'string' && String(val).trim().length > 0;
             });
-
             if (availableForms.length > 0) {
                 const randomForm = availableForms[Math.floor(Math.random() * availableForms.length)];
                 target = String(w[randomForm.key] || "").trim();
@@ -172,12 +183,17 @@ export default function ExerciseGame() {
         else if (modeKey === 'irregular_verbs') {
             target = String(w.v2 || "").trim();
             targetKey = 'v2';
-            targetLabel = 'V2 (Past)';
+            targetLabel = 'V2 (Düzensiz)';
         } 
+        else if (modeKey === 'irregular_verbs_v3') {
+            target = String(w.v3 || "").trim(); // 🔥 YENİ: V3 Hedefi
+            targetKey = 'v3';
+            targetLabel = 'V3 (Düzensiz)';
+        }
         else if (modeKey === 'irregular_plurals') {
             target = String(w.plural || "").trim();
             targetKey = 'plural';
-            targetLabel = 'Plural (Çoğul)';
+            targetLabel = 'Plural (Düzensiz)';
         } 
         else {
             target = String(w[modeKey] || "").trim();
@@ -201,7 +217,7 @@ export default function ExerciseGame() {
     setGameStatus("playing");
   };
 
-  // --- 3. SORU YÜKLEME (CRASH FIX BURADA YAPILDI) ---
+  // --- 3. SORU YÜKLEME ---
   useEffect(() => {
     window.speechSynthesis.cancel();
     setActiveAudio(null);
@@ -209,11 +225,9 @@ export default function ExerciseGame() {
     setShowDefTr(false);
 
     if (gameStatus === "playing" && questions[currentIndex]) {
-      // 🔥 FIX: targetWord'ü kesinlikle String'e çevir 🔥
       const rawTarget = questions[currentIndex].targetWord;
       const target = rawTarget ? String(rawTarget).trim() : "";
       
-      // SIFIRLAMALAR
       setIsWordComplete(false);
       setMistakeCount(0);
       setHintCount(0);
@@ -221,39 +235,33 @@ export default function ExerciseGame() {
       setHasRecordedMistake(false);
 
       if (inputMethod === "bubbles") {
-          // Eğer target boşsa (çok nadir), boş dizi döner, çökmez.
           let lettersArray = target.split('').map((char, index) => ({
             id: `${char}-${index}-${Math.random()}`,
             char: char,
             isUsed: false
           }));
 
-          // Force Shuffle (Sonsuz Döngü Korumalı)
           if (target.length > 1) {
               let isSame = true;
               let attempt = 0;
-              while (isSame && attempt < 50) { // Max 50 deneme
+              while (isSame && attempt < 50) { 
                   lettersArray.sort(() => Math.random() - 0.5);
                   const currentOrder = lettersArray.map(l => l.char).join('');
                   if (currentOrder !== target) isSame = false;
                   attempt++;
               }
           }
-
           setShuffledLetters(lettersArray);
           setCompletedLetters([]);
       } else {
           setUserInput("");
       }
     }
-    
     return () => window.speechSynthesis.cancel();
   }, [currentIndex, gameStatus, questions, inputMethod]);
 
-  // GÜVENLİ TANIM
   const getSmartDefinition = (wordObj, formKey) => {
       if (!wordObj || !wordObj.definitions) return { meaning: "", engExplanation: "", trExplanation: "" };
-      
       const defs = wordObj.definitions;
       if (defs.length === 0) return { meaning: "", engExplanation: "", trExplanation: "" };
 
@@ -299,7 +307,7 @@ export default function ExerciseGame() {
   };
 
   // ==========================================
-  // OYUN MANTIĞI: ORTAK
+  // OYUN MANTIĞI
   // ==========================================
 
   const handleSuccess = (wordToSpeak, pointsOverride = null) => {
@@ -312,7 +320,6 @@ export default function ExerciseGame() {
       handleUpdateWord(currentQ.baseWordObj.id, { [dateKey]: new Date().toISOString() });
 
       const finalPoints = pointsOverride !== null ? pointsOverride : currentWordPoints;
-
       if (finalPoints > 0) {
           addScore(finalPoints);
           setScore(s => s + finalPoints);
@@ -334,7 +341,7 @@ export default function ExerciseGame() {
       updateGameStats('exercise', 1);
 
       const currentQ = questions[currentIndex];
-      recordMistakeOnce(); // HATA KAYDI
+      recordMistakeOnce(); 
       
       const dateKey = `lastExercise_${currentQ.formKey}`;
       handleUpdateWord(currentQ.baseWordObj.id, { [dateKey]: new Date().toISOString() });
@@ -350,9 +357,7 @@ export default function ExerciseGame() {
       else setGameStatus("finished");
   };
 
-  // ==========================================
-  // OYUN MANTIĞI: BUBBLES
-  // ==========================================
+  // --- HARF TIKLAMA (BALON MODU) ---
   const handleLetterClick = (letterObj, e) => {
     handleBlur(e);
     if (isWordComplete || letterObj.isUsed) return;
@@ -380,9 +385,7 @@ export default function ExerciseGame() {
     }
   };
 
-  // ==========================================
-  // OYUN MANTIĞI: KEYBOARD
-  // ==========================================
+  // --- KLAVYE SUBMIT ---
   const handleKeyboardSubmit = (e) => {
       if (e) e.preventDefault();
       if (isWordComplete) return;
@@ -403,35 +406,47 @@ export default function ExerciseGame() {
       }
   };
 
-  const handleKeyboardHint = () => {
+  // --- İPUCU (BALON MODU İÇİN DÜZELTİLDİ) ---
+  const handleHint = (e) => {
+      handleBlur(e);
       if (isWordComplete) return;
       const targetWord = questions[currentIndex].targetWord;
       const len = targetWord.length;
-
+      
+      // Limitler
       const maxHints = len <= 2 ? 1 : 2;
       if (hintCount >= maxHints) return;
 
+      // Puan Cezası
       const newHintCount = hintCount + 1;
       setHintCount(newHintCount);
       setCurrentWordPoints(p => Math.max(0, p - 2));
 
-      let correctPrefixLength = 0;
-      const cleanInput = userInput.trim().toLowerCase();
-      const cleanTarget = targetWord.toLowerCase();
-
-      for (let i = 0; i < cleanInput.length; i++) {
-          if (cleanInput[i] === cleanTarget[i]) {
-              correctPrefixLength++;
-          } else {
-              break; 
+      if (inputMethod === "bubbles") {
+          // --- BALON MODU İÇİN DOĞRU HARFİ BUL VE TIKLA ---
+          const nextIndex = completedLetters.length;
+          const expectedChar = targetWord[nextIndex];
+          // Kullanılmamış ve doğru karakteri olan İLK balonu bul
+          const correctLetterObj = shuffledLetters.find(l => !l.isUsed && l.char.toLowerCase() === expectedChar.toLowerCase());
+          
+          if (correctLetterObj) {
+              handleLetterClick(correctLetterObj, null);
           }
+      } else {
+          // --- KLAVYE MODU İÇİN YAZ ---
+          let correctPrefixLength = 0;
+          const cleanInput = userInput.trim().toLowerCase();
+          const cleanTarget = targetWord.toLowerCase();
+          for (let i = 0; i < cleanInput.length; i++) {
+              if (cleanInput[i] === cleanTarget[i]) correctPrefixLength++;
+              else break; 
+          }
+          const newInputValue = targetWord.substring(0, correctPrefixLength + 1);
+          setUserInput(newInputValue);
+          if(inputRef.current) inputRef.current.focus();
+          
+          if(newInputValue.length === targetWord.length) handleSuccess(targetWord);
       }
-
-      const newRevealLength = correctPrefixLength + 1;
-      const newInputValue = targetWord.substring(0, newRevealLength);
-      
-      setUserInput(newInputValue);
-      if(inputRef.current) inputRef.current.focus();
   };
 
   const handleQuitEarly = (e) => {
@@ -441,26 +456,16 @@ export default function ExerciseGame() {
   };
 
   // ===================================
-  // === 1. MOD SEÇİM EKRANI ===
+  // === EKRANLAR ===
   // ===================================
   if (gameStatus === "selection") {
       return (
         <div className="min-h-screen bg-slate-50 flex flex-col items-center p-6">
             <style>{`
                 * { -webkit-tap-highlight-color: transparent !important; }
-                .menu-btn { 
-                    background-color: white;
-                    border: 1px solid #e2e8f0;
-                    transition: all 0.2s ease;
-                }
-                .menu-btn:active {
-                    transform: scale(0.96);
-                    background-color: #f1f5f9;
-                }
-                .menu-btn:disabled {
-                    opacity: 0.5;
-                    cursor: not-allowed;
-                }
+                .menu-btn { background-color: white; border: 1px solid #e2e8f0; transition: all 0.2s ease; }
+                .menu-btn:active { transform: scale(0.96); background-color: #f1f5f9; }
+                .menu-btn:disabled { opacity: 0.5; cursor: not-allowed; }
                 @media (hover: hover) {
                     .menu-btn:hover { border-color: #a5b4fc !important; background-color: #f8fafc !important; }
                     .btn-irregular:hover { border-color: #fca5a5 !important; background-color: #fef2f2 !important; }
@@ -470,99 +475,58 @@ export default function ExerciseGame() {
 
             <div className="w-full max-w-md space-y-6">
                 <div className="flex items-center justify-between">
-                    <button onClick={() => navigate("/")} className="p-2 bg-white rounded-full shadow-sm hover:bg-slate-100">
-                        <Home className="w-5 h-5 text-slate-600" />
-                    </button>
-                    <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                        <Dumbbell className="w-6 h-6 text-indigo-600"/> Gramer Egzersizi
-                    </h2>
+                    <button onClick={() => navigate("/")} className="p-2 bg-white rounded-full shadow-sm hover:bg-slate-100"><Home className="w-5 h-5 text-slate-600" /></button>
+                    <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2"><Dumbbell className="w-6 h-6 text-indigo-600"/> Gramer Egzersizi</h2>
                     <div className="w-9"></div>
                 </div>
 
-                {/* --- INPUT SEÇİMİ TOGGLE --- */}
                 <div className="bg-white p-1 rounded-xl shadow-sm border border-slate-200 flex relative">
-                    <button onClick={() => setInputMethod("bubbles")} className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg text-sm font-bold transition-all z-10 ${inputMethod === "bubbles" ? "bg-indigo-100 text-indigo-700" : "text-slate-500 hover:bg-slate-50"}`}>
-                        <MousePointer2 className="w-4 h-4" /> Harf Seç
-                    </button>
-                    <button onClick={() => setInputMethod("keyboard")} className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg text-sm font-bold transition-all z-10 ${inputMethod === "keyboard" ? "bg-indigo-100 text-indigo-700" : "text-slate-500 hover:bg-slate-50"}`}>
-                        <Keyboard className="w-4 h-4" /> Klavye
-                    </button>
+                    <button onClick={() => setInputMethod("bubbles")} className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg text-sm font-bold transition-all z-10 ${inputMethod === "bubbles" ? "bg-indigo-100 text-indigo-700" : "text-slate-500 hover:bg-slate-50"}`}><MousePointer2 className="w-4 h-4" /> Harf Seç</button>
+                    <button onClick={() => setInputMethod("keyboard")} className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg text-sm font-bold transition-all z-10 ${inputMethod === "keyboard" ? "bg-indigo-100 text-indigo-700" : "text-slate-500 hover:bg-slate-50"}`}><Keyboard className="w-4 h-4" /> Klavye</button>
                 </div>
 
                 <div className="bg-indigo-600 p-6 rounded-2xl shadow-lg text-white text-center">
                     <h3 className="text-2xl font-bold mb-2">Form Çalışması</h3>
                     <p className="opacity-90 text-sm">Kelimenin istenen halini {inputMethod === "bubbles" ? "harfleri seçerek" : "klavye ile yazarak"} bul.</p>
-                    <div className="mt-4 inline-block bg-white/20 px-4 py-1 rounded-full text-xs font-bold">
-                        Aktif Havuz: {allWords.length} Kelime
-                    </div>
+                    <div className="mt-4 inline-block bg-white/20 px-4 py-1 rounded-full text-xs font-bold">Aktif Havuz: {allWords.length} Kelime</div>
                 </div>
 
                 <div className="space-y-3 pb-10">
-                    
-                    {/* 🔥 1. ZORLANDIKLARIM BUTONU 🔥 */}
+                    {/* ZORLANDIKLARIM */}
                     {getCount('hard') > 0 && (
-                        <button 
-                            onClick={(e) => startSession('hard', e)}
-                            style={{ outline: 'none' }}
-                            className="menu-btn btn-hard w-full p-4 rounded-xl shadow-sm flex justify-between items-center focus:outline-none border-red-200 bg-red-50 text-red-800"
-                        >
-                            <div className="flex items-center gap-3">
-                                <div className="bg-red-200 p-2 rounded-lg text-red-700 animate-pulse"><AlertTriangle className="w-5 h-5"/></div>
-                                <span className="font-bold">Zorlandıklarım</span>
-                            </div>
+                        <button onClick={(e) => startSession('hard', e)} style={{ outline: 'none' }} className="menu-btn btn-hard w-full p-4 rounded-xl shadow-sm flex justify-between items-center focus:outline-none border-red-200 bg-red-50 text-red-800">
+                            <div className="flex items-center gap-3"><div className="bg-red-200 p-2 rounded-lg text-red-700 animate-pulse"><AlertTriangle className="w-5 h-5"/></div><span className="font-bold">Zorlandıklarım</span></div>
                             <span className="text-xs font-bold px-3 py-1 rounded-full bg-red-200 text-red-900">{getCount('hard')}</span>
                         </button>
                     )}
 
-                    {/* 🔥 2. DÜZENSİZ MODLAR 🔥 */}
-                    <button 
-                        onClick={(e) => startSession('irregular_verbs', e)}
-                        disabled={getCount('irregular_verbs') === 0}
-                        style={{ outline: 'none' }}
-                        className="menu-btn btn-irregular w-full p-4 rounded-xl shadow-sm flex justify-between items-center focus:outline-none border-rose-100 bg-rose-50/50"
-                    >
-                        <div className="flex items-center gap-3">
-                            <div className="bg-rose-100 p-2 rounded-lg text-rose-500"><Sparkles className="w-5 h-5"/></div>
-                            <span className="font-bold text-rose-700">Düzensiz Fiiller</span>
-                        </div>
+                    {/* DÜZENSİZLER V2 */}
+                    <button onClick={(e) => startSession('irregular_verbs', e)} disabled={getCount('irregular_verbs') === 0} style={{ outline: 'none' }} className="menu-btn btn-irregular w-full p-4 rounded-xl shadow-sm flex justify-between items-center focus:outline-none border-rose-100 bg-rose-50/50">
+                        <div className="flex items-center gap-3"><div className="bg-rose-100 p-2 rounded-lg text-rose-500"><Sparkles className="w-5 h-5"/></div><span className="font-bold text-rose-700">Düzensiz Fiiller (V2)</span></div>
                         <span className="text-xs font-bold px-3 py-1 rounded-full bg-rose-200 text-rose-800">{getCount('irregular_verbs')}</span>
                     </button>
 
-                    <button 
-                        onClick={(e) => startSession('irregular_plurals', e)}
-                        disabled={getCount('irregular_plurals') === 0}
-                        style={{ outline: 'none' }}
-                        className="menu-btn btn-irregular w-full p-4 rounded-xl shadow-sm flex justify-between items-center focus:outline-none border-orange-100 bg-orange-50/50"
-                    >
-                        <div className="flex items-center gap-3">
-                            <div className="bg-orange-100 p-2 rounded-lg text-orange-500"><Sparkles className="w-5 h-5"/></div>
-                            <span className="font-bold text-orange-700">Düzensiz Çoğullar</span>
-                        </div>
+                    {/* 🔥 YENİ: DÜZENSİZLER V3 🔥 */}
+                    <button onClick={(e) => startSession('irregular_verbs_v3', e)} disabled={getCount('irregular_verbs_v3') === 0} style={{ outline: 'none' }} className="menu-btn btn-irregular w-full p-4 rounded-xl shadow-sm flex justify-between items-center focus:outline-none border-purple-100 bg-purple-50/50">
+                        <div className="flex items-center gap-3"><div className="bg-purple-100 p-2 rounded-lg text-purple-500"><Sparkles className="w-5 h-5"/></div><span className="font-bold text-purple-700">Düzensiz Fiiller (V3)</span></div>
+                        <span className="text-xs font-bold px-3 py-1 rounded-full bg-purple-200 text-purple-800">{getCount('irregular_verbs_v3')}</span>
+                    </button>
+
+                    {/* DÜZENSİZ ÇOĞULLAR */}
+                    <button onClick={(e) => startSession('irregular_plurals', e)} disabled={getCount('irregular_plurals') === 0} style={{ outline: 'none' }} className="menu-btn btn-irregular w-full p-4 rounded-xl shadow-sm flex justify-between items-center focus:outline-none border-orange-100 bg-orange-50/50">
+                        <div className="flex items-center gap-3"><div className="bg-orange-100 p-2 rounded-lg text-orange-500"><Sparkles className="w-5 h-5"/></div><span className="font-bold text-orange-700">Düzensiz Çoğullar</span></div>
                         <span className="text-xs font-bold px-3 py-1 rounded-full bg-orange-200 text-orange-800">{getCount('irregular_plurals')}</span>
                     </button>
 
                     <div className="border-t border-slate-200 my-2"></div>
 
-                    {/* 3. STANDART MODLAR */}
+                    {/* STANDART MODLAR */}
                     {FORM_TYPES.map(form => {
                         const count = getCount(form.key);
                         return (
-                            <button 
-                                key={form.id}
-                                onClick={(e) => startSession(form.key, e)}
-                                disabled={count === 0}
-                                style={{ outline: 'none' }}
-                                className="menu-btn w-full p-4 rounded-xl shadow-sm flex justify-between items-center focus:outline-none focus:ring-0"
-                            >
-                                <div className="flex items-center gap-3">
-                                    <div className="icon-box bg-slate-100 p-2 rounded-lg text-slate-500 transition-colors">
-                                        <Layers className="w-5 h-5"/>
-                                    </div>
-                                    <span className="font-bold text-slate-700">{form.label}</span>
-                                </div>
-                                <span className={`text-xs font-bold px-3 py-1 rounded-full ${count > 0 ? "bg-indigo-100 text-indigo-700" : "bg-slate-100 text-slate-400"}`}>
-                                    {count}
-                                </span>
+                            <button key={form.id} onClick={(e) => startSession(form.key, e)} disabled={count === 0} style={{ outline: 'none' }} className="menu-btn w-full p-4 rounded-xl shadow-sm flex justify-between items-center focus:outline-none focus:ring-0">
+                                <div className="flex items-center gap-3"><div className="icon-box bg-slate-100 p-2 rounded-lg text-slate-500 transition-colors"><Layers className="w-5 h-5"/></div><span className="font-bold text-slate-700">{form.label}</span></div>
+                                <span className={`text-xs font-bold px-3 py-1 rounded-full ${count > 0 ? "bg-indigo-100 text-indigo-700" : "bg-slate-100 text-slate-400"}`}>{count}</span>
                             </button>
                         )
                     })}
@@ -578,9 +542,7 @@ export default function ExerciseGame() {
       return (
         <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
             <div className="bg-white p-8 rounded-3xl shadow-xl max-w-sm w-full text-center space-y-6">
-                <div className="bg-green-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto animate-bounce">
-                    <Trophy className="w-10 h-10 text-green-600"/>
-                </div>
+                <div className="bg-green-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto animate-bounce"><Trophy className="w-10 h-10 text-green-600"/></div>
                 <h2 className="text-2xl font-bold text-slate-800">Bitti</h2>
                 <div className="py-6 bg-slate-50 rounded-2xl border border-slate-100">
                     <div className="text-sm text-slate-400 font-bold uppercase">Kazanılan Puan</div>
@@ -607,11 +569,7 @@ export default function ExerciseGame() {
     <div className="min-h-screen bg-slate-50 flex flex-col items-center p-4">
         <style>{`
             * { -webkit-tap-highlight-color: transparent !important; }
-            @keyframes shake {
-              0%, 100% { transform: translateX(0); }
-              25% { transform: translateX(-5px); }
-              75% { transform: translateX(5px); }
-            }
+            @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
             .mini-btn { transition: all 0.2s ease; }
             .mini-btn:active { transform: scale(0.9); }
             @media (hover: hover) { .mini-btn:hover { background-color: #f1f5f9; } }
@@ -630,9 +588,7 @@ export default function ExerciseGame() {
                 </div>
             </div>
             
-            <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
-                <div className="bg-indigo-500 h-full transition-all duration-500" style={{width:`${((currentIndex + 1) / questions.length) * 100}%`}}></div>
-            </div>
+            <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden"><div className="bg-indigo-500 h-full transition-all duration-500" style={{width:`${((currentIndex + 1) / questions.length) * 100}%`}}></div></div>
 
             {/* OYUN KARTI */}
             <div className="bg-white p-5 rounded-3xl shadow-xl border border-slate-100 text-center relative overflow-hidden min-h-[450px] flex flex-col justify-between">
@@ -644,11 +600,7 @@ export default function ExerciseGame() {
 
                 {baseWordObj.tags && baseWordObj.tags.length > 0 && (
                     <div className="absolute top-4 left-4 flex flex-col items-start gap-1 z-10 max-w-[80px]">
-                        {baseWordObj.tags.map((tag, i) => (
-                            <span key={i} className="text-[9px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200 truncate max-w-full">
-                                {tag}
-                            </span>
-                        ))}
+                        {baseWordObj.tags.map((tag, i) => (<span key={i} className="text-[9px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200 truncate max-w-full">{tag}</span>))}
                     </div>
                 )}
 
@@ -656,62 +608,41 @@ export default function ExerciseGame() {
                     <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">ANA KELİME (BASE)</div>
                     <div className="flex items-center gap-2">
                         <h2 className="text-3xl font-black text-slate-800">{baseWordObj.word}</h2>
-                        
-                        <button onClick={(e) => { handleBlur(e); speak(baseWordObj.word, 'base'); }} className={`mini-btn p-1.5 rounded-lg border ${activeAudio === 'base' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-400 border-slate-200'}`}>
-                            {activeAudio === 'base' ? <Square size={14} fill="currentColor"/> : <Volume2 size={14}/>}
-                        </button>
-                        <button onClick={(e) => { handleBlur(e); setShowWordTr(!showWordTr); }} className={`mini-btn p-1.5 rounded-lg border ${showWordTr ? 'bg-indigo-100 text-indigo-600 border-indigo-200' : 'bg-white text-slate-400 border-slate-200'}`}>
-                            <Languages size={14}/>
-                        </button>
+                        <button onClick={(e) => { handleBlur(e); speak(baseWordObj.word, 'base'); }} className={`mini-btn p-1.5 rounded-lg border ${activeAudio === 'base' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-400 border-slate-200'}`}>{activeAudio === 'base' ? <Square size={14} fill="currentColor"/> : <Volume2 size={14}/>}</button>
+                        <button onClick={(e) => { handleBlur(e); setShowWordTr(!showWordTr); }} className={`mini-btn p-1.5 rounded-lg border ${showWordTr ? 'bg-indigo-100 text-indigo-600 border-indigo-200' : 'bg-white text-slate-400 border-slate-200'}`}><Languages size={14}/></button>
                     </div>
-                    {showWordTr && (
-                        <div className="text-sm font-bold text-green-600 bg-green-50 px-3 py-1 rounded-lg animate-in fade-in slide-in-from-top-1 mt-1">
-                            {def.meaning}
-                        </div>
-                    )}
+                    {showWordTr && (<div className="text-sm font-bold text-green-600 bg-green-50 px-3 py-1 rounded-lg animate-in fade-in slide-in-from-top-1 mt-1">{def.meaning}</div>)}
                 </div>
 
                 {baseWordObj?.phonetic?.trim() ? (
-                  <div className="mt-1 flex justify-center animate-in fade-in slide-in-from-top-1">
-                    <span className="text-indigo-400 font-serif italic text-lg tracking-wide px-3 py-0.5 bg-indigo-50/50 rounded-lg border border-indigo-100/50">
-                      /{String(baseWordObj.phonetic).replace(/\//g, "")}/
-                    </span>
-                  </div>
+                  <div className="mt-1 flex justify-center animate-in fade-in slide-in-from-top-1"><span className="text-indigo-400 font-serif italic text-lg tracking-wide px-3 py-0.5 bg-indigo-50/50 rounded-lg border border-indigo-100/50">/{String(baseWordObj.phonetic).replace(/\//g, "")}/</span></div>
                 ) : ( <div className="h-7" /> )}
                 
                 {def.engExplanation && (
                     <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 relative mt-2 text-left">
                          <p className="text-slate-600 text-sm italic pr-16 leading-relaxed">"{def.engExplanation}"</p>
                          <div className="absolute right-2 top-2 flex gap-1">
-                             <button onClick={(e) => { handleBlur(e); speak(def.engExplanation, 'desc'); }} className={`mini-btn p-1.5 rounded-lg border ${activeAudio === 'desc' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-400 border-slate-200'}`}>
-                                {activeAudio === 'desc' ? <Square size={12} fill="currentColor"/> : <Volume2 size={12}/>}
-                             </button>
-                             {def.trExplanation && (
-                                 <button onClick={(e) => { handleBlur(e); setShowDefTr(!showDefTr); }} className={`mini-btn p-1.5 rounded-lg border ${showDefTr ? 'bg-indigo-100 text-indigo-600 border-indigo-200' : 'bg-white text-slate-400 border-slate-200'}`}>
-                                    <Languages size={12}/>
-                                 </button>
-                             )}
+                             <button onClick={(e) => { handleBlur(e); speak(def.engExplanation, 'desc'); }} className={`mini-btn p-1.5 rounded-lg border ${activeAudio === 'desc' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-400 border-slate-200'}`}>{activeAudio === 'desc' ? <Square size={12} fill="currentColor"/> : <Volume2 size={12}/>}</button>
+                             {def.trExplanation && (<button onClick={(e) => { handleBlur(e); setShowDefTr(!showDefTr); }} className={`mini-btn p-1.5 rounded-lg border ${showDefTr ? 'bg-indigo-100 text-indigo-600 border-indigo-200' : 'bg-white text-slate-400 border-slate-200'}`}><Languages size={12}/></button>)}
                          </div>
                          {showDefTr && def.trExplanation && <div className="mt-2 pt-2 border-t border-slate-200 text-indigo-700 text-xs font-bold animate-in fade-in">TR: {def.trExplanation}</div>}
                     </div>
                 )}
 
                 <div className="space-y-3 mt-4">
-                    <div className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider bg-slate-50 inline-block px-2 py-1 rounded">
-                        İSTENEN: {formLabel.split('(')[0]}
-                    </div>
-
-                    <div className="flex flex-wrap justify-center gap-1 min-h-[50px] items-end content-center">
-                        {targetWord.split('').map((_, idx) => {
-                            const char = completedLetters[idx];
-                            const isFilled = char !== undefined;
-                            return (
-                                <div key={idx} className={`${styles.box} ${styles.text} flex items-center justify-center font-bold border-b-4 rounded-t-lg transition-all ${isFilled ? "border-indigo-500 text-indigo-700 bg-indigo-50" : "border-slate-200 bg-white text-transparent"}`}>
-                                    {char}
-                                </div>
-                            );
-                        })}
-                    </div>
+                    <div className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider bg-slate-50 inline-block px-2 py-1 rounded">İSTENEN: {formLabel.split('(')[0]}</div>
+                    {/* KLAVYE MODUNDA BAŞARILI OLUNCA GÖSTER */}
+                    {isWordComplete && inputMethod === 'keyboard' ? (
+                        <div className="bg-green-50 border border-green-200 text-green-700 font-bold text-2xl py-4 rounded-xl animate-in zoom-in">{targetWord}</div>
+                    ) : (
+                        <div className="flex flex-wrap justify-center gap-1 min-h-[50px] items-end content-center">
+                            {targetWord.split('').map((_, idx) => {
+                                const char = completedLetters[idx];
+                                const isFilled = char !== undefined;
+                                return (<div key={idx} className={`${styles.box} ${styles.text} flex items-center justify-center font-bold border-b-4 rounded-t-lg transition-all ${isFilled ? "border-indigo-500 text-indigo-700 bg-indigo-50" : "border-slate-200 bg-white text-transparent"}`}>{char}</div>);
+                            })}
+                        </div>
+                    )}
                 </div>
 
                 {inputMethod === "bubbles" ? (
@@ -720,13 +651,11 @@ export default function ExerciseGame() {
                             <div className="space-y-4">
                                 <div className="flex flex-wrap justify-center gap-2 content-center min-h-[100px]">
                                     {shuffledLetters.map((item) => (
-                                        <button key={item.id} onClick={(e) => handleLetterClick(item, e)} disabled={item.isUsed} className={`w-10 h-10 rounded-xl font-bold text-lg shadow-[0_3px_0_rgb(0,0,0,0.1)] transition-all active:translate-y-[2px] active:shadow-none outline-none focus:outline-none ${item.isUsed ? "opacity-0 pointer-events-none scale-0" : wrongAnimationId === item.id ? "bg-red-500 text-white animate-[shake_0.5s_ease-in-out]" : "bg-white border-2 border-slate-200 text-slate-700 active:bg-indigo-100"}`}>
-                                            {item.char}
-                                        </button>
+                                        <button key={item.id} onClick={(e) => handleLetterClick(item, e)} disabled={item.isUsed} className={`w-10 h-10 rounded-xl font-bold text-lg shadow-[0_3px_0_rgb(0,0,0,0.1)] transition-all active:translate-y-[2px] active:shadow-none outline-none focus:outline-none ${item.isUsed ? "opacity-0 pointer-events-none scale-0" : wrongAnimationId === item.id ? "bg-red-500 text-white animate-[shake_0.5s_ease-in-out]" : "bg-white border-2 border-slate-200 text-slate-700 active:bg-indigo-100"}`}>{item.char}</button>
                                     ))}
                                 </div>
                                 <div className="flex justify-center border-t border-slate-100 pt-3">
-                                     <button onClick={handleKeyboardHint} disabled={isWordComplete || targetWord.length <= 1} className={`flex items-center gap-2 px-4 py-2 bg-amber-100 text-amber-700 rounded-xl font-bold text-sm active:scale-95 transition-transform focus:outline-none ${(isWordComplete || targetWord.length <= 1) ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                                     <button onClick={handleHint} disabled={isWordComplete || targetWord.length <= 1} className={`flex items-center gap-2 px-4 py-2 bg-amber-100 text-amber-700 rounded-xl font-bold text-sm active:scale-95 transition-transform focus:outline-none ${(isWordComplete || targetWord.length <= 1) ? 'opacity-50 cursor-not-allowed' : ''}`}>
                                         <Lightbulb className="w-4 h-4"/> 
                                         <span>İpucu {targetWord.length <= 1 ? "(Yok)" : (hintCount === 0 ? "(-5p)" : "(-0p)")}</span>
                                         <span className="text-[10px] bg-white/50 px-1.5 rounded ml-1">Hata: {mistakeCount}/3</span>
@@ -742,9 +671,7 @@ export default function ExerciseGame() {
                                 <input ref={inputRef} type="text" value={userInput} onChange={(e) => setUserInput(e.target.value)} placeholder="Cevabı yaz..." className={`w-full text-center text-2xl font-bold p-3 border-b-4 rounded-xl outline-none transition-all ${wrongAnimationId === "input" ? "border-red-500 bg-red-50 text-red-600 animate-[shake_0.5s_ease-in-out]" : "border-indigo-200 bg-indigo-50 text-indigo-700 focus:border-indigo-500"}`} autoComplete="off" autoCorrect="off" autoCapitalize="none" />
                                 <div className="flex justify-between items-center px-2">
                                     <div className="text-xs font-bold text-slate-400">Hata Hakkı: <span className="text-red-500">{3 - mistakeCount}</span></div>
-                                    <button type="button" onClick={handleKeyboardHint} disabled={hintCount >= (targetWord.length <= 2 ? 1 : 2)} className="text-xs flex items-center gap-1 bg-amber-100 text-amber-700 px-3 py-1.5 rounded-lg font-bold active:scale-95 disabled:opacity-50">
-                                        <Lightbulb className="w-3 h-3" /> İpucu (-2p)
-                                    </button>
+                                    <button type="button" onClick={handleHint} disabled={hintCount >= (targetWord.length <= 2 ? 1 : 2)} className="text-xs flex items-center gap-1 bg-amber-100 text-amber-700 px-3 py-1.5 rounded-lg font-bold active:scale-95 disabled:opacity-50"><Lightbulb className="w-3 h-3" /> İpucu (-2p)</button>
                                 </div>
                                 <button type="submit" className="w-full bg-indigo-600 text-white font-bold py-4 rounded-xl shadow-md mt-4 flex items-center justify-center gap-2 hover:bg-indigo-700 active:scale-95 transition-all">Kontrol Et <Check className="w-5 h-5"/></button>
                             </form>
@@ -765,15 +692,10 @@ export default function ExerciseGame() {
             </div>
 
             {!isWordComplete && (
-                <button onClick={handlePass} className="w-full bg-white border-2 border-red-100 text-red-500 font-bold py-4 rounded-xl shadow-sm flex items-center justify-center gap-2 mt-4 active:scale-95 transition-all hover:bg-red-50 hover:border-red-200">
-                    <Flag className="w-5 h-5"/>
-                    <span>Pas Geç (Cevabı Gör)</span>
-                </button>
+                <button onClick={handlePass} className="w-full bg-white border-2 border-red-100 text-red-500 font-bold py-4 rounded-xl shadow-sm flex items-center justify-center gap-2 mt-4 active:scale-95 transition-all hover:bg-red-50 hover:border-red-200"><Flag className="w-5 h-5"/><span>Pas Geç (Cevabı Gör)</span></button>
             )}
 
-            <button onClick={handleQuitEarly} className="w-full text-center text-slate-400 hover:text-red-500 text-sm font-medium transition-colors focus:outline-none p-2">
-                <LogOut className="w-4 h-4 inline mr-1" /> Bitir (Puanı Al ve Çık)
-            </button>
+            <button onClick={handleQuitEarly} className="w-full text-center text-slate-400 hover:text-red-500 text-sm font-medium transition-colors focus:outline-none p-2"><LogOut className="w-4 h-4 inline mr-1" /> Bitir (Puanı Al ve Çık)</button>
         </div>
     </div>
   );
