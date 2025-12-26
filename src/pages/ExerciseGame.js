@@ -95,6 +95,7 @@ export default function ExerciseGame() {
           const hasVal = val && typeof val === 'string' && String(val).trim().length > 0;
           if (!hasVal) return false;
 
+          // Standart modlarda düzensizleri gösterme
           if (key === 'v2' && isIrregularVerb(w)) return false;
           if (key === 'v3' && isIrregularVerb(w)) return false;
           if (key === 'plural' && isIrregularPlural(w)) return false;
@@ -143,6 +144,7 @@ export default function ExerciseGame() {
     const uniqueValidWords = [];
     const seenTexts = new Set();
     
+    // HARD MODE İSE HEPSİNİ AL, DEĞİLSE BENZERSİZLEŞTİR
     const poolToProcess = isHardMode ? rawValidWords : rawValidWords;
 
     poolToProcess.forEach(w => {
@@ -219,8 +221,8 @@ export default function ExerciseGame() {
     // Her şeyi sıfırla
     setCurrentIndex(0);
     setScore(0);
-    setUserInput(""); // Input temizle
-    setCompletedLetters([]); // Balon temizle
+    setUserInput(""); 
+    setCompletedLetters([]); 
     setIsWordComplete(false);
     
     setGameStatus("playing");
@@ -233,20 +235,21 @@ export default function ExerciseGame() {
     setShowWordTr(false);
     setShowDefTr(false);
 
+    // Her yeni soru yüklendiğinde ve input metodu değiştiğinde
+    // kesinlikle temizlik yap.
+    setIsWordComplete(false);
+    setMistakeCount(0);
+    setHintCount(0);
+    setCurrentWordPoints(10);
+    setHasRecordedMistake(false);
+    
+    setCompletedLetters([]);
+    setUserInput(""); 
+
     if (gameStatus === "playing" && questions[currentIndex]) {
       const rawTarget = questions[currentIndex].targetWord;
       const target = rawTarget ? String(rawTarget).trim() : "";
       
-      // 🔥 KESİN TEMİZLİK NOKTASI 🔥
-      setIsWordComplete(false);
-      setMistakeCount(0);
-      setHintCount(0);
-      setCurrentWordPoints(10);
-      setHasRecordedMistake(false);
-      
-      setUserInput(""); // Klavye inputunu temizle
-      setCompletedLetters([]); // Balonları temizle
-
       if (inputMethod === "bubbles") {
           let lettersArray = target.split('').map((char, index) => ({
             id: `${char}-${index}-${Math.random()}`,
@@ -267,9 +270,8 @@ export default function ExerciseGame() {
           setShuffledLetters(lettersArray);
       }
     }
-    
     return () => window.speechSynthesis.cancel();
-  }, [currentIndex, gameStatus, questions, inputMethod]); // inputMethod değişince de tetiklenir
+  }, [currentIndex, gameStatus, questions, inputMethod]);
 
   const getSmartDefinition = (wordObj, formKey) => {
       if (!wordObj || !wordObj.definitions) return { meaning: "", engExplanation: "", trExplanation: "" };
@@ -330,9 +332,7 @@ export default function ExerciseGame() {
   const handleFail = (wordToSpeak) => {
       setCurrentWordPoints(0);
       setIsWordComplete(true);
-      
       const target = String(questions[currentIndex].targetWord || "").trim();
-      
       setCompletedLetters(target.split(''));
       setUserInput(target);
       speak(wordToSpeak, 'main');
@@ -362,9 +362,7 @@ export default function ExerciseGame() {
   const handleLetterClick = (letterObj, e) => {
     handleBlur(e);
     if (isWordComplete || letterObj.isUsed) return;
-    
     const targetWord = String(questions[currentIndex].targetWord || "").trim();
-    
     const nextIndex = completedLetters.length;
     const expectedChar = targetWord[nextIndex];
     if (letterObj.char.toLowerCase() === expectedChar.toLowerCase()) {
@@ -387,9 +385,7 @@ export default function ExerciseGame() {
   const handleKeyboardSubmit = (e) => {
       if (e) e.preventDefault();
       if (isWordComplete) return;
-      
       const targetWord = String(questions[currentIndex].targetWord || "").trim();
-      
       if (userInput.trim().toLowerCase() === targetWord.toLowerCase()) {
           handleSuccess(targetWord);
       } else {
@@ -406,10 +402,9 @@ export default function ExerciseGame() {
   const handleHint = (e) => {
       handleBlur(e);
       if (isWordComplete) return;
-      
       const targetWord = String(questions[currentIndex].targetWord || "").trim();
-      
       const len = targetWord.length;
+      
       const maxHints = len <= 2 ? 1 : 2;
       if (hintCount >= maxHints) return;
       
@@ -422,19 +417,35 @@ export default function ExerciseGame() {
           const correctLetterObj = shuffledLetters.find(l => !l.isUsed && l.char.toLowerCase() === expectedChar.toLowerCase());
           if (correctLetterObj) handleLetterClick(correctLetterObj, null);
       } else {
+          // --- KLAVYE İPUCU ---
+          // Kullanıcının yazdığı doğru kısmı bul
           let correctPrefixLength = 0;
           const cleanInput = userInput.trim().toLowerCase();
           const cleanTarget = targetWord.toLowerCase();
+          
+          // Mevcut girdinin ne kadarı doğru?
           for (let i = 0; i < cleanInput.length; i++) {
-              if (cleanInput[i] === cleanTarget[i]) correctPrefixLength++;
-              else break; 
+              if (cleanInput[i] === cleanTarget[i]) {
+                  correctPrefixLength++;
+              } else {
+                  break; 
+              }
           }
-          const newInputValue = targetWord.substring(0, correctPrefixLength + 1);
+          
+          // Bir sonraki harfi ekle
+          const newRevealLength = correctPrefixLength + 1;
+          const newInputValue = targetWord.substring(0, newRevealLength);
+          
           setUserInput(newInputValue);
           if(inputRef.current) inputRef.current.focus();
+          
           if(newInputValue.length === targetWord.length) handleSuccess(targetWord);
       }
   };
+
+  // Klavye İpucu için HandleHint Kullanılıyor (Generic)
+  // ama butona basınca handleKeyboardHint yerine handleHint çağıralım
+  // handleHint içinde method kontrolü zaten var.
 
   const handleQuitEarly = (e) => {
     handleBlur(e);
@@ -445,7 +456,6 @@ export default function ExerciseGame() {
   // --- INPUT TOGGLE HANDLER ---
   const toggleInputMethod = (method) => {
       setInputMethod(method);
-      // Mod değişince inputu temizle
       setUserInput("");
       setCompletedLetters([]);
   };
@@ -655,11 +665,11 @@ export default function ExerciseGame() {
                         <>
                             {!isWordComplete ? (
                                 <form onSubmit={handleKeyboardSubmit} className="space-y-3 pb-2">
-                                    {/* KEY EKLENDİ - Önemli! */}
-                                    <input key={`${currentIndex}-${inputMethod}`} ref={inputRef} type="text" value={userInput} onChange={(e) => setUserInput(e.target.value)} placeholder="Cevabı yaz..." className={`w-full text-center text-2xl font-bold p-3 border-b-4 rounded-xl outline-none transition-all ${wrongAnimationId === "input" ? "border-red-500 bg-red-50 text-red-600 animate-[shake_0.5s_ease-in-out]" : "border-indigo-200 bg-indigo-50 text-indigo-700 focus:border-indigo-500"}`} autoComplete="off" autoCorrect="off" autoCapitalize="none" />
+                                    {/* KEY ÖNEMLİ: Bu inputun DOM'da tamamen yenilenmesini sağlar */}
+                                    <input key={currentIndex} ref={inputRef} type="text" value={userInput || ""} onChange={(e) => setUserInput(e.target.value)} placeholder="Cevabı yaz..." className={`w-full text-center text-2xl font-bold p-3 border-b-4 rounded-xl outline-none transition-all ${wrongAnimationId === "input" ? "border-red-500 bg-red-50 text-red-600 animate-[shake_0.5s_ease-in-out]" : "border-indigo-200 bg-indigo-50 text-indigo-700 focus:border-indigo-500"}`} autoComplete="off" autoCorrect="off" autoCapitalize="none" />
                                     <div className="flex justify-between items-center px-2">
                                         <div className="text-xs font-bold text-slate-400">Hata Hakkı: <span className="text-red-500">{3 - mistakeCount}</span></div>
-                                        <button type="button" onClick={handleKeyboardHint} disabled={hintCount >= (targetWord.length <= 2 ? 1 : 2)} className="text-xs flex items-center gap-1 bg-amber-100 text-amber-700 px-3 py-1.5 rounded-lg font-bold active:scale-95 disabled:opacity-50"><Lightbulb className="w-3 h-3" /> İpucu (-2p)</button>
+                                        <button type="button" onClick={handleHint} disabled={hintCount >= (targetWord.length <= 2 ? 1 : 2)} className="text-xs flex items-center gap-1 bg-amber-100 text-amber-700 px-3 py-1.5 rounded-lg font-bold active:scale-95 disabled:opacity-50"><Lightbulb className="w-3 h-3" /> İpucu (-2p)</button>
                                     </div>
                                     <button type="submit" className="w-full bg-indigo-600 text-white font-bold py-4 rounded-xl shadow-md mt-4 flex items-center justify-center gap-2 hover:bg-indigo-700 active:scale-95 transition-all">Kontrol Et <Check className="w-5 h-5"/></button>
                                 </form>
