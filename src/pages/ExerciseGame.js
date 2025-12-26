@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useData } from "../context/DataContext";
 import { useNavigate } from "react-router-dom";
 import { 
@@ -52,11 +52,12 @@ export default function ExerciseGame() {
 
   const handleBlur = (e) => { if (e && e.currentTarget) e.currentTarget.blur(); };
 
-  // --- 1. KELİME HAVUZU VE FİLTRELER ---
+  // --- 1. KELİME HAVUZU (MEMOIZED) ---
   const allWords = useMemo(() => {
       return getAllWords() || [];
   }, [getAllWords]);
 
+  // Yardımcı fonksiyonlar (Render dışında tanımlanabilir ama burada kalsın)
   const isIrregularVerb = (w) => {
       if (!w || !w.v2) return false;
       const v2 = String(w.v2).trim().toLowerCase();
@@ -84,6 +85,7 @@ export default function ExerciseGame() {
       return count;
   };
 
+  // getCount sadece mod seçiminde kullanılıyor, performans sorunu yaratmaz.
   const getCount = (key) => {
       if (key === 'hard') return getUniqueCount(w => (w.mistakeCount || 0) >= 2);
       if (key === 'irregular_verbs') return getUniqueCount(isIrregularVerb);
@@ -94,21 +96,55 @@ export default function ExerciseGame() {
           const val = w[key];
           const hasVal = val && typeof val === 'string' && String(val).trim().length > 0;
           if (!hasVal) return false;
-
-          // Standart modlarda düzensizleri gösterme
           if (key === 'v2' && isIrregularVerb(w)) return false;
           if (key === 'v3' && isIrregularVerb(w)) return false;
           if (key === 'plural' && isIrregularPlural(w)) return false;
-
           return true;
       });
   };
 
-  // --- 2. OYUNU BAŞLATMA ---
+  // --- 2. YARDIMCI FONKSİYONLAR ---
+  
+  // Manuel Reset
+  const resetQuestionState = useCallback(() => {
+      setIsWordComplete(false);
+      setMistakeCount(0);
+      setHintCount(0);
+      setCurrentWordPoints(10);
+      setHasRecordedMistake(false);
+      setCompletedLetters([]);
+      setUserInput("");
+      setShowWordTr(false);
+      setShowDefTr(false);
+  }, []);
+
+  const speak = useCallback((txt, id) => {
+    if (!txt) return;
+    if (activeAudio === id) {
+        window.speechSynthesis.cancel();
+        setActiveAudio(null);
+    } else {
+        window.speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance(txt);
+        u.lang = "en-US";
+        u.onend = () => setActiveAudio(null);
+        u.onerror = () => setActiveAudio(null);
+        window.speechSynthesis.speak(u);
+        setActiveAudio(id);
+    }
+  }, [activeAudio]);
+
+  const recordMistakeOnce = useCallback((currentQ) => {
+      if (!hasRecordedMistake) {
+          registerMistake(currentQ.baseWordObj.id, 1);
+          setHasRecordedMistake(true); 
+      }
+  }, [hasRecordedMistake, registerMistake]);
+
+  // --- 3. OYUN BAŞLATMA ---
   const startSession = (modeKey, e) => {
     handleBlur(e);
     const dateKey = `lastExercise_${modeKey}`; 
-    
     let rawValidWords = [];
     let isHardMode = false;
 
@@ -127,11 +163,9 @@ export default function ExerciseGame() {
             const val = w[modeKey];
             const hasVal = val && typeof val === 'string' && String(val).trim().length > 0;
             if (!hasVal) return false;
-            
             if (modeKey === 'v2' && isIrregularVerb(w)) return false;
             if (modeKey === 'v3' && isIrregularVerb(w)) return false;
             if (modeKey === 'plural' && isIrregularPlural(w)) return false;
-
             return true;
         });
     }
@@ -143,8 +177,6 @@ export default function ExerciseGame() {
 
     const uniqueValidWords = [];
     const seenTexts = new Set();
-    
-    // HARD MODE İSE HEPSİNİ AL, DEĞİLSE BENZERSİZLEŞTİR
     const poolToProcess = isHardMode ? rawValidWords : rawValidWords;
 
     poolToProcess.forEach(w => {
@@ -217,38 +249,23 @@ export default function ExerciseGame() {
 
     setQuestions(generatedQuestions);
     setActiveForm(isHardMode ? { label: "Karma (Zor)" } : { label: generatedQuestions[0]?.formLabel });
-    
-    // Her şeyi sıfırla
     setCurrentIndex(0);
     setScore(0);
-    setUserInput(""); 
-    setCompletedLetters([]); 
-    setIsWordComplete(false);
-    
+    resetQuestionState();
     setGameStatus("playing");
   };
 
-  // --- 3. SORU YÜKLEME ---
+  // --- 4. SORU YÜKLEME ---
   useEffect(() => {
     window.speechSynthesis.cancel();
     setActiveAudio(null);
-    setShowWordTr(false);
-    setShowDefTr(false);
-
-    // Her yeni soru yüklendiğinde ve input metodu değiştiğinde
-    // kesinlikle temizlik yap.
-    setIsWordComplete(false);
-    setMistakeCount(0);
-    setHintCount(0);
-    setCurrentWordPoints(10);
-    setHasRecordedMistake(false);
-    
-    setCompletedLetters([]);
-    setUserInput(""); 
+    resetQuestionState();
 
     if (gameStatus === "playing" && questions[currentIndex]) {
       const rawTarget = questions[currentIndex].targetWord;
       const target = rawTarget ? String(rawTarget).trim() : "";
+      
+      // State sıfırlamaları resetQuestionState içinde yapıldı
       
       if (inputMethod === "bubbles") {
           let lettersArray = target.split('').map((char, index) => ({
@@ -271,53 +288,9 @@ export default function ExerciseGame() {
       }
     }
     return () => window.speechSynthesis.cancel();
-  }, [currentIndex, gameStatus, questions, inputMethod]);
+  }, [currentIndex, gameStatus, questions, inputMethod, resetQuestionState]);
 
-  const getSmartDefinition = (wordObj, formKey) => {
-      if (!wordObj || !wordObj.definitions) return { meaning: "", engExplanation: "", trExplanation: "" };
-      const defs = wordObj.definitions;
-      if (defs.length === 0) return { meaning: "", engExplanation: "", trExplanation: "" };
-      let targetType = "";
-      if (['v2', 'v3', 'thirdPerson', 'vIng'].includes(formKey)) targetType = "verb";
-      else if (formKey === 'plural') targetType = "noun";
-      else if (['compEr', 'superEst', 'advLy'].includes(formKey)) targetType = "adjective";
-      const matchedDef = defs.find(d => d.type === targetType);
-      return matchedDef || defs[0] || { meaning: "", engExplanation: "", trExplanation: "" };
-  };
-
-  const getDynamicStyle = (length) => {
-    if (length <= 5) return { box: "w-11 h-14", text: "text-2xl" }; 
-    if (length <= 8) return { box: "w-8 h-11", text: "text-xl" };    
-    if (length <= 11) return { box: "w-6 h-9", text: "text-lg" };    
-    if (length <= 14) return { box: "w-4 h-8", text: "text-sm" };
-    if (length <= 17) return { box: "w-3 h-6", text: "text-[10px]" };
-    return { box: "w-2 h-5", text: "text-[8px]" }; 
-  };
-
-  const speak = (txt, id) => {
-    if (!txt) return;
-    if (activeAudio === id) {
-        window.speechSynthesis.cancel();
-        setActiveAudio(null);
-    } else {
-        window.speechSynthesis.cancel();
-        const u = new SpeechSynthesisUtterance(txt);
-        u.lang = "en-US";
-        u.onend = () => setActiveAudio(null);
-        u.onerror = () => setActiveAudio(null);
-        window.speechSynthesis.speak(u);
-        setActiveAudio(id);
-    }
-  };
-
-  const recordMistakeOnce = () => {
-      if (!hasRecordedMistake) {
-          registerMistake(questions[currentIndex].baseWordObj.id, 1);
-          setHasRecordedMistake(true); 
-      }
-  };
-
-  // --- OYUN MANTIĞI ---
+  // --- OYUN MANTIĞI HANDLERS ---
   const handleSuccess = (wordToSpeak, pointsOverride = null) => {
       setIsWordComplete(true);
       speak(wordToSpeak, 'main'); 
@@ -338,7 +311,7 @@ export default function ExerciseGame() {
       speak(wordToSpeak, 'main');
       updateGameStats('exercise', 1);
       const currentQ = questions[currentIndex];
-      recordMistakeOnce(); 
+      recordMistakeOnce(currentQ); 
       const dateKey = `lastExercise_${currentQ.formKey}`;
       handleUpdateWord(currentQ.baseWordObj.id, { [dateKey]: new Date().toISOString() });
   };
@@ -348,17 +321,13 @@ export default function ExerciseGame() {
   const handleNext = (e) => {
       handleBlur(e);
       if (currentIndex + 1 < questions.length) {
-          // Önce state'i temizle, sonra ilerle
-          setIsWordComplete(false);
-          setUserInput(""); 
-          setCompletedLetters([]);
+          resetQuestionState();
           setCurrentIndex(p => p + 1);
       } else {
           setGameStatus("finished");
       }
   };
 
-  // Harf Tıklama
   const handleLetterClick = (letterObj, e) => {
     handleBlur(e);
     if (isWordComplete || letterObj.isUsed) return;
@@ -381,7 +350,6 @@ export default function ExerciseGame() {
     }
   };
 
-  // Klavye Submit
   const handleKeyboardSubmit = (e) => {
       if (e) e.preventDefault();
       if (isWordComplete) return;
@@ -398,13 +366,11 @@ export default function ExerciseGame() {
       }
   };
 
-  // İpucu
   const handleHint = (e) => {
       handleBlur(e);
       if (isWordComplete) return;
       const targetWord = String(questions[currentIndex].targetWord || "").trim();
       const len = targetWord.length;
-      
       const maxHints = len <= 2 ? 1 : 2;
       if (hintCount >= maxHints) return;
       
@@ -417,35 +383,19 @@ export default function ExerciseGame() {
           const correctLetterObj = shuffledLetters.find(l => !l.isUsed && l.char.toLowerCase() === expectedChar.toLowerCase());
           if (correctLetterObj) handleLetterClick(correctLetterObj, null);
       } else {
-          // --- KLAVYE İPUCU ---
-          // Kullanıcının yazdığı doğru kısmı bul
           let correctPrefixLength = 0;
           const cleanInput = userInput.trim().toLowerCase();
           const cleanTarget = targetWord.toLowerCase();
-          
-          // Mevcut girdinin ne kadarı doğru?
           for (let i = 0; i < cleanInput.length; i++) {
-              if (cleanInput[i] === cleanTarget[i]) {
-                  correctPrefixLength++;
-              } else {
-                  break; 
-              }
+              if (cleanInput[i] === cleanTarget[i]) correctPrefixLength++;
+              else break; 
           }
-          
-          // Bir sonraki harfi ekle
-          const newRevealLength = correctPrefixLength + 1;
-          const newInputValue = targetWord.substring(0, newRevealLength);
-          
+          const newInputValue = targetWord.substring(0, correctPrefixLength + 1);
           setUserInput(newInputValue);
           if(inputRef.current) inputRef.current.focus();
-          
           if(newInputValue.length === targetWord.length) handleSuccess(targetWord);
       }
   };
-
-  // Klavye İpucu için HandleHint Kullanılıyor (Generic)
-  // ama butona basınca handleKeyboardHint yerine handleHint çağıralım
-  // handleHint içinde method kontrolü zaten var.
 
   const handleQuitEarly = (e) => {
     handleBlur(e);
@@ -453,12 +403,44 @@ export default function ExerciseGame() {
     setGameStatus("finished");
   };
 
-  // --- INPUT TOGGLE HANDLER ---
   const toggleInputMethod = (method) => {
       setInputMethod(method);
-      setUserInput("");
-      setCompletedLetters([]);
+      resetQuestionState();
   };
+
+  // --- MEMOIZED RENDER HELPERS (PERFORMANS İÇİN) ---
+  const currentQ = questions[currentIndex];
+  // Güvenli veriler
+  const targetWord = currentQ?.targetWord ? String(currentQ.targetWord).trim() : "";
+  const baseWordObj = currentQ?.baseWordObj || {};
+  const formLabel = currentQ?.formLabel ? String(currentQ.formLabel) : "Bilinmiyor";
+  
+  // Her renderda hesaplanmasın diye useMemo kullanıyoruz
+  const def = useMemo(() => {
+      if (!baseWordObj || !baseWordObj.definitions) return { meaning: "", engExplanation: "", trExplanation: "" };
+      const defs = baseWordObj.definitions;
+      if (defs.length === 0) return { meaning: "", engExplanation: "", trExplanation: "" };
+      
+      let targetType = "";
+      const fk = currentQ?.formKey;
+      if (['v2', 'v3', 'thirdPerson', 'vIng'].includes(fk)) targetType = "verb";
+      else if (fk === 'plural') targetType = "noun";
+      else if (['compEr', 'superEst', 'advLy'].includes(fk)) targetType = "adjective";
+
+      const matchedDef = defs.find(d => d.type === targetType);
+      return matchedDef || defs[0] || { meaning: "", engExplanation: "", trExplanation: "" };
+  }, [baseWordObj, currentQ]);
+
+  const styles = useMemo(() => {
+      const length = targetWord.length;
+      if (length <= 5) return { box: "w-11 h-14", text: "text-2xl" }; 
+      if (length <= 8) return { box: "w-8 h-11", text: "text-xl" };    
+      if (length <= 11) return { box: "w-6 h-9", text: "text-lg" };    
+      if (length <= 14) return { box: "w-4 h-8", text: "text-sm" };
+      if (length <= 17) return { box: "w-3 h-6", text: "text-[10px]" };
+      return { box: "w-2 h-5", text: "text-[8px]" }; 
+  }, [targetWord]);
+
 
   // ===================================
   // === EKRANLAR ===
@@ -471,11 +453,6 @@ export default function ExerciseGame() {
                 .menu-btn { background-color: white; border: 1px solid #e2e8f0; transition: all 0.2s ease; }
                 .menu-btn:active { transform: scale(0.96); background-color: #f1f5f9; }
                 .menu-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-                @media (hover: hover) {
-                    .menu-btn:hover { border-color: #a5b4fc !important; background-color: #f8fafc !important; }
-                    .btn-irregular:hover { border-color: #fca5a5 !important; background-color: #fef2f2 !important; }
-                    .btn-hard:hover { border-color: #ef4444 !important; background-color: #fef2f2 !important; }
-                }
             `}</style>
 
             <div className="w-full max-w-md space-y-6">
@@ -561,13 +538,6 @@ export default function ExerciseGame() {
 
   if (!questions[currentIndex]) return <div className="flex h-screen items-center justify-center"><Loader2 className="animate-spin w-10 h-10 text-indigo-600"/></div>;
 
-  const currentQ = questions[currentIndex];
-  const targetWord = currentQ.targetWord;
-  const baseWordObj = currentQ.baseWordObj;
-  const formLabel = currentQ.formLabel || "Bilinmiyor"; 
-  const def = getSmartDefinition(baseWordObj, currentQ.formKey);
-  const styles = getDynamicStyle(targetWord.length);
-
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center p-4">
         <style>{`
@@ -595,7 +565,7 @@ export default function ExerciseGame() {
             
             <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden"><div className="bg-blue-500 h-full transition-all duration-500" style={{width:`${((currentIndex + 1) / questions.length) * 100}%`}}></div></div>
 
-            {/* OYUN KARTI - WritingGame Tasarımı */}
+            {/* OYUN KARTI */}
             <div className="bg-white p-6 rounded-3xl shadow-xl border border-slate-100 text-center relative overflow-hidden min-h-[450px] flex flex-col justify-between">
                 <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-blue-400 to-cyan-400"></div>
 
@@ -665,8 +635,19 @@ export default function ExerciseGame() {
                         <>
                             {!isWordComplete ? (
                                 <form onSubmit={handleKeyboardSubmit} className="space-y-3 pb-2">
-                                    {/* KEY ÖNEMLİ: Bu inputun DOM'da tamamen yenilenmesini sağlar */}
-                                    <input key={currentIndex} ref={inputRef} type="text" value={userInput || ""} onChange={(e) => setUserInput(e.target.value)} placeholder="Cevabı yaz..." className={`w-full text-center text-2xl font-bold p-3 border-b-4 rounded-xl outline-none transition-all ${wrongAnimationId === "input" ? "border-red-500 bg-red-50 text-red-600 animate-[shake_0.5s_ease-in-out]" : "border-indigo-200 bg-indigo-50 text-indigo-700 focus:border-indigo-500"}`} autoComplete="off" autoCorrect="off" autoCapitalize="none" />
+                                    <input 
+                                        key={currentIndex} 
+                                        ref={inputRef} 
+                                        type="text" 
+                                        value={userInput || ""} 
+                                        onChange={(e) => setUserInput(e.target.value)} 
+                                        placeholder="Cevabı yaz..." 
+                                        className={`w-full text-center text-2xl font-bold p-3 border-b-4 rounded-xl outline-none transition-all ${wrongAnimationId === "input" ? "border-red-500 bg-red-50 text-red-600 animate-[shake_0.5s_ease-in-out]" : "border-indigo-200 bg-indigo-50 text-indigo-700 focus:border-indigo-500"}`} 
+                                        autoComplete="off" 
+                                        autoCorrect="off" 
+                                        autoCapitalize="none"
+                                        spellCheck="false" 
+                                    />
                                     <div className="flex justify-between items-center px-2">
                                         <div className="text-xs font-bold text-slate-400">Hata Hakkı: <span className="text-red-500">{3 - mistakeCount}</span></div>
                                         <button type="button" onClick={handleHint} disabled={hintCount >= (targetWord.length <= 2 ? 1 : 2)} className="text-xs flex items-center gap-1 bg-amber-100 text-amber-700 px-3 py-1.5 rounded-lg font-bold active:scale-95 disabled:opacity-50"><Lightbulb className="w-3 h-3" /> İpucu (-2p)</button>
