@@ -14,7 +14,7 @@ export default function WritingGame() {
   // --- STATE'LER ---
   const [gameMode, setGameMode] = useState(null);
   const [gameStatus, setGameStatus] = useState("mode-selection"); 
-  const [inputMethod, setInputMethod] = useState("bubbles"); 
+  const [inputMethod, setInputMethod] = useState("keyboard"); 
 
   const [questions, setQuestions] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
