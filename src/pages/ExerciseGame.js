@@ -268,19 +268,34 @@ export default function ExerciseGame() {
     return () => window.speechSynthesis.cancel();
   }, [currentIndex, gameStatus, questions, inputMethod]);
 
-  // 🔥 ENTER TUŞU İLE GEÇİŞ İÇİN YENİ ÖZELLİK 🔥
+  // 🔥 YENİ EKLENEN: OTOMATİK ODAKLANMA (AUTO FOCUS) 🔥
+  useEffect(() => {
+    // Sadece klavye modundaysak ve kelime henüz tamamlanmadıysa (yani yeni soruysa)
+    if (inputMethod === "keyboard" && !isWordComplete && gameStatus === "playing") {
+        // Küçük bir gecikme ile input'a odaklan (DOM'un oluşmasını bekle)
+        const timer = setTimeout(() => {
+            if (inputRef.current) {
+                inputRef.current.focus();
+            }
+        }, 100); // 100ms gecikme idealdir
+        return () => clearTimeout(timer);
+    }
+  }, [currentIndex, inputMethod, isWordComplete, gameStatus]);
+
+
+  // 🔥 ENTER TUŞU İLE GEÇİŞ 🔥
   useEffect(() => {
     const handleGlobalKeyDown = (e) => {
       // Eğer kelime tamamlandıysa (yeşil ekran) ve Enter'a basılırsa
       if (isWordComplete && e.key === "Enter") {
         e.preventDefault();
-        handleNext(); // Sıradaki soruya geç
+        handleNext(); 
       }
     };
 
     window.addEventListener("keydown", handleGlobalKeyDown);
     return () => window.removeEventListener("keydown", handleGlobalKeyDown);
-  }, [isWordComplete, currentIndex, questions]); // Bağımlılıklar önemli
+  }, [isWordComplete, currentIndex, questions]); 
 
   const getSmartDefinition = (wordObj, formKey) => {
       if (!wordObj || !wordObj.definitions) return { meaning: "", engExplanation: "", trExplanation: "" };
@@ -411,8 +426,9 @@ export default function ExerciseGame() {
       handleBlur(e);
       if (isWordComplete) return;
       const targetWord = String(questions[currentIndex].targetWord || "").trim();
+      const len = targetWord.length;
       
-      const maxHints = targetWord.length <= 2 ? 1 : 2;
+      const maxHints = len <= 2 ? 1 : 2;
       if (hintCount >= maxHints) return;
       
       setHintCount(h => h + 1);
@@ -618,6 +634,21 @@ export default function ExerciseGame() {
                     
                     {showWordTr && (<div className="text-sm font-bold text-green-600 bg-green-50 px-3 py-1 rounded-lg animate-in fade-in slide-in-from-top-1">{def.meaning}</div>)}
                 </div>
+
+                {baseWordObj?.phonetic?.trim() ? (
+                  <div className="mt-1 flex justify-center animate-in fade-in slide-in-from-top-1"><span className="text-indigo-400 font-serif italic text-lg tracking-wide px-3 py-0.5 bg-indigo-50/50 rounded-lg border border-indigo-100/50">/{String(baseWordObj.phonetic).replace(/\//g, "")}/</span></div>
+                ) : ( <div className="h-7" /> )}
+                
+                {def.engExplanation && (
+                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 relative mt-2 text-left">
+                         <p className="text-slate-600 text-sm italic pr-16 leading-relaxed">"{def.engExplanation}"</p>
+                         <div className="absolute right-2 top-2 flex gap-1">
+                             <button onClick={(e) => { handleBlur(e); speak(def.engExplanation, 'desc'); }} className={`mini-btn p-1.5 rounded-lg border ${activeAudio === 'desc' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-400 border-slate-200'}`}>{activeAudio === 'desc' ? <Square size={12} fill="currentColor"/> : <Volume2 size={12}/>}</button>
+                             {def.trExplanation && (<button onClick={(e) => { handleBlur(e); setShowDefTr(!showDefTr); }} className={`mini-btn p-1.5 rounded-lg border ${showDefTr ? 'bg-indigo-100 text-indigo-600 border-indigo-200' : 'bg-white text-slate-400 border-slate-200'}`}><Languages size={12}/></button>)}
+                         </div>
+                         {showDefTr && def.trExplanation && <div className="mt-2 pt-2 border-t border-slate-200 text-indigo-700 text-xs font-bold animate-in fade-in">TR: {def.trExplanation}</div>}
+                    </div>
+                )}
 
                 <div className="space-y-3 pb-2">
                     <div className="text-[10px] font-bold text-blue-400 uppercase tracking-wider bg-slate-50 inline-block px-2 py-1 rounded">İSTENEN FORM: {formLabel.split('(')[0]}</div>
