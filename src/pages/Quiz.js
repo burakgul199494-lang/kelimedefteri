@@ -10,14 +10,15 @@ import {
   Home, 
   RefreshCw, 
   BrainCircuit, 
-  Hourglass,
-  Square,
-  Star,
+  Hourglass, 
+  Square, 
+  Star, 
   Tag
 } from "lucide-react";
 
 export default function Quiz() {
-  const { getAllWords, knownWordIds, learningQueue, addScore, updateGameStats, handleUpdateWord } = useData();
+  // 🔥 registerMistake BURAYA EKLENDİ
+  const { getAllWords, knownWordIds, learningQueue, addScore, updateGameStats, handleUpdateWord, registerMistake } = useData();
   const navigate = useNavigate();
 
   // --- STATE'LER ---
@@ -156,7 +157,11 @@ export default function Quiz() {
     handleUpdateWord(currentWord.id, { lastSeen_quiz: new Date().toISOString() });
 
     if (option === questions[index].correct) {
+        // DOĞRU CEVAP
         setScore(s => s + 5);
+    } else {
+        // 🔥 YANLIŞ CEVAP: Hata kaydı oluştur (+1 Puan)
+        registerMistake(currentWord.id, 1);
     }
 
     updateGameStats('quiz', 1);
