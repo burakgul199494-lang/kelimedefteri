@@ -103,19 +103,6 @@ export default function ExerciseGame() {
       });
   };
 
-  // --- YARDIMCI: Manuel Reset (Geçişlerde Kullanılır) ---
-  const resetQuestionState = () => {
-      setIsWordComplete(false);
-      setMistakeCount(0);
-      setHintCount(0);
-      setCurrentWordPoints(10);
-      setHasRecordedMistake(false);
-      setCompletedLetters([]);
-      setUserInput("");
-      setShowWordTr(false);
-      setShowDefTr(false);
-  };
-
   // --- 2. OYUNU BAŞLATMA ---
   const startSession = (modeKey, e) => {
     handleBlur(e);
@@ -229,10 +216,13 @@ export default function ExerciseGame() {
     setQuestions(generatedQuestions);
     setActiveForm(isHardMode ? { label: "Karma (Zor)" } : { label: generatedQuestions[0]?.formLabel });
     
-    // Reset Everything
+    // Her şeyi sıfırla
     setCurrentIndex(0);
     setScore(0);
-    resetQuestionState(); // Başlangıç reset
+    setUserInput(""); // Input temizle
+    setCompletedLetters([]); // Balon temizle
+    setIsWordComplete(false);
+    
     setGameStatus("playing");
   };
 
@@ -240,14 +230,23 @@ export default function ExerciseGame() {
   useEffect(() => {
     window.speechSynthesis.cancel();
     setActiveAudio(null);
-    
-    // Her renderda resetle (Güvenlik)
-    resetQuestionState();
+    setShowWordTr(false);
+    setShowDefTr(false);
 
     if (gameStatus === "playing" && questions[currentIndex]) {
       const rawTarget = questions[currentIndex].targetWord;
       const target = rawTarget ? String(rawTarget).trim() : "";
       
+      // 🔥 KESİN TEMİZLİK NOKTASI 🔥
+      setIsWordComplete(false);
+      setMistakeCount(0);
+      setHintCount(0);
+      setCurrentWordPoints(10);
+      setHasRecordedMistake(false);
+      
+      setUserInput(""); // Klavye inputunu temizle
+      setCompletedLetters([]); // Balonları temizle
+
       if (inputMethod === "bubbles") {
           let lettersArray = target.split('').map((char, index) => ({
             id: `${char}-${index}-${Math.random()}`,
@@ -268,8 +267,9 @@ export default function ExerciseGame() {
           setShuffledLetters(lettersArray);
       }
     }
+    
     return () => window.speechSynthesis.cancel();
-  }, [currentIndex, gameStatus, questions, inputMethod]);
+  }, [currentIndex, gameStatus, questions, inputMethod]); // inputMethod değişince de tetiklenir
 
   const getSmartDefinition = (wordObj, formKey) => {
       if (!wordObj || !wordObj.definitions) return { meaning: "", engExplanation: "", trExplanation: "" };
@@ -330,7 +330,9 @@ export default function ExerciseGame() {
   const handleFail = (wordToSpeak) => {
       setCurrentWordPoints(0);
       setIsWordComplete(true);
+      
       const target = String(questions[currentIndex].targetWord || "").trim();
+      
       setCompletedLetters(target.split(''));
       setUserInput(target);
       speak(wordToSpeak, 'main');
@@ -347,7 +349,9 @@ export default function ExerciseGame() {
       handleBlur(e);
       if (currentIndex + 1 < questions.length) {
           // Önce state'i temizle, sonra ilerle
-          resetQuestionState();
+          setIsWordComplete(false);
+          setUserInput(""); 
+          setCompletedLetters([]);
           setCurrentIndex(p => p + 1);
       } else {
           setGameStatus("finished");
@@ -358,7 +362,9 @@ export default function ExerciseGame() {
   const handleLetterClick = (letterObj, e) => {
     handleBlur(e);
     if (isWordComplete || letterObj.isUsed) return;
+    
     const targetWord = String(questions[currentIndex].targetWord || "").trim();
+    
     const nextIndex = completedLetters.length;
     const expectedChar = targetWord[nextIndex];
     if (letterObj.char.toLowerCase() === expectedChar.toLowerCase()) {
@@ -381,7 +387,9 @@ export default function ExerciseGame() {
   const handleKeyboardSubmit = (e) => {
       if (e) e.preventDefault();
       if (isWordComplete) return;
+      
       const targetWord = String(questions[currentIndex].targetWord || "").trim();
+      
       if (userInput.trim().toLowerCase() === targetWord.toLowerCase()) {
           handleSuccess(targetWord);
       } else {
@@ -398,7 +406,9 @@ export default function ExerciseGame() {
   const handleHint = (e) => {
       handleBlur(e);
       if (isWordComplete) return;
+      
       const targetWord = String(questions[currentIndex].targetWord || "").trim();
+      
       const len = targetWord.length;
       const maxHints = len <= 2 ? 1 : 2;
       if (hintCount >= maxHints) return;
@@ -435,7 +445,9 @@ export default function ExerciseGame() {
   // --- INPUT TOGGLE HANDLER ---
   const toggleInputMethod = (method) => {
       setInputMethod(method);
-      resetQuestionState(); // Mod değiştirince de temizle
+      // Mod değişince inputu temizle
+      setUserInput("");
+      setCompletedLetters([]);
   };
 
   // ===================================
@@ -643,8 +655,8 @@ export default function ExerciseGame() {
                         <>
                             {!isWordComplete ? (
                                 <form onSubmit={handleKeyboardSubmit} className="space-y-3 pb-2">
-                                    {/* 🔥 KEY EKLENDİ: Her soruda inputu yeniden yaratır, eski yazılar kalmaz 🔥 */}
-                                    <input key={currentIndex} ref={inputRef} type="text" value={userInput} onChange={(e) => setUserInput(e.target.value)} placeholder="Cevabı yaz..." className={`w-full text-center text-2xl font-bold p-3 border-b-4 rounded-xl outline-none transition-all ${wrongAnimationId === "input" ? "border-red-500 bg-red-50 text-red-600 animate-[shake_0.5s_ease-in-out]" : "border-indigo-200 bg-indigo-50 text-indigo-700 focus:border-indigo-500"}`} autoComplete="off" autoCorrect="off" autoCapitalize="none" />
+                                    {/* KEY EKLENDİ - Önemli! */}
+                                    <input key={`${currentIndex}-${inputMethod}`} ref={inputRef} type="text" value={userInput} onChange={(e) => setUserInput(e.target.value)} placeholder="Cevabı yaz..." className={`w-full text-center text-2xl font-bold p-3 border-b-4 rounded-xl outline-none transition-all ${wrongAnimationId === "input" ? "border-red-500 bg-red-50 text-red-600 animate-[shake_0.5s_ease-in-out]" : "border-indigo-200 bg-indigo-50 text-indigo-700 focus:border-indigo-500"}`} autoComplete="off" autoCorrect="off" autoCapitalize="none" />
                                     <div className="flex justify-between items-center px-2">
                                         <div className="text-xs font-bold text-slate-400">Hata Hakkı: <span className="text-red-500">{3 - mistakeCount}</span></div>
                                         <button type="button" onClick={handleKeyboardHint} disabled={hintCount >= (targetWord.length <= 2 ? 1 : 2)} className="text-xs flex items-center gap-1 bg-amber-100 text-amber-700 px-3 py-1.5 rounded-lg font-bold active:scale-95 disabled:opacity-50"><Lightbulb className="w-3 h-3" /> İpucu (-2p)</button>
