@@ -14,8 +14,6 @@ export default function WritingGame() {
   // --- STATE'LER ---
   const [gameMode, setGameMode] = useState(null);
   const [gameStatus, setGameStatus] = useState("mode-selection"); 
-  
-  // 🔥 GİRİŞ TERCİHİ: 'bubbles' (Harf Seç) veya 'keyboard' (Yaz)
   const [inputMethod, setInputMethod] = useState("bubbles"); 
 
   const [questions, setQuestions] = useState([]);
@@ -31,11 +29,14 @@ export default function WritingGame() {
 
   // Ortak State'ler
   const [isWordComplete, setIsWordComplete] = useState(false);
-  const [wrongAnimationId, setWrongAnimationId] = useState(null); // ID veya 'input'
-  const [mistakeCount, setMistakeCount] = useState(0);
+  const [wrongAnimationId, setWrongAnimationId] = useState(null);
+  const [mistakeCount, setMistakeCount] = useState(0); // O anki sorudaki yanlış deneme sayısı
   const [hintCount, setHintCount] = useState(0);
   const [currentWordPoints, setCurrentWordPoints] = useState(10); 
   const [activeAudio, setActiveAudio] = useState(null);
+
+  // 🔥 YENİ STATE: Bu turda veritabanına hata işlendi mi?
+  const [hasRecordedMistake, setHasRecordedMistake] = useState(false);
 
   const inputRef = useRef(null);
 
@@ -65,7 +66,6 @@ export default function WritingGame() {
         return false;
     });
 
-    // 🔥 ZOR KELİMELER HAVUZU
     const hardPool = validWords.filter(w => (w.mistakeCount || 0) >= 2);
 
     return { learnPool, reviewPool, waitingPool, hardPool };
@@ -125,13 +125,13 @@ export default function WritingGame() {
     if (gameStatus === "playing" && questions.length > 0 && questions[currentIndex]) {
       const target = questions[currentIndex].targetWord;
       
-      // ORTAK SIFIRLAMALAR
+      // SIFIRLAMALAR
       setIsWordComplete(false);
       setMistakeCount(0);
       setHintCount(0);
       setCurrentWordPoints(10);
+      setHasRecordedMistake(false); // 🔥 Her yeni soruda hata bayrağını indir.
 
-      // MODA GÖRE HAZIRLIK
       if (inputMethod === "bubbles") {
           const letters = target.split('').map((char, index) => ({
             id: `${char}-${index}-${Math.random()}`,
@@ -141,10 +141,7 @@ export default function WritingGame() {
           setShuffledLetters([...letters].sort(() => Math.random() - 0.5));
           setCompletedLetters([]);
       } else {
-          // Keyboard Mode
           setUserInput("");
-          // Mobilde klavyeyi otomatik açma (isteğe bağlı, bazen rahatsız edici olabilir)
-          // if(inputRef.current) inputRef.current.focus(); 
       }
     }
     
@@ -176,6 +173,14 @@ export default function WritingGame() {
     }
   };
 
+  // 🔥 YARDIMCI FONKSİYON: HATA KAYDET (TEK SEFERLİK)
+  const recordMistakeOnce = () => {
+      if (!hasRecordedMistake) {
+          registerMistake(questions[currentIndex].wordObj.id, 1);
+          setHasRecordedMistake(true); // Bayrağı kaldır, bir daha kaydetme
+      }
+  };
+
   // ==========================================
   // OYUN MANTIĞI: ORTAK FONKSİYONLAR
   // ==========================================
@@ -188,7 +193,6 @@ export default function WritingGame() {
       const currentQ = questions[currentIndex];
       handleUpdateWord(currentQ.wordObj.id, { lastSeen_writing: new Date().toISOString() });
 
-      // Puanı ekle (Negatife düşmemesi için kontrol)
       const finalPoints = Math.max(0, currentWordPoints);
       if (finalPoints > 0) {
           addScore(finalPoints);
@@ -200,7 +204,6 @@ export default function WritingGame() {
       setCurrentWordPoints(0);
       setIsWordComplete(true);
       
-      // Cevabı Göster
       const target = questions[currentIndex].targetWord;
       if (inputMethod === "bubbles") {
           setCompletedLetters(target.split(''));
@@ -209,11 +212,13 @@ export default function WritingGame() {
       }
 
       handleSpeak(wordToSpeak, 'main');
-      updateGameStats('writing', 1); // İstatistik yine de işlensin mi? "Görüldü" olarak evet.
+      updateGameStats('writing', 1);
 
       const currentQ = questions[currentIndex];
-      // HATA KAYDI
-      registerMistake(currentQ.wordObj.id, 1);
+      
+      // Kaybetme durumunda her türlü hata kaydedilmeli
+      recordMistakeOnce();
+      
       handleUpdateWord(currentQ.wordObj.id, { lastSeen_writing: new Date().toISOString() });
   };
 
@@ -239,7 +244,6 @@ export default function WritingGame() {
     const expectedChar = targetWord[nextIndex];
 
     if (letterObj.char.toLowerCase() === expectedChar.toLowerCase()) {
-        // DOĞRU HARF
         const newShuffled = shuffledLetters.map(l => l.id === letterObj.id ? { ...l, isUsed: true } : l);
         setShuffledLetters(newShuffled);
         const newCompleted = [...completedLetters, letterObj.char];
@@ -247,20 +251,18 @@ export default function WritingGame() {
 
         if (newCompleted.length === targetWord.length) handleSuccess(targetWord);
     } else {
-        // YANLIŞ HARF (BUBBLES MODU)
+        // YANLIŞ
         const newMistakes = mistakeCount + 1;
         setMistakeCount(newMistakes);
         
-        // Ceza: -2 Puan
         setCurrentWordPoints(p => Math.max(0, p - 2));
         
-        // Hata Kaydı
-        registerMistake(questions[currentIndex].wordObj.id, 1);
+        // 🔥 HATA KAYDI (SADECE İLK HATADA)
+        recordMistakeOnce();
 
         setWrongAnimationId(letterObj.id);
         setTimeout(() => setWrongAnimationId(null), 500);
 
-        // KURAL: 3 Hata hakkı var. 4. hatada (newMistakes > 3) YANAR.
         if (newMistakes > 3) handleFail(targetWord);
     }
   };
@@ -275,24 +277,20 @@ export default function WritingGame() {
       const targetWord = questions[currentIndex].targetWord;
       
       if (userInput.trim().toLowerCase() === targetWord.toLowerCase()) {
-          // DOĞRU
           handleSuccess(targetWord);
       } else {
-          // YANLIŞ (KLAVYE MODU)
+          // YANLIŞ
           const newMistakes = mistakeCount + 1;
           setMistakeCount(newMistakes);
 
-          // Ceza: -1 Puan
           setCurrentWordPoints(p => Math.max(0, p - 1));
 
-          // Hata Kaydı
-          registerMistake(questions[currentIndex].wordObj.id, 1);
+          // 🔥 HATA KAYDI (SADECE İLK HATADA)
+          recordMistakeOnce();
 
-          // Animasyon
           setWrongAnimationId("input");
           setTimeout(() => setWrongAnimationId(null), 500);
 
-          // KURAL: 3 Yanlış deneme hakkı var. 3. hatada (>= 3) YANAR.
           if (newMistakes >= 3) handleFail(targetWord);
       }
   };
@@ -302,22 +300,37 @@ export default function WritingGame() {
       const targetWord = questions[currentIndex].targetWord;
       const len = targetWord.length;
 
-      // İpucu Limit Kontrolü
-      // 1-2 harf: Max 1 hint
-      // 3+ harf: Max 2 hint
+      // İpucu Limiti
       const maxHints = len <= 2 ? 1 : 2;
-
       if (hintCount >= maxHints) return;
 
       const newHintCount = hintCount + 1;
       setHintCount(newHintCount);
 
-      // Ceza: -2 Puan
+      // Puan Cezası
       setCurrentWordPoints(p => Math.max(0, p - 2));
 
-      // Harfi göster (Input'a ekle)
-      const hintText = targetWord.substring(0, newHintCount);
-      setUserInput(hintText);
+      // 🔥 AKILLI İPUCU ALGORİTMASI 🔥
+      // Kullanıcının yazdığı ile doğrusunu karşılaştırıp, doğru gittiği yere kadar al,
+      // sonraki harfi ekle.
+      let correctPrefixLength = 0;
+      const cleanInput = userInput.trim().toLowerCase();
+      const cleanTarget = targetWord.toLowerCase();
+
+      // Ne kadarı doğru yazılmış?
+      for (let i = 0; i < cleanInput.length; i++) {
+          if (cleanInput[i] === cleanTarget[i]) {
+              correctPrefixLength++;
+          } else {
+              break; // Hata bulduğu an dur.
+          }
+      }
+
+      // Mevcut doğru kısmın üzerine 1 harf daha ekle
+      const newRevealLength = correctPrefixLength + 1;
+      const newInputValue = targetWord.substring(0, newRevealLength);
+      
+      setUserInput(newInputValue);
       
       if(inputRef.current) inputRef.current.focus();
   };
