@@ -129,6 +129,10 @@ export default function WritingGame() {
       setCurrentWordPoints(10);
       setHasRecordedMistake(false); 
 
+      // Inputu temizle (Key değişimiyle de garanti altına alıyoruz ama burası da kalsın)
+      setUserInput("");
+      setCompletedLetters([]);
+
       if (inputMethod === "bubbles") {
           let lettersArray = target.split('').map((char, index) => ({
             id: `${char}-${index}-${Math.random()}`,
@@ -146,14 +150,36 @@ export default function WritingGame() {
           }
 
           setShuffledLetters(lettersArray);
-          setCompletedLetters([]);
-      } else {
-          setUserInput("");
       }
     }
     
     return () => window.speechSynthesis.cancel();
   }, [currentIndex, gameStatus, questions, inputMethod]);
+
+  // 🔥 YENİ: OTOMATİK ODAKLANMA (AUTO FOCUS) 🔥
+  useEffect(() => {
+    if (inputMethod === "keyboard" && !isWordComplete && gameStatus === "playing") {
+        const timer = setTimeout(() => {
+            if (inputRef.current) {
+                inputRef.current.focus();
+            }
+        }, 100); 
+        return () => clearTimeout(timer);
+    }
+  }, [currentIndex, inputMethod, isWordComplete, gameStatus]);
+
+  // 🔥 YENİ: ENTER İLE GEÇİŞ 🔥
+  useEffect(() => {
+    const handleGlobalKeyDown = (e) => {
+      if (isWordComplete && e.key === "Enter") {
+        e.preventDefault();
+        handleNext(); 
+      }
+    };
+
+    window.addEventListener("keydown", handleGlobalKeyDown);
+    return () => window.removeEventListener("keydown", handleGlobalKeyDown);
+  }, [isWordComplete, currentIndex, questions]); // handleNext dependecy'de yok ama currentIndex var yeterli
 
   const getDynamicStyle = (length) => {
     if (length <= 5) return { box: "w-11 h-14", text: "text-2xl" }; 
@@ -230,7 +256,7 @@ export default function WritingGame() {
   };
 
   const handleNext = (e) => {
-      handleBlur(e);
+      if(e) handleBlur(e);
       if (currentIndex + 1 < questions.length) setCurrentIndex(p => p + 1);
       else setGameStatus("finished");
   };
@@ -317,6 +343,8 @@ export default function WritingGame() {
       
       setUserInput(newInputValue);
       if(inputRef.current) inputRef.current.focus();
+      
+      if(newInputValue.length === targetWord.length) handleSuccess(targetWord);
   };
 
   const handleQuitEarly = (e) => {
@@ -515,7 +543,19 @@ export default function WritingGame() {
                     <>
                         {!isWordComplete ? (
                             <form onSubmit={handleKeyboardSubmit} className="space-y-3 pb-2">
-                                <input ref={inputRef} type="text" value={userInput} onChange={(e) => setUserInput(e.target.value)} placeholder="Cevabı yaz..." className={`w-full text-center text-2xl font-bold p-3 border-b-4 rounded-xl outline-none transition-all ${wrongAnimationId === "input" ? "border-red-500 bg-red-50 text-red-600 animate-[shake_0.5s_ease-in-out]" : "border-indigo-200 bg-indigo-50 text-indigo-700 focus:border-indigo-500"}`} autoComplete="off" autoCorrect="off" autoCapitalize="none" />
+                                <input 
+                                    key={currentIndex} // 🔥 INPUT YENİLEME: Eski yazının kalmasını önler 🔥
+                                    ref={inputRef} 
+                                    type="text" 
+                                    value={userInput} 
+                                    onChange={(e) => setUserInput(e.target.value)} 
+                                    placeholder="Cevabı yaz..." 
+                                    className={`w-full text-center text-2xl font-bold p-3 border-b-4 rounded-xl outline-none transition-all ${wrongAnimationId === "input" ? "border-red-500 bg-red-50 text-red-600 animate-[shake_0.5s_ease-in-out]" : "border-indigo-200 bg-indigo-50 text-indigo-700 focus:border-indigo-500"}`} 
+                                    autoComplete="off" 
+                                    autoCorrect="off" 
+                                    autoCapitalize="none"
+                                    spellCheck="false"
+                                />
                                 <div className="flex justify-between items-center px-2">
                                     <div className="text-xs font-bold text-slate-400">Hata Hakkı: <span className="text-red-500">{3 - mistakeCount}</span></div>
                                     <button type="button" onClick={handleKeyboardHint} disabled={hintCount >= (targetWord.length <= 2 ? 1 : 2)} className="text-xs flex items-center gap-1 bg-amber-100 text-amber-700 px-3 py-1.5 rounded-lg font-bold active:scale-95 disabled:opacity-50">
@@ -553,7 +593,7 @@ export default function WritingGame() {
                 </button>
             )}
 
-            {/* 🔥 YENİ EKLENEN: BİTİR VE ÇIK BUTONU 🔥 */}
+            {/* BİTİR VE ÇIK BUTONU */}
             <button onClick={handleQuitEarly} className="w-full text-slate-400 hover:text-red-500 font-medium text-sm flex items-center justify-center gap-2 py-2 rounded-lg transition-colors">
                 <LogOut className="w-4 h-4" /> Bitir (Puanı Al ve Çık)
             </button>
