@@ -1,8 +1,8 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useData } from "../context/DataContext";
 import { useNavigate } from "react-router-dom";
-import WordCard from "../components/WordCard"; // Flashcard bileşenini çağırıyoruz
-import { X, CheckCircle2, ArrowRight, AlertTriangle, Home, Trash2 } from "lucide-react";
+import WordCard from "../components/WordCard"; 
+import { X, CheckCircle2, ArrowRight, Trash2, Home, LogOut, AlertTriangle, Flame, AlertOctagon } from "lucide-react";
 
 export default function HardWordsGame() {
   const { getAllWords, clearMistake } = useData();
@@ -10,48 +10,75 @@ export default function HardWordsGame() {
   const [currentIndex, setCurrentIndex] = useState(0);
 
   // --- 1. ZOR KELİMELERİ FİLTRELE ---
-  // Kural: Hata sayısı 2 ve üzeri olanlar
+  // Hata sayısı 4 ve üzeri olanları öne (başa) alarak sıralıyoruz ki önce en zoru gör.
   const hardWords = useMemo(() => {
-    return getAllWords().filter(w => (w.mistakeCount || 0) >= 2);
+    return getAllWords()
+        .filter(w => (w.mistakeCount || 0) >= 2)
+        .sort((a, b) => b.mistakeCount - a.mistakeCount); // Çok hata yapan en üstte
   }, [getAllWords]);
 
-  // --- 2. KELİME SİLME FONKSİYONU (Öğrendim) ---
+  // --- ⚠️ CRASH ÖNLEYİCİ ---
+  useEffect(() => {
+    if (currentIndex >= hardWords.length && hardWords.length > 0) {
+        setCurrentIndex(0); 
+    }
+  }, [hardWords.length, currentIndex]);
+
+  // --- 2. KELİME SİLME ---
   const handleRemove = async () => {
     const currentWord = hardWords[currentIndex];
     if (currentWord) {
       await clearMistake(currentWord.id);
-      
-      // Eğer son kelimeyi sildiysek ve liste boşalmadıysa index'i ayarla
-      if (currentIndex >= hardWords.length - 1) {
-          setCurrentIndex(Math.max(0, hardWords.length - 2)); 
-      }
     }
   };
 
-  // --- 3. SIRADAKİ KELİME (Kalsın) ---
+  // --- 3. SIRADAKİ ---
   const handleNext = () => {
     if (currentIndex < hardWords.length - 1) {
       setCurrentIndex(prev => prev + 1);
     } else {
-      // Liste sonuna geldiyse başa dön
-      setCurrentIndex(0);
+      setCurrentIndex(0); 
     }
   };
 
-  // --- 4. HİÇ ZOR KELİME YOKSA ---
+  // --- 4. RENK VE ETİKET BELİRLEME MANTIĞI ---
+  const getDifficultyBadge = (count) => {
+      if (count >= 4) {
+          return {
+              text: "Çok Zorlandıkların",
+              style: "bg-red-100 text-red-700 border-red-200",
+              icon: <Flame className="w-4 h-4 fill-red-500 text-red-600" />
+          };
+      } else if (count === 3) {
+          return {
+              text: "Orta Seviye",
+              style: "bg-orange-100 text-orange-700 border-orange-200",
+              icon: <AlertOctagon className="w-4 h-4" />
+          };
+      } else {
+          // Count == 2
+          return {
+              text: "Hata Yaptıkların",
+              style: "bg-yellow-100 text-yellow-700 border-yellow-200",
+              icon: <AlertTriangle className="w-4 h-4" />
+          };
+      }
+  };
+
+  // --- 5. LİSTE BOŞSA ---
   if (hardWords.length === 0) {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 text-center">
-        <div className="bg-green-100 p-6 rounded-full mb-6 animate-bounce">
+        <div className="bg-green-100 p-6 rounded-full mb-6 animate-in zoom-in">
             <CheckCircle2 className="w-12 h-12 text-green-600" />
         </div>
         <h2 className="text-2xl font-bold text-slate-800 mb-2">Tebrikler!</h2>
         <p className="text-slate-500 mb-8 max-w-xs mx-auto">
-            Şu an seni zorlayan hiç kelime yok. Oyunlarda hata yaptıkça burası dolacaktır.
+            Zorlandığın tüm kelimeleri temizledin. Harika gidiyorsun!
         </p>
         <button 
             onClick={() => navigate("/")} 
-            className="flex items-center gap-2 bg-indigo-600 text-white px-6 py-3 rounded-xl font-bold shadow-lg hover:bg-indigo-700 transition-transform active:scale-95"
+            className="flex items-center gap-2 bg-indigo-600 text-white px-8 py-4 rounded-2xl font-bold shadow-lg hover:bg-indigo-700 active:scale-95 transition-all"
         >
             <Home className="w-5 h-5"/> Ana Sayfaya Dön
         </button>
@@ -60,58 +87,65 @@ export default function HardWordsGame() {
   }
 
   const currentWord = hardWords[currentIndex];
+  // Güvenlik: Render anında veri yoksa boş dön
+  if (!currentWord) return <div className="min-h-screen bg-slate-50"/>;
+
+  // Mevcut kelimenin durumuna göre rozet bilgisini al
+  const badge = getDifficultyBadge(currentWord.mistakeCount);
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col items-center p-4">
+    <div className="min-h-screen bg-slate-50 flex flex-col items-center p-4 relative">
       
-      {/* ÜST BAR */}
-      <div className="w-full max-w-sm flex justify-between items-center mt-4 mb-6">
-        <button onClick={() => navigate("/")} className="p-2 bg-white rounded-full shadow-sm hover:bg-slate-100">
-            <X className="w-6 h-6 text-slate-400" />
-        </button>
-        <div className="flex items-center gap-2 bg-red-100 text-red-700 px-3 py-1 rounded-full text-sm font-bold border border-red-200">
-            <AlertTriangle className="w-4 h-4" />
-            <span>Zorlananlar: {hardWords.length}</span>
+      {/* ÜST BİLGİ ÇUBUĞU */}
+      <div className="w-full max-w-sm flex justify-between items-center mt-2 mb-4">
+        <div className="text-sm font-bold text-slate-400">
+            {currentIndex + 1} / {hardWords.length}
         </div>
-        <div className="w-10"></div> {/* Dengeleyici boşluk */}
+        
+        {/* 🔥 DİNAMİK ROZET BURADA 🔥 */}
+        <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold border ${badge.style} transition-colors duration-300`}>
+            {badge.icon}
+            <span>{badge.text} ({currentWord.mistakeCount})</span>
+        </div>
       </div>
 
       {/* --- FLASHCARD ALANI --- */}
-      {/* Mevcut WordCard bileşeni kullanılıyor, böylece tasarım tutarlı olur */}
-      <div className="w-full max-w-sm perspective-1000 mb-6">
-         {/* Key ekleyerek her değişimde yeniden render olmasını sağlıyoruz */}
+      <div className="w-full max-w-sm flex-1 flex items-center justify-center mb-6 perspective-1000">
          <WordCard key={currentWord.id} wordObj={currentWord} />
       </div>
 
       {/* --- KONTROL BUTONLARI --- */}
-      <div className="w-full max-w-sm grid grid-cols-2 gap-4">
+      <div className="w-full max-w-sm space-y-3 mb-6">
         
-        {/* BUTON 1: LİSTEDEN SİL (Hatasını Sıfırla) */}
         <button 
             onClick={handleRemove}
-            className="flex flex-col items-center justify-center gap-1 bg-green-100 border-2 border-green-200 text-green-700 p-4 rounded-2xl hover:bg-green-200 active:scale-95 transition-all shadow-sm"
+            className="w-full bg-green-500 text-white p-4 rounded-2xl shadow-md flex items-center justify-center gap-3 active:scale-95 transition-all hover:bg-green-600"
         >
-            <Trash2 className="w-6 h-6 mb-1"/>
-            <span className="font-bold text-sm">Listeden Sil</span>
-            <span className="text-[10px] opacity-70">Artık öğrendim</span>
+            <Trash2 className="w-6 h-6"/>
+            <div className="text-left">
+                <div className="font-bold text-lg leading-none">Öğrendim, Listeden Sil</div>
+                <div className="text-xs text-green-100 opacity-90">Hatasız biliyorum</div>
+            </div>
         </button>
 
-        {/* BUTON 2: SIRADAKİ (Listede Kalsın) */}
         <button 
             onClick={handleNext}
-            className="flex flex-col items-center justify-center gap-1 bg-white border-2 border-slate-200 text-slate-600 p-4 rounded-2xl hover:bg-slate-50 active:scale-95 transition-all shadow-sm"
+            className="w-full bg-white border-2 border-slate-200 text-slate-600 p-4 rounded-2xl shadow-sm flex items-center justify-center gap-2 active:scale-95 transition-all hover:bg-slate-50"
         >
-            <ArrowRight className="w-6 h-6 mb-1"/>
-            <span className="font-bold text-sm">Sıradaki</span>
-            <span className="text-[10px] opacity-70">Listede kalsın</span>
+            <span className="font-bold">Sıradaki Kelime</span>
+            <ArrowRight className="w-5 h-5"/>
         </button>
 
       </div>
-      
-      {/* Hata Sayacı Bilgisi (Footer) */}
-      <div className="mt-6 text-xs text-slate-400 font-medium bg-slate-100 px-3 py-1 rounded-full">
-          Bu kelimede toplam <strong className="text-red-500">{currentWord.mistakeCount}</strong> kez hata yaptın.
-      </div>
+
+      {/* --- BİTİR VE ÇIK --- */}
+      <button 
+        onClick={() => navigate("/")}
+        className="text-slate-400 hover:text-red-500 font-medium text-sm flex items-center gap-2 px-4 py-2 rounded-lg transition-colors mb-2"
+      >
+        <LogOut className="w-4 h-4" />
+        Çalışmayı Bitir
+      </button>
 
     </div>
   );
