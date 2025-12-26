@@ -15,6 +15,7 @@ import WritingGame2 from "./pages/WritingGame2";
 import WordMatchGame from "./pages/WordMatchGame";
 import WordList from "./pages/WordList";
 import AddWord from "./pages/AddWord";
+import HardWordsGame from "./pages/HardWordsGame";
 import AdminDashboard from "./pages/AdminDashboard";
 import WritingGame from "./pages/WritingGame"; 
 import Pronunciation from "./pages/Pronunciation"; 
@@ -75,6 +76,7 @@ export default function App() {
           
           <Route path="/list/:type" element={<PrivateRoute><WordList /></PrivateRoute>} />
             <Route path="/game/word-match" element={<WordMatchGame />} />
+            <Route path="/hard-words" element={<HardWordsGame />} />
             <Route path="/exercise" element={<PrivateRoute><ExerciseGame /></PrivateRoute>} />
           
           <Route path="/add-word" element={<AdminRoute><AddWord /></AdminRoute>} />
