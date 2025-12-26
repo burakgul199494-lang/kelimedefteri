@@ -8,9 +8,9 @@ import {
 } from "lucide-react";
 
 const FORM_TYPES = [
-  { id: "plural", label: "Plural (Çoğul - Düzenli)", key: "plural" }, // Label Güncellendi
+  { id: "plural", label: "Plural (Çoğul - Düzenli)", key: "plural" },
   { id: "v2", label: "V2 (Past - Düzenli)", key: "v2" },
-  { id: "v3", label: "V3 (Participle - Düzenli)", key: "v3" }, // Label Güncellendi
+  { id: "v3", label: "V3 (Participle - Düzenli)", key: "v3" },
   { id: "thirdPerson", label: "3. Tekil (He/She)", key: "thirdPerson" },
   { id: "advLy", label: "Zarf (-ly)", key: "advLy" },
   { id: "compEr", label: "Comp (-er)", key: "compEr" },
@@ -57,18 +57,15 @@ export default function ExerciseGame() {
       return getAllWords() || [];
   }, [getAllWords]);
 
-  // Güvenli Düzensiz Kontrolleri
   const isIrregularVerb = (w) => {
       if (!w || !w.v2) return false;
       const v2 = String(w.v2).trim().toLowerCase();
-      // "-ed" ile bitmiyorsa düzensizdir
       return v2.length > 0 && !v2.endsWith("ed");
   };
 
   const isIrregularPlural = (w) => {
       if (!w || !w.plural) return false;
       const pl = String(w.plural).trim().toLowerCase();
-      // "-s" ile bitmiyorsa düzensizdir (Basit kural)
       return pl.length > 0 && !pl.endsWith("s"); 
   };
 
@@ -93,20 +90,13 @@ export default function ExerciseGame() {
       if (key === 'irregular_verbs_v3') return getUniqueCount(isIrregularVerb);
       if (key === 'irregular_plurals') return getUniqueCount(isIrregularPlural);
       
-      // Standart Modlar İçin Filtreleme
       return getUniqueCount(w => {
           const val = w[key];
           const hasVal = val && typeof val === 'string' && String(val).trim().length > 0;
           if (!hasVal) return false;
 
-          // 🔥 FİLTRELER BURADA 🔥
-          // 1. V2 ise ve Düzensizse -> ÇIKAR
           if (key === 'v2' && isIrregularVerb(w)) return false;
-          
-          // 2. V3 ise ve Düzensizse -> ÇIKAR
           if (key === 'v3' && isIrregularVerb(w)) return false;
-
-          // 3. Plural ise ve Düzensizse -> ÇIKAR
           if (key === 'plural' && isIrregularPlural(w)) return false;
 
           return true;
@@ -121,7 +111,6 @@ export default function ExerciseGame() {
     let rawValidWords = [];
     let isHardMode = false;
 
-    // 1. MODA GÖRE KELİME SEÇİMİ
     if (modeKey === 'hard') {
         isHardMode = true;
         rawValidWords = allWords.filter(w => (w.mistakeCount || 0) >= 2);
@@ -133,13 +122,11 @@ export default function ExerciseGame() {
         rawValidWords = allWords.filter(isIrregularPlural);
     } 
     else {
-        // Standart Mod
         rawValidWords = allWords.filter(w => {
             const val = w[modeKey];
             const hasVal = val && typeof val === 'string' && String(val).trim().length > 0;
             if (!hasVal) return false;
-
-            // 🔥 FİLTRELER BURADA DA GEÇERLİ 🔥
+            
             if (modeKey === 'v2' && isIrregularVerb(w)) return false;
             if (modeKey === 'v3' && isIrregularVerb(w)) return false;
             if (modeKey === 'plural' && isIrregularPlural(w)) return false;
@@ -153,24 +140,29 @@ export default function ExerciseGame() {
       return;
     }
 
-    // 2. DEDUPLICATION
     const uniqueValidWords = [];
     const seenTexts = new Set();
-    rawValidWords.forEach(w => {
+    
+    // HARD MODE İSE FİLTRELEME, DEĞİLSE FİLTRELE
+    const poolToProcess = isHardMode ? rawValidWords : rawValidWords; 
+
+    poolToProcess.forEach(w => {
         if(w && w.word) {
             const text = String(w.word).toLowerCase().trim();
-            if (!seenTexts.has(text)) {
-                seenTexts.add(text);
-                uniqueValidWords.push(w);
+            if (isHardMode) {
+                 uniqueValidWords.push(w); // Hard mode'da hepsini al
+            } else {
+                if (!seenTexts.has(text)) {
+                    seenTexts.add(text);
+                    uniqueValidWords.push(w);
+                }
             }
         }
     });
 
-    // 3. KARIŞTIRMA
     const selectedCandidates = uniqueValidWords.sort(() => 0.5 - Math.random()).slice(0, 10);
     const selected = selectedCandidates.sort(() => 0.5 - Math.random());
 
-    // 4. SORU OLUŞTURMA
     const generatedQuestions = selected.map(w => {
         let target = "";
         let targetKey = "";
@@ -331,9 +323,13 @@ export default function ExerciseGame() {
   const handleFail = (wordToSpeak) => {
       setCurrentWordPoints(0);
       setIsWordComplete(true);
-      const target = questions[currentIndex].targetWord;
+      
+      // 🔥 FIX: targetWord'ün String olduğundan emin ol (Crash Önleyici)
+      const target = String(questions[currentIndex].targetWord || "").trim();
+      
       setCompletedLetters(target.split(''));
       setUserInput(target);
+      
       speak(wordToSpeak, 'main');
       updateGameStats('exercise', 1);
       const currentQ = questions[currentIndex];
@@ -354,7 +350,10 @@ export default function ExerciseGame() {
   const handleLetterClick = (letterObj, e) => {
     handleBlur(e);
     if (isWordComplete || letterObj.isUsed) return;
-    const targetWord = questions[currentIndex].targetWord;
+    
+    // 🔥 FIX: String Güvenliği
+    const targetWord = String(questions[currentIndex].targetWord || "").trim();
+    
     const nextIndex = completedLetters.length;
     const expectedChar = targetWord[nextIndex];
     if (letterObj.char.toLowerCase() === expectedChar.toLowerCase()) {
@@ -377,7 +376,10 @@ export default function ExerciseGame() {
   const handleKeyboardSubmit = (e) => {
       if (e) e.preventDefault();
       if (isWordComplete) return;
-      const targetWord = questions[currentIndex].targetWord;
+      
+      // 🔥 FIX: String Güvenliği (Klavye Çökmesini Önleyen Satır)
+      const targetWord = String(questions[currentIndex].targetWord || "").trim();
+      
       if (userInput.trim().toLowerCase() === targetWord.toLowerCase()) {
           handleSuccess(targetWord);
       } else {
@@ -394,7 +396,10 @@ export default function ExerciseGame() {
   const handleHint = (e) => {
       handleBlur(e);
       if (isWordComplete) return;
-      const targetWord = questions[currentIndex].targetWord;
+      
+      // 🔥 FIX: String Güvenliği
+      const targetWord = String(questions[currentIndex].targetWord || "").trim();
+      
       const len = targetWord.length;
       const maxHints = len <= 2 ? 1 : 2;
       if (hintCount >= maxHints) return;
@@ -552,8 +557,8 @@ export default function ExerciseGame() {
             
             {/* Header */}
             <div className="flex justify-between items-center">
-                <button onClick={handleQuitEarly} className="p-2 bg-white rounded-full shadow-sm"><X className="w-5 h-5 text-slate-400"/></button>
-                <div className="font-bold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-100 text-xs truncate max-w-[150px]">
+                <button onClick={handleQuitEarly} className="p-2 bg-white rounded-full shadow-sm active:bg-slate-100 transition-colors"><X className="w-5 h-5 text-slate-400"/></button>
+                <div className="font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-full border border-blue-100 text-xs truncate max-w-[150px]">
                     {formLabel.split('(')[0]}: {currentIndex + 1} / {questions.length}
                 </div>
                 <div className="flex items-center gap-1 bg-amber-100 text-amber-700 px-3 py-1 rounded-full font-bold text-sm border border-amber-200">
@@ -561,7 +566,7 @@ export default function ExerciseGame() {
                 </div>
             </div>
             
-            <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden"><div className="bg-indigo-500 h-full transition-all duration-500" style={{width:`${((currentIndex + 1) / questions.length) * 100}%`}}></div></div>
+            <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden"><div className="bg-blue-500 h-full transition-all duration-500" style={{width:`${((currentIndex + 1) / questions.length) * 100}%`}}></div></div>
 
             {/* OYUN KARTI - WritingGame Tasarımı */}
             <div className="bg-white p-6 rounded-3xl shadow-xl border border-slate-100 text-center relative overflow-hidden min-h-[450px] flex flex-col justify-between">
