@@ -12,7 +12,7 @@ export default function GapFillingGame() {
   // --- STATE'LER ---
   const [gameMode, setGameMode] = useState(null);
   const [gameStatus, setGameStatus] = useState("mode-selection"); 
- const [inputMethod, setInputMethod] = useState("keyboard"); 
+  const [inputMethod, setInputMethod] = useState("keyboard"); 
 
   const [questions, setQuestions] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -157,6 +157,10 @@ export default function GapFillingGame() {
       setShowHintTr(false);
       setHasRecordedMistake(false); 
 
+      // Inputları Temizle
+      setUserInput("");
+      setCompletedLetters([]);
+
       if (inputMethod === "bubbles") {
           let lettersArray = target.split('').map((char, index) => ({
             id: `${char}-${index}-${Math.random()}`,
@@ -175,14 +179,36 @@ export default function GapFillingGame() {
           }
 
           setShuffledLetters(lettersArray);
-          setCompletedLetters([]);
-      } else {
-          setUserInput("");
       }
     }
     
     return () => window.speechSynthesis.cancel();
   }, [currentIndex, gameStatus, questions, inputMethod]);
+
+  // 🔥 YENİ: OTOMATİK ODAKLANMA (AUTO FOCUS) 🔥
+  useEffect(() => {
+    if (inputMethod === "keyboard" && !isWordComplete && gameStatus === "playing") {
+        const timer = setTimeout(() => {
+            if (inputRef.current) {
+                inputRef.current.focus();
+            }
+        }, 100); 
+        return () => clearTimeout(timer);
+    }
+  }, [currentIndex, inputMethod, isWordComplete, gameStatus]);
+
+  // 🔥 YENİ: ENTER İLE GEÇİŞ 🔥
+  useEffect(() => {
+    const handleGlobalKeyDown = (e) => {
+      if (isWordComplete && e.key === "Enter") {
+        e.preventDefault();
+        handleNext(); 
+      }
+    };
+
+    window.addEventListener("keydown", handleGlobalKeyDown);
+    return () => window.removeEventListener("keydown", handleGlobalKeyDown);
+  }, [isWordComplete, currentIndex, questions]); 
 
   const currentWordObj = questions[currentIndex];
   const targetWord = currentWordObj?.targetWord || ""; 
@@ -278,7 +304,7 @@ export default function GapFillingGame() {
   };
 
   const handleNext = (e) => {
-      handleBlur(e);
+      if(e) handleBlur(e);
       if (currentIndex + 1 < questions.length) setCurrentIndex(p => p + 1);
       else setGameStatus("finished");
   };
@@ -363,10 +389,12 @@ export default function GapFillingGame() {
       
       setUserInput(newInputValue);
       if(inputRef.current) inputRef.current.focus();
+      if(newInputValue.length === targetWord.length) handleSuccess(targetWord);
   };
 
   const handleQuitEarly = (e) => {
     handleBlur(e);
+    if (score > 0) addScore(score); 
     setGameStatus("finished");
   };
 
@@ -595,7 +623,18 @@ export default function GapFillingGame() {
                     <>
                         {!isWordComplete ? (
                             <form onSubmit={handleKeyboardSubmit} className="space-y-3 pb-2">
-                                <input ref={inputRef} type="text" value={userInput} onChange={(e) => setUserInput(e.target.value)} placeholder="Boşluğu doldur..." className={`w-full text-center text-2xl font-bold p-3 border-b-4 rounded-xl outline-none transition-all ${wrongAnimationId === "input" ? "border-red-500 bg-red-50 text-red-600 animate-[shake_0.5s_ease-in-out]" : "border-indigo-200 bg-indigo-50 text-indigo-700 focus:border-indigo-500"}`} autoComplete="off" autoCorrect="off" autoCapitalize="none" />
+                                <input 
+                                    key={currentIndex} // 🔥 YAZI TEMİZLEME GARANTİSİ 🔥
+                                    ref={inputRef} 
+                                    type="text" 
+                                    value={userInput} 
+                                    onChange={(e) => setUserInput(e.target.value)} 
+                                    placeholder="Boşluğu doldur..." 
+                                    className={`w-full text-center text-2xl font-bold p-3 border-b-4 rounded-xl outline-none transition-all ${wrongAnimationId === "input" ? "border-red-500 bg-red-50 text-red-600 animate-[shake_0.5s_ease-in-out]" : "border-indigo-200 bg-indigo-50 text-indigo-700 focus:border-indigo-500"}`} 
+                                    autoComplete="off" 
+                                    autoCorrect="off" 
+                                    autoCapitalize="none"
+                                />
                                 <div className="flex justify-between items-center px-2">
                                     <div className="text-xs font-bold text-slate-400">Hata Hakkı: <span className="text-red-500">{3 - mistakeCount}</span></div>
                                     <button type="button" onClick={handleKeyboardHint} disabled={hintCount >= (targetWord.length <= 2 ? 1 : 2)} className="text-xs flex items-center gap-1 bg-amber-100 text-amber-700 px-3 py-1.5 rounded-lg font-bold active:scale-95 disabled:opacity-50">
