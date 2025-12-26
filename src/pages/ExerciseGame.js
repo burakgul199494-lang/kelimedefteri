@@ -4,9 +4,10 @@ import { useNavigate } from "react-router-dom";
 import { 
   X, Trophy, Loader2, Home, Volume2, CheckCircle2, 
   Dumbbell, Layers, ArrowRight, Languages, Square, 
-  Lightbulb, AlertTriangle, Star, Tag, Keyboard, MousePointer2, Flag, Check, LogOut, Sparkles
+  Lightbulb, AlertTriangle, Star, Keyboard, MousePointer2, Flag, Check, LogOut, Sparkles
 } from "lucide-react";
 
+// --- SABİTLER ---
 const FORM_TYPES = [
   { id: "plural", label: "Plural (Çoğul - Düzenli)", key: "plural" },
   { id: "v2", label: "V2 (Past - Düzenli)", key: "v2" },
@@ -17,27 +18,146 @@ const FORM_TYPES = [
   { id: "superEst", label: "Super (-est)", key: "superEst" },
 ];
 
+// --- ALT BİLEŞENLER (PERFORMANS İÇİN AYRILDI) ---
+
+// 1. KELİME KARTI (Sadece soru değişince render olur)
+const WordCard = React.memo(({ baseWordObj, currentWordPoints, activeAudio, speak, showWordTr, setShowWordTr, def, showDefTr, setShowDefTr, handleBlur }) => {
+    return (
+        <div className="bg-white p-6 rounded-3xl shadow-xl border border-slate-100 text-center relative overflow-hidden min-h-[400px] flex flex-col justify-between mb-4">
+            <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-blue-400 to-cyan-400"></div>
+
+            <div className="absolute top-4 right-4 flex items-center gap-1 bg-green-50 text-green-700 px-2 py-1 rounded-lg text-xs font-bold border border-green-100 animate-in fade-in">
+                <Star className="w-3 h-3 fill-current"/> Soru: {Math.max(0, currentWordPoints)}p
+            </div>
+
+            {baseWordObj.tags && baseWordObj.tags.length > 0 && (
+                <div className="absolute top-0 left-4 mt-4 flex flex-col items-start gap-1 max-w-[80px]">
+                    {baseWordObj.tags.map((tag, i) => (<span key={i} className="text-[9px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200 truncate max-w-full">{tag}</span>))}
+                </div>
+            )}
+
+            <div className="flex-1 flex flex-col items-center justify-center gap-4 py-4 mt-8"> 
+                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">ANA KELİME (BASE)</div>
+                <div className="bg-slate-50 px-6 py-8 rounded-3xl border-2 border-slate-100 w-full flex items-center justify-center">
+                    <h2 className="text-3xl font-black text-slate-800 leading-tight break-words">{baseWordObj.word}</h2>
+                </div>
+
+                <div className="flex gap-2">
+                    <button onClick={(e) => { handleBlur(e); speak(baseWordObj.word, 'base'); }} className={`p-3 rounded-full border flex items-center justify-center transition-all ${activeAudio === 'base' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-400 border-slate-200'}`}>
+                        {activeAudio === 'base' ? <Square size={18} fill="currentColor"/> : <Volume2 size={18}/>}
+                    </button>
+                    {def.meaning && (
+                        <button onClick={(e) => { handleBlur(e); setShowWordTr(!showWordTr); }} className={`p-3 rounded-full border flex items-center justify-center transition-all ${showWordTr ? 'bg-indigo-100 text-indigo-600 border-indigo-200' : 'bg-white text-slate-400 border-slate-200'}`}>
+                            <Languages size={18}/>
+                        </button>
+                    )}
+                </div>
+                
+                {showWordTr && (<div className="text-sm font-bold text-green-600 bg-green-50 px-3 py-1 rounded-lg animate-in fade-in slide-in-from-top-1">{def.meaning}</div>)}
+            </div>
+
+            {/* Fonetik ve Tanım */}
+            <div className="mt-2 space-y-2">
+                {baseWordObj?.phonetic?.trim() && (
+                    <div className="flex justify-center"><span className="text-indigo-400 font-serif italic text-lg tracking-wide px-3 py-0.5 bg-indigo-50/50 rounded-lg border border-indigo-100/50">/{String(baseWordObj.phonetic).replace(/\//g, "")}/</span></div>
+                )}
+                
+                {def.engExplanation && (
+                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 relative text-left">
+                         <p className="text-slate-600 text-sm italic pr-16 leading-relaxed">"{def.engExplanation}"</p>
+                         <div className="absolute right-2 top-2 flex gap-1">
+                             <button onClick={(e) => { handleBlur(e); speak(def.engExplanation, 'desc'); }} className={`p-1.5 rounded-lg border ${activeAudio === 'desc' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-400 border-slate-200'}`}>{activeAudio === 'desc' ? <Square size={12} fill="currentColor"/> : <Volume2 size={12}/>}</button>
+                             {def.trExplanation && (<button onClick={(e) => { handleBlur(e); setShowDefTr(!showDefTr); }} className={`p-1.5 rounded-lg border ${showDefTr ? 'bg-indigo-100 text-indigo-600 border-indigo-200' : 'bg-white text-slate-400 border-slate-200'}`}><Languages size={12}/></button>)}
+                         </div>
+                         {showDefTr && def.trExplanation && <div className="mt-2 pt-2 border-t border-slate-200 text-indigo-700 text-xs font-bold animate-in fade-in">TR: {def.trExplanation}</div>}
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+});
+
+// 2. KLAVYE ALANI (Hızlı tepki için izole edildi)
+const KeyboardArea = React.memo(({ userInput, setUserInput, onSubmit, onHint, wrong, hintDisabled, mistakeCount, isWordComplete, targetWord }) => {
+    return (
+        <div className="w-full">
+            {!isWordComplete ? (
+                <form onSubmit={onSubmit} className="space-y-3 pb-2">
+                    <input 
+                        type="text" 
+                        value={userInput} 
+                        onChange={(e) => setUserInput(e.target.value)} 
+                        placeholder="Cevabı yaz..." 
+                        // 🔥 PERFORMANCE FIX: Animasyon yerine renk değişimi 🔥
+                        className={`w-full text-center text-2xl font-bold p-3 border-b-4 rounded-xl outline-none transition-colors duration-200 ${wrong ? "border-red-500 bg-red-50 text-red-600" : "border-indigo-200 bg-indigo-50 text-indigo-700 focus:border-indigo-500"}`} 
+                        autoComplete="off" 
+                        autoCorrect="off" 
+                        autoCapitalize="none"
+                        spellCheck="false"
+                    />
+                    <div className="flex justify-between items-center px-2">
+                        <div className="text-xs font-bold text-slate-400">Hata Hakkı: <span className="text-red-500">{3 - mistakeCount}</span></div>
+                        <button type="button" onClick={onHint} disabled={hintDisabled} className="text-xs flex items-center gap-1 bg-amber-100 text-amber-700 px-3 py-1.5 rounded-lg font-bold active:scale-95 disabled:opacity-50"><Lightbulb className="w-3 h-3" /> İpucu (-2p)</button>
+                    </div>
+                    <button type="submit" className="w-full bg-indigo-600 text-white font-bold py-4 rounded-xl shadow-md mt-4 flex items-center justify-center gap-2 hover:bg-indigo-700 active:scale-95 transition-all">Kontrol Et <Check className="w-5 h-5"/></button>
+                </form>
+            ) : (
+                <div className="bg-green-50 border border-green-200 text-green-700 font-bold text-2xl py-4 rounded-xl animate-in zoom-in">{targetWord}</div>
+            )}
+        </div>
+    );
+});
+
+// 3. BALON ALANI
+const BubbleArea = React.memo(({ targetWord, completedLetters, shuffledLetters, handleLetterClick, wrongAnimationId, isWordComplete, handleHint, hintDisabled, mistakeCount }) => {
+    return (
+        <div className="w-full">
+            <div className="flex flex-wrap justify-center gap-1 min-h-[60px] items-end content-center mb-4">
+                {targetWord.split('').map((_, idx) => {
+                    const char = completedLetters[idx];
+                    const isFilled = char !== undefined;
+                    return (<div key={idx} className={`w-8 h-11 text-xl flex items-center justify-center font-bold border-b-4 rounded-t-lg transition-all ${isFilled ? "border-blue-500 text-blue-700 bg-blue-50" : "border-slate-200 bg-slate-50 text-transparent"}`}>{char}</div>);
+                })}
+            </div>
+
+            {!isWordComplete && (
+                <div className="space-y-4">
+                    <div className="flex flex-wrap justify-center gap-2 content-center pb-2">
+                        {shuffledLetters.map((item) => (
+                            <button key={item.id} onClick={(e) => handleLetterClick(item, e)} disabled={item.isUsed} className={`w-10 h-10 rounded-xl font-bold text-lg shadow-[0_3px_0_rgb(0,0,0,0.1)] transition-all active:translate-y-[2px] active:shadow-none outline-none focus:outline-none ${item.isUsed ? "opacity-0 pointer-events-none scale-0" : wrongAnimationId === item.id ? "bg-red-500 text-white animate-bounce" : "bg-white border-2 border-slate-200 text-slate-700 active:bg-blue-100"}`}>{item.char}</button>
+                        ))}
+                    </div>
+                    <div className="flex justify-center border-t border-slate-100 pt-3">
+                         <button onClick={handleHint} disabled={hintDisabled} className={`flex items-center gap-2 px-5 py-3 bg-amber-100 text-amber-700 rounded-2xl font-bold transition-colors active:scale-95 focus:outline-none ${hintDisabled ? 'opacity-50 cursor-not-allowed' : 'active:bg-amber-200'}`}>
+                            <Lightbulb className="w-5 h-5"/> 
+                            <span>İpucu {targetWord.length <= 1 ? "(Yok)" : "(-5p)"}</span>
+                            <span className="text-[10px] bg-white/50 px-1.5 rounded ml-1">Hata: {mistakeCount}/3</span>
+                         </button>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+});
+
+
+// --- ANA OYUN COMPONENTİ ---
 export default function ExerciseGame() {
   const { getAllWords, addScore, updateGameStats, handleUpdateWord, registerMistake } = useData();
   const navigate = useNavigate();
 
-  // --- STATE'LER ---
+  // State
   const [gameStatus, setGameStatus] = useState("selection"); 
   const [activeForm, setActiveForm] = useState(null); 
   const [inputMethod, setInputMethod] = useState("bubbles"); 
-
   const [questions, setQuestions] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [score, setScore] = useState(0);
 
-  // Balon Modu
+  // Oyun İçi State
   const [shuffledLetters, setShuffledLetters] = useState([]);
   const [completedLetters, setCompletedLetters] = useState([]);
-  
-  // Klavye Modu
   const [userInput, setUserInput] = useState("");
-
-  // Ortak
   const [isWordComplete, setIsWordComplete] = useState(false);
   const [wrongAnimationId, setWrongAnimationId] = useState(null);
   const [mistakeCount, setMistakeCount] = useState(0); 
@@ -48,50 +168,41 @@ export default function ExerciseGame() {
   const [showDefTr, setShowDefTr] = useState(false);
   const [hasRecordedMistake, setHasRecordedMistake] = useState(false);
 
-  const inputRef = useRef(null);
-
+  // Helper
   const handleBlur = (e) => { if (e && e.currentTarget) e.currentTarget.blur(); };
 
-  // --- 1. KELİME HAVUZU (MEMOIZED) ---
-  const allWords = useMemo(() => {
-      return getAllWords() || [];
-  }, [getAllWords]);
+  // Kelime Havuzu
+  const allWords = useMemo(() => getAllWords() || [], [getAllWords]);
 
-  // Yardımcı fonksiyonlar (Render dışında tanımlanabilir ama burada kalsın)
+  // Kontrol Fonksiyonları (Render dışı)
   const isIrregularVerb = (w) => {
       if (!w || !w.v2) return false;
       const v2 = String(w.v2).trim().toLowerCase();
       return v2.length > 0 && !v2.endsWith("ed");
   };
-
   const isIrregularPlural = (w) => {
       if (!w || !w.plural) return false;
       const pl = String(w.plural).trim().toLowerCase();
       return pl.length > 0 && !pl.endsWith("s"); 
   };
-
   const getUniqueCount = (filterFn) => {
       const seen = new Set();
       let count = 0;
       allWords.forEach(w => {
           if (w && w.word && filterFn(w)) {
               const text = String(w.word).toLowerCase().trim();
-              if (!seen.has(text)) {
-                  seen.add(text);
-                  count++;
-              }
+              if (!seen.has(text)) { seen.add(text); count++; }
           }
       });
       return count;
   };
+  const getRawCount = (filterFn) => allWords.filter(w => w && w.word && filterFn(w)).length;
 
-  // getCount sadece mod seçiminde kullanılıyor, performans sorunu yaratmaz.
   const getCount = (key) => {
-      if (key === 'hard') return getUniqueCount(w => (w.mistakeCount || 0) >= 2);
+      if (key === 'hard') return getRawCount(w => (w.mistakeCount || 0) >= 2);
       if (key === 'irregular_verbs') return getUniqueCount(isIrregularVerb);
       if (key === 'irregular_verbs_v3') return getUniqueCount(isIrregularVerb);
       if (key === 'irregular_plurals') return getUniqueCount(isIrregularPlural);
-      
       return getUniqueCount(w => {
           const val = w[key];
           const hasVal = val && typeof val === 'string' && String(val).trim().length > 0;
@@ -103,9 +214,7 @@ export default function ExerciseGame() {
       });
   };
 
-  // --- 2. YARDIMCI FONKSİYONLAR ---
-  
-  // Manuel Reset
+  // Reset Logic
   const resetQuestionState = useCallback(() => {
       setIsWordComplete(false);
       setMistakeCount(0);
@@ -116,49 +225,23 @@ export default function ExerciseGame() {
       setUserInput("");
       setShowWordTr(false);
       setShowDefTr(false);
+      setWrongAnimationId(null);
   }, []);
 
-  const speak = useCallback((txt, id) => {
-    if (!txt) return;
-    if (activeAudio === id) {
-        window.speechSynthesis.cancel();
-        setActiveAudio(null);
-    } else {
-        window.speechSynthesis.cancel();
-        const u = new SpeechSynthesisUtterance(txt);
-        u.lang = "en-US";
-        u.onend = () => setActiveAudio(null);
-        u.onerror = () => setActiveAudio(null);
-        window.speechSynthesis.speak(u);
-        setActiveAudio(id);
-    }
-  }, [activeAudio]);
-
-  const recordMistakeOnce = useCallback((currentQ) => {
-      if (!hasRecordedMistake) {
-          registerMistake(currentQ.baseWordObj.id, 1);
-          setHasRecordedMistake(true); 
-      }
-  }, [hasRecordedMistake, registerMistake]);
-
-  // --- 3. OYUN BAŞLATMA ---
+  // Oyunu Başlatma
   const startSession = (modeKey, e) => {
     handleBlur(e);
-    const dateKey = `lastExercise_${modeKey}`; 
     let rawValidWords = [];
     let isHardMode = false;
 
     if (modeKey === 'hard') {
         isHardMode = true;
         rawValidWords = allWords.filter(w => (w.mistakeCount || 0) >= 2);
-    } 
-    else if (modeKey === 'irregular_verbs' || modeKey === 'irregular_verbs_v3') {
+    } else if (modeKey === 'irregular_verbs' || modeKey === 'irregular_verbs_v3') {
         rawValidWords = allWords.filter(isIrregularVerb);
-    } 
-    else if (modeKey === 'irregular_plurals') {
+    } else if (modeKey === 'irregular_plurals') {
         rawValidWords = allWords.filter(isIrregularPlural);
-    } 
-    else {
+    } else {
         rawValidWords = allWords.filter(w => {
             const val = w[modeKey];
             const hasVal = val && typeof val === 'string' && String(val).trim().length > 0;
@@ -175,26 +258,21 @@ export default function ExerciseGame() {
       return;
     }
 
-    const uniqueValidWords = [];
-    const seenTexts = new Set();
-    const poolToProcess = isHardMode ? rawValidWords : rawValidWords;
-
-    poolToProcess.forEach(w => {
-        if(w && w.word) {
-            const text = String(w.word).toLowerCase().trim();
-            if (isHardMode) {
-                 uniqueValidWords.push(w);
-            } else {
-                if (!seenTexts.has(text)) {
-                    seenTexts.add(text);
-                    uniqueValidWords.push(w);
-                }
+    // Deduplication
+    let poolToUse = [];
+    if (isHardMode) {
+        poolToUse = rawValidWords;
+    } else {
+        const seenTexts = new Set();
+        rawValidWords.forEach(w => {
+            if(w && w.word) {
+                const text = String(w.word).toLowerCase().trim();
+                if (!seenTexts.has(text)) { seenTexts.add(text); poolToUse.push(w); }
             }
-        }
-    });
+        });
+    }
 
-    const selectedCandidates = uniqueValidWords.sort(() => 0.5 - Math.random()).slice(0, 10);
-    const selected = selectedCandidates.sort(() => 0.5 - Math.random());
+    const selected = poolToUse.sort(() => 0.5 - Math.random()).slice(0, 10);
 
     const generatedQuestions = selected.map(w => {
         let target = "";
@@ -212,39 +290,20 @@ export default function ExerciseGame() {
                 targetKey = randomForm.key;
                 targetLabel = randomForm.label;
             } else {
-                target = String(w.word || "").trim(); 
-                targetKey = "word";
-                targetLabel = "Kelime";
+                target = String(w.word || "").trim(); targetKey = "word"; targetLabel = "Kelime";
             }
-        } 
-        else if (modeKey === 'irregular_verbs') {
-            target = String(w.v2 || "").trim();
-            targetKey = 'v2';
-            targetLabel = 'V2 (Düzensiz)';
-        } 
-        else if (modeKey === 'irregular_verbs_v3') {
-            target = String(w.v3 || "").trim(); 
-            targetKey = 'v3';
-            targetLabel = 'V3 (Düzensiz)';
-        }
-        else if (modeKey === 'irregular_plurals') {
-            target = String(w.plural || "").trim();
-            targetKey = 'plural';
-            targetLabel = 'Plural (Düzensiz)';
-        } 
-        else {
-            target = String(w[modeKey] || "").trim();
-            targetKey = modeKey;
-            const fType = FORM_TYPES.find(f => f.key === modeKey);
-            targetLabel = fType ? fType.label : modeKey;
+        } else if (modeKey === 'irregular_verbs') {
+            target = String(w.v2 || "").trim(); targetKey = 'v2'; targetLabel = 'V2 (Düzensiz)';
+        } else if (modeKey === 'irregular_verbs_v3') {
+            target = String(w.v3 || "").trim(); targetKey = 'v3'; targetLabel = 'V3 (Düzensiz)';
+        } else if (modeKey === 'irregular_plurals') {
+            target = String(w.plural || "").trim(); targetKey = 'plural'; targetLabel = 'Plural (Düzensiz)';
+        } else {
+            target = String(w[modeKey] || "").trim(); targetKey = modeKey;
+            const fType = FORM_TYPES.find(f => f.key === modeKey); targetLabel = fType ? fType.label : modeKey;
         }
 
-        return {
-            baseWordObj: w,
-            targetWord: target,
-            formLabel: targetLabel,
-            formKey: targetKey
-        };
+        return { baseWordObj: w, targetWord: target, formLabel: targetLabel, formKey: targetKey };
     });
 
     setQuestions(generatedQuestions);
@@ -255,7 +314,7 @@ export default function ExerciseGame() {
     setGameStatus("playing");
   };
 
-  // --- 4. SORU YÜKLEME ---
+  // Soru Yükleme
   useEffect(() => {
     window.speechSynthesis.cancel();
     setActiveAudio(null);
@@ -265,18 +324,10 @@ export default function ExerciseGame() {
       const rawTarget = questions[currentIndex].targetWord;
       const target = rawTarget ? String(rawTarget).trim() : "";
       
-      // State sıfırlamaları resetQuestionState içinde yapıldı
-      
       if (inputMethod === "bubbles") {
-          let lettersArray = target.split('').map((char, index) => ({
-            id: `${char}-${index}-${Math.random()}`,
-            char: char,
-            isUsed: false
-          }));
-
+          let lettersArray = target.split('').map((char, index) => ({ id: `${char}-${index}-${Math.random()}`, char, isUsed: false }));
           if (target.length > 1) {
-              let isSame = true;
-              let attempt = 0;
+              let isSame = true; let attempt = 0;
               while (isSame && attempt < 50) { 
                   lettersArray.sort(() => Math.random() - 0.5);
                   const currentOrder = lettersArray.map(l => l.char).join('');
@@ -287,22 +338,44 @@ export default function ExerciseGame() {
           setShuffledLetters(lettersArray);
       }
     }
-    return () => window.speechSynthesis.cancel();
   }, [currentIndex, gameStatus, questions, inputMethod, resetQuestionState]);
 
-  // --- OYUN MANTIĞI HANDLERS ---
-  const handleSuccess = (wordToSpeak, pointsOverride = null) => {
+  // Logic Handlers
+  const getSmartDefinition = (wordObj, formKey) => {
+      if (!wordObj || !wordObj.definitions) return { meaning: "", engExplanation: "", trExplanation: "" };
+      const defs = wordObj.definitions;
+      if (defs.length === 0) return { meaning: "", engExplanation: "", trExplanation: "" };
+      let targetType = "";
+      if (['v2', 'v3', 'thirdPerson', 'vIng'].includes(formKey)) targetType = "verb";
+      else if (formKey === 'plural') targetType = "noun";
+      else if (['compEr', 'superEst', 'advLy'].includes(formKey)) targetType = "adjective";
+      const matchedDef = defs.find(d => d.type === targetType);
+      return matchedDef || defs[0] || { meaning: "", engExplanation: "", trExplanation: "" };
+  };
+
+  const speak = useCallback((txt, id) => {
+    if (!txt) return;
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(txt);
+    u.lang = "en-US";
+    u.onend = () => setActiveAudio(null);
+    u.onerror = () => setActiveAudio(null);
+    window.speechSynthesis.speak(u);
+    setActiveAudio(id);
+  }, []);
+
+  const handleSuccess = useCallback((wordToSpeak) => {
       setIsWordComplete(true);
       speak(wordToSpeak, 'main'); 
       updateGameStats('exercise', 1);
       const currentQ = questions[currentIndex];
       const dateKey = `lastExercise_${currentQ.formKey}`;
       handleUpdateWord(currentQ.baseWordObj.id, { [dateKey]: new Date().toISOString() });
-      const finalPoints = pointsOverride !== null ? pointsOverride : currentWordPoints;
-      if (finalPoints > 0) { addScore(finalPoints); setScore(s => s + finalPoints); }
-  };
+      addScore(currentWordPoints);
+      setScore(s => s + currentWordPoints);
+  }, [currentIndex, questions, currentWordPoints, addScore, handleUpdateWord, updateGameStats, speak]);
 
-  const handleFail = (wordToSpeak) => {
+  const handleFail = useCallback((wordToSpeak) => {
       setCurrentWordPoints(0);
       setIsWordComplete(true);
       const target = String(questions[currentIndex].targetWord || "").trim();
@@ -311,150 +384,108 @@ export default function ExerciseGame() {
       speak(wordToSpeak, 'main');
       updateGameStats('exercise', 1);
       const currentQ = questions[currentIndex];
-      recordMistakeOnce(currentQ); 
+      if (!hasRecordedMistake) {
+          registerMistake(currentQ.baseWordObj.id, 1);
+          setHasRecordedMistake(true);
+      }
       const dateKey = `lastExercise_${currentQ.formKey}`;
       handleUpdateWord(currentQ.baseWordObj.id, { [dateKey]: new Date().toISOString() });
-  };
+  }, [currentIndex, questions, hasRecordedMistake, handleUpdateWord, registerMistake, updateGameStats, speak]);
 
-  const handlePass = () => { handleFail(questions[currentIndex].targetWord); };
-
-  const handleNext = (e) => {
-      handleBlur(e);
+  const handleNext = useCallback(() => {
       if (currentIndex + 1 < questions.length) {
-          resetQuestionState();
+          // KEYBOARD RESET: Key değişimi için currentIndex artıyor
           setCurrentIndex(p => p + 1);
       } else {
           setGameStatus("finished");
       }
-  };
+  }, [currentIndex, questions.length]);
 
-  const handleLetterClick = (letterObj, e) => {
-    handleBlur(e);
+  // Input Handlers
+  const handleLetterClick = useCallback((letterObj) => {
     if (isWordComplete || letterObj.isUsed) return;
     const targetWord = String(questions[currentIndex].targetWord || "").trim();
     const nextIndex = completedLetters.length;
-    const expectedChar = targetWord[nextIndex];
-    if (letterObj.char.toLowerCase() === expectedChar.toLowerCase()) {
-        const newShuffled = shuffledLetters.map(l => l.id === letterObj.id ? { ...l, isUsed: true } : l);
-        setShuffledLetters(newShuffled);
-        const newCompleted = [...completedLetters, letterObj.char];
-        setCompletedLetters(newCompleted);
-        if (newCompleted.length === targetWord.length) handleSuccess(targetWord);
+    
+    if (letterObj.char.toLowerCase() === targetWord[nextIndex].toLowerCase()) {
+        setShuffledLetters(prev => prev.map(l => l.id === letterObj.id ? { ...l, isUsed: true } : l));
+        setCompletedLetters(prev => {
+            const updated = [...prev, letterObj.char];
+            if (updated.length === targetWord.length) handleSuccess(targetWord);
+            return updated;
+        });
     } else {
-        const newMistakes = mistakeCount + 1;
-        setMistakeCount(newMistakes);
+        setMistakeCount(m => {
+            const newVal = m + 1;
+            if (newVal > 3) handleFail(targetWord);
+            return newVal;
+        });
         setCurrentWordPoints(p => Math.max(0, p - 2));
         setWrongAnimationId(letterObj.id);
         setTimeout(() => setWrongAnimationId(null), 500);
-        if (newMistakes > 3) handleFail(targetWord);
     }
-  };
+  }, [completedLetters, questions, currentIndex, isWordComplete, handleSuccess, handleFail]);
 
-  const handleKeyboardSubmit = (e) => {
-      if (e) e.preventDefault();
+  const handleKeyboardSubmit = useCallback((e) => {
+      e.preventDefault();
       if (isWordComplete) return;
       const targetWord = String(questions[currentIndex].targetWord || "").trim();
       if (userInput.trim().toLowerCase() === targetWord.toLowerCase()) {
           handleSuccess(targetWord);
       } else {
-          const newMistakes = mistakeCount + 1;
-          setMistakeCount(newMistakes);
+          setMistakeCount(m => {
+              const newVal = m + 1;
+              if (newVal >= 3) handleFail(targetWord);
+              return newVal;
+          });
           setCurrentWordPoints(p => Math.max(0, p - 1));
           setWrongAnimationId("input");
           setTimeout(() => setWrongAnimationId(null), 500);
-          if (newMistakes >= 3) handleFail(targetWord);
       }
-  };
+  }, [isWordComplete, questions, currentIndex, userInput, handleSuccess, handleFail]);
 
-  const handleHint = (e) => {
-      handleBlur(e);
+  const handleBubbleHint = useCallback(() => {
       if (isWordComplete) return;
       const targetWord = String(questions[currentIndex].targetWord || "").trim();
-      const len = targetWord.length;
-      const maxHints = len <= 2 ? 1 : 2;
-      if (hintCount >= maxHints) return;
+      if (hintCount >= (targetWord.length <= 2 ? 1 : 2)) return;
       
       setHintCount(h => h + 1);
       setCurrentWordPoints(p => Math.max(0, p - 2));
 
-      if (inputMethod === "bubbles") {
-          const nextIndex = completedLetters.length;
-          const expectedChar = targetWord[nextIndex];
-          const correctLetterObj = shuffledLetters.find(l => !l.isUsed && l.char.toLowerCase() === expectedChar.toLowerCase());
-          if (correctLetterObj) handleLetterClick(correctLetterObj, null);
-      } else {
-          let correctPrefixLength = 0;
-          const cleanInput = userInput.trim().toLowerCase();
-          const cleanTarget = targetWord.toLowerCase();
-          for (let i = 0; i < cleanInput.length; i++) {
-              if (cleanInput[i] === cleanTarget[i]) correctPrefixLength++;
-              else break; 
-          }
-          const newInputValue = targetWord.substring(0, correctPrefixLength + 1);
-          setUserInput(newInputValue);
-          if(inputRef.current) inputRef.current.focus();
-          if(newInputValue.length === targetWord.length) handleSuccess(targetWord);
+      const nextIndex = completedLetters.length;
+      const correctLetterObj = shuffledLetters.find(l => !l.isUsed && l.char.toLowerCase() === targetWord[nextIndex].toLowerCase());
+      if (correctLetterObj) handleLetterClick(correctLetterObj);
+  }, [isWordComplete, questions, currentIndex, hintCount, completedLetters, shuffledLetters, handleLetterClick]);
+
+  const handleKeyboardHint = useCallback(() => {
+      if (isWordComplete) return;
+      const targetWord = String(questions[currentIndex].targetWord || "").trim();
+      if (hintCount >= (targetWord.length <= 2 ? 1 : 2)) return;
+
+      setHintCount(h => h + 1);
+      setCurrentWordPoints(p => Math.max(0, p - 2));
+
+      let correctPrefixLength = 0;
+      const cleanInput = userInput.trim().toLowerCase();
+      const cleanTarget = targetWord.toLowerCase();
+      for (let i = 0; i < cleanInput.length; i++) {
+          if (cleanInput[i] === cleanTarget[i]) correctPrefixLength++; else break; 
       }
-  };
+      const newInputValue = targetWord.substring(0, correctPrefixLength + 1);
+      setUserInput(newInputValue);
+      if(newInputValue.length === targetWord.length) handleSuccess(targetWord);
+  }, [isWordComplete, questions, currentIndex, hintCount, userInput, handleSuccess]);
 
-  const handleQuitEarly = (e) => {
-    handleBlur(e);
-    if (score > 0) addScore(score);
-    setGameStatus("finished");
-  };
-
-  const toggleInputMethod = (method) => {
-      setInputMethod(method);
-      resetQuestionState();
-  };
-
-  // --- MEMOIZED RENDER HELPERS (PERFORMANS İÇİN) ---
+  // Render Variables
   const currentQ = questions[currentIndex];
-  // Güvenli veriler
   const targetWord = currentQ?.targetWord ? String(currentQ.targetWord).trim() : "";
-  const baseWordObj = currentQ?.baseWordObj || {};
   const formLabel = currentQ?.formLabel ? String(currentQ.formLabel) : "Bilinmiyor";
-  
-  // Her renderda hesaplanmasın diye useMemo kullanıyoruz
-  const def = useMemo(() => {
-      if (!baseWordObj || !baseWordObj.definitions) return { meaning: "", engExplanation: "", trExplanation: "" };
-      const defs = baseWordObj.definitions;
-      if (defs.length === 0) return { meaning: "", engExplanation: "", trExplanation: "" };
-      
-      let targetType = "";
-      const fk = currentQ?.formKey;
-      if (['v2', 'v3', 'thirdPerson', 'vIng'].includes(fk)) targetType = "verb";
-      else if (fk === 'plural') targetType = "noun";
-      else if (['compEr', 'superEst', 'advLy'].includes(fk)) targetType = "adjective";
+  const def = getSmartDefinition(currentQ?.baseWordObj, currentQ?.formKey);
 
-      const matchedDef = defs.find(d => d.type === targetType);
-      return matchedDef || defs[0] || { meaning: "", engExplanation: "", trExplanation: "" };
-  }, [baseWordObj, currentQ]);
-
-  const styles = useMemo(() => {
-      const length = targetWord.length;
-      if (length <= 5) return { box: "w-11 h-14", text: "text-2xl" }; 
-      if (length <= 8) return { box: "w-8 h-11", text: "text-xl" };    
-      if (length <= 11) return { box: "w-6 h-9", text: "text-lg" };    
-      if (length <= 14) return { box: "w-4 h-8", text: "text-sm" };
-      if (length <= 17) return { box: "w-3 h-6", text: "text-[10px]" };
-      return { box: "w-2 h-5", text: "text-[8px]" }; 
-  }, [targetWord]);
-
-
-  // ===================================
-  // === EKRANLAR ===
-  // ===================================
+  // --- SEÇİM EKRANI ---
   if (gameStatus === "selection") {
       return (
         <div className="min-h-screen bg-slate-50 flex flex-col items-center p-6">
-            <style>{`
-                * { -webkit-tap-highlight-color: transparent !important; }
-                .menu-btn { background-color: white; border: 1px solid #e2e8f0; transition: all 0.2s ease; }
-                .menu-btn:active { transform: scale(0.96); background-color: #f1f5f9; }
-                .menu-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-            `}</style>
-
             <div className="w-full max-w-md space-y-6">
                 <div className="flex items-center justify-between">
                     <button onClick={() => navigate("/")} className="p-2 bg-white rounded-full shadow-sm hover:bg-slate-100"><Home className="w-5 h-5 text-slate-600" /></button>
@@ -463,8 +494,8 @@ export default function ExerciseGame() {
                 </div>
 
                 <div className="bg-white p-1 rounded-xl shadow-sm border border-slate-200 flex relative">
-                    <button onClick={() => toggleInputMethod("bubbles")} className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg text-sm font-bold transition-all z-10 ${inputMethod === "bubbles" ? "bg-indigo-100 text-indigo-700" : "text-slate-500 hover:bg-slate-50"}`}><MousePointer2 className="w-4 h-4" /> Harf Seç</button>
-                    <button onClick={() => toggleInputMethod("keyboard")} className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg text-sm font-bold transition-all z-10 ${inputMethod === "keyboard" ? "bg-indigo-100 text-indigo-700" : "text-slate-500 hover:bg-slate-50"}`}><Keyboard className="w-4 h-4" /> Klavye</button>
+                    <button onClick={() => { setInputMethod("bubbles"); }} className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg text-sm font-bold transition-all z-10 ${inputMethod === "bubbles" ? "bg-indigo-100 text-indigo-700" : "text-slate-500 hover:bg-slate-50"}`}><MousePointer2 className="w-4 h-4" /> Harf Seç</button>
+                    <button onClick={() => { setInputMethod("keyboard"); }} className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg text-sm font-bold transition-all z-10 ${inputMethod === "keyboard" ? "bg-indigo-100 text-indigo-700" : "text-slate-500 hover:bg-slate-50"}`}><Keyboard className="w-4 h-4" /> Klavye</button>
                 </div>
 
                 <div className="bg-indigo-600 p-6 rounded-2xl shadow-lg text-white text-center">
@@ -474,41 +505,16 @@ export default function ExerciseGame() {
                 </div>
 
                 <div className="space-y-3 pb-10">
-                    {/* ZORLANDIKLARIM */}
                     {getCount('hard') > 0 && (
-                        <button onClick={(e) => startSession('hard', e)} style={{ outline: 'none' }} className="menu-btn btn-hard w-full p-4 rounded-xl shadow-sm flex justify-between items-center focus:outline-none border-red-200 bg-red-50 text-red-800">
-                            <div className="flex items-center gap-3"><div className="bg-red-200 p-2 rounded-lg text-red-700 animate-pulse"><AlertTriangle className="w-5 h-5"/></div><span className="font-bold">Zorlandıklarım</span></div>
-                            <span className="text-xs font-bold px-3 py-1 rounded-full bg-red-200 text-red-900">{getCount('hard')}</span>
-                        </button>
+                        <button onClick={(e) => startSession('hard', e)} className="w-full bg-white p-4 rounded-xl shadow-sm flex justify-between items-center border border-red-200 bg-red-50 text-red-800 active:scale-95 transition-transform"><div className="flex items-center gap-3"><div className="bg-red-200 p-2 rounded-lg text-red-700 animate-pulse"><AlertTriangle className="w-5 h-5"/></div><span className="font-bold">Zorlandıklarım</span></div><span className="text-xs font-bold px-3 py-1 rounded-full bg-red-200 text-red-900">{getCount('hard')}</span></button>
                     )}
-
-                    {/* DÜZENSİZLER */}
-                    <button onClick={(e) => startSession('irregular_verbs', e)} disabled={getCount('irregular_verbs') === 0} style={{ outline: 'none' }} className="menu-btn btn-irregular w-full p-4 rounded-xl shadow-sm flex justify-between items-center focus:outline-none border-rose-100 bg-rose-50/50">
-                        <div className="flex items-center gap-3"><div className="bg-rose-100 p-2 rounded-lg text-rose-500"><Sparkles className="w-5 h-5"/></div><span className="font-bold text-rose-700">Düzensiz Fiiller (V2)</span></div>
-                        <span className="text-xs font-bold px-3 py-1 rounded-full bg-rose-200 text-rose-800">{getCount('irregular_verbs')}</span>
-                    </button>
-
-                    <button onClick={(e) => startSession('irregular_verbs_v3', e)} disabled={getCount('irregular_verbs_v3') === 0} style={{ outline: 'none' }} className="menu-btn btn-irregular w-full p-4 rounded-xl shadow-sm flex justify-between items-center focus:outline-none border-purple-100 bg-purple-50/50">
-                        <div className="flex items-center gap-3"><div className="bg-purple-100 p-2 rounded-lg text-purple-500"><Sparkles className="w-5 h-5"/></div><span className="font-bold text-purple-700">Düzensiz Fiiller (V3)</span></div>
-                        <span className="text-xs font-bold px-3 py-1 rounded-full bg-purple-200 text-purple-800">{getCount('irregular_verbs_v3')}</span>
-                    </button>
-
-                    <button onClick={(e) => startSession('irregular_plurals', e)} disabled={getCount('irregular_plurals') === 0} style={{ outline: 'none' }} className="menu-btn btn-irregular w-full p-4 rounded-xl shadow-sm flex justify-between items-center focus:outline-none border-orange-100 bg-orange-50/50">
-                        <div className="flex items-center gap-3"><div className="bg-orange-100 p-2 rounded-lg text-orange-500"><Sparkles className="w-5 h-5"/></div><span className="font-bold text-orange-700">Düzensiz Çoğullar</span></div>
-                        <span className="text-xs font-bold px-3 py-1 rounded-full bg-orange-200 text-orange-800">{getCount('irregular_plurals')}</span>
-                    </button>
-
+                    <button onClick={(e) => startSession('irregular_verbs', e)} disabled={getCount('irregular_verbs') === 0} className="w-full bg-white p-4 rounded-xl shadow-sm flex justify-between items-center border border-rose-100 bg-rose-50/50 active:scale-95 transition-transform disabled:opacity-50"><div className="flex items-center gap-3"><div className="bg-rose-100 p-2 rounded-lg text-rose-500"><Sparkles className="w-5 h-5"/></div><span className="font-bold text-rose-700">Düzensiz Fiiller (V2)</span></div><span className="text-xs font-bold px-3 py-1 rounded-full bg-rose-200 text-rose-800">{getCount('irregular_verbs')}</span></button>
+                    <button onClick={(e) => startSession('irregular_verbs_v3', e)} disabled={getCount('irregular_verbs_v3') === 0} className="w-full bg-white p-4 rounded-xl shadow-sm flex justify-between items-center border border-purple-100 bg-purple-50/50 active:scale-95 transition-transform disabled:opacity-50"><div className="flex items-center gap-3"><div className="bg-purple-100 p-2 rounded-lg text-purple-500"><Sparkles className="w-5 h-5"/></div><span className="font-bold text-purple-700">Düzensiz Fiiller (V3)</span></div><span className="text-xs font-bold px-3 py-1 rounded-full bg-purple-200 text-purple-800">{getCount('irregular_verbs_v3')}</span></button>
+                    <button onClick={(e) => startSession('irregular_plurals', e)} disabled={getCount('irregular_plurals') === 0} className="w-full bg-white p-4 rounded-xl shadow-sm flex justify-between items-center border border-orange-100 bg-orange-50/50 active:scale-95 transition-transform disabled:opacity-50"><div className="flex items-center gap-3"><div className="bg-orange-100 p-2 rounded-lg text-orange-500"><Sparkles className="w-5 h-5"/></div><span className="font-bold text-orange-700">Düzensiz Çoğullar</span></div><span className="text-xs font-bold px-3 py-1 rounded-full bg-orange-200 text-orange-800">{getCount('irregular_plurals')}</span></button>
                     <div className="border-t border-slate-200 my-2"></div>
-
-                    {/* STANDART MODLAR */}
                     {FORM_TYPES.map(form => {
                         const count = getCount(form.key);
-                        return (
-                            <button key={form.id} onClick={(e) => startSession(form.key, e)} disabled={count === 0} style={{ outline: 'none' }} className="menu-btn w-full p-4 rounded-xl shadow-sm flex justify-between items-center focus:outline-none focus:ring-0">
-                                <div className="flex items-center gap-3"><div className="icon-box bg-slate-100 p-2 rounded-lg text-slate-500 transition-colors"><Layers className="w-5 h-5"/></div><span className="font-bold text-slate-700">{form.label}</span></div>
-                                <span className={`text-xs font-bold px-3 py-1 rounded-full ${count > 0 ? "bg-indigo-100 text-indigo-700" : "bg-slate-100 text-slate-400"}`}>{count}</span>
-                            </button>
-                        )
+                        return (<button key={form.id} onClick={(e) => startSession(form.key, e)} disabled={count === 0} className="w-full bg-white p-4 rounded-xl shadow-sm flex justify-between items-center border border-e2e8f0 active:scale-95 transition-transform disabled:opacity-50"><div className="flex items-center gap-3"><div className="bg-slate-100 p-2 rounded-lg text-slate-500"><Layers className="w-5 h-5"/></div><span className="font-bold text-slate-700">{form.label}</span></div><span className={`text-xs font-bold px-3 py-1 rounded-full ${count > 0 ? "bg-indigo-100 text-indigo-700" : "bg-slate-100 text-slate-400"}`}>{count}</span></button>)
                     })}
                 </div>
             </div>
@@ -516,9 +522,8 @@ export default function ExerciseGame() {
       );
   }
 
-  // --- BİTİŞ EKRANI ---
+  // --- OYUN EKRANI ---
   if (gameStatus === "finished") {
-      const maxScore = questions.length * 10;
       return (
         <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
             <div className="bg-white p-8 rounded-3xl shadow-xl max-w-sm w-full text-center space-y-6">
@@ -527,10 +532,10 @@ export default function ExerciseGame() {
                 <div className="py-6 bg-slate-50 rounded-2xl border border-slate-100">
                     <div className="text-sm text-slate-400 font-bold uppercase">Kazanılan Puan</div>
                     <div className="text-5xl font-extrabold text-indigo-600 mt-2">{score}</div>
-                    <div className="text-xs text-slate-400 font-bold">Maksimum: {maxScore}</div>
+                    <div className="text-xs text-slate-400 font-bold">Maksimum: {questions.length * 10}</div>
                 </div>
-                <button onClick={() => setGameStatus("selection")} className="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl shadow-lg hover:bg-indigo-700 active:scale-95 transition-transform">Başka Test Çöz</button>
-                <button onClick={() => navigate("/")} className="w-full bg-white border-2 border-slate-200 text-slate-600 font-bold py-3 rounded-xl hover:bg-slate-50 active:scale-95 transition-transform">Ana Sayfa</button>
+                <button onClick={() => setGameStatus("selection")} className="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl shadow-lg active:scale-95 transition-transform">Başka Test Çöz</button>
+                <button onClick={() => navigate("/")} className="w-full bg-white border-2 border-slate-200 text-slate-600 font-bold py-3 rounded-xl active:scale-95 transition-transform">Ana Sayfa</button>
             </div>
         </div>
       );
@@ -540,144 +545,66 @@ export default function ExerciseGame() {
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center p-4">
-        <style>{`
-            * { -webkit-tap-highlight-color: transparent !important; }
-            @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
-            .mini-btn { transition: all 0.2s ease; }
-            .mini-btn:active { transform: scale(0.9); }
-            @media (hover: hover) { .mini-btn:hover { background-color: #f1f5f9; } }
-            .letter-btn { transition: all 0.2s ease; }
-            .letter-btn:active { transform: scale(0.95); }
-        `}</style>
-
         <div className="w-full max-w-md space-y-4 mt-2">
-            
-            {/* Header */}
             <div className="flex justify-between items-center">
-                <button onClick={handleQuitEarly} className="p-2 bg-white rounded-full shadow-sm active:bg-slate-100 transition-colors"><X className="w-5 h-5 text-slate-400"/></button>
-                <div className="font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-full border border-blue-100 text-xs truncate max-w-[150px]">
-                    {formLabel.split('(')[0]}: {currentIndex + 1} / {questions.length}
-                </div>
-                <div className="flex items-center gap-1 bg-amber-100 text-amber-700 px-3 py-1 rounded-full font-bold text-sm border border-amber-200">
-                    <Trophy className="w-4 h-4"/> {score}
-                </div>
+                <button onClick={(e) => { handleBlur(e); if(score > 0) addScore(score); setGameStatus("finished"); }} className="p-2 bg-white rounded-full shadow-sm active:bg-slate-100"><X className="w-5 h-5 text-slate-400"/></button>
+                <div className="font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-full border border-blue-100 text-xs truncate max-w-[150px]">{formLabel.split('(')[0]}: {currentIndex + 1} / {questions.length}</div>
+                <div className="flex items-center gap-1 bg-amber-100 text-amber-700 px-3 py-1 rounded-full font-bold text-sm border border-amber-200"><Trophy className="w-4 h-4"/> {score}</div>
             </div>
             
-            <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden"><div className="bg-blue-500 h-full transition-all duration-500" style={{width:`${((currentIndex + 1) / questions.length) * 100}%`}}></div></div>
+            <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden"><div className="bg-indigo-500 h-full transition-all duration-500" style={{width:`${((currentIndex + 1) / questions.length) * 100}%`}}></div></div>
 
-            {/* OYUN KARTI */}
-            <div className="bg-white p-6 rounded-3xl shadow-xl border border-slate-100 text-center relative overflow-hidden min-h-[450px] flex flex-col justify-between">
-                <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-blue-400 to-cyan-400"></div>
+            {/* İzole edilmiş WordCard */}
+            <WordCard 
+                baseWordObj={currentQ?.baseWordObj || {}} 
+                currentWordPoints={currentWordPoints} 
+                activeAudio={activeAudio}
+                speak={speak}
+                showWordTr={showWordTr}
+                setShowWordTr={setShowWordTr}
+                def={def}
+                showDefTr={showDefTr}
+                setShowDefTr={setShowDefTr}
+                handleBlur={handleBlur}
+            />
 
-                <div className="absolute top-4 right-4 flex items-center gap-1 bg-green-50 text-green-700 px-2 py-1 rounded-lg text-xs font-bold border border-green-100 animate-in fade-in">
-                    <Star className="w-3 h-3 fill-current"/> Soru: {Math.max(0, currentWordPoints)}p
-                </div>
-
-                {baseWordObj.tags && baseWordObj.tags.length > 0 && (
-                    <div className="absolute top-0 left-4 mt-4 flex flex-col items-start gap-1 max-w-[80px]">
-                        {baseWordObj.tags.map((tag, i) => (<span key={i} className="text-[9px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200 truncate max-w-full">{tag}</span>))}
-                    </div>
-                )}
-
-                <div className="flex-1 flex flex-col items-center justify-center gap-4 py-4 mt-8"> 
-                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">ANA KELİME (BASE)</div>
-                    <div className="bg-slate-50 px-6 py-8 rounded-3xl border-2 border-slate-100 w-full flex items-center justify-center">
-                        <h2 className="text-3xl font-black text-slate-800 leading-tight break-words">{baseWordObj.word}</h2>
-                    </div>
-
-                    <div className="flex gap-2">
-                        <button onClick={(e) => { handleBlur(e); speak(baseWordObj.word, 'base'); }} className={`mini-btn p-3 rounded-full border flex items-center justify-center ${activeAudio === 'base' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-400 border-slate-200'}`}>
-                            {activeAudio === 'base' ? <Square size={18} fill="currentColor"/> : <Volume2 size={18}/>}
-                        </button>
-                        {def.meaning && (
-                            <button onClick={(e) => { handleBlur(e); setShowWordTr(!showWordTr); }} className={`mini-btn p-3 rounded-full border flex items-center justify-center ${showWordTr ? 'bg-indigo-100 text-indigo-600 border-indigo-200' : 'bg-white text-slate-400 border-slate-200'}`}>
-                                <Languages size={18}/>
-                            </button>
-                        )}
-                    </div>
-                    
-                    {showWordTr && (<div className="text-sm font-bold text-green-600 bg-green-50 px-3 py-1 rounded-lg animate-in fade-in slide-in-from-top-1">{def.meaning}</div>)}
-                </div>
-
-                <div className="space-y-3 pb-2">
-                    <div className="text-[10px] font-bold text-blue-400 uppercase tracking-wider bg-slate-50 inline-block px-2 py-1 rounded">İSTENEN FORM: {formLabel.split('(')[0]}</div>
-                    
-                    {/* INPUT ALANI */}
-                    {inputMethod === 'bubbles' ? (
-                        <>
-                            <div className="flex flex-wrap justify-center gap-1 min-h-[60px] items-end content-center">
-                                {targetWord.split('').map((_, idx) => {
-                                    const char = completedLetters[idx];
-                                    const isFilled = char !== undefined;
-                                    return (<div key={idx} className={`${styles.box} ${styles.text} flex items-center justify-center font-bold border-b-4 rounded-t-lg transition-all ${isFilled ? "border-blue-500 text-blue-700 bg-blue-50" : "border-slate-200 bg-slate-50 text-transparent"}`}>{char}</div>);
-                                })}
-                            </div>
-
-                            {!isWordComplete && (
-                                <div className="space-y-4">
-                                    <div className="flex flex-wrap justify-center gap-2 content-center pb-2">
-                                        {shuffledLetters.map((item) => (
-                                            <button key={item.id} onClick={(e) => handleLetterClick(item, e)} disabled={item.isUsed} className={`letter-btn w-10 h-10 md:w-11 md:h-11 rounded-xl font-bold text-lg shadow-[0_3px_0_rgb(0,0,0,0.1)] transition-all active:translate-y-[2px] active:shadow-none outline-none focus:outline-none ${item.isUsed ? "opacity-0 pointer-events-none scale-0" : wrongAnimationId === item.id ? "bg-red-500 text-white animate-[shake_0.5s_ease-in-out]" : "bg-white border-2 border-slate-200 text-slate-700 active:bg-blue-100"}`}>{item.char}</button>
-                                        ))}
-                                    </div>
-                                    <div className="flex justify-center border-t border-slate-100 pt-3">
-                                         <button onClick={handleHint} disabled={isWordComplete || targetWord.length <= 1} className={`flex items-center gap-2 px-5 py-3 bg-amber-100 text-amber-700 rounded-2xl font-bold transition-colors active:scale-95 focus:outline-none ${(isWordComplete || targetWord.length <= 1) ? 'opacity-50 cursor-not-allowed' : 'active:bg-amber-200'}`}>
-                                            <Lightbulb className="w-5 h-5"/> 
-                                            <span>İpucu {targetWord.length <= 1 ? "(Yok)" : (hintCount === 0 ? "(-5p)" : "(-0p)")}</span>
-                                            <span className="text-[10px] bg-white/50 px-1.5 rounded ml-1">Hata: {mistakeCount}/3</span>
-                                         </button>
-                                    </div>
-                                </div>
-                            )}
-                        </>
-                    ) : (
-                        /* KLAVYE MODU */
-                        <>
-                            {!isWordComplete ? (
-                                <form onSubmit={handleKeyboardSubmit} className="space-y-3 pb-2">
-                                    <input 
-                                        key={currentIndex} 
-                                        ref={inputRef} 
-                                        type="text" 
-                                        value={userInput || ""} 
-                                        onChange={(e) => setUserInput(e.target.value)} 
-                                        placeholder="Cevabı yaz..." 
-                                        className={`w-full text-center text-2xl font-bold p-3 border-b-4 rounded-xl outline-none transition-all ${wrongAnimationId === "input" ? "border-red-500 bg-red-50 text-red-600 animate-[shake_0.5s_ease-in-out]" : "border-indigo-200 bg-indigo-50 text-indigo-700 focus:border-indigo-500"}`} 
-                                        autoComplete="off" 
-                                        autoCorrect="off" 
-                                        autoCapitalize="none"
-                                        spellCheck="false" 
-                                    />
-                                    <div className="flex justify-between items-center px-2">
-                                        <div className="text-xs font-bold text-slate-400">Hata Hakkı: <span className="text-red-500">{3 - mistakeCount}</span></div>
-                                        <button type="button" onClick={handleHint} disabled={hintCount >= (targetWord.length <= 2 ? 1 : 2)} className="text-xs flex items-center gap-1 bg-amber-100 text-amber-700 px-3 py-1.5 rounded-lg font-bold active:scale-95 disabled:opacity-50"><Lightbulb className="w-3 h-3" /> İpucu (-2p)</button>
-                                    </div>
-                                    <button type="submit" className="w-full bg-indigo-600 text-white font-bold py-4 rounded-xl shadow-md mt-4 flex items-center justify-center gap-2 hover:bg-indigo-700 active:scale-95 transition-all">Kontrol Et <Check className="w-5 h-5"/></button>
-                                </form>
-                            ) : (
-                                <div className="bg-green-50 border border-green-200 text-green-700 font-bold text-2xl py-4 rounded-xl animate-in zoom-in">{targetWord}</div>
-                            )}
-                        </>
-                    )}
-                </div>
-
-                {isWordComplete && (
-                    <div className="animate-in zoom-in duration-300 pb-2 w-full">
-                        <div className="flex items-center justify-center gap-2 mb-4 text-green-600 font-bold bg-green-50 p-3 rounded-xl border border-green-100">
-                            {mistakeCount >= 3 ? <><AlertTriangle className="w-5 h-5 text-orange-500"/> Doğrusu Bu</> : <><CheckCircle2 className="w-6 h-6"/> Harika!</>}
-                        </div>
-                        <button onClick={handleNext} className="w-full bg-indigo-600 text-white font-bold py-4 rounded-xl shadow-lg flex items-center justify-center gap-2 hover:bg-indigo-700 active:scale-95 transition-transform">
-                            {currentIndex + 1 === questions.length ? "Sonuçları Gör" : "Sıradaki Kelime"} <ArrowRight className="w-5 h-5"/>
-                        </button>
-                    </div>
+            <div className="space-y-3 pb-2">
+                <div className="text-[10px] font-bold text-blue-400 uppercase tracking-wider bg-slate-50 inline-block px-2 py-1 rounded">İSTENEN FORM: {formLabel.split('(')[0]}</div>
+                
+                {inputMethod === 'bubbles' ? (
+                    <BubbleArea 
+                        targetWord={targetWord} 
+                        completedLetters={completedLetters} 
+                        shuffledLetters={shuffledLetters}
+                        handleLetterClick={handleLetterClick}
+                        wrongAnimationId={wrongAnimationId}
+                        isWordComplete={isWordComplete}
+                        handleHint={handleBubbleHint}
+                        hintDisabled={hintCount >= (targetWord.length <= 2 ? 1 : 2)}
+                        mistakeCount={mistakeCount}
+                    />
+                ) : (
+                    /* İzole Edilmiş KeyboardArea */
+                    <KeyboardArea 
+                        key={currentIndex} // CRITICAL FIX: Sorular arası inputu tamamen yeniler
+                        userInput={userInput}
+                        setUserInput={setUserInput}
+                        onSubmit={handleKeyboardSubmit}
+                        onHint={handleKeyboardHint}
+                        wrong={wrongAnimationId === "input"}
+                        hintDisabled={hintCount >= (targetWord.length <= 2 ? 1 : 2)}
+                        mistakeCount={mistakeCount}
+                        isWordComplete={isWordComplete}
+                        targetWord={targetWord}
+                    />
                 )}
             </div>
 
             {!isWordComplete && (
-                <button onClick={handlePass} className="w-full bg-white border-2 border-red-100 text-red-500 font-bold py-4 rounded-xl shadow-sm flex items-center justify-center gap-2 mt-2 active:scale-95 transition-all hover:bg-red-50 hover:border-red-200"><Flag className="w-5 h-5"/><span>Pas Geç (Cevabı Gör)</span></button>
+                <button onClick={() => handleFail(questions[currentIndex].targetWord)} className="w-full bg-white border-2 border-red-100 text-red-500 font-bold py-4 rounded-xl shadow-sm flex items-center justify-center gap-2 mt-2 active:scale-95 transition-all hover:bg-red-50 hover:border-red-200"><Flag className="w-5 h-5"/><span>Pas Geç (Cevabı Gör)</span></button>
             )}
 
-            <button onClick={handleQuitEarly} className="w-full text-center text-slate-400 hover:text-red-500 text-sm font-medium transition-colors focus:outline-none p-2"><LogOut className="w-4 h-4 inline mr-1" /> Bitir (Puanı Al ve Çık)</button>
+            <button onClick={(e) => { handleBlur(e); if(score > 0) addScore(score); setGameStatus("finished"); }} className="w-full text-center text-slate-400 hover:text-red-500 text-sm font-medium transition-colors focus:outline-none p-2"><LogOut className="w-4 h-4 inline mr-1" /> Bitir (Puanı Al ve Çık)</button>
         </div>
     </div>
   );
