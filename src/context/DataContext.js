@@ -45,7 +45,7 @@ export const DataProvider = ({ children }) => {
     writing2: 10,     // Dinle Yaz
     gap_filling: 10,  // Boşluk Doldurma
     sentence_builder: 10, // Cümle Kurma
-    word_match: 20,   // Eşleştirme
+    word_match: 20,    // Eşleştirme
     pronunciation: 5  // Telaffuz
   };
 
@@ -404,11 +404,11 @@ const getAllWords = () => {
         if (userMatch) {
             processedUserIds.add(userMatch.id);
             finalWordList.push({
-                ...userMatch,      
-                ...systemWord,     
+                ...userMatch,       
+                ...systemWord,      
                 id: userMatch.id, 
-                source: "user",    
-                ...stats           
+                source: "user",     
+                ...stats            
             });
         } else {
             finalWordList.push({ 
@@ -813,6 +813,41 @@ const handleSaveSystemWord = async (wordData) => {
       } catch(e) { return { success: false, message: e.message }; }
   };
 
+  // ---------------------------------------------------------
+  // --- HATA YÖNETİMİ (MISTAKE MANAGEMENT) ---
+  // ---------------------------------------------------------
+
+  // 1. Hata Ekleme (Oyunlarda hata yapınca çağrılacak)
+  const registerMistake = async (wordId, amount = 1) => {
+    // Kelimenin mevcut durumunu bulmak için listeyi çekiyoruz
+    const all = getAllWords();
+    const word = all.find((w) => String(w.id) === String(wordId));
+
+    // Eğer kelime bulunamazsa işlem yapma (Güvenlik)
+    if (!word) return;
+
+    const currentMistakes = word.mistakeCount || 0;
+    const newCount = currentMistakes + amount;
+
+    // handleUpdateWord zaten veritabanı (System/User) ayrımını yapıyor
+    await handleUpdateWord(wordId, {
+      mistakeCount: newCount,
+      lastMistakeDate: new Date().toISOString()
+    });
+
+    console.log(`Hata eklendi: ${word.word} -> Toplam Hata: ${newCount}`);
+  };
+
+  // 2. Hatayı Sıfırlama (Zor Kelimeler sayfasında "SİL" deyince)
+  const clearMistake = async (wordId) => {
+    await handleUpdateWord(wordId, {
+      mistakeCount: 0,
+      // lastMistakeDate'i null yapmıyoruz ki geçmişte zorlandığını bilelim,
+      // ama istersen null yapabilirsin. Şimdilik sadece sayacı sıfırlıyoruz.
+    });
+    console.log("Hata sıfırlandı.");
+  };
+
   return (
     <DataContext.Provider value={{
       user, isAdmin, loading,
@@ -822,7 +857,11 @@ const handleSaveSystemWord = async (wordData) => {
       addToKnown, removeFromKnown, restoreWord, permanentlyDeleteWord, resetProfile,
       handleSaveSystemWord, handleDeleteSystemWord, handleUpdateSystemWord, cleanUpDuplicates,
       updateGameStats, getCurrentWeekKey, handleSmartLearn, addScore,
-      questProgress, questHistory, DAILY_QUESTS_TARGETS
+      questProgress, questHistory, DAILY_QUESTS_TARGETS,
+
+      // 🔥 YENİ EKLENENLER BURADA:
+      registerMistake,
+      clearMistake
     }}>
       {children}
     </DataContext.Provider>
