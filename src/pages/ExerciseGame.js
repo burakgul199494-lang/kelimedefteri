@@ -242,7 +242,6 @@ export default function ExerciseGame() {
       const rawTarget = questions[currentIndex].targetWord;
       const target = rawTarget ? String(rawTarget).trim() : "";
       
-      // Sadece Balon modundaysak balonları hazırla
       if (inputMethod === "bubbles") {
           let lettersArray = target.split('').map((char, index) => ({
             id: `${char}-${index}-${Math.random()}`,
@@ -262,13 +261,26 @@ export default function ExerciseGame() {
           }
           setShuffledLetters(lettersArray);
       } else {
-          // Klavye modunda balonları boşalt (Yükü azalt)
           setShuffledLetters([]);
       }
     }
     
     return () => window.speechSynthesis.cancel();
   }, [currentIndex, gameStatus, questions, inputMethod]);
+
+  // 🔥 ENTER TUŞU İLE GEÇİŞ İÇİN YENİ ÖZELLİK 🔥
+  useEffect(() => {
+    const handleGlobalKeyDown = (e) => {
+      // Eğer kelime tamamlandıysa (yeşil ekran) ve Enter'a basılırsa
+      if (isWordComplete && e.key === "Enter") {
+        e.preventDefault();
+        handleNext(); // Sıradaki soruya geç
+      }
+    };
+
+    window.addEventListener("keydown", handleGlobalKeyDown);
+    return () => window.removeEventListener("keydown", handleGlobalKeyDown);
+  }, [isWordComplete, currentIndex, questions]); // Bağımlılıklar önemli
 
   const getSmartDefinition = (wordObj, formKey) => {
       if (!wordObj || !wordObj.definitions) return { meaning: "", engExplanation: "", trExplanation: "" };
@@ -343,7 +355,7 @@ export default function ExerciseGame() {
   const handlePass = () => { handleFail(questions[currentIndex].targetWord); };
 
   const handleNext = (e) => {
-      handleBlur(e);
+      if(e) handleBlur(e);
       if (currentIndex + 1 < questions.length) {
           setIsWordComplete(false);
           setUserInput(""); 
@@ -540,7 +552,6 @@ export default function ExerciseGame() {
   if (!questions[currentIndex]) return <div className="flex h-screen items-center justify-center"><Loader2 className="animate-spin w-10 h-10 text-indigo-600"/></div>;
 
   const currentQ = questions[currentIndex];
-  // 🔥 GÜVENLİK KORUMASI: targetWord asla undefined olamaz 🔥
   const targetWord = currentQ?.targetWord ? String(currentQ.targetWord).trim() : "";
   const baseWordObj = currentQ?.baseWordObj || {};
   const formLabel = currentQ?.formLabel ? String(currentQ.formLabel) : "Bilinmiyor"; 
@@ -607,21 +618,6 @@ export default function ExerciseGame() {
                     
                     {showWordTr && (<div className="text-sm font-bold text-green-600 bg-green-50 px-3 py-1 rounded-lg animate-in fade-in slide-in-from-top-1">{def.meaning}</div>)}
                 </div>
-
-                {baseWordObj?.phonetic?.trim() ? (
-                  <div className="mt-1 flex justify-center animate-in fade-in slide-in-from-top-1"><span className="text-indigo-400 font-serif italic text-lg tracking-wide px-3 py-0.5 bg-indigo-50/50 rounded-lg border border-indigo-100/50">/{String(baseWordObj.phonetic).replace(/\//g, "")}/</span></div>
-                ) : ( <div className="h-7" /> )}
-                
-                {def.engExplanation && (
-                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 relative mt-2 text-left">
-                         <p className="text-slate-600 text-sm italic pr-16 leading-relaxed">"{def.engExplanation}"</p>
-                         <div className="absolute right-2 top-2 flex gap-1">
-                             <button onClick={(e) => { handleBlur(e); speak(def.engExplanation, 'desc'); }} className={`mini-btn p-1.5 rounded-lg border ${activeAudio === 'desc' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-400 border-slate-200'}`}>{activeAudio === 'desc' ? <Square size={12} fill="currentColor"/> : <Volume2 size={12}/>}</button>
-                             {def.trExplanation && (<button onClick={(e) => { handleBlur(e); setShowDefTr(!showDefTr); }} className={`mini-btn p-1.5 rounded-lg border ${showDefTr ? 'bg-indigo-100 text-indigo-600 border-indigo-200' : 'bg-white text-slate-400 border-slate-200'}`}><Languages size={12}/></button>)}
-                         </div>
-                         {showDefTr && def.trExplanation && <div className="mt-2 pt-2 border-t border-slate-200 text-indigo-700 text-xs font-bold animate-in fade-in">TR: {def.trExplanation}</div>}
-                    </div>
-                )}
 
                 <div className="space-y-3 pb-2">
                     <div className="text-[10px] font-bold text-blue-400 uppercase tracking-wider bg-slate-50 inline-block px-2 py-1 rounded">İSTENEN FORM: {formLabel.split('(')[0]}</div>
@@ -691,7 +687,7 @@ export default function ExerciseGame() {
                         <div className="flex items-center justify-center gap-2 mb-4 text-green-600 font-bold bg-green-50 p-3 rounded-xl border border-green-100">
                             {mistakeCount >= 3 ? <><AlertTriangle className="w-5 h-5 text-orange-500"/> Doğrusu Bu</> : <><CheckCircle2 className="w-6 h-6"/> Harika!</>}
                         </div>
-                        <button onClick={handleNext} className="w-full bg-indigo-600 text-white font-bold py-4 rounded-xl shadow-lg flex items-center justify-center gap-2 hover:bg-indigo-700 active:scale-95 transition-transform">
+                        <button onClick={(e) => handleNext(e)} className="w-full bg-indigo-600 text-white font-bold py-4 rounded-xl shadow-lg flex items-center justify-center gap-2 hover:bg-indigo-700 active:scale-95 transition-transform">
                             {currentIndex + 1 === questions.length ? "Sonuçları Gör" : "Sıradaki Kelime"} <ArrowRight className="w-5 h-5"/>
                         </button>
                     </div>
