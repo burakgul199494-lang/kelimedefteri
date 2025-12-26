@@ -8,7 +8,6 @@ import {
 } from "lucide-react";
 
 const FORM_TYPES = [
-  // Standart Modlar
   { id: "plural", label: "Plural (Çoğul)", key: "plural" },
   { id: "v2", label: "V2 (Past)", key: "v2" },
   { id: "v3", label: "V3 (Participle)", key: "v3" },
@@ -24,7 +23,7 @@ export default function ExerciseGame() {
 
   // --- STATE'LER ---
   const [gameStatus, setGameStatus] = useState("selection"); 
-  const [activeForm, setActiveForm] = useState(null); // Seçilen form tipi
+  const [activeForm, setActiveForm] = useState(null); 
   const [inputMethod, setInputMethod] = useState("bubbles"); 
 
   const [questions, setQuestions] = useState([]);
@@ -51,39 +50,53 @@ export default function ExerciseGame() {
 
   const inputRef = useRef(null);
 
-  // --- IPHONE FIX ---
   const handleBlur = (e) => { if (e && e.currentTarget) e.currentTarget.blur(); };
 
-  // --- 1. KELİME HAVUZU VE ÖZEL FİLTRELER ---
+  // --- 1. KELİME HAVUZU VE FİLTRELER ---
   const allWords = useMemo(() => {
       return getAllWords() || [];
   }, [getAllWords]);
 
-  // 🔥 YARDIMCI: Düzensiz Kontrolü 🔥
+  // Düzensiz Kontrolleri
   const isIrregularVerb = (w) => {
-      // V2 veya V3 var mı? Varsa ve "-ed" ile bitmiyorsa düzensizdir.
-      // (Basit bir kural, istisnalar olabilir ama genel kullanım için yeterli)
       const v2 = w.v2?.trim().toLowerCase();
+      // "-ed" ile bitmiyorsa düzensizdir (Basit kural)
       return v2 && !v2.endsWith("ed");
   };
 
   const isIrregularPlural = (w) => {
-      // Çoğul hali var mı? Varsa ve "-s" veya "-es" ile bitmiyorsa düzensizdir.
       const pl = w.plural?.trim().toLowerCase();
+      // "-s" ile bitmiyorsa düzensizdir (Basit kural)
       return pl && !pl.endsWith("s"); 
+  };
+
+  // 🔥 YARDIMCI: Benzersiz Sayı Alma (Aynı kelimeyi 2 kez saymaz) 🔥
+  const getUniqueCount = (filterFn) => {
+      const seen = new Set();
+      let count = 0;
+      allWords.forEach(w => {
+          if (filterFn(w)) {
+              const text = w.word.toLowerCase().trim();
+              if (!seen.has(text)) {
+                  seen.add(text);
+                  count++;
+              }
+          }
+      });
+      return count;
   };
 
   const getCount = (key) => {
       if (key === 'irregular_verbs') {
-          return allWords.filter(isIrregularVerb).length;
+          return getUniqueCount(isIrregularVerb);
       }
       if (key === 'irregular_plurals') {
-          return allWords.filter(isIrregularPlural).length;
+          return getUniqueCount(isIrregularPlural);
       }
-      return allWords.filter(w => {
+      return getUniqueCount(w => {
           const val = w[key];
           return val && typeof val === 'string' && val.trim().length > 0;
-      }).length;
+      });
   };
 
   // --- 2. OYUNU BAŞLATMA ---
@@ -92,34 +105,43 @@ export default function ExerciseGame() {
     const key = formTypeObj.key;
     const dateKey = `lastExercise_${key}`; 
     
-    let validWords = [];
+    let rawValidWords = [];
 
-    // 🔥 MODA GÖRE KELİME SEÇİMİ 🔥
+    // 1. MODA GÖRE HAM LİSTEYİ AL
     if (key === 'irregular_verbs') {
-        // Düzensiz Fiiller (V2 sorulur)
-        validWords = allWords.filter(isIrregularVerb);
-        // Bu modda hedef kelime V2 halidir
+        rawValidWords = allWords.filter(isIrregularVerb);
     } else if (key === 'irregular_plurals') {
-        // Düzensiz Çoğullar (Plural sorulur)
-        validWords = allWords.filter(isIrregularPlural);
+        rawValidWords = allWords.filter(isIrregularPlural);
     } else {
-        // Standart Modlar
-        validWords = allWords.filter(w => {
+        rawValidWords = allWords.filter(w => {
             const val = w[key];
             return val && typeof val === 'string' && val.trim().length > 0;
         });
     }
 
-    if (validWords.length === 0) {
+    if (rawValidWords.length === 0) {
       alert("Bu formda çalışılacak kelime bulunamadı.");
       return;
     }
 
-    // --- AKILLI SIRALAMA ---
+    // 🔥 2. BENZERSİZLEŞTİRME (DEDUPLICATION) 🔥
+    // Aynı isme sahip kelimelerden sadece ilkini al.
+    const uniqueValidWords = [];
+    const seenTexts = new Set();
+
+    rawValidWords.forEach(w => {
+        const text = w.word.toLowerCase().trim();
+        if (!seenTexts.has(text)) {
+            seenTexts.add(text);
+            uniqueValidWords.push(w);
+        }
+    });
+
+    // 3. AKILLI SIRALAMA (Last Seen'e göre)
     const neverSeen = [];
     const seen = [];
 
-    validWords.forEach(w => {
+    uniqueValidWords.forEach(w => {
         if (!w[dateKey]) { neverSeen.push(w); } 
         else { seen.push(w); }
     });
@@ -136,10 +158,10 @@ export default function ExerciseGame() {
         let targetKey = key;
 
         if (key === 'irregular_verbs') {
-            target = w.v2.trim(); // Düzensiz fiillerde V2 sor
+            target = w.v2.trim();
             targetKey = 'v2';
         } else if (key === 'irregular_plurals') {
-            target = w.plural.trim(); // Düzensiz çoğullarda Plural sor
+            target = w.plural.trim();
             targetKey = 'plural';
         } else {
             target = w[key].trim();
@@ -149,7 +171,7 @@ export default function ExerciseGame() {
             baseWordObj: w,
             targetWord: target,
             formLabel: formTypeObj.label,
-            formKey: targetKey // İstatistik için asıl key
+            formKey: targetKey
         };
     });
 
@@ -170,7 +192,6 @@ export default function ExerciseGame() {
     if (gameStatus === "playing" && questions[currentIndex]) {
       const target = questions[currentIndex].targetWord;
       
-      // SIFIRLAMALAR
       setIsWordComplete(false);
       setMistakeCount(0);
       setHintCount(0);
@@ -184,7 +205,6 @@ export default function ExerciseGame() {
             isUsed: false
           }));
 
-          // Force Shuffle
           if (target.length > 1) {
               let isSame = true;
               while (isSame) {
@@ -253,7 +273,7 @@ export default function ExerciseGame() {
   // OYUN MANTIĞI: ORTAK
   // ==========================================
 
-  const handleSuccess = (wordToSpeak) => {
+  const handleSuccess = (wordToSpeak, pointsOverride = null) => {
       setIsWordComplete(true);
       speak(wordToSpeak, 'main'); 
       updateGameStats('exercise', 1);
@@ -262,7 +282,8 @@ export default function ExerciseGame() {
       const dateKey = `lastExercise_${currentQ.formKey}`;
       handleUpdateWord(currentQ.baseWordObj.id, { [dateKey]: new Date().toISOString() });
 
-      const finalPoints = Math.max(0, currentWordPoints);
+      const finalPoints = pointsOverride !== null ? pointsOverride : currentWordPoints;
+
       if (finalPoints > 0) {
           addScore(finalPoints);
           setScore(s => s + finalPoints);
@@ -321,7 +342,7 @@ export default function ExerciseGame() {
     } else {
         const newMistakes = mistakeCount + 1;
         setMistakeCount(newMistakes);
-        setCurrentWordPoints(p => Math.max(0, p - 2)); // Yanlış harf -2p
+        setCurrentWordPoints(p => Math.max(0, p - 2));
         
         setWrongAnimationId(letterObj.id);
         setTimeout(() => setWrongAnimationId(null), 500);
@@ -344,7 +365,7 @@ export default function ExerciseGame() {
       } else {
           const newMistakes = mistakeCount + 1;
           setMistakeCount(newMistakes);
-          setCurrentWordPoints(p => Math.max(0, p - 1)); // Yanlış yazım -1p
+          setCurrentWordPoints(p => Math.max(0, p - 1));
 
           setWrongAnimationId("input");
           setTimeout(() => setWrongAnimationId(null), 500);
@@ -363,7 +384,7 @@ export default function ExerciseGame() {
 
       const newHintCount = hintCount + 1;
       setHintCount(newHintCount);
-      setCurrentWordPoints(p => Math.max(0, p - 2)); // İpucu -2p
+      setCurrentWordPoints(p => Math.max(0, p - 2));
 
       let correctPrefixLength = 0;
       const cleanInput = userInput.trim().toLowerCase();
