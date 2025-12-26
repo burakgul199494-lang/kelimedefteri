@@ -53,7 +53,7 @@ export default function WritingGame2() {
     const all = getAllWords();
     const now = new Date();
     
-    // Dinleme oyunu olduğu için sadece kelimesi olanlar yeterli (Anlam şart değil ama olsa iyi olur)
+    // Dinleme oyunu olduğu için sadece kelimesi olanlar yeterli
     const validWords = all.filter(w => w.word && w.word.length > 0);
     const getQueueItem = (id) => learningQueue ? learningQueue.find(q => q.wordId === id) : null;
 
@@ -141,6 +141,10 @@ export default function WritingGame2() {
       // Otomatik Ses Çal
       setTimeout(() => handleSpeak(target), 500);
 
+      // Inputları Temizle
+      setUserInput("");
+      setCompletedLetters([]);
+
       if (inputMethod === "bubbles") {
           let lettersArray = target.split('').map((char, index) => ({
             id: `${char}-${index}-${Math.random()}`,
@@ -159,14 +163,36 @@ export default function WritingGame2() {
           }
 
           setShuffledLetters(lettersArray);
-          setCompletedLetters([]);
-      } else {
-          setUserInput("");
       }
     }
     
     return () => window.speechSynthesis.cancel();
   }, [currentIndex, gameStatus, questions, inputMethod]);
+
+  // 🔥 YENİ: OTOMATİK ODAKLANMA (AUTO FOCUS) 🔥
+  useEffect(() => {
+    if (inputMethod === "keyboard" && !isWordComplete && gameStatus === "playing") {
+        const timer = setTimeout(() => {
+            if (inputRef.current) {
+                inputRef.current.focus();
+            }
+        }, 100); 
+        return () => clearTimeout(timer);
+    }
+  }, [currentIndex, inputMethod, isWordComplete, gameStatus]);
+
+  // 🔥 YENİ: ENTER İLE GEÇİŞ 🔥
+  useEffect(() => {
+    const handleGlobalKeyDown = (e) => {
+      if (isWordComplete && e.key === "Enter") {
+        e.preventDefault();
+        handleNext(); 
+      }
+    };
+
+    window.addEventListener("keydown", handleGlobalKeyDown);
+    return () => window.removeEventListener("keydown", handleGlobalKeyDown);
+  }, [isWordComplete, currentIndex, questions]); 
 
   const getDynamicStyle = (length) => {
     if (length <= 5) return { box: "w-11 h-14", text: "text-2xl" }; 
@@ -237,7 +263,7 @@ export default function WritingGame2() {
 
       const currentQ = questions[currentIndex];
       
-      // HATA KAYIT NOKTASI: Pas geçilince veya can bitince
+      // HATA KAYIT NOKTASI
       recordMistakeOnce();
       
       handleUpdateWord(currentQ.wordObj.id, { lastSeen_listening: new Date().toISOString() });
@@ -248,7 +274,7 @@ export default function WritingGame2() {
   };
 
   const handleNext = (e) => {
-      handleBlur(e);
+      if(e) handleBlur(e);
       if (currentIndex + 1 < questions.length) setCurrentIndex(p => p + 1);
       else setGameStatus("finished");
   };
@@ -411,6 +437,7 @@ export default function WritingGame2() {
                         </div>
                     </button>
 
+                    {/* 🔥 HATA YAPTIKLARIM BUTONU (Dinamik) 🔥 */}
                     {pools.hardPool.length > 0 && (
                         <button onClick={(e) => startSession('hard', e)} className="menu-btn btn-hard w-full p-5 rounded-2xl shadow-md border-red-100 bg-red-50 focus:outline-none">
                             <div className="flex items-center justify-between">
@@ -425,19 +452,22 @@ export default function WritingGame2() {
       );
   }
 
+  // ===========================
+  // === 2. BİTİŞ EKRANI ===
+  // ===========================
   if (gameStatus === "finished") {
       const maxScore = questions.length * 10;
       return (
         <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
             <div className="bg-white p-8 rounded-3xl shadow-xl max-w-sm w-full text-center space-y-6">
-                <div className="bg-pink-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto animate-bounce"><Trophy className="w-10 h-10 text-pink-600"/></div>
+                <div className="bg-blue-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto animate-bounce"><Trophy className="w-10 h-10 text-blue-600"/></div>
                 <h2 className="text-2xl font-bold text-slate-800">Test Tamamlandı</h2>
                 <div className="py-6 bg-slate-50 rounded-2xl border border-slate-100">
                     <div className="text-sm text-slate-400 font-bold uppercase">Kazanılan Puan</div>
-                    <div className="text-5xl font-extrabold text-indigo-600 mt-2">{score}</div>
+                    <div className="text-5xl font-extrabold text-blue-600 mt-2">{score}</div>
                     <div className="text-xs text-slate-400 mt-1">Maksimum: {maxScore}</div>
                 </div>
-                <button onClick={() => setGameStatus("mode-selection")} className="w-full bg-indigo-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg active:scale-95 transition-transform">Başka Test Çöz</button>
+                <button onClick={() => setGameStatus("mode-selection")} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-xl shadow-lg active:scale-95 transition-transform">Başka Test Çöz</button>
                 <button onClick={() => navigate("/")} className="w-full bg-white border-2 border-slate-200 text-slate-600 font-bold py-3 rounded-xl hover:bg-slate-50 active:scale-95 transition-transform">Ana Sayfa</button>
             </div>
         </div>
@@ -501,6 +531,8 @@ export default function WritingGame2() {
                     <div className="text-slate-400 text-sm font-bold uppercase tracking-widest animate-pulse">Dinle ve Yaz</div>
                 </div>
 
+                {/* --- INPUT ALANI --- */}
+                
                 {inputMethod === "bubbles" ? (
                     <>
                         <div className="flex flex-wrap justify-center gap-1 min-h-[60px] items-end content-center">
@@ -532,7 +564,18 @@ export default function WritingGame2() {
                     <>
                         {!isWordComplete ? (
                             <form onSubmit={handleKeyboardSubmit} className="space-y-3 pb-2">
-                                <input ref={inputRef} type="text" value={userInput} onChange={(e) => setUserInput(e.target.value)} placeholder="Duyduğunu yaz..." className={`w-full text-center text-2xl font-bold p-3 border-b-4 rounded-xl outline-none transition-all ${wrongAnimationId === "input" ? "border-red-500 bg-red-50 text-red-600 animate-[shake_0.5s_ease-in-out]" : "border-purple-200 bg-purple-50 text-purple-700 focus:border-purple-500"}`} autoComplete="off" autoCorrect="off" autoCapitalize="none" />
+                                <input 
+                                    key={currentIndex} // 🔥 INPUT YENİLEME: Eski yazıyı temizler 🔥
+                                    ref={inputRef} 
+                                    type="text" 
+                                    value={userInput} 
+                                    onChange={(e) => setUserInput(e.target.value)} 
+                                    placeholder="Duyduğunu yaz..." 
+                                    className={`w-full text-center text-2xl font-bold p-3 border-b-4 rounded-xl outline-none transition-all ${wrongAnimationId === "input" ? "border-red-500 bg-red-50 text-red-600 animate-[shake_0.5s_ease-in-out]" : "border-purple-200 bg-purple-50 text-purple-700 focus:border-purple-500"}`} 
+                                    autoComplete="off" 
+                                    autoCorrect="off" 
+                                    autoCapitalize="none"
+                                />
                                 <div className="flex justify-between items-center px-2">
                                     <div className="text-xs font-bold text-slate-400">Hata Hakkı: <span className="text-red-500">{3 - mistakeCount}</span></div>
                                     <button type="button" onClick={handleKeyboardHint} disabled={hintCount >= (targetWord.length <= 2 ? 1 : 2)} className="text-xs flex items-center gap-1 bg-amber-100 text-amber-700 px-3 py-1.5 rounded-lg font-bold active:scale-95 disabled:opacity-50">
