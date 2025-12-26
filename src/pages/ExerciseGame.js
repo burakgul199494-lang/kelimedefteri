@@ -57,27 +57,25 @@ export default function ExerciseGame() {
       return getAllWords() || [];
   }, [getAllWords]);
 
-  // Güvenli Düzensiz Kontrolleri
   const isIrregularVerb = (w) => {
       if (!w || !w.v2) return false;
-      const v2 = w.v2.trim().toLowerCase();
+      const v2 = String(w.v2).trim().toLowerCase();
       return v2.length > 0 && !v2.endsWith("ed");
   };
 
   const isIrregularPlural = (w) => {
       if (!w || !w.plural) return false;
-      const pl = w.plural.trim().toLowerCase();
+      const pl = String(w.plural).trim().toLowerCase();
       return pl.length > 0 && !pl.endsWith("s"); 
   };
 
-  // 🔥 YARDIMCI: Benzersiz Sayı Alma (Aynı kelimeyi 2 kez saymaz) 🔥
   const getUniqueCount = (filterFn) => {
       const seen = new Set();
       let count = 0;
       allWords.forEach(w => {
           if (w && w.word && filterFn(w)) {
-              const text = w.word.toLowerCase().trim();
-              if (!seen.has(text)) {
+              const text = String(w.word).toLowerCase().trim();
+              if (text && !seen.has(text)) {
                   seen.add(text);
                   count++;
               }
@@ -98,7 +96,7 @@ export default function ExerciseGame() {
       }
       return getUniqueCount(w => {
           const val = w[key];
-          return val && typeof val === 'string' && val.trim().length > 0;
+          return val && typeof val === 'string' && String(val).trim().length > 0;
       });
   };
 
@@ -110,7 +108,7 @@ export default function ExerciseGame() {
     let rawValidWords = [];
     let isHardMode = false;
 
-    // 1. MODA GÖRE KELİME SEÇİMİ
+    // 1. KELİME SEÇİMİ
     if (modeKey === 'hard') {
         isHardMode = true;
         rawValidWords = allWords.filter(w => (w.mistakeCount || 0) >= 2);
@@ -119,25 +117,24 @@ export default function ExerciseGame() {
     } else if (modeKey === 'irregular_plurals') {
         rawValidWords = allWords.filter(isIrregularPlural);
     } else {
-        // Standart Mod
         rawValidWords = allWords.filter(w => {
             const val = w[modeKey];
-            return val && typeof val === 'string' && val.trim().length > 0;
+            return val && typeof val === 'string' && String(val).trim().length > 0;
         });
     }
 
     if (rawValidWords.length === 0) {
-      alert("Bu modda çalışılacak kelime bulunamadı.");
+      alert("Bu formda çalışılacak kelime bulunamadı.");
       return;
     }
 
-    // 2. BENZERSİZLEŞTİRME (DEDUPLICATION) - Aynı kelimeden sadece 1 tane al
+    // 2. DEDUPLICATION (Benzersizleştirme)
     const uniqueValidWords = [];
     const seenTexts = new Set();
 
     rawValidWords.forEach(w => {
         if(w && w.word) {
-            const text = w.word.toLowerCase().trim();
+            const text = String(w.word).toLowerCase().trim();
             if (!seenTexts.has(text)) {
                 seenTexts.add(text);
                 uniqueValidWords.push(w);
@@ -156,35 +153,34 @@ export default function ExerciseGame() {
         let targetLabel = "";
 
         if (isHardMode) {
-            // Hard Mode: Rastgele bir form seç
             const availableForms = FORM_TYPES.filter(ft => {
                 const val = w[ft.key];
-                return val && typeof val === 'string' && val.trim().length > 0;
+                return val && typeof val === 'string' && String(val).trim().length > 0;
             });
 
             if (availableForms.length > 0) {
                 const randomForm = availableForms[Math.floor(Math.random() * availableForms.length)];
-                target = (w[randomForm.key] || "").trim();
+                target = String(w[randomForm.key] || "").trim();
                 targetKey = randomForm.key;
                 targetLabel = randomForm.label;
             } else {
-                target = (w.word || "").trim(); 
+                target = String(w.word || "").trim(); 
                 targetKey = "word";
                 targetLabel = "Kelime";
             }
         } 
         else if (modeKey === 'irregular_verbs') {
-            target = (w.v2 || "").trim();
+            target = String(w.v2 || "").trim();
             targetKey = 'v2';
             targetLabel = 'V2 (Past)';
         } 
         else if (modeKey === 'irregular_plurals') {
-            target = (w.plural || "").trim();
+            target = String(w.plural || "").trim();
             targetKey = 'plural';
             targetLabel = 'Plural (Çoğul)';
         } 
         else {
-            target = (w[modeKey] || "").trim();
+            target = String(w[modeKey] || "").trim();
             targetKey = modeKey;
             const fType = FORM_TYPES.find(f => f.key === modeKey);
             targetLabel = fType ? fType.label : modeKey;
@@ -205,7 +201,7 @@ export default function ExerciseGame() {
     setGameStatus("playing");
   };
 
-  // --- 3. SORU YÜKLEME ---
+  // --- 3. SORU YÜKLEME (CRASH FIX BURADA YAPILDI) ---
   useEffect(() => {
     window.speechSynthesis.cancel();
     setActiveAudio(null);
@@ -213,7 +209,9 @@ export default function ExerciseGame() {
     setShowDefTr(false);
 
     if (gameStatus === "playing" && questions[currentIndex]) {
-      const target = questions[currentIndex].targetWord;
+      // 🔥 FIX: targetWord'ü kesinlikle String'e çevir 🔥
+      const rawTarget = questions[currentIndex].targetWord;
+      const target = rawTarget ? String(rawTarget).trim() : "";
       
       // SIFIRLAMALAR
       setIsWordComplete(false);
@@ -223,19 +221,22 @@ export default function ExerciseGame() {
       setHasRecordedMistake(false);
 
       if (inputMethod === "bubbles") {
+          // Eğer target boşsa (çok nadir), boş dizi döner, çökmez.
           let lettersArray = target.split('').map((char, index) => ({
             id: `${char}-${index}-${Math.random()}`,
             char: char,
             isUsed: false
           }));
 
-          // Force Shuffle
+          // Force Shuffle (Sonsuz Döngü Korumalı)
           if (target.length > 1) {
               let isSame = true;
-              while (isSame) {
+              let attempt = 0;
+              while (isSame && attempt < 50) { // Max 50 deneme
                   lettersArray.sort(() => Math.random() - 0.5);
                   const currentOrder = lettersArray.map(l => l.char).join('');
                   if (currentOrder !== target) isSame = false;
+                  attempt++;
               }
           }
 
@@ -249,7 +250,7 @@ export default function ExerciseGame() {
     return () => window.speechSynthesis.cancel();
   }, [currentIndex, gameStatus, questions, inputMethod]);
 
-  // 🔥 GÜVENLİ TANIM FONKSİYONU (Çökme Önleyici) 🔥
+  // GÜVENLİ TANIM
   const getSmartDefinition = (wordObj, formKey) => {
       if (!wordObj || !wordObj.definitions) return { meaning: "", engExplanation: "", trExplanation: "" };
       
@@ -598,11 +599,7 @@ export default function ExerciseGame() {
   const currentQ = questions[currentIndex];
   const targetWord = currentQ.targetWord;
   const baseWordObj = currentQ.baseWordObj;
-  
-  // 🔥 DİNAMİK FORM ETİKETİ 🔥
   const formLabel = currentQ.formLabel || "Bilinmiyor"; 
-
-  // Güvenli Tanım Alma
   const def = getSmartDefinition(baseWordObj, currentQ.formKey);
   const styles = getDynamicStyle(targetWord.length);
 
@@ -641,12 +638,10 @@ export default function ExerciseGame() {
             <div className="bg-white p-5 rounded-3xl shadow-xl border border-slate-100 text-center relative overflow-hidden min-h-[450px] flex flex-col justify-between">
                 <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-indigo-400 to-purple-400"></div>
 
-                {/* --- SAĞ ÜST: PUAN GÖSTERGESİ --- */}
                 <div className="absolute top-4 right-4 flex items-center gap-1 bg-green-50 text-green-700 px-2 py-1 rounded-lg text-xs font-bold border border-green-100 animate-in fade-in">
                     <Star className="w-3 h-3 fill-current"/> Soru: {Math.max(0, currentWordPoints)}p
                 </div>
 
-                {/* --- SOL ÜST: KELİME ETİKETLERİ --- */}
                 {baseWordObj.tags && baseWordObj.tags.length > 0 && (
                     <div className="absolute top-4 left-4 flex flex-col items-start gap-1 z-10 max-w-[80px]">
                         {baseWordObj.tags.map((tag, i) => (
@@ -676,7 +671,6 @@ export default function ExerciseGame() {
                     )}
                 </div>
 
-                {/* Fonetik */}
                 {baseWordObj?.phonetic?.trim() ? (
                   <div className="mt-1 flex justify-center animate-in fade-in slide-in-from-top-1">
                     <span className="text-indigo-400 font-serif italic text-lg tracking-wide px-3 py-0.5 bg-indigo-50/50 rounded-lg border border-indigo-100/50">
@@ -685,8 +679,7 @@ export default function ExerciseGame() {
                   </div>
                 ) : ( <div className="h-7" /> )}
                 
-                {/* Tanım Alanı (Güvenli Erişim) */}
-                {def?.engExplanation && (
+                {def.engExplanation && (
                     <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 relative mt-2 text-left">
                          <p className="text-slate-600 text-sm italic pr-16 leading-relaxed">"{def.engExplanation}"</p>
                          <div className="absolute right-2 top-2 flex gap-1">
@@ -704,12 +697,10 @@ export default function ExerciseGame() {
                 )}
 
                 <div className="space-y-3 mt-4">
-                    {/* --- ORTA ALAN: İSTENEN FORM ETİKETİ --- */}
                     <div className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider bg-slate-50 inline-block px-2 py-1 rounded">
                         İSTENEN: {formLabel.split('(')[0]}
                     </div>
 
-                    {/* HARF KUTULARI */}
                     <div className="flex flex-wrap justify-center gap-1 min-h-[50px] items-end content-center">
                         {targetWord.split('').map((_, idx) => {
                             const char = completedLetters[idx];
@@ -723,7 +714,6 @@ export default function ExerciseGame() {
                     </div>
                 </div>
 
-                {/* --- INPUT ALANI (BUBBLES VEYA KLAVYE) --- */}
                 {inputMethod === "bubbles" ? (
                     <>
                         {!isWordComplete ? (
@@ -736,7 +726,7 @@ export default function ExerciseGame() {
                                     ))}
                                 </div>
                                 <div className="flex justify-center border-t border-slate-100 pt-3">
-                                     <button onClick={handleHint} disabled={isWordComplete || targetWord.length <= 1} className={`flex items-center gap-2 px-4 py-2 bg-amber-100 text-amber-700 rounded-xl font-bold text-sm active:scale-95 transition-transform focus:outline-none ${(isWordComplete || targetWord.length <= 1) ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                                     <button onClick={handleKeyboardHint} disabled={isWordComplete || targetWord.length <= 1} className={`flex items-center gap-2 px-4 py-2 bg-amber-100 text-amber-700 rounded-xl font-bold text-sm active:scale-95 transition-transform focus:outline-none ${(isWordComplete || targetWord.length <= 1) ? 'opacity-50 cursor-not-allowed' : ''}`}>
                                         <Lightbulb className="w-4 h-4"/> 
                                         <span>İpucu {targetWord.length <= 1 ? "(Yok)" : (hintCount === 0 ? "(-5p)" : "(-0p)")}</span>
                                         <span className="text-[10px] bg-white/50 px-1.5 rounded ml-1">Hata: {mistakeCount}/3</span>
@@ -746,7 +736,6 @@ export default function ExerciseGame() {
                         ) : null}
                     </>
                 ) : (
-                    /* KLAVYE MODU */
                     <>
                         {!isWordComplete ? (
                             <form onSubmit={handleKeyboardSubmit} className="space-y-3 pb-2">
@@ -763,7 +752,6 @@ export default function ExerciseGame() {
                     </>
                 )}
 
-                {/* BAŞARI / GEÇİŞ */}
                 {isWordComplete && (
                     <div className="animate-in zoom-in duration-300 pb-2">
                         <div className="flex items-center justify-center gap-2 mb-4 text-green-600 font-bold bg-green-50 p-3 rounded-xl border border-green-100">
@@ -776,7 +764,6 @@ export default function ExerciseGame() {
                 )}
             </div>
 
-            {/* PAS BUTONU */}
             {!isWordComplete && (
                 <button onClick={handlePass} className="w-full bg-white border-2 border-red-100 text-red-500 font-bold py-4 rounded-xl shadow-sm flex items-center justify-center gap-2 mt-4 active:scale-95 transition-all hover:bg-red-50 hover:border-red-200">
                     <Flag className="w-5 h-5"/>
@@ -784,7 +771,6 @@ export default function ExerciseGame() {
                 </button>
             )}
 
-            {/* BİTİR VE ÇIK */}
             <button onClick={handleQuitEarly} className="w-full text-center text-slate-400 hover:text-red-500 text-sm font-medium transition-colors focus:outline-none p-2">
                 <LogOut className="w-4 h-4 inline mr-1" /> Bitir (Puanı Al ve Çık)
             </button>
