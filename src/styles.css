@@ -72,3 +72,50 @@ textarea:focus-visible {
     -webkit-user-select: auto !important;
   }
 }
+
+/* =========================================
+   8. "UYGULAMA GİBİ HİSSET" MODU (Kesin Çözüm)
+   ========================================= */
+
+/* A) Varsayılan olarak her yerde yazı imlecini (I-beam) ve seçimi KAPAT */
+html, body, div, span, applet, object, iframe,
+h1, h2, h3, h4, h5, h6, p, blockquote, pre,
+a, abbr, acronym, address, big, cite, code,
+del, dfn, em, img, ins, kbd, q, s, samp,
+small, strike, strong, sub, sup, tt, var,
+b, u, i, center,
+dl, dt, dd, ol, ul, li,
+fieldset, form, label, legend,
+table, caption, tbody, tfoot, thead, tr, th, td,
+article, aside, canvas, details, embed, 
+figure, figcaption, footer, header, hgroup, 
+menu, nav, output, ruby, section, summary,
+time, mark, audio, video {
+    cursor: default;          /* Tıklayınca yazı çizgisi çıkmaz, normal ok kalır */
+    -webkit-user-select: none; /* Metin seçilemez */
+    user-select: none;         /* Metin seçilemez */
+}
+
+/* B) Sadece INPUT ve TEXTAREA içinde yazı modunu AÇ */
+input, textarea {
+    cursor: text !important;              /* Üzerine gelince "I" simgesi çıkar */
+    -webkit-user-select: text !important; /* İçindeki yazı seçilebilir */
+    user-select: text !important;         /* İçindeki yazı seçilebilir */
+    -webkit-touch-callout: default !important; /* Mobilde basılı tutma menüsü çalışsın */
+}
+
+/* C) Butonlar ve Linkler için EL İşareti */
+button, 
+a, 
+[role="button"],
+.clickable {
+    cursor: pointer !important; /* Tıklanabilir olduğunu hissettir */
+}
+
+/* D) Odaklanma Çizgilerini Temizle (Mavi çerçeveleri kaldırır) */
+button:focus, 
+div:focus, 
+span:focus, 
+li:focus {
+    outline: none !important;
+}
