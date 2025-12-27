@@ -2,11 +2,11 @@ import React, { useState, useEffect, useMemo } from "react";
 import { useData } from "../context/DataContext";
 import { useNavigate } from "react-router-dom";
 import { 
-  X, Trophy, Loader2, RefreshCw, BrainCircuit, Hourglass, Home, Lightbulb, Volume2, ArrowRight, Star
+  X, Trophy, Loader2, RefreshCw, BrainCircuit, Hourglass, Home, Lightbulb, Volume2, ArrowRight, Star, Flag, LogOut, AlertTriangle, CheckCircle2
 } from "lucide-react";
 
 export default function SentenceBuilderGame() {
-  const { getAllWords, knownWordIds, learningQueue, addScore, updateGameStats, handleUpdateWord } = useData();
+  const { getAllWords, knownWordIds, learningQueue, addScore, updateGameStats, handleUpdateWord, registerMistake } = useData();
   const navigate = useNavigate();
 
   // --- STATE'LER ---
@@ -23,18 +23,16 @@ export default function SentenceBuilderGame() {
   
   const [mistakeCount, setMistakeCount] = useState(0);
   const [hintCount, setHintCount] = useState(0);
-  // Başlangıç Puanı 10
   const [currentPoints, setCurrentPoints] = useState(10); 
   const [wrongAnimationId, setWrongAnimationId] = useState(null); 
+  const [hasRecordedMistake, setHasRecordedMistake] = useState(false);
   
   const [isRoundFinished, setIsRoundFinished] = useState(false); 
 
-  // --- IPHONE FIX ---
   const handleBlur = (e) => {
       if (e && e.currentTarget) e.currentTarget.blur();
   };
 
-  // --- SESİ KES ---
   useEffect(() => {
       return () => {
           window.speechSynthesis.cancel();
@@ -46,7 +44,6 @@ export default function SentenceBuilderGame() {
     const all = getAllWords();
     const now = new Date();
     
-    // Cümlesi olan kelimeleri al
     const validWords = all.filter(w => w.sentence && w.sentence.trim().length > 0);
     const getQueueItem = (id) => learningQueue ? learningQueue.find(q => q.wordId === id) : null;
 
@@ -66,7 +63,7 @@ export default function SentenceBuilderGame() {
     return { learnPool, reviewPool, waitingPool };
   }, [getAllWords, knownWordIds, learningQueue]);
 
-  // --- BAŞLATMA (AKILLI SIRALAMA) ---
+  // --- BAŞLATMA ---
   const startSession = (mode, e) => {
     handleBlur(e);
     setGameMode(mode);
@@ -81,7 +78,6 @@ export default function SentenceBuilderGame() {
       return;
     }
 
-    // --- YENİ ALGORİTMA: TARİHE GÖRE SIRALA ---
     const neverSeen = [];
     const seen = [];
 
@@ -118,11 +114,12 @@ export default function SentenceBuilderGame() {
       setTargetSentenceWords(words);
       setUserSelection([]);
       
+      // SIFIRLAMALAR
       setMistakeCount(0);
       setHintCount(0);
-      // Her turda puan 10'a sıfırlanır
-      setCurrentPoints(10); 
+      setCurrentPoints(10); // Başlangıç 10
       setIsRoundFinished(false);
+      setHasRecordedMistake(false);
 
       const pool = words.map((word, i) => ({
         id: `word-${i}-${Math.random()}`,
@@ -140,6 +137,13 @@ export default function SentenceBuilderGame() {
       const u = new SpeechSynthesisUtterance(txt);
       u.lang = "en-US";
       window.speechSynthesis.speak(u);
+  };
+
+  const recordMistakeOnce = () => {
+      if (!hasRecordedMistake) {
+          registerMistake(questions[currentIndex].id, 1);
+          setHasRecordedMistake(true); 
+      }
   };
 
   // --- KELİME SEÇME ---
@@ -165,29 +169,32 @@ export default function SentenceBuilderGame() {
         const newMistakes = mistakeCount + 1;
         setMistakeCount(newMistakes);
         
-        // 🔥 PUAN DÜŞÜRME: Her hatada 1 puan sil 🔥
-        setCurrentPoints(prev => Math.max(0, prev - 1));
+        // 🔥 PUAN DÜŞÜR: Her hatada -1 puan 🔥
+        setCurrentPoints(p => Math.max(0, p - 1));
 
         setWrongAnimationId(wordObj.id);
         setTimeout(() => setWrongAnimationId(null), 500);
 
-        if (newMistakes >= 6) {
+        // 🔥 HATA LİMİTİ: 5 hatadan sonra (6. hatada) kaybet 🔥
+        if (newMistakes > 5) {
             handleFailAndShowCorrect();
         }
     }
   };
 
-  // --- İPUCU (YENİLENMİŞ MANTIK: 10 -> 5 -> 0) ---
+  // --- İPUCU (YENİ MANTIK: Max 2 İpucu, Her biri -2 Puan) ---
   const handleHint = (e) => {
       handleBlur(e); 
       if (isRoundFinished) return;
 
       const newHintCount = hintCount + 1;
+      // Eğer limit aşıldıysa işlem yapma (Buton zaten disable olacak ama güvenlik olsun)
+      if (newHintCount > 2) return; 
+
       setHintCount(newHintCount);
 
-      // Puanlama Mantığı
-      if (newHintCount === 1) setCurrentPoints(5); // İlk ipucu 5'e düşürür
-      else setCurrentPoints(0); // Sonrakiler 0 yapar
+      // 🔥 PUAN DÜŞÜR: Her ipucu -2 puan 🔥
+      setCurrentPoints(p => Math.max(0, p - 2));
 
       const nextIndex = userSelection.length;
       const expectedWordText = targetSentenceWords[nextIndex];
@@ -208,14 +215,21 @@ export default function SentenceBuilderGame() {
       setUserSelection(prev => [...prev, ...autoFilledObjects]);
       setShuffledPool(prev => prev.map(w => ({ ...w, isUsed: true }))); 
       
+      recordMistakeOnce(); // Hata kaydet
       finishRound(false); 
+  };
+
+  // --- PAS GEÇME (DİĞER MODLARLA AYNI) ---
+  const handlePass = () => {
+      handleFailAndShowCorrect();
   };
 
   // --- TURU BİTİR ---
   const finishRound = (success) => {
       setIsRoundFinished(true); 
-      updateGameStats('sentence_builder', 1); // Haftalık Skor
-      updateGameStats('sentence-builder', 1); // Günlük Görev
+      updateGameStats('sentence_builder', 1); 
+      updateGameStats('sentence-builder', 1);
+      
       const currentWordObj = questions[currentIndex];
       handleUpdateWord(currentWordObj.id, { lastSeen_sentence_builder: new Date().toISOString() });
 
@@ -228,7 +242,6 @@ export default function SentenceBuilderGame() {
       }
   };
 
-  // --- SONRAKİ SORUYA GEÇ ---
   const handleNextQuestion = (e) => {
       handleBlur(e);
       if (currentIndex + 1 < questions.length) {
@@ -240,6 +253,7 @@ export default function SentenceBuilderGame() {
 
   const handleQuitEarly = (e) => {
       handleBlur(e);
+      if(score > 0) addScore(score);
       setGameStatus("finished");
   };
 
@@ -248,7 +262,6 @@ export default function SentenceBuilderGame() {
   if (gameStatus === "mode-selection") {
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
-            
             <style>{`
                 * { -webkit-tap-highlight-color: transparent !important; }
                 @media (hover: hover) {
@@ -306,7 +319,6 @@ export default function SentenceBuilderGame() {
   }
 
   if (gameStatus === "finished") {
-      // Max puan 10 soru * 10 puan = 100
       const maxScore = questions.length * 10;
       let modeTitle = "Bitti";
       if (gameMode === "learn") modeTitle = "Bitti";
@@ -341,12 +353,10 @@ export default function SentenceBuilderGame() {
        
        <style>{`
            * { -webkit-tap-highlight-color: transparent !important; }
-           
-           /* Sadece Mouse ile Hover (Mobilde yapışmayı engeller) */
            @media (hover: hover) {
-               .word-btn:hover { border-color: #93c5fd !important; color: #2563eb !important; } /* blue-300 */
-               .next-btn:hover { background-color: #4338ca !important; } /* indigo-700 */
-               .hint-btn:hover { background-color: #fcd34d !important; } /* amber-300 */
+               .word-btn:hover { border-color: #93c5fd !important; color: #2563eb !important; }
+               .next-btn:hover { background-color: #4338ca !important; }
+               .hint-btn:hover { background-color: #fcd34d !important; }
            }
            .word-btn, .next-btn, .hint-btn { transition: all 0.2s ease; }
        `}</style>
@@ -366,25 +376,24 @@ export default function SentenceBuilderGame() {
          {/* OYUN ALANI */}
          <div className="flex flex-col gap-6 mt-4 relative">
              
-             {/* Soru Değeri Göstergesi (YENİ) - Sağ Üst */}
+             {/* Soru Değeri Göstergesi */}
              <div className="absolute top-0 right-0 z-10 -mt-2 -mr-2 flex items-center gap-1 bg-green-50 text-green-700 px-2 py-1 rounded-lg text-xs font-bold border border-green-100 animate-in fade-in shadow-sm">
                 <Star className="w-3 h-3 fill-current"/> Soru: {currentPoints}p
              </div>
              
-             {/* 1. İPUCU KARTI */}
+             {/* 1. KELİME KARTI */}
              <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 text-center relative overflow-hidden">
                  <div className="flex items-center justify-center gap-2 text-slate-400 text-xs font-bold uppercase mb-2">
-                     <Volume2 className="w-4 h-4"/>
-                     <span>Çevirisi İstenen Cümle</span>
+                     <Star className="w-4 h-4 text-orange-400 fill-orange-400"/>
+                     <span>Ana Kelime</span>
                  </div>
-                 <h3 className="text-xl font-bold text-slate-800 leading-snug">
-                     {currentQ.sentence_tr ? `"${currentQ.sentence_tr}"` : `İpucu: "${currentQ.definitions[0]?.meaning}" kelimesini içeren cümle.`}
-                 </h3>
+                 <h2 className="text-3xl font-black text-slate-800 mb-2">{currentQ.word}</h2>
+                 <p className="text-slate-500 italic text-sm">"{currentQ.definitions[0]?.meaning}"</p>
              </div>
 
              {/* 2. CEVAP ALANI */}
              <div className={`min-h-[80px] bg-slate-100 rounded-2xl p-4 flex flex-wrap gap-2 items-center justify-center border-2 border-dashed transition-colors ${isRoundFinished ? 'border-green-400 bg-green-50' : 'border-slate-300'}`}>
-                 {userSelection.length === 0 && <span className="text-slate-400 text-sm italic">Kelimelere tıklayarak cümleyi oluştur...</span>}
+                 {userSelection.length === 0 && <span className="text-slate-400 text-sm italic">Kelimeleri sırayla seç...</span>}
                  
                  {userSelection.map((item) => (
                      <div 
@@ -420,16 +429,21 @@ export default function SentenceBuilderGame() {
                  </div>
              )}
 
-             {/* 4. DEVAM ET BUTONU (Tur Bitince Göster) */}
+             {/* 4. SONUÇ ALANI (Tur Bitince Göster) */}
              {isRoundFinished && (
-                 <button 
-                   onClick={(e) => handleNextQuestion(e)}
-                   style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
-                   className="next-btn w-full py-4 bg-indigo-600 text-white font-bold rounded-2xl text-lg shadow-lg transition-transform active:scale-95 flex items-center justify-center gap-2 animate-in fade-in slide-in-from-bottom-4 focus:outline-none focus:ring-0"
-                 >
-                   <span>{currentIndex + 1 === questions.length ? "Sonucu Gör" : "Sıradaki Cümle"}</span>
-                   <ArrowRight className="w-5 h-5"/>
-                 </button>
+                 <div className="animate-in zoom-in duration-300 pb-2 w-full">
+                    <div className="flex items-center justify-center gap-2 mb-4 text-green-600 font-bold bg-green-50 p-3 rounded-xl border border-green-100">
+                        {mistakeCount > 5 ? <><AlertTriangle className="w-5 h-5 text-orange-500"/> Doğrusu Bu</> : <><CheckCircle2 className="w-6 h-6"/> Harika!</>}
+                    </div>
+                    <button 
+                        onClick={(e) => handleNextQuestion(e)}
+                        style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
+                        className="next-btn w-full py-4 bg-indigo-600 text-white font-bold rounded-2xl text-lg shadow-lg transition-transform active:scale-95 flex items-center justify-center gap-2 focus:outline-none focus:ring-0"
+                    >
+                        <span>{currentIndex + 1 === questions.length ? "Sonucu Gör" : "Sıradaki Cümle"}</span>
+                        <ArrowRight className="w-5 h-5"/>
+                    </button>
+                 </div>
              )}
 
          </div>
@@ -439,25 +453,31 @@ export default function SentenceBuilderGame() {
              <div className="flex items-center justify-center gap-4 pt-4 border-t border-slate-100 mt-auto">
                    <button 
                      onClick={(e) => handleHint(e)} 
+                     disabled={hintCount >= 2} // 🔥 2 İPUCU LİMİTİ 🔥
                      style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
-                     className="hint-btn w-full flex items-center justify-center gap-2 px-5 py-3 bg-amber-100 text-amber-700 rounded-2xl font-bold active:bg-amber-200 transition-colors active:scale-95 focus:outline-none focus:ring-0"
+                     className="hint-btn w-full flex items-center justify-center gap-2 px-5 py-3 bg-amber-100 text-amber-700 rounded-2xl font-bold active:bg-amber-200 transition-colors active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-0"
                    >
                      <Lightbulb className="w-5 h-5"/> 
-                     {/* Maliyet Gösterimi */}
                      <span className="text-xs ml-1 flex flex-col items-start leading-none">
-                         <span>İpucu ({hintCount === 0 ? "(-5p)" : "(-5p)"})</span>
-                         <span className="text-[9px] text-amber-600/80">Hata: {mistakeCount}/6</span>
+                         <span>İpucu {hintCount >= 2 ? "(Bitti)" : "(-2p)"}</span>
+                         <span className="text-[9px] text-amber-600/80">Hata: {mistakeCount}/5</span>
                      </span>
                    </button>
              </div>
          )}
 
-         {/* BİTİR VE ÇIK */}
+         {/* PAS BUTONU (YENİ EKLENDİ) */}
          {!isRoundFinished && (
-             <button onClick={handleQuitEarly} style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }} className="w-full mt-6 text-center text-slate-400 hover:text-red-500 text-sm font-medium transition-colors focus:outline-none focus:ring-0">
-               Bitir (Puanı Al ve Çık)
-             </button>
+            <button onClick={handlePass} className="w-full bg-white border-2 border-red-100 text-red-500 font-bold py-4 rounded-xl shadow-sm flex items-center justify-center gap-2 mt-4 active:scale-95 transition-all hover:bg-red-50 hover:border-red-200">
+                <Flag className="w-5 h-5"/>
+                <span>Pas Geç (Cevabı Gör)</span>
+            </button>
          )}
+
+         {/* BİTİR VE ÇIK */}
+         <button onClick={handleQuitEarly} style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }} className="w-full mt-6 text-center text-slate-400 hover:text-red-500 text-sm font-medium transition-colors focus:outline-none focus:ring-0">
+            <LogOut className="w-4 h-4 inline mr-1" /> Bitir (Puanı Al ve Çık)
+         </button>
 
          <style jsx>{`
            @keyframes shake {
