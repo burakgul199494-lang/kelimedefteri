@@ -38,3 +38,37 @@ button {
     max-height: 100% !important;
   }
 }
+
+
+/* 7. Focus (Odaklanma) Çizgisi Düzeltmesi */
+/* Tıklayınca kalan siyah/mavi çerçeveyi kaldırır */
+button:focus, 
+input:focus, 
+select:focus, 
+textarea:focus, 
+div:focus {
+  outline: none; /* Standart çerçeveyi kaldır */
+  box-shadow: none; /* Varsa gölgeyi kaldır */
+}
+
+/* Sadece klavye (TAB tuşu) ile gezenler için çerçeveyi geri getir (Erişilebilirlik) */
+button:focus-visible,
+input:focus-visible,
+select:focus-visible, 
+textarea:focus-visible {
+  outline: 2px solid #4f46e5; /* İsteğe bağlı: Indigo rengi bir çerçeve */
+  outline-offset: 2px;
+}
+
+/* Masaüstünde metin seçimi sorununu düzelt */
+@media (min-width: 769px) {
+  html, body {
+    touch-action: auto !important; /* Masaüstünde kaydırma serbest kalsın */
+  }
+  
+  /* Masaüstünde inputların seçilebilir olmasını sağla */
+  input, textarea {
+    user-select: auto !important;
+    -webkit-user-select: auto !important;
+  }
+}
