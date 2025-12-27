@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { useData } from "../context/DataContext";
 import { useNavigate } from "react-router-dom";
 import { 
-  X, Trophy, Loader2, RefreshCw, BrainCircuit, Hourglass, Home, Lightbulb, Volume2, ArrowRight, Star, Flag, LogOut, AlertTriangle, CheckCircle2
+  X, Trophy, Loader2, RefreshCw, BrainCircuit, Hourglass, Home, Lightbulb, Volume2, ArrowRight, Star, Flag, LogOut, AlertTriangle, CheckCircle2, Languages
 } from "lucide-react";
 
 export default function SentenceBuilderGame() {
@@ -44,6 +44,7 @@ export default function SentenceBuilderGame() {
     const all = getAllWords();
     const now = new Date();
     
+    // Cümlesi olan kelimeleri al
     const validWords = all.filter(w => w.sentence && w.sentence.trim().length > 0);
     const getQueueItem = (id) => learningQueue ? learningQueue.find(q => q.wordId === id) : null;
 
@@ -114,10 +115,9 @@ export default function SentenceBuilderGame() {
       setTargetSentenceWords(words);
       setUserSelection([]);
       
-      // SIFIRLAMALAR
       setMistakeCount(0);
       setHintCount(0);
-      setCurrentPoints(10); // Başlangıç 10
+      setCurrentPoints(10); 
       setIsRoundFinished(false);
       setHasRecordedMistake(false);
 
@@ -169,31 +169,26 @@ export default function SentenceBuilderGame() {
         const newMistakes = mistakeCount + 1;
         setMistakeCount(newMistakes);
         
-        // 🔥 PUAN DÜŞÜR: Her hatada -1 puan 🔥
         setCurrentPoints(p => Math.max(0, p - 1));
 
         setWrongAnimationId(wordObj.id);
         setTimeout(() => setWrongAnimationId(null), 500);
 
-        // 🔥 HATA LİMİTİ: 5 hatadan sonra (6. hatada) kaybet 🔥
         if (newMistakes > 5) {
             handleFailAndShowCorrect();
         }
     }
   };
 
-  // --- İPUCU (YENİ MANTIK: Max 2 İpucu, Her biri -2 Puan) ---
+  // --- İPUCU ---
   const handleHint = (e) => {
       handleBlur(e); 
       if (isRoundFinished) return;
 
       const newHintCount = hintCount + 1;
-      // Eğer limit aşıldıysa işlem yapma (Buton zaten disable olacak ama güvenlik olsun)
       if (newHintCount > 2) return; 
 
       setHintCount(newHintCount);
-
-      // 🔥 PUAN DÜŞÜR: Her ipucu -2 puan 🔥
       setCurrentPoints(p => Math.max(0, p - 2));
 
       const nextIndex = userSelection.length;
@@ -203,7 +198,7 @@ export default function SentenceBuilderGame() {
       if (correctObj) handleSelectWord(correctObj, { currentTarget: { blur: () => {} } });
   };
 
-  // --- OTOMATİK TAMAMLAMA (BAŞARISIZLIK) ---
+  // --- OTOMATİK TAMAMLAMA ---
   const handleFailAndShowCorrect = () => {
       setCurrentPoints(0); 
       
@@ -215,11 +210,10 @@ export default function SentenceBuilderGame() {
       setUserSelection(prev => [...prev, ...autoFilledObjects]);
       setShuffledPool(prev => prev.map(w => ({ ...w, isUsed: true }))); 
       
-      recordMistakeOnce(); // Hata kaydet
+      recordMistakeOnce(); 
       finishRound(false); 
   };
 
-  // --- PAS GEÇME (DİĞER MODLARLA AYNI) ---
   const handlePass = () => {
       handleFailAndShowCorrect();
   };
@@ -229,7 +223,6 @@ export default function SentenceBuilderGame() {
       setIsRoundFinished(true); 
       updateGameStats('sentence_builder', 1); 
       updateGameStats('sentence-builder', 1);
-      
       const currentWordObj = questions[currentIndex];
       handleUpdateWord(currentWordObj.id, { lastSeen_sentence_builder: new Date().toISOString() });
 
@@ -381,19 +374,21 @@ export default function SentenceBuilderGame() {
                 <Star className="w-3 h-3 fill-current"/> Soru: {currentPoints}p
              </div>
              
-             {/* 1. KELİME KARTI */}
+             {/* 🔥 1. KELİME KARTI (ARTIK TÜRKÇE CÜMLEYİ GÖSTERİYOR) 🔥 */}
              <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 text-center relative overflow-hidden">
                  <div className="flex items-center justify-center gap-2 text-slate-400 text-xs font-bold uppercase mb-2">
-                     <Star className="w-4 h-4 text-orange-400 fill-orange-400"/>
-                     <span>Ana Kelime</span>
+                     <Languages className="w-4 h-4 text-orange-400"/>
+                     <span>Çevirisi İstenen Cümle</span>
                  </div>
-                 <h2 className="text-3xl font-black text-slate-800 mb-2">{currentQ.word}</h2>
-                 <p className="text-slate-500 italic text-sm">"{currentQ.definitions[0]?.meaning}"</p>
+                 {/* Eğer sentence_tr varsa onu, yoksa anlamını göster */}
+                 <h3 className="text-xl font-bold text-slate-800 leading-snug">
+                     {currentQ.sentence_tr ? `"${currentQ.sentence_tr}"` : `"${currentQ.definitions[0]?.meaning}" kelimesini içeren cümleyi kur.`}
+                 </h3>
              </div>
 
              {/* 2. CEVAP ALANI */}
              <div className={`min-h-[80px] bg-slate-100 rounded-2xl p-4 flex flex-wrap gap-2 items-center justify-center border-2 border-dashed transition-colors ${isRoundFinished ? 'border-green-400 bg-green-50' : 'border-slate-300'}`}>
-                 {userSelection.length === 0 && <span className="text-slate-400 text-sm italic">Kelimeleri sırayla seç...</span>}
+                 {userSelection.length === 0 && <span className="text-slate-400 text-sm italic">Kelimelere tıklayarak cümleyi oluştur...</span>}
                  
                  {userSelection.map((item) => (
                      <div 
@@ -429,7 +424,7 @@ export default function SentenceBuilderGame() {
                  </div>
              )}
 
-             {/* 4. SONUÇ ALANI (Tur Bitince Göster) */}
+             {/* 4. DEVAM ET BUTONU (Tur Bitince Göster) */}
              {isRoundFinished && (
                  <div className="animate-in zoom-in duration-300 pb-2 w-full">
                     <div className="flex items-center justify-center gap-2 mb-4 text-green-600 font-bold bg-green-50 p-3 rounded-xl border border-green-100">
@@ -453,7 +448,7 @@ export default function SentenceBuilderGame() {
              <div className="flex items-center justify-center gap-4 pt-4 border-t border-slate-100 mt-auto">
                    <button 
                      onClick={(e) => handleHint(e)} 
-                     disabled={hintCount >= 2} // 🔥 2 İPUCU LİMİTİ 🔥
+                     disabled={hintCount >= 2} 
                      style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
                      className="hint-btn w-full flex items-center justify-center gap-2 px-5 py-3 bg-amber-100 text-amber-700 rounded-2xl font-bold active:bg-amber-200 transition-colors active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-0"
                    >
