@@ -40,7 +40,7 @@ export default function AdminDashboard() {
     pronoun: "pron", article: "art"
   }[t] || t);
 
-  // --- SİHİRLİ EKLEME FONKSİYONU ---
+  // --- SİHİRLİ EKLEME FONKSİYONU (GÜNCELLENDİ: ÇOKLU ANLAM DESTEĞİ) ---
   const handleMagicAdd = async (e) => {
       e.preventDefault();
       const wordToFetch = magicWord.trim();
@@ -49,7 +49,7 @@ export default function AdminDashboard() {
       // Kelime zaten var mı kontrolü
       const exists = dynamicSystemWords.some(w => w.word.toLowerCase() === wordToFetch.toLowerCase());
       if (exists) {
-          alert(`"${wordToFetch}" zaten sistemde ekli!`);
+          alert(`"${wordToFetch}" zaten sistemde ekli! Farklı bir anlamını eklemek istiyorsan listedekini silip tekrar Sihirli Ekleme yapabilirsin.`);
           setMagicWord("");
           return;
       }
@@ -61,17 +61,28 @@ export default function AdminDashboard() {
       const aiResult = await fetchMagicWordData(wordToFetch);
 
       if (aiResult.success && aiResult.data) {
-          // 2. Firebase'e Sistem Kelimesi Olarak Kaydet
-          const saveResult = await handleSaveSystemWord(aiResult.data);
+          // AI tek bir obje döndüyse hata almamak için onu diziye (Array) çeviriyoruz
+          const wordsArray = Array.isArray(aiResult.data) ? aiResult.data : [aiResult.data];
           
-          if (saveResult.success) {
+          let hasError = false;
+
+          // 2. Dizideki her bir kelime anlamı için döngü oluşturup ayrı ayrı kaydediyoruz
+          for (const wordObj of wordsArray) {
+              const saveResult = await handleSaveSystemWord(wordObj);
+              if (!saveResult.success) {
+                  hasError = true;
+                  console.error("Kaydetme hatası:", saveResult.message);
+              }
+          }
+          
+          if (!hasError) {
               setMagicStatus('success');
               setMagicWord(""); // Başarılıysa inputu temizle
               
               // 3 saniye sonra başarı mesajını gizle
               setTimeout(() => setMagicStatus(null), 3000);
           } else {
-              alert("Kaydetme hatası: " + saveResult.message);
+              alert("Bazı anlamlar kaydedilirken bir hata oluştu.");
               setMagicStatus('error');
           }
       } else {
