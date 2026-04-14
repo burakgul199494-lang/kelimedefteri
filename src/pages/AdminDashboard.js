@@ -1,16 +1,22 @@
 import React, { useState } from "react";
 import { useData } from "../context/DataContext";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Shield, Plus, Search, Edit2, Trash2, Volume2 } from "lucide-react";
+import { ArrowLeft, Shield, Search, Edit2, Trash2, Volume2, Wand2, Loader2, CheckCircle2 } from "lucide-react";
 import QuickAddModal from "../components/QuickAddModal";
+import { fetchMagicWordData } from "../services/aiService"; // Yeni servisimizi import ettik
 
 export default function AdminDashboard() {
-  const { dynamicSystemWords, handleDeleteSystemWord, isAdmin } = useData();
+  const { dynamicSystemWords, handleDeleteSystemWord, handleSaveSystemWord, isAdmin } = useData();
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
   
   const [editingItem, setEditingItem] = useState(null);
   const [isAddingNew, setIsAddingNew] = useState(false);
+
+  // Sihirli Ekleme State'leri
+  const [magicWord, setMagicWord] = useState("");
+  const [isMagicLoading, setIsMagicLoading] = useState(false);
+  const [magicStatus, setMagicStatus] = useState(null); // 'success', 'error', null
 
   if (!isAdmin) {
       setTimeout(() => navigate("/"), 0);
@@ -21,7 +27,6 @@ export default function AdminDashboard() {
      .filter(w => w.word.toLowerCase().includes(search.toLowerCase()))
      .sort((a,b) => a.word.localeCompare(b.word));
 
-  // Seslendirme Fonksiyonu
   const speak = (txt, e) => {
     e.stopPropagation();
     const u = new SpeechSynthesisUtterance(txt);
@@ -29,12 +34,52 @@ export default function AdminDashboard() {
     window.speechSynthesis.speak(u);
   };
 
-  // Tür Kısaltmaları
   const getShortType = (t) => ({
     noun: "noun", verb: "verb", adjective: "adj", 
     adverb: "adv", conjunction: "conj", prep: "prep",
     pronoun: "pron", article: "art"
   }[t] || t);
+
+  // --- SİHİRLİ EKLEME FONKSİYONU ---
+  const handleMagicAdd = async (e) => {
+      e.preventDefault();
+      const wordToFetch = magicWord.trim();
+      if (!wordToFetch) return;
+
+      // Kelime zaten var mı kontrolü
+      const exists = dynamicSystemWords.some(w => w.word.toLowerCase() === wordToFetch.toLowerCase());
+      if (exists) {
+          alert(`"${wordToFetch}" zaten sistemde ekli!`);
+          setMagicWord("");
+          return;
+      }
+
+      setIsMagicLoading(true);
+      setMagicStatus(null);
+
+      // 1. AI'dan Veriyi Çek
+      const aiResult = await fetchMagicWordData(wordToFetch);
+
+      if (aiResult.success && aiResult.data) {
+          // 2. Firebase'e Sistem Kelimesi Olarak Kaydet
+          const saveResult = await handleSaveSystemWord(aiResult.data);
+          
+          if (saveResult.success) {
+              setMagicStatus('success');
+              setMagicWord(""); // Başarılıysa inputu temizle
+              
+              // 3 saniye sonra başarı mesajını gizle
+              setTimeout(() => setMagicStatus(null), 3000);
+          } else {
+              alert("Kaydetme hatası: " + saveResult.message);
+              setMagicStatus('error');
+          }
+      } else {
+          alert("Yapay Zeka Hatası: " + aiResult.message);
+          setMagicStatus('error');
+      }
+      setIsMagicLoading(false);
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 p-4">
@@ -48,19 +93,51 @@ export default function AdminDashboard() {
             <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2"><Shield className="w-6 h-6"/> Yönetici Paneli</h2>
          </div>
 
-         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 mb-6">
-            <h3 className="font-bold text-slate-700 mb-4">Sistem Durumu</h3>
-            <div className="flex justify-between p-3 bg-blue-50 rounded-lg border border-blue-100">
-               <span className="text-blue-800 font-medium">Toplam Sistem Kelimesi</span>
-               <span className="font-bold text-blue-800">{dynamicSystemWords.length}</span>
+         {/* --- YENİ: SİHİRLİ EKLEME ÇUBUĞU --- */}
+         <div className="bg-gradient-to-r from-indigo-500 to-purple-600 p-1 rounded-2xl mb-6 shadow-lg">
+            <div className="bg-white rounded-xl p-4">
+                <div className="flex items-center gap-2 mb-3">
+                    <Wand2 className="w-5 h-5 text-purple-500" />
+                    <h3 className="font-bold text-slate-700">Sihirli Ekleme (AI)</h3>
+                </div>
+                <form onSubmit={handleMagicAdd} className="flex gap-2">
+                    <input 
+                        type="text" 
+                        placeholder="İngilizce kelime yaz ve Enter'a bas..." 
+                        value={magicWord} 
+                        onChange={(e) => setMagicWord(e.target.value)}
+                        disabled={isMagicLoading}
+                        className="flex-1 p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-purple-400 font-medium"
+                    />
+                    <button 
+                        type="submit" 
+                        disabled={isMagicLoading || !magicWord.trim()}
+                        className="bg-purple-600 hover:bg-purple-700 text-white px-4 rounded-xl font-bold transition-all disabled:opacity-50 flex items-center justify-center min-w-[80px]"
+                    >
+                        {isMagicLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Ekle"}
+                    </button>
+                </form>
+                
+                {/* Durum Bildirimleri */}
+                {magicStatus === 'success' && (
+                    <div className="mt-3 flex items-center gap-2 text-sm text-green-600 bg-green-50 p-2 rounded-lg border border-green-100">
+                        <CheckCircle2 className="w-4 h-4" /> Kelime başarıyla analiz edildi ve sisteme eklendi!
+                    </div>
+                )}
             </div>
          </div>
 
-         <button onClick={() => setIsAddingNew(true)} className="w-full bg-slate-800 text-white font-bold py-4 rounded-xl shadow-lg flex items-center justify-center gap-2 mb-6 transition-transform active:scale-95">
-             <Plus className="w-5 h-5"/> Yeni Sistem Kelimesi Ekle
-         </button>
+         <div className="flex items-center justify-between mb-4">
+            <div className="bg-blue-50 px-3 py-1 rounded-full border border-blue-100 text-sm font-bold text-blue-800">
+               {dynamicSystemWords.length} Kelime
+            </div>
+            
+            <button onClick={() => setIsAddingNew(true)} className="text-sm font-bold text-slate-500 hover:text-slate-800 underline decoration-slate-300 underline-offset-4">
+                Manuel Form ile Ekle
+            </button>
+         </div>
 
-         <div className="relative mb-4">
+         <div className="relative mb-6">
              <Search className="absolute left-3 top-3.5 text-slate-400 w-5 h-5"/>
              <input type="text" placeholder="Sistem kelimelerinde ara..." value={search} onChange={e=>setSearch(e.target.value)} className="w-full pl-10 p-3 bg-white border border-slate-200 rounded-xl outline-none shadow-sm focus:border-indigo-300 transition-colors"/>
          </div>
@@ -69,27 +146,21 @@ export default function AdminDashboard() {
              {filtered.map(item => (
                  <div key={item.id} className="bg-white p-4 rounded-xl border border-slate-200 flex justify-between items-start shadow-sm">
                      
-                     {/* SOL TARAF (KELİME DETAYLARI) */}
                      <div className="flex-1 min-w-0 pr-2">
-                         {/* Başlık */}
                      <div className="flex items-center gap-2 mb-2 flex-wrap">
                          <span className="text-lg font-bold text-slate-800 leading-none">{item.word}</span>
-                         
-                         {/* YENİ FONETİK GÖSTERİMİ */}
                          {item.phonetic && (
                             <span className="text-sm text-slate-400 font-serif italic">
                                 /{item.phonetic.replace(/\//g, '')}/
                             </span>
                          )}
-
                          <button onClick={(e)=>speak(item.word, e)} className="p-1 text-indigo-400 hover:text-indigo-600 bg-indigo-50 rounded-full transition-colors">
                              <Volume2 className="w-4 h-4"/>
                          </button>
                      </div>
 
-                         {/* Anlamlar */}
                          <div className="space-y-1.5">
-                             {item.definitions.map((def, idx) => (
+                             {item.definitions?.map((def, idx) => (
                                 <div key={idx} className="flex items-start gap-2 text-sm text-slate-700">
                                    <span className="text-[10px] font-bold text-slate-500 uppercase bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 whitespace-nowrap shrink-0 mt-0.5">
                                       {getShortType(def.type)}
@@ -99,7 +170,6 @@ export default function AdminDashboard() {
                              ))}
                          </div>
 
-                         {/* GRİ KUTU (Fiil Çekimleri) */}
                          {(item.plural || item.v2 || item.v3 || item.vIng || item.thirdPerson) && (
                             <div className="mt-3 text-xs text-slate-600 bg-slate-50 p-2 rounded-lg border border-slate-100">
                               <div className="flex flex-wrap gap-2">
@@ -112,7 +182,6 @@ export default function AdminDashboard() {
                             </div>
                          )}
 
-                         {/* TURUNCU KUTU (Sıfat Çekimleri) */}
                          {(item.advLy || item.compEr || item.superEst) && (
                             <div className="mt-2 text-xs text-slate-600 bg-orange-50 p-2 rounded-lg border border-orange-100">
                               <div className="flex flex-wrap gap-2">
@@ -123,16 +192,16 @@ export default function AdminDashboard() {
                             </div>
                          )}
 
-                         {/* Örnek Cümle */}
+                         {item.sentence && (
                          <div className="mt-3 pt-2 border-t border-slate-50 flex gap-2 items-start group">
                              <button onClick={(e)=>speak(item.sentence, e)} className="shrink-0 p-1 text-slate-300 hover:text-indigo-500 transition-colors">
                                  <Volume2 className="w-3.5 h-3.5"/>
                              </button>
                              <div className="text-xs text-slate-400 italic leading-relaxed py-0.5">"{item.sentence}"</div>
                          </div>
+                         )}
                      </div>
                      
-                     {/* SAĞ TARAF (AKSİYON BUTONLARI) */}
                      <div className="flex flex-col gap-2 ml-1">
                          <button 
                             onClick={() => setEditingItem(item)} 
@@ -141,7 +210,6 @@ export default function AdminDashboard() {
                          >
                              <Edit2 className="w-4 h-4"/>
                          </button>
-
                          <button 
                             onClick={() => handleDeleteSystemWord(item.id)} 
                             className="p-2 bg-red-50 text-red-500 rounded-lg hover:bg-red-100 transition-colors shadow-sm"
