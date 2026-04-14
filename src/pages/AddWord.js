@@ -1,18 +1,13 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useData } from "../context/DataContext";
-import { ArrowLeft, Loader2, Wand2, Brain, Plus, Save, Trash2, Tag, Languages } from "lucide-react";
+import { ArrowLeft, Loader2, Plus, Save, Trash2, Tag, Languages } from "lucide-react";
 
 const WORD_TYPES = [
   { value: "noun", label: "İsim (Noun)" }, { value: "verb", label: "Fiil (Verb)" }, { value: "adjective", label: "Sıfat (Adjective)" },
   { value: "adverb", label: "Zarf (Adverb)" }, { value: "prep", label: "Edat (Prep)" }, { value: "pronoun", label: "Zamir (Pronoun)" },
   { value: "conj", label: "Bağlaç (Conj)" }, { value: "article", label: "Tanımlık (Article)" }, { value: "other", label: "Diğer (Other)" },
 ];
-
-const TYPE_MAP = {
-  noun: "İsim", verb: "Fiil", adjective: "Sıfat", adverb: "Zarf", prep: "Edat",
-  pronoun: "Zamir", conj: "Bağlaç", article: "Tanımlık", other: "Diğer"
-};
 
 export default function AddWord() {
   const navigate = useNavigate();
@@ -23,17 +18,16 @@ export default function AddWord() {
   const initialWord = location.state?.initialWord;
   const isEditMode = !!editingWord;
 
-  // --- DÜZELTME BURADA YAPILDI (Güvenli Başlangıç Verisi) ---
   const initialData = editingWord
     ? { 
         ...editingWord, 
-        phonetic: editingWord.phonetic || "", // <--- ESKİ KELİMELER İÇİN GÜVENLİK KONTROLÜ
+        phonetic: editingWord.phonetic || "", 
         sentence_tr: editingWord.sentence_tr || "", 
         definitions: (editingWord.definitions || []).map((d) => ({ ...d })) 
       }
     : {
         word: initialWord || "",
-        phonetic: "", // Varsayılan boş
+        phonetic: "",
         tags: [],
         plural: "", v2: "", v3: "", vIng: "", thirdPerson: "",
         advLy: "", compEr: "", superEst: "",
@@ -44,27 +38,6 @@ export default function AddWord() {
 
   const [formData, setFormData] = useState(initialData);
   const [saving, setSaving] = useState(false);
- 
-
-
-  const handleAIFill = async () => {
-    if (!formData.word && !initialWord) { alert("Lütfen önce bir kelime yazın!"); return; }
-    const targetWord = formData.word || initialWord;
-    
-    setAiLoading(true);
-    try {
-      const data = await fetchWordAnalysisFromAI(targetWord);
-      if (data) { 
-          setFormData((prev) => ({ 
-              ...prev, 
-              ...data,
-              sentence_tr: data.sentence_tr || "",
-              phonetic: data.phonetic || prev.phonetic || "" // AI'dan gelirse doldur, yoksa eskisi kalsın
-          })); 
-      } 
-      else { alert("Veri alınamadı."); }
-    } catch (err) { alert("Hata: " + err.message); } finally { setAiLoading(false); }
-  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -104,16 +77,12 @@ export default function AddWord() {
             <div className="flex gap-2">
               <input value={formData.word} onChange={(e) => setFormData({ ...formData, word: e.target.value })} className="flex-1 p-3 border border-slate-200 rounded-xl font-bold outline-none focus:border-indigo-500" placeholder="Örn: Run" autoFocus />
               
-              {/* FONETİK INPUTU */}
               <input 
                 value={formData.phonetic} 
                 onChange={(e) => setFormData({ ...formData, phonetic: e.target.value })} 
                 className="w-24 p-3 border border-slate-200 rounded-xl font-serif italic text-slate-500 text-center outline-none focus:border-indigo-500 placeholder:text-slate-300" 
                 placeholder="/rʌn/" 
               />
-              
-              <button type="button" onClick={handleConvertToRoot} disabled={rootLoading || !formData.word} className="bg-orange-100 hover:bg-orange-200 text-orange-600 p-3 rounded-xl transition-colors" title="Kök Bul">{rootLoading ? <Loader2 className="animate-spin w-5 h-5" /> : <Wand2 className="w-5 h-5" />}</button>
-              <button type="button" onClick={handleAIFill} disabled={aiLoading || !formData.word} className="bg-purple-600 hover:bg-purple-700 text-white px-3 rounded-xl transition-colors" title="AI Doldur">{aiLoading ? <Loader2 className="animate-spin w-5 h-5" /> : <Brain className="w-5 h-5" />}</button>
             </div>
           </div>
 
@@ -157,7 +126,7 @@ export default function AddWord() {
                     value={formData.sentence_tr} 
                     onChange={(e) => setFormData({ ...formData, sentence_tr: e.target.value })} 
                     className="w-full p-3 border border-indigo-100 bg-indigo-50/30 rounded-xl outline-none min-h-[60px] resize-none focus:border-indigo-500 transition-colors text-sm" 
-                    placeholder="Örn: Parayı bankaya yatırdım. (AI otomatik doldurur)" 
+                    placeholder="Örn: Parayı bankaya yatırdım." 
                 />
              </div>
           </div>
