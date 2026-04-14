@@ -46,48 +46,6 @@ export default function AddWord() {
   const [saving, setSaving] = useState(false);
  
 
-  // Otomatik Etiket Senkronizasyonu
-  useEffect(() => {
-      const newTags = new Set();
-      formData.definitions.forEach(def => {
-          const label = TYPE_MAP[def.type] || "Diğer";
-          newTags.add(label);
-      });
-      const newTagsArray = Array.from(newTags);
-      if (JSON.stringify(newTagsArray) !== JSON.stringify(formData.tags)) {
-          setFormData(prev => ({ ...prev, tags: newTagsArray }));
-      }
-  }, [formData.definitions]);
-
-  useEffect(() => {
-    const autoRun = async () => {
-        if (initialWord && !isEditMode) {
-            setRootLoading(true);
-            let searchWord = initialWord;
-            try {
-                const rootRes = await fetchRootFromAI(initialWord);
-                if (rootRes && rootRes.changed) {
-                    searchWord = rootRes.root;
-                    setFormData(prev => ({ ...prev, word: searchWord }));
-                }
-            } catch(e) { console.error(e); }
-            setRootLoading(false);
-
-            handleAIFill(); 
-        }
-    };
-    // eslint-disable-next-line
-    if(initialWord && !isEditMode) autoRun();
-  }, []); 
-
-  const handleConvertToRoot = async () => {
-    if (!formData.word) return;
-    setRootLoading(true);
-    try {
-      const result = await fetchRootFromAI(formData.word);
-      if (result && result.changed) { setFormData((prev) => ({ ...prev, word: result.root })); }
-    } catch (e) { console.error(e); } finally { setRootLoading(false); }
-  };
 
   const handleAIFill = async () => {
     if (!formData.word && !initialWord) { alert("Lütfen önce bir kelime yazın!"); return; }
