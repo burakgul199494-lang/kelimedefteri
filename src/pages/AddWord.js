@@ -44,8 +44,7 @@ export default function AddWord() {
 
   const [formData, setFormData] = useState(initialData);
   const [saving, setSaving] = useState(false);
-  const [aiLoading, setAiLoading] = useState(false);
-  const [rootLoading, setRootLoading] = useState(false);
+ 
 
   // Otomatik Etiket Senkronizasyonu
   useEffect(() => {
