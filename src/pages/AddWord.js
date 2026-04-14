@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useData } from "../context/DataContext";
-import { fetchWordAnalysisFromAI, fetchRootFromAI } from "../services/aiService";
 import { ArrowLeft, Loader2, Wand2, Brain, Plus, Save, Trash2, Tag, Languages } from "lucide-react";
 
 const WORD_TYPES = [
