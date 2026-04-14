@@ -13,36 +13,40 @@ const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 export const fetchMagicWordData = async (wordToSearch) => {
     try {
         const prompt = `Sen İngilizce-Türkçe sözlük verisi üreten bir asistansın.
-        Görev: "${wordToSearch}" kelimesinin detaylarını analiz et ve SADECE GEÇERLİ BİR JSON nesnesi döndür.
+        Görev: "${wordToSearch}" kelimesini analiz et ve SADECE GEÇERLİ BİR JSON DİZİSİ (ARRAY) döndür.
 
         KURALLAR:
-        1. Asla markdown kodu ( \`\`\`json vb.) kullanma. Doğrudan süslü parantez ile başla.
-        2. ETİKETLER (tags): "tags" dizisine SADECE kelimenin CEFR seviyesini (A1, A2, B1, B2, C1, C2) ekle. Kelime türünü (isim, fiil vs.) etiket olarak EKLEME.
-        3. ÇOKLU ANLAMLAR (definitions): Eğer kelimenin birbirinden tamamen farklı, yaygın anlamları varsa (örneğin "bank": banka, nehir kıyısı ve uçak dönüşü gibi), "definitions" dizisine her bir anlamı AYRI bir obje olarak ekle.
-        4. ÖRNEK CÜMLE (sentence): Örnek cümle ÇOK KISA VE ÖZ olsun. Maksimum 5-8 kelimelik, günlük hayattan, kolay anlaşılır bir cümle kur. Uzun ve karmaşık akademik cümlelerden kaçın.
-        5. "sentence_tr" kısmı cümlenin doğal Türkçe çevirisi olsun.
+        1. Asla markdown kodu kullanma. Doğrudan köşeli parantez [ ile başla ve ] ile bitir.
+        2. ÇOKLU ANLAMLAR: Eğer kelimenin birbirinden tamamen farklı, yaygın anlamları varsa (örneğin "bank": banka, nehir kıyısı, para yatırmak gibi), her bir farklı anlam için diziye YENİ BİR KELİME OBJESİ ekle.
+        3. Her objenin içindeki "definitions" dizisinde SADECE O KELİMEYE AİT 1 TANE anlam olsun.
+        4. ETİKETLER: "tags" dizisine SADECE kelimenin CEFR seviyesini (A1, A2, B1, B2, C1, C2) ekle. Kelime türünü etiket yapma.
+        5. ÖRNEK CÜMLE: Her anlam için o anlama uygun, maksimum 5-8 kelimelik, günlük hayattan KISA bir örnek cümle (sentence) kur.
 
-        BEKLENEN JSON FORMATI:
-        {
-          "word": "${wordToSearch}",
-          "phonetic": "/fonetik/",
-          "tags": ["B1"],
-          "plural": "çoğulu (varsa, yoksa boş)",
-          "v2": "past hali (sadece fiilse, yoksa boş)",
-          "v3": "past participle (sadece fiilse, yoksa boş)",
-          "vIng": "ing hali (sadece fiilse, yoksa boş)",
-          "thirdPerson": "he/she/it hali (sadece fiilse, yoksa boş)",
-          "advLy": "zarf hali (sıfatsa, yoksa boş)",
-          "compEr": "daha hali (sıfatsa, yoksa boş)",
-          "superEst": "en hali (sıfatsa, yoksa boş)",
-          "definitions": [
-            { "type": "noun", "meaning": "Banka (finansal)", "engExplanation": "A financial institution" },
-            { "type": "noun", "meaning": "Nehir kıyısı", "engExplanation": "The land alongside a river" },
-            { "type": "verb", "meaning": "Para yatırmak", "engExplanation": "To deposit money" }
-          ],
-          "sentence": "I sat on the river bank.",
-          "sentence_tr": "Nehir kıyısında oturdum."
-        }`;
+        BEKLENEN JSON FORMATI (Örnek olarak bank kelimesi için dizi içinde ayrı objeler):
+        [
+          {
+            "word": "${wordToSearch}",
+            "phonetic": "/bæŋk/",
+            "tags": ["A2"],
+            "plural": "banks",
+            "v2": "", "v3": "", "vIng": "", "thirdPerson": "",
+            "advLy": "", "compEr": "", "superEst": "",
+            "definitions": [ { "type": "noun", "meaning": "Banka (finansal)", "engExplanation": "A financial institution" } ],
+            "sentence": "I left my money in the bank.",
+            "sentence_tr": "Paramı bankada bıraktım."
+          },
+          {
+            "word": "${wordToSearch}",
+            "phonetic": "/bæŋk/",
+            "tags": ["B2"],
+            "plural": "banks",
+            "v2": "", "v3": "", "vIng": "", "thirdPerson": "",
+            "advLy": "", "compEr": "", "superEst": "",
+            "definitions": [ { "type": "noun", "meaning": "Nehir kıyısı", "engExplanation": "The land alongside a river" } ],
+            "sentence": "We sat on the river bank.",
+            "sentence_tr": "Nehir kıyısında oturduk."
+          }
+        ]`;
 
         const result = await model.generateContent(prompt);
         const textResponse = result.response.text();
