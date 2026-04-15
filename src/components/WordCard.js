@@ -5,19 +5,15 @@ export default function WordCard({ wordObj, onSwipeLeft, onSwipeRight }) {
   const [isFlipped, setIsFlipped] = useState(false);
   const [playingText, setPlayingText] = useState(null);
 
-  // --- SWIPE (KAYDIRMA) MANTIĞI ---
   const [touchStartX, setTouchStartX] = useState(null);
   const [swipeOffset, setSwipeOffset] = useState(0);
-  const [isAnimatingOut, setIsAnimatingOut] = useState(false); // Fırlatma animasyonu kontrolü
+  const [isAnimatingOut, setIsAnimatingOut] = useState(false); 
   const isDragging = useRef(false);
 
-  // Kelime değiştiğinde kartı görünmez bir şekilde anında merkeze al
   useEffect(() => {
     window.speechSynthesis.cancel();
     setPlayingText(null);
     setIsFlipped(false);
-    
-    // Yeni kelime geldiğinde animasyonsuz sıfırla
     setIsAnimatingOut(false); 
     setSwipeOffset(0); 
   }, [wordObj]);
@@ -48,7 +44,7 @@ export default function WordCard({ wordObj, onSwipeLeft, onSwipeRight }) {
   };
 
   const handleTouchStart = (e) => {
-    if (isAnimatingOut) return; // Kart uçuyorsa dokunmayı engelle
+    if (isAnimatingOut) return; 
     setTouchStartX(e.targetTouches[0].clientX);
     isDragging.current = false;
   };
@@ -64,33 +60,30 @@ export default function WordCard({ wordObj, onSwipeLeft, onSwipeRight }) {
     }
   };
 
-  // 🔥 FIRLATMA MANTIĞININ EKLENDİĞİ YER 🔥
   const handleTouchEnd = () => {
     if (!touchStartX || isAnimatingOut) return;
 
-    const SWIPE_THRESHOLD = 100; // Fırlatmak için gereken piksel mesafesi
+    const SWIPE_THRESHOLD = 100; 
     const SCREEN_WIDTH = window.innerWidth;
 
-    // SAĞA FIRLAT (BİLİYORUM)
     if (swipeOffset > SWIPE_THRESHOLD && onSwipeRight) {
         setIsAnimatingOut(true);
-        setSwipeOffset(SCREEN_WIDTH); // Ekranın sağına fırlat
+        setSwipeOffset(SCREEN_WIDTH); 
         
-        // Kart uçtuktan 300ms sonra işlemi ana sayfaya bildir
+        // 🔥 BEKLEME SÜRESİ YARIYA İNDİRİLDİ (150ms)
         setTimeout(() => {
             onSwipeRight(wordObj);
-        }, 300); 
+        }, 150); 
     } 
-    // SOLA FIRLAT (UNUTTUM)
     else if (swipeOffset < -SWIPE_THRESHOLD && onSwipeLeft) {
         setIsAnimatingOut(true);
-        setSwipeOffset(-SCREEN_WIDTH); // Ekranın soluna fırlat
+        setSwipeOffset(-SCREEN_WIDTH); 
         
+        // 🔥 BEKLEME SÜRESİ YARIYA İNDİRİLDİ (150ms)
         setTimeout(() => {
             onSwipeLeft(wordObj);
-        }, 300);
+        }, 150);
     }
-    // YETERİNCE ÇEKİLMEDİYSE MERKEZE YAYLANDIR
     else {
         setSwipeOffset(0);
     }
@@ -118,9 +111,8 @@ export default function WordCard({ wordObj, onSwipeLeft, onSwipeRight }) {
           WebkitTapHighlightColor: 'transparent', 
           outline: 'none',
           transform: `translateX(${swipeOffset}px) rotate(${swipeOffset * 0.05}deg)`,
-          // Parmağı takip ederken animasyon yok, fırlatırken var
-          transition: touchStartX !== null ? 'none' : 'transform 0.3s ease-out, opacity 0.3s ease-out',
-          // Kart ekrandan uzaklaştıkça yavaşça şeffaflaşsın
+          // 🔥 ANİMASYON SÜRESİ HIZLANDIRILDI (0.2s)
+          transition: touchStartX !== null ? 'none' : 'transform 0.2s ease-out, opacity 0.2s ease-out',
           opacity: isAnimatingOut ? 0 : Math.max(0.3, 1 - Math.abs(swipeOffset) / (window.innerWidth / 1.5))
       }}
       className="w-full cursor-pointer font-sans [perspective:1000px] touch-pan-y relative z-10"
@@ -135,8 +127,6 @@ export default function WordCard({ wordObj, onSwipeLeft, onSwipeRight }) {
       `}</style>
 
       <div className="relative w-full transition-all duration-500 ease-in-out [transform-style:preserve-3d]">
-        
-        {/* === ÖN YÜZ (İNGİLİZCE) === */}
         <div 
           className={`
             w-full bg-white rounded-3xl shadow-2xl flex flex-col overflow-hidden border border-slate-100 
@@ -228,7 +218,6 @@ export default function WordCard({ wordObj, onSwipeLeft, onSwipeRight }) {
           </div>
         </div>
 
-        {/* === ARKA YÜZ (TÜRKÇE) === */}
         <div 
           className={`
             w-full bg-slate-900 rounded-3xl shadow-2xl flex flex-col overflow-hidden border border-slate-700
@@ -272,7 +261,6 @@ export default function WordCard({ wordObj, onSwipeLeft, onSwipeRight }) {
             </div>
           </div>
         </div>
-
       </div>
       
       <style jsx>{`
