@@ -15,14 +15,13 @@ import {
   Layers,
   ArrowRight,
   AlertTriangle,
-  Flag // Bitiş bayrağı ikonu eklendi
+  Flag
 } from "lucide-react";
 
 export default function Game() {
   const { getAllWords, knownWordIds, handleSmartLearn, learningQueue, addScore, updateGameStats, handleUpdateWord } = useData();
   const navigate = useNavigate();
 
-  // --- STATE'LER ---
   const [gameStage, setGameStage] = useState("selection");
   const [sessionWords, setSessionWords] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -30,18 +29,15 @@ export default function Game() {
   const [stats, setStats] = useState({ learned: 0, review: 0, mastered: 0 });
   const [activeMode, setActiveMode] = useState(null);
 
-  // Modallar
   const [showMasterConfirm, setShowMasterConfirm] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   const POINTS_PER_CARD = 5;
 
-  // --- KRİTİK FONKSİYON: ODAĞI HEMEN KALDIR ---
   const handleBlur = (e) => {
       if (e && e.currentTarget) e.currentTarget.blur();
   };
 
-  // --- KELİME HAVUZLARI ---
   const pools = useMemo(() => {
     const all = getAllWords();
     const now = new Date();
@@ -65,7 +61,6 @@ export default function Game() {
     return { learnPool, reviewPool, waitingPool };
   }, [getAllWords, knownWordIds, learningQueue]);
 
-  // --- OTURUM BAŞLATMA (AKILLI SIRALAMA) ---
   const startSession = (mode, e) => {
     handleBlur(e); 
     setActiveMode(mode);
@@ -80,28 +75,18 @@ export default function Game() {
       return;
     }
 
-    // --- TARİHE GÖRE SIRALAMA ---
     const neverSeen = [];
     const seen = [];
 
     pool.forEach(w => {
-        if (!w.lastSeen) {
-            neverSeen.push(w);
-        } else {
-            seen.push(w);
-        }
+        if (!w.lastSeen) neverSeen.push(w);
+        else seen.push(w);
     });
 
-    // 1. Hiç görülmeyenleri rastgele karıştır
     neverSeen.sort(() => 0.5 - Math.random());
-
-    // 2. Görülenleri TARİHE göre sırala (En Eski -> En Yeni)
     seen.sort((a, b) => new Date(a.lastSeen).getTime() - new Date(b.lastSeen).getTime());
 
-    // 3. Listeleri birleştir
     const smartSortedPool = [...neverSeen, ...seen];
-
-    // 4. İlk 20 taneyi al ve kendi içinde karıştır
     const selected = smartSortedPool.slice(0, 10).sort(() => 0.5 - Math.random());
 
     setSessionWords(selected);
@@ -110,9 +95,8 @@ export default function Game() {
     setGameStage("playing");
   };
 
-  // --- CEVAPLAMA ---
   const handleAnswerAction = async (dir, type, e) => {
-    handleBlur(e); 
+    if (e) handleBlur(e); 
     if (currentIndex >= sessionWords.length) return;
 
     if (activeMode === 'waiting' && type === 'dont_know') {
@@ -124,17 +108,14 @@ export default function Game() {
     const currentWord = sessionWords[currentIndex];
 
     setTimeout(async () => {
-      // 1. Durum: TEKRAR MODU (Review)
       if (activeMode === 'review') {
           setStats((p) => ({ ...p, review: p.review + 1 }));
           updateGameStats('flashcard', 1);
       } 
-      // 2. Durum: BEKLEME MODU (Waiting)
       else if (activeMode === 'waiting' && type === 'waiting_pass') {
           setStats((p) => ({ ...p, review: p.review + 1 })); 
           updateGameStats('flashcard', 1);
       }
-      // 3. Durum: NORMAL ÖĞRENME (Learn)
       else {
           if (type === "dont_know") {
               await handleUpdateWord(currentWord.id, { lastSeen: new Date().toISOString() });
@@ -154,7 +135,6 @@ export default function Game() {
           }
       }
 
-      // Sonraki Soruya Geç
       if (currentIndex + 1 < sessionWords.length) {
         setCurrentIndex((p) => p + 1);
         setSwipeDirection(null);
@@ -169,7 +149,6 @@ export default function Game() {
     }, 300);
   };
 
-  // --- MODAL İŞLEMLERİ ---
   const handleMasterClick = (e) => { handleBlur(e); setShowMasterConfirm(true); };
   const confirmMastery = (e) => { handleBlur(e); setShowMasterConfirm(false); handleAnswerAction("up", "master", e); };
   
@@ -203,13 +182,9 @@ export default function Game() {
     setGameStage("summary");
   };
 
-  // ===========================
-  // === SEÇİM EKRANI ===
-  // ===========================
   if (gameStage === "selection") {
     return (
       <div className="min-h-screen bg-slate-50 p-6 flex flex-col items-center">
-        
         <style>{`
             * { -webkit-tap-highlight-color: transparent !important; }
             .game-btn { transition: transform 0.1s ease, background-color 0.2s ease, border-color 0.2s ease; }
@@ -220,7 +195,6 @@ export default function Game() {
                 .icon-btn:hover { background-color: #f1f5f9 !important; }
             }
         `}</style>
-
         <div className="w-full max-w-md space-y-6">
           <div className="flex items-center justify-between">
             <button onClick={() => navigate("/")} className="icon-btn p-2 bg-white rounded-full shadow-sm active:bg-slate-100 transition-colors"><Home className="w-5 h-5 text-slate-600" /></button>
@@ -231,9 +205,7 @@ export default function Game() {
             <h1 className="text-3xl font-black text-slate-800 mb-2">Nasıl Çalışalım?</h1>
             <p className="text-slate-500">Bugünkü hedefini seç ve kelimeleri çevirmeye başla.</p>
           </div>
-          
           <div className="space-y-4">
-            {/* 1. TEKRAR MODU */}
             <button onClick={(e) => startSession("review", e)} disabled={pools.reviewPool.length === 0} className="game-btn btn-select w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 active:scale-95 disabled:opacity-60 focus:outline-none">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
@@ -243,8 +215,6 @@ export default function Game() {
                 <div className="text-2xl font-black text-orange-600">{pools.reviewPool.length}</div>
               </div>
             </button>
-
-            {/* 2. ÖĞRENME MODU */}
             <button onClick={(e) => startSession("learn", e)} disabled={pools.learnPool.length === 0} className="game-btn btn-learn w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 active:scale-95 disabled:opacity-60 focus:outline-none">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
@@ -254,8 +224,6 @@ export default function Game() {
                 <div className="text-2xl font-black text-indigo-600">{pools.learnPool.length}</div>
               </div>
             </button>
-
-            {/* 3. BEKLEME LİSTESİ */}
             <button onClick={(e) => startSession("waiting", e)} disabled={pools.waitingPool.length === 0} className="game-btn btn-wait w-full bg-white p-5 rounded-2xl shadow-md border-2 border-slate-100 active:scale-95 disabled:opacity-60 focus:outline-none">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
@@ -271,9 +239,6 @@ export default function Game() {
     );
   }
 
-  // ===========================
-  // === ÖZET EKRANI ============
-  // ===========================
   if (gameStage === "summary") {
     let modeTitle = "Oturum Bitti!";
     if (activeMode === "learn") modeTitle = "Çalışma Tamamlandı";
@@ -297,19 +262,12 @@ export default function Game() {
     );
   }
 
-  // ===========================
-  // === OYUN (KARTLAR) =========
-  // ===========================
   const currentCard = sessionWords[currentIndex];
   const progress = sessionWords.length > 0 ? (currentIndex / sessionWords.length) * 100 : 0;
-  
-  // 🔥 SON KART MI?
   const isLastCard = currentIndex === sessionWords.length - 1;
 
   return (
     <div className="flex flex-col min-h-screen bg-slate-100 overflow-hidden relative">
-      
-      {/* --- OYUN BUTONLARI İÇİN ÖZEL CSS --- */}
       <style>{`
             * { -webkit-tap-highlight-color: transparent !important; }
             @media (hover: hover) {
@@ -322,7 +280,6 @@ export default function Game() {
             .game-btn { transition: transform 0.1s ease, background-color 0.2s ease; }
       `}</style>
 
-      {/* --- EZBERLEDİM ONAY MODALI --- */}
       {showMasterConfirm && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-sm w-full text-center">
@@ -330,14 +287,13 @@ export default function Game() {
             <h3 className="text-xl font-bold text-slate-800 mb-2">Bunu Öğrendin mi?</h3>
             <p className="text-slate-500 mb-6">Bu kelimeyi tamamen öğrendiğin kelimeler listesine taşıyacağım. Emin misin?</p>
             <div className="flex gap-3">
-              <button onClick={closeModal} style={{ WebkitTapHighlightColor: 'transparent' }} className="flex-1 py-3 px-4 border border-slate-200 rounded-xl font-bold text-slate-600 active:bg-slate-50 focus:outline-none">İptal</button>
-              <button onClick={confirmMastery} style={{ WebkitTapHighlightColor: 'transparent' }} className="flex-1 py-3 px-4 bg-blue-600 text-white rounded-xl font-bold active:bg-blue-700 focus:outline-none">Evet, Öğrendim</button>
+              <button onClick={closeModal} className="flex-1 py-3 px-4 border border-slate-200 rounded-xl font-bold text-slate-600 active:bg-slate-50 focus:outline-none">İptal</button>
+              <button onClick={confirmMastery} className="flex-1 py-3 px-4 bg-blue-600 text-white rounded-xl font-bold active:bg-blue-700 focus:outline-none">Evet, Öğrendim</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* --- SIFIRLAMA (BİLMİYORUM) ONAY MODALI --- */}
       {showResetConfirm && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-sm w-full text-center">
@@ -345,14 +301,13 @@ export default function Game() {
             <h3 className="text-xl font-bold text-slate-800 mb-2">Dikkat!</h3>
             <p className="text-slate-500 mb-6">Bu kelimeyi "Bilmiyorum" olarak işaretlersen seviyesi sıfırlanacak ve "Öğreneceğim" listesine geri gönderilecek. Emin misin?</p>
             <div className="flex gap-3">
-              <button onClick={closeModal} style={{ WebkitTapHighlightColor: 'transparent' }} className="flex-1 py-3 px-4 border border-slate-200 rounded-xl font-bold text-slate-600 active:bg-slate-50 focus:outline-none">İptal</button>
-              <button onClick={confirmReset} style={{ WebkitTapHighlightColor: 'transparent' }} className="flex-1 py-3 px-4 bg-orange-600 text-white rounded-xl font-bold active:bg-orange-700 focus:outline-none">Evet, Sıfırla</button>
+              <button onClick={closeModal} className="flex-1 py-3 px-4 border border-slate-200 rounded-xl font-bold text-slate-600 active:bg-slate-50 focus:outline-none">İptal</button>
+              <button onClick={confirmReset} className="flex-1 py-3 px-4 bg-orange-600 text-white rounded-xl font-bold active:bg-orange-700 focus:outline-none">Evet, Sıfırla</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Progress Bar + Üst Bar */}
       <div className="bg-white shadow-sm p-4 z-10">
         <div className="max-w-md mx-auto">
           <div className="flex justify-between items-center mb-2">
@@ -368,7 +323,6 @@ export default function Game() {
         </div>
       </div>
 
-      {/* KART */}
       <div className="flex-1 flex items-center justify-center p-4 relative">
         {currentCard && (
           <div className={`relative w-full max-w-sm transition-all duration-300 transform 
@@ -376,52 +330,51 @@ export default function Game() {
               ${swipeDirection === "right" ? "translate-x-24 rotate-6 opacity-0" : ""}
               ${swipeDirection === "up" ? "-translate-y-24 scale-90 opacity-0" : ""}`}
           >
-            <WordCard key={currentCard.id} wordObj={currentCard} />
+            {/* 🔥 GÜNCELLENEN KISIM: SWIPE AKSİYONLARI 🔥 */}
+            <WordCard 
+                key={currentCard.id} 
+                wordObj={currentCard} 
+                onSwipeLeft={() => handleAnswerAction("left", "dont_know", null)}
+                onSwipeRight={() => {
+                    if (activeMode === 'review') handleAnswerAction("right", "review_pass", null);
+                    else if (activeMode === 'waiting') handleAnswerAction("right", "waiting_pass", null);
+                    else handleAnswerAction("right", "know", null);
+                }}
+            />
           </div>
         )}
       </div>
 
-      {/* BUTONLAR (DÜZENLENDİ) */}
       <div className="pb-10 px-6 max-w-md mx-auto w-full">
         {activeMode === 'review' ? (
-            // --- TEKRAR MODU (Dinamik Buton) ---
-            <button onClick={(e) => { handleBlur(e); handleAnswerAction("right", "review_pass", e); }} style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }} className="game-btn btn-white w-full bg-white border-2 border-slate-200 text-slate-600 font-bold py-4 rounded-2xl shadow-sm flex items-center justify-center gap-2 active:scale-95 focus:outline-none">
+            <button onClick={(e) => { handleBlur(e); handleAnswerAction("right", "review_pass", e); }} className="game-btn btn-white w-full bg-white border-2 border-slate-200 text-slate-600 font-bold py-4 rounded-2xl shadow-sm flex items-center justify-center gap-2 active:scale-95 focus:outline-none">
                 <span>{isLastCard ? "Turu Bitir" : "Sıradaki Kelime"}</span>
                 {isLastCard ? <Flag className="w-5 h-5"/> : <ArrowRight className="w-5 h-5" />}
             </button>
         ) : activeMode === 'waiting' ? (
-            // --- BEKLEME MODU (Sıradaki + Ezberledim) ---
             <div className="flex gap-3 justify-center">
-              <button onClick={(e) => { handleBlur(e); handleAnswerAction("right", "waiting_pass", e); }} disabled={!!swipeDirection || showMasterConfirm || showResetConfirm} style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }} className="game-btn btn-white flex-1 bg-white border-2 border-slate-200 text-slate-600 font-bold py-4 rounded-2xl shadow-sm flex flex-col items-center gap-1 active:scale-95 focus:outline-none">
+              <button onClick={(e) => { handleBlur(e); handleAnswerAction("right", "waiting_pass", e); }} disabled={!!swipeDirection || showMasterConfirm || showResetConfirm} className="game-btn btn-white flex-1 bg-white border-2 border-slate-200 text-slate-600 font-bold py-4 rounded-2xl shadow-sm flex flex-col items-center gap-1 active:scale-95 focus:outline-none">
                 {isLastCard ? <Flag className="w-6 h-6" /> : <ArrowRight className="w-6 h-6" />}
                 <span className="text-sm">{isLastCard ? "Turu Bitir" : "Sıradaki Kelime"}</span>
               </button>
-              
-              <button onClick={(e) => handleMasterClick(e)} disabled={!!swipeDirection || showMasterConfirm || showResetConfirm} style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }} className="game-btn btn-blue flex-1 bg-white border-2 border-blue-100 text-blue-600 font-bold py-4 rounded-2xl shadow-sm flex flex-col items-center gap-1 active:scale-95 focus:outline-none">
+              <button onClick={(e) => handleMasterClick(e)} disabled={!!swipeDirection || showMasterConfirm || showResetConfirm} className="game-btn btn-blue flex-1 bg-white border-2 border-blue-100 text-blue-600 font-bold py-4 rounded-2xl shadow-sm flex flex-col items-center gap-1 active:scale-95 focus:outline-none">
                 <CheckCheck className="w-6 h-6" /><span className="text-sm">Bunu Öğrendim</span>
               </button>
             </div>
         ) : (
-            // --- ÖĞRENME MODU (Pas + Öğreniyorum + Bunu Öğrendim) ---
             <div className="flex gap-3 justify-center">
-              {/* PAS (Eski Bilmiyorum) */}
-              <button onClick={(e) => { handleBlur(e); handleAnswerAction("left", "dont_know", e); }} disabled={!!swipeDirection || showMasterConfirm || showResetConfirm} style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }} className="game-btn btn-orange flex-1 bg-white border-2 border-orange-100 text-orange-500 font-bold py-4 rounded-2xl shadow-sm flex flex-col items-center gap-1 active:scale-95 focus:outline-none">
+              <button onClick={(e) => { handleBlur(e); handleAnswerAction("left", "dont_know", e); }} disabled={!!swipeDirection || showMasterConfirm || showResetConfirm} className="game-btn btn-orange flex-1 bg-white border-2 border-orange-100 text-orange-500 font-bold py-4 rounded-2xl shadow-sm flex flex-col items-center gap-1 active:scale-95 focus:outline-none">
                 <X className="w-6 h-6" /><span className="text-sm">Pas</span>
               </button>
-              
-              {/* ÖĞRENİYORUM (Eski Biliyorum) */}
-              <button onClick={(e) => { handleBlur(e); handleAnswerAction("right", "know", e); }} disabled={!!swipeDirection || showMasterConfirm || showResetConfirm} style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }} className="game-btn btn-green flex-1 bg-white border-2 border-green-100 text-green-600 font-bold py-4 rounded-2xl shadow-sm flex flex-col items-center gap-1 active:scale-95 focus:outline-none">
+              <button onClick={(e) => { handleBlur(e); handleAnswerAction("right", "know", e); }} disabled={!!swipeDirection || showMasterConfirm || showResetConfirm} className="game-btn btn-green flex-1 bg-white border-2 border-green-100 text-green-600 font-bold py-4 rounded-2xl shadow-sm flex flex-col items-center gap-1 active:scale-95 focus:outline-none">
                 <Check className="w-6 h-6" /><span className="text-sm">Öğreniyorum</span>
               </button>
-              
-              {/* BUNU ÖĞRENDİM (Eski Ezberledim) */}
-              <button onClick={(e) => handleMasterClick(e)} disabled={!!swipeDirection || showMasterConfirm || showResetConfirm} style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }} className="game-btn btn-blue flex-1 bg-white border-2 border-blue-100 text-blue-600 font-bold py-4 rounded-2xl shadow-sm flex flex-col items-center gap-1 active:scale-95 focus:outline-none">
+              <button onClick={(e) => handleMasterClick(e)} disabled={!!swipeDirection || showMasterConfirm || showResetConfirm} className="game-btn btn-blue flex-1 bg-white border-2 border-blue-100 text-blue-600 font-bold py-4 rounded-2xl shadow-sm flex flex-col items-center gap-1 active:scale-95 focus:outline-none">
                 <CheckCheck className="w-6 h-6" /><span className="text-sm">Bunu Öğrendim</span>
               </button>
             </div>
         )}
-
-        <button onClick={handleQuitEarly} style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }} className="icon-btn mt-6 flex items-center justify-center gap-2 text-slate-400 p-2 rounded-full active:bg-slate-100 transition-colors text-sm font-medium mx-auto focus:outline-none">
+        <button onClick={handleQuitEarly} className="icon-btn mt-6 flex items-center justify-center gap-2 text-slate-400 p-2 rounded-full active:bg-slate-100 transition-colors text-sm font-medium mx-auto focus:outline-none">
           <Target className="w-4 h-4" /> Bitir
         </button>
       </div>
