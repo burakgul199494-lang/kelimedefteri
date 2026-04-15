@@ -1,2 +1,1 @@
-export const oxford3000 = [
-  
+export const oxford3000 = [];
