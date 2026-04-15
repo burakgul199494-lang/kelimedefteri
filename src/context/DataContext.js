@@ -62,9 +62,15 @@ export const DataProvider = ({ children }) => {
       setAuthLoading(false);
 
       if (!currentUser) {
-        setKnownWordIds([]); setCustomWords([]); setDeletedWordIds([]); 
-        setLearningQueue([]); setStreak(0); setBlacklistedWords([]);
-        setQuestProgress({}); setQuestHistory({}); setProfileLoading(false); 
+        setKnownWordIds([]); 
+        setCustomWords([]); 
+        setDeletedWordIds([]); 
+        setLearningQueue([]); 
+        setStreak(0); 
+        setBlacklistedWords([]);
+        setQuestProgress({}); 
+        setQuestHistory({}); 
+        setProfileLoading(false); 
       } else {
         setProfileLoading(true); 
       }
@@ -288,7 +294,6 @@ export const DataProvider = ({ children }) => {
 
     const all = finalWordList.map(normalizeWord);
     if (blacklistedWords.length > 0) {
-        // 🔥 ARTIK İSME GÖRE DEĞİL, ID'YE GÖRE FİLTRELİYOR
         return all.filter(w => !blacklistedWords.includes(String(w.id)));
     }
     return all;
@@ -365,28 +370,40 @@ export const DataProvider = ({ children }) => {
     } catch (e) { return { success: false, message: e.message }; }
   };
 
-  // 🔥 SİLME MANTIĞI TAMAMEN YENİLENDİ!
+  // 🔥 SİLME VE "VARSAYILANA DÖN" MANTIĞI EKLENDİ
   const handleDeleteSystemWord = async (wordId) => {
+      const wordToDelete = dynamicSystemWords.find(w => String(w.id) === String(wordId));
+      if (!wordToDelete) return;
+
+      const isOxford = String(wordId).startsWith("ox-");
+      const isEdited = isOxford && !wordToDelete.isStatic;
+
+      if (isEdited) {
+          // EĞER DÜZENLENMİŞ OXFORD İSE SADECE FİREBASE'DEKİ KOPYAYI SİL VE ESKİ HALİNE DÖNDÜR
+          if(!window.confirm("Bu kelime üzerindeki değişikliklerinizi silip orijinal Oxford haline döndürmek istiyor musunuz?")) return;
+          try { 
+              await deleteDoc(doc(db, "artifacts", appId, "system_words", String(wordId))); 
+          } catch(e) { console.error(e); }
+          return;
+      }
+
+      // NORMAL SİLME İŞLEMİ
       if(!window.confirm("Bu kelimeyi sistemden silmek istediğine emin misin?")) return;
       try { 
-          const wordToDelete = dynamicSystemWords.find(w => String(w.id) === String(wordId));
-          if (wordToDelete) {
-             if (wordToDelete.isStatic) {
-                 // SADECE STATİK (OXFORD) İSE KARA LİSTEYE ATARAK GİZLE
-                 await addDoc(collection(db, "artifacts", appId, "blacklist"), { 
-                     bannedId: String(wordId), 
-                     word: wordToDelete.word.toLowerCase().trim(), 
-                     bannedAt: new Date() 
-                 });
-             } else {
-                 // KULLANICI EKLEMİŞSE VERİTABANINDAN TAMAMEN YOK ET
-                 await deleteDoc(doc(db, "artifacts", appId, "system_words", String(wordId))); 
-             }
+          if (isOxford) {
+             // SADECE STATİK (OXFORD) İSE KARA LİSTEYE ATARAK GİZLE
+             await addDoc(collection(db, "artifacts", appId, "blacklist"), { 
+                 bannedId: String(wordId), 
+                 word: wordToDelete.word.toLowerCase().trim(), 
+                 bannedAt: new Date() 
+             });
+          } else {
+             // KULLANICI EKLEMİŞSE VERİTABANINDAN TAMAMEN YOK ET
+             await deleteDoc(doc(db, "artifacts", appId, "system_words", String(wordId))); 
           }
       } catch(e) { console.error(e); }
   };
 
-  // 🔥 KARA LİSTEDEN ÇIKARMA (ID BAZLI)
   const removeFromBlacklist = async (wordId) => {
       try {
           const blacklistRef = collection(db, "artifacts", appId, "blacklist");
