@@ -3,19 +3,8 @@ import { useData } from "../context/DataContext";
 import WordCard from "../components/WordCard";
 import { useNavigate } from "react-router-dom";
 import {
-  X,
-  Home,
-  Target,
-  Check,
-  CheckCheck,
-  Trophy,
-  RotateCcw,
-  Brain,
-  Hourglass,
-  Layers,
-  ArrowRight,
-  AlertTriangle,
-  Flag
+  X, Home, Target, Check, CheckCheck, Trophy, RotateCcw, 
+  Brain, Hourglass, Layers, ArrowRight, AlertTriangle, Flag
 } from "lucide-react";
 
 export default function Game() {
@@ -107,6 +96,7 @@ export default function Game() {
     setSwipeDirection(dir);
     const currentWord = sessionWords[currentIndex];
 
+    // 🔥 BEKLEME SÜRESİ YARIYA İNDİRİLDİ (150ms)
     setTimeout(async () => {
       if (activeMode === 'review') {
           setStats((p) => ({ ...p, review: p.review + 1 }));
@@ -146,7 +136,7 @@ export default function Game() {
             if (totalPoints > 0) addScore(totalPoints);
         }
       }
-    }, 300);
+    }, 150); 
   };
 
   const handleMasterClick = (e) => { handleBlur(e); setShowMasterConfirm(true); };
@@ -168,7 +158,7 @@ export default function Game() {
               setSwipeDirection(null);
               if (sessionWords.length * POINTS_PER_CARD > 0) addScore(sessionWords.length * POINTS_PER_CARD);
           }
-      }, 300);
+      }, 150);
   };
 
   const closeModal = (e) => { handleBlur(e); setShowMasterConfirm(false); setShowResetConfirm(false); };
@@ -325,12 +315,12 @@ export default function Game() {
 
       <div className="flex-1 flex items-center justify-center p-4 relative">
         {currentCard && (
-          <div className={`relative w-full max-w-sm transition-all duration-300 transform 
+          // 🔥 ANİMASYON SÜRESİ KISALTILDI (duration-150)
+          <div className={`relative w-full max-w-sm transition-all duration-150 transform 
               ${swipeDirection === "left" ? "-translate-x-24 -rotate-6 opacity-0" : ""}
               ${swipeDirection === "right" ? "translate-x-24 rotate-6 opacity-0" : ""}
               ${swipeDirection === "up" ? "-translate-y-24 scale-90 opacity-0" : ""}`}
           >
-            {/* 🔥 GÜNCELLENEN KISIM: SWIPE AKSİYONLARI 🔥 */}
             <WordCard 
                 key={currentCard.id} 
                 wordObj={currentCard} 
