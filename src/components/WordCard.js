@@ -8,13 +8,17 @@ export default function WordCard({ wordObj, onSwipeLeft, onSwipeRight }) {
   // --- SWIPE (KAYDIRMA) MANTIĞI ---
   const [touchStartX, setTouchStartX] = useState(null);
   const [swipeOffset, setSwipeOffset] = useState(0);
-  const isDragging = useRef(false); // Sürükleme anında kartın dönmesini engeller
+  const [isAnimatingOut, setIsAnimatingOut] = useState(false); // Fırlatma animasyonu kontrolü
+  const isDragging = useRef(false);
 
-  // Kelime değiştiğinde kartı ve sesleri sıfırla
+  // Kelime değiştiğinde kartı görünmez bir şekilde anında merkeze al
   useEffect(() => {
     window.speechSynthesis.cancel();
     setPlayingText(null);
     setIsFlipped(false);
+    
+    // Yeni kelime geldiğinde animasyonsuz sıfırla
+    setIsAnimatingOut(false); 
     setSwipeOffset(0); 
   }, [wordObj]);
 
@@ -43,50 +47,62 @@ export default function WordCard({ wordObj, onSwipeLeft, onSwipeRight }) {
     }
   };
 
-  // --- MOBİL DOKUNMATİK (TOUCH) YAKALAYICILAR ---
   const handleTouchStart = (e) => {
+    if (isAnimatingOut) return; // Kart uçuyorsa dokunmayı engelle
     setTouchStartX(e.targetTouches[0].clientX);
     isDragging.current = false;
   };
 
   const handleTouchMove = (e) => {
-    if (touchStartX === null) return;
+    if (touchStartX === null || isAnimatingOut) return;
     const currentX = e.targetTouches[0].clientX;
     const diff = currentX - touchStartX;
     setSwipeOffset(diff);
 
-    // Eğer parmak 10 pikselden fazla hareket ettiyse, bunu bir "sürükleme" kabul et ve tıklamayı iptal et
     if (Math.abs(diff) > 10) {
         isDragging.current = true;
     }
   };
 
+  // 🔥 FIRLATMA MANTIĞININ EKLENDİĞİ YER 🔥
   const handleTouchEnd = () => {
-    if (!touchStartX) return;
+    if (!touchStartX || isAnimatingOut) return;
 
-    const SWIPE_THRESHOLD = 90; // Kartın aksiyon alması için ne kadar uzağa çekilmesi gerektiği
+    const SWIPE_THRESHOLD = 100; // Fırlatmak için gereken piksel mesafesi
+    const SCREEN_WIDTH = window.innerWidth;
 
-    // Sağa kaydırıldıysa
+    // SAĞA FIRLAT (BİLİYORUM)
     if (swipeOffset > SWIPE_THRESHOLD && onSwipeRight) {
-        onSwipeRight(wordObj);
+        setIsAnimatingOut(true);
+        setSwipeOffset(SCREEN_WIDTH); // Ekranın sağına fırlat
+        
+        // Kart uçtuktan 300ms sonra işlemi ana sayfaya bildir
+        setTimeout(() => {
+            onSwipeRight(wordObj);
+        }, 300); 
     } 
-    // Sola kaydırıldıysa
+    // SOLA FIRLAT (UNUTTUM)
     else if (swipeOffset < -SWIPE_THRESHOLD && onSwipeLeft) {
-        onSwipeLeft(wordObj);
+        setIsAnimatingOut(true);
+        setSwipeOffset(-SCREEN_WIDTH); // Ekranın soluna fırlat
+        
+        setTimeout(() => {
+            onSwipeLeft(wordObj);
+        }, 300);
+    }
+    // YETERİNCE ÇEKİLMEDİYSE MERKEZE YAYLANDIR
+    else {
+        setSwipeOffset(0);
     }
 
-    // Parmağı çekince kartı merkez noktasına (0) geri yaylandır
     setTouchStartX(null);
-    setSwipeOffset(0);
-
-    // Animasyon tamamlanana kadar tıklamayı bloke etmeye devam et
     setTimeout(() => {
         isDragging.current = false;
     }, 50);
   };
 
   const handleFlip = () => {
-      if (isDragging.current) return; // EĞER SÜRÜKLENİYORSA DÖNME!
+      if (isDragging.current || isAnimatingOut) return; 
       setIsFlipped(!isFlipped);
   };
 
@@ -101,11 +117,12 @@ export default function WordCard({ wordObj, onSwipeLeft, onSwipeRight }) {
       style={{ 
           WebkitTapHighlightColor: 'transparent', 
           outline: 'none',
-          // Dinamik Sürükleme Animasyonu (Sağa sola gitme ve hafif yatma)
-          transform: `translateX(${swipeOffset}px) rotate(${swipeOffset * 0.04}deg)`,
-          transition: touchStartX !== null ? 'none' : 'transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
+          transform: `translateX(${swipeOffset}px) rotate(${swipeOffset * 0.05}deg)`,
+          // Parmağı takip ederken animasyon yok, fırlatırken var
+          transition: touchStartX !== null ? 'none' : 'transform 0.3s ease-out, opacity 0.3s ease-out',
+          // Kart ekrandan uzaklaştıkça yavaşça şeffaflaşsın
+          opacity: isAnimatingOut ? 0 : Math.max(0.3, 1 - Math.abs(swipeOffset) / (window.innerWidth / 1.5))
       }}
-      // touch-pan-y: Dikey kaydırmaya izin ver, yatay tarayıcı hareketlerini engelle
       className="w-full cursor-pointer font-sans [perspective:1000px] touch-pan-y relative z-10"
     >
       <style>{`
@@ -119,9 +136,7 @@ export default function WordCard({ wordObj, onSwipeLeft, onSwipeRight }) {
 
       <div className="relative w-full transition-all duration-500 ease-in-out [transform-style:preserve-3d]">
         
-        {/* ============================== */}
         {/* === ÖN YÜZ (İNGİLİZCE) === */}
-        {/* ============================== */}
         <div 
           className={`
             w-full bg-white rounded-3xl shadow-2xl flex flex-col overflow-hidden border border-slate-100 
@@ -132,11 +147,9 @@ export default function WordCard({ wordObj, onSwipeLeft, onSwipeRight }) {
             }
           `}
         >
-          {/* HERO BÖLÜMÜ */}
           <div className="relative bg-gradient-to-br from-indigo-600 to-violet-700 p-6 flex flex-col items-center justify-center min-h-[160px] text-center shrink-0">
             <div className="absolute top-0 left-0 w-full h-full opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
             
-            {/* ETİKETLER */}
             {wordObj.tags && Array.isArray(wordObj.tags) && wordObj.tags.length > 0 && (
                 <div className="absolute top-4 right-4 flex flex-col items-end gap-1 z-20 max-w-[80px]">
                     {wordObj.tags.map((tag, i) => (
@@ -158,7 +171,6 @@ export default function WordCard({ wordObj, onSwipeLeft, onSwipeRight }) {
                     </span>
                   )}
               </div>
-
               <button
                 onClick={(e) => toggleSpeak(e, wordObj.word)}
                 className="audio-btn-hero card-btn flex items-center justify-center p-3 bg-white/20 text-white rounded-full backdrop-blur-md active:scale-90 shrink-0 focus:outline-none focus:ring-0 ml-2"
@@ -168,7 +180,6 @@ export default function WordCard({ wordObj, onSwipeLeft, onSwipeRight }) {
             </div>
           </div>
 
-          {/* İÇERİK GÖVDESİ */}
           <div className="flex-1 flex flex-col p-6 gap-5 bg-slate-50/50 justify-center">
             {mainDefinition && (
               <div className={`relative p-5 rounded-2xl border bg-white border-indigo-100 shadow-sm`}>
@@ -217,9 +228,7 @@ export default function WordCard({ wordObj, onSwipeLeft, onSwipeRight }) {
           </div>
         </div>
 
-        {/* ============================== */}
         {/* === ARKA YÜZ (TÜRKÇE) === */}
-        {/* ============================== */}
         <div 
           className={`
             w-full bg-slate-900 rounded-3xl shadow-2xl flex flex-col overflow-hidden border border-slate-700
