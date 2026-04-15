@@ -210,7 +210,9 @@ export default function Game() {
   };
 
   // --- PEKİŞTİRME CEVAP İŞLEYİCİLERİ ---
-  const handleReinforcementAnswer = (isCorrect) => {
+  const handleReinforcementAnswer = (isCorrect, e) => {
+      if (e) handleBlur(e); 
+      
       if (isCorrect) {
           setReinfFeedback("correct");
           setTimeout(() => {
@@ -230,9 +232,28 @@ export default function Game() {
 
   const handleReinfSubmit = (e) => {
       e.preventDefault();
+      if (e) handleBlur(e); 
       const currentQ = reinforcementQuestions[reinfIndex];
       const isCorrect = reinfInput.trim().toLowerCase() === currentQ.wordObj.word.toLowerCase();
-      handleReinforcementAnswer(isCorrect);
+      handleReinforcementAnswer(isCorrect, null);
+  };
+
+  const handlePassReinforcement = (e) => {
+      if (e) handleBlur(e);
+      const currentQ = reinforcementQuestions[reinfIndex];
+      
+      setReinfInput(currentQ.wordObj.word); 
+      setReinfFeedback("wrong"); 
+      
+      setTimeout(() => {
+          setReinfFeedback(null);
+          setReinfInput("");
+          if (reinfIndex + 1 < reinforcementQuestions.length) {
+              setReinfIndex(p => p + 1);
+          } else {
+              setGameStage("summary"); 
+          }
+      }, 1500); 
   };
 
 
@@ -331,7 +352,7 @@ export default function Game() {
                         <h2 className="text-4xl font-black text-slate-800 mb-8 break-words">{currentQ.wordObj.word}</h2>
                         <div className="grid grid-cols-1 gap-3">
                             {currentQ.options.map((opt, i) => (
-                                <button key={i} onClick={() => handleReinforcementAnswer(opt.id === currentQ.wordObj.id)} disabled={reinfFeedback !== null} className="w-full p-4 bg-slate-50 border-2 border-slate-200 rounded-xl font-bold text-slate-700 hover:bg-indigo-50 hover:border-indigo-300 active:scale-95 transition-all outline-none focus:outline-none">
+                                <button key={i} onClick={(e) => handleReinforcementAnswer(opt.id === currentQ.wordObj.id, e)} disabled={reinfFeedback !== null} className="w-full p-4 bg-slate-50 border-2 border-slate-200 rounded-xl font-bold text-slate-700 hover:bg-indigo-50 hover:border-indigo-300 active:scale-95 transition-all outline-none focus:outline-none">
                                     {opt.definitions && opt.definitions[0] ? opt.definitions[0].meaning : "Anlam yok"}
                                 </button>
                             ))}
@@ -346,7 +367,7 @@ export default function Game() {
                         <h2 className="text-3xl font-black text-slate-800 mb-8 break-words">{mainMeaning}</h2>
                         <div className="grid grid-cols-1 gap-3">
                             {currentQ.options.map((opt, i) => (
-                                <button key={i} onClick={() => handleReinforcementAnswer(opt.id === currentQ.wordObj.id)} disabled={reinfFeedback !== null} className="w-full p-4 bg-slate-50 border-2 border-slate-200 rounded-xl font-bold text-slate-700 hover:bg-indigo-50 hover:border-indigo-300 active:scale-95 transition-all outline-none focus:outline-none">
+                                <button key={i} onClick={(e) => handleReinforcementAnswer(opt.id === currentQ.wordObj.id, e)} disabled={reinfFeedback !== null} className="w-full p-4 bg-slate-50 border-2 border-slate-200 rounded-xl font-bold text-slate-700 hover:bg-indigo-50 hover:border-indigo-300 active:scale-95 transition-all outline-none focus:outline-none">
                                     {opt.word}
                                 </button>
                             ))}
@@ -374,9 +395,23 @@ export default function Game() {
                                 placeholder="Kelimeyi buraya yaz..." 
                                 className="w-full p-4 text-center text-2xl font-bold bg-slate-50 border-b-4 border-slate-300 rounded-xl focus:border-indigo-500 outline-none mb-4 transition-colors"
                             />
-                            <button type="submit" disabled={!reinfInput.trim() || reinfFeedback !== null} className="w-full bg-indigo-600 text-white font-bold py-4 rounded-xl disabled:opacity-50 active:scale-95 transition-all outline-none focus:outline-none">
-                                Kontrol Et
-                            </button>
+                            <div className="flex gap-2">
+                                <button 
+                                    type="button" 
+                                    onClick={handlePassReinforcement} 
+                                    disabled={reinfFeedback !== null} 
+                                    className="w-1/3 bg-slate-200 text-slate-600 font-bold py-4 rounded-xl hover:bg-slate-300 disabled:opacity-50 active:scale-95 transition-all outline-none focus:outline-none"
+                                >
+                                    Pas
+                                </button>
+                                <button 
+                                    type="submit" 
+                                    disabled={!reinfInput.trim() || reinfFeedback !== null} 
+                                    className="w-2/3 bg-indigo-600 text-white font-bold py-4 rounded-xl hover:bg-indigo-700 disabled:opacity-50 active:scale-95 transition-all outline-none focus:outline-none"
+                                >
+                                    Kontrol Et
+                                </button>
+                            </div>
                         </form>
                     </div>
                 )}
