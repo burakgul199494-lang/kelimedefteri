@@ -40,9 +40,9 @@ export default function AdminDashboard() {
 
   const filtered = dynamicSystemWords
      .filter(w => {
-         // 🔥 ID BAZLI FİLTRELEME
          if (filterMode === 'blacklisted') return blacklistedWords.includes(String(w.id));
-         if (filterMode === 'static') return w.isStatic;
+         // 🔥 ARTIK isStatic DEĞİL, ID'Sİ ox- İLE BAŞLAYANLARI FİLTRELİYORUZ
+         if (filterMode === 'static') return String(w.id).startsWith("ox-");
          return true;
      })
      .filter(w => {
@@ -113,13 +113,19 @@ export default function AdminDashboard() {
   };
 
   const renderWordCard = (index, item) => {
-      // 🔥 ID BAZLI KONTROL
       const isBlacklisted = blacklistedWords.includes(String(item.id));
-      const isStatic = item.isStatic;
+      
+      // 🔥 YENİ KONTROL: ID ox- ile başlıyorsa Oxford'dur. 
+      // Hem Oxford hem de isStatic false ise (yani veritabanındaysa) düzenlenmiştir.
+      const isOxford = String(item.id).startsWith("ox-");
+      const isEdited = isOxford && !item.isStatic;
 
       let containerClass = "bg-white rounded-2xl shadow-sm mb-4 overflow-hidden w-full transition-all ";
-      if (isStatic) containerClass += "border-2 border-orange-400 ";
+      
+      // Düzenlenmiş olsa bile Oxford kelimesi turuncu çerçevesini korur
+      if (isOxford) containerClass += "border-2 border-orange-400 ";
       else containerClass += "border border-slate-200 ";
+      
       if (isBlacklisted) containerClass += "opacity-80 bg-slate-50 "; 
 
       return (
@@ -130,7 +136,10 @@ export default function AdminDashboard() {
                       {item.word}
                   </span>
                   
-                  {isStatic && <span className="text-[9px] font-bold bg-orange-100 text-orange-600 px-2 py-0.5 rounded border border-orange-200 uppercase tracking-widest">Kod (Oxford)</span>}
+                  {/* 🔥 ROZETLER */}
+                  {isOxford && !isEdited && <span className="text-[9px] font-bold bg-orange-100 text-orange-600 px-2 py-0.5 rounded border border-orange-200 uppercase tracking-widest">Kod (Oxford)</span>}
+                  {isEdited && <span className="text-[9px] font-bold bg-amber-100 text-amber-700 px-2 py-0.5 rounded border border-amber-200 uppercase tracking-widest">Oxford (Düzenlendi)</span>}
+                  
                   {isBlacklisted && <span className="text-[9px] font-bold bg-red-100 text-red-600 px-2 py-0.5 rounded border border-red-200 uppercase tracking-widest">Kara Listede</span>}
 
                   {item.phonetic && (
@@ -144,7 +153,6 @@ export default function AdminDashboard() {
               </div>
               <div className="flex gap-1.5 shrink-0">
                   {isBlacklisted ? (
-                      // 🔥 ID GÖNDERİLİYOR
                       <button onClick={() => removeFromBlacklist(item.id)} className="flex items-center gap-1 p-2 text-xs font-bold text-emerald-600 bg-emerald-50 hover:bg-emerald-100 rounded-xl border border-emerald-200 transition-colors shadow-sm">
                           <RotateCcw className="w-3.5 h-3.5"/> Geri Getir
                       </button>
