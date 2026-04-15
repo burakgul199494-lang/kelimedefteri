@@ -2,8 +2,11 @@ import React, { useState, useEffect } from "react";
 import { useData } from "../context/DataContext";
 import WordCard2 from "../components/WordCard2";
 import QuickAddModal from "../components/QuickAddModal";
-import { ArrowLeft, Search, X, BookOpen, AlertCircle, ArrowDownCircle, Plus, CopyPlus } from "lucide-react";
+import { ArrowLeft, Search, X, AlertCircle, ArrowDownCircle, Plus, CopyPlus, BookOpen } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
+
+// İngilizce Alfabe Dizisi
+const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 
 export default function Dictionary() {
   const { getAllWords, isAdmin } = useData(); 
@@ -11,13 +14,18 @@ export default function Dictionary() {
   const location = useLocation();
   
   const [term, setTerm] = useState(location.state?.addedWord || "");
-  const [results, setResults] = useState([]);
   const [debouncedTerm, setDebouncedTerm] = useState(term);
+  
+  // YENİ: Harf seçimi için state (Varsayılan: A)
+  const [activeLetter, setActiveLetter] = useState("A");
+
+  const [results, setResults] = useState([]);
   const [visibleCount, setVisibleCount] = useState(50);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
 
   const PER_PAGE = 50;
 
+  // Gecikmeli Arama (Debounce)
   useEffect(() => {
     const timer = setTimeout(() => {
         setDebouncedTerm(term);
@@ -25,16 +33,23 @@ export default function Dictionary() {
     return () => clearTimeout(timer);
   }, [term]);
 
+  // Ana Filtreleme Mantığı (Harf Modu vs Arama Modu)
   useEffect(() => {
     const cleanTerm = debouncedTerm.toLowerCase().trim();
+    const allWords = getAllWords();
     
+    // EĞER ARAMA KUTUSU BOŞSA: HARFE GÖRE FİLTRELE
     if (!cleanTerm) {
-        setResults([]);
+        const filteredByLetter = allWords
+            .filter(item => item.word.toLowerCase().startsWith(activeLetter.toLowerCase()))
+            .sort((a, b) => a.word.localeCompare(b.word));
+        
+        setResults(filteredByLetter);
+        setVisibleCount(PER_PAGE);
         return;
     }
 
-    const allWords = getAllWords();
-    
+    // EĞER ARAMA YAPILIYORSA: TÜM SÖZLÜKTE ARA
     const filtered = allWords.filter(item => {
         if (item.word.toLowerCase().includes(cleanTerm)) return true;
         if (item.definitions.some(d => d.meaning.toLowerCase().includes(cleanTerm))) return true;
@@ -48,7 +63,6 @@ export default function Dictionary() {
         const aWord = a.word.toLowerCase();
         const bWord = b.word.toLowerCase();
         
-        // Tam eşleşmeleri en üste al
         if (aWord === cleanTerm && bWord !== cleanTerm) return -1;
         if (bWord === cleanTerm && aWord !== cleanTerm) return 1;
         
@@ -62,11 +76,11 @@ export default function Dictionary() {
     setResults(filtered);
     setVisibleCount(PER_PAGE);
 
-  }, [debouncedTerm, getAllWords]);
+  }, [debouncedTerm, activeLetter, getAllWords]);
 
   const handleClear = () => {
       setTerm("");
-      setResults([]);
+      // Arama silinince sonuçları boşaltmak yerine useEffect'in Harf moduna geçmesini bekliyoruz
   };
 
   const handleLoadMore = () => {
@@ -75,15 +89,12 @@ export default function Dictionary() {
 
   const handleSuccess = () => {
       setShowQuickAdd(false);
-      // Listeyi tetiklemek için ufak bir state değişikliği simülasyonu
       const currentTerm = term;
       setTerm(""); 
       setTimeout(() => setTerm(currentTerm), 50);
   };
 
   const displayedResults = results.slice(0, visibleCount);
-
-  // Aranan kelime tam olarak listede var mı?
   const cleanSearch = debouncedTerm.toLowerCase().trim();
   const exactMatchFound = results.some(r => r.word.toLowerCase() === cleanSearch);
 
@@ -98,15 +109,17 @@ export default function Dictionary() {
         />
       )}
 
-      <div className="w-full max-w-md space-y-6">
+      <div className="w-full max-w-md space-y-4">
         
-        <div className="sticky top-0 bg-slate-50 py-2 z-20 flex items-center gap-3 mb-2">
+        {/* Üst Bar */}
+        <div className="sticky top-0 bg-slate-50 py-2 z-20 flex items-center gap-3">
           <button onClick={() => navigate("/")} className="p-2 hover:bg-slate-200 rounded-full transition-colors bg-white shadow-sm">
             <ArrowLeft className="w-6 h-6 text-slate-600" />
           </button>
           <h2 className="text-2xl font-bold text-slate-800">Sözlük</h2>
         </div>
 
+        {/* Arama Kutusu */}
         <div className="relative group z-10">
           <Search className="absolute left-4 top-4 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
           <input
@@ -115,7 +128,6 @@ export default function Dictionary() {
             value={term}
             onChange={(e) => setTerm(e.target.value)}
             className="w-full pl-12 pr-12 p-4 rounded-2xl border border-slate-200 shadow-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-medium"
-            autoFocus
           />
           {term && (
             <button onClick={handleClear} className="absolute right-3 top-3 p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors">
@@ -124,26 +136,57 @@ export default function Dictionary() {
           )}
         </div>
 
+        {/* YENİ: Alfabe Fihristi (Sadece Arama Yapılmıyorken Görünür) */}
+        {!debouncedTerm && (
+            <div className="flex overflow-x-auto gap-2 py-2 pb-4 scrollbar-hide">
+                {alphabet.map(letter => (
+                    <button
+                        key={letter}
+                        onClick={() => {
+                            setActiveLetter(letter);
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                        }}
+                        className={`shrink-0 w-10 h-10 rounded-full font-black text-sm flex items-center justify-center transition-all duration-300 shadow-sm
+                            ${activeLetter === letter 
+                                ? 'bg-indigo-600 text-white shadow-indigo-200 scale-110' 
+                                : 'bg-white text-slate-400 border border-slate-200 hover:bg-slate-100'
+                            }
+                        `}
+                    >
+                        {letter}
+                    </button>
+                ))}
+            </div>
+        )}
+
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10">
             
-            {/* --- 1. HİÇ SONUÇ YOKSA --- */}
-            {debouncedTerm && results.length === 0 && (
-              <div className="text-center text-slate-400 mt-4 space-y-3">
-                <AlertCircle className="w-8 h-8 mx-auto mb-2 opacity-50"/>
-                <p>Sözlükte bulunamadı.</p>
+            {/* 1. HİÇ SONUÇ YOKSA */}
+            {results.length === 0 && (
+              <div className="text-center text-slate-400 mt-10 space-y-3 bg-white p-6 rounded-2xl border border-dashed border-slate-200">
+                {debouncedTerm ? (
+                    <>
+                        <AlertCircle className="w-10 h-10 mx-auto mb-2 opacity-50 text-indigo-400"/>
+                        <p className="font-medium text-slate-500">Sözlükte bulunamadı.</p>
+                    </>
+                ) : (
+                    <>
+                        <BookOpen className="w-10 h-10 mx-auto mb-2 opacity-50 text-indigo-400"/>
+                        <p className="font-medium text-slate-500">"{activeLetter}" harfi ile başlayan kelime henüz eklenmemiş.</p>
+                    </>
+                )}
               </div>
             )}
 
-            {/* --- 2. ADMİN EKLEME BUTONU (HER ZAMAN GÖRÜNSÜN) --- */}
-            {/* 🔥 GÜNCELLEME: "!exactMatchFound" şartını kaldırdık. Admin her zaman ekleyebilir. */}
+            {/* 2. ADMİN EKLEME BUTONU (Sadece arama yapılıyorsa görünsün) */}
             {isAdmin && debouncedTerm && (
                 <button
                     onClick={() => setShowQuickAdd(true)}
                     className={`
                         w-full py-3 border-2 border-dashed rounded-xl font-bold transition flex items-center justify-center gap-2
                         ${exactMatchFound 
-                            ? "bg-orange-50 border-orange-200 text-orange-600 hover:bg-orange-100" // Zaten varsa turuncu yap (Dikkat çeksin)
-                            : "bg-indigo-50 border-indigo-200 text-indigo-600 hover:bg-indigo-100" // Yoksa mavi
+                            ? "bg-orange-50 border-orange-200 text-orange-600 hover:bg-orange-100" 
+                            : "bg-indigo-50 border-indigo-200 text-indigo-600 hover:bg-indigo-100" 
                         }
                     `}
                 >
@@ -155,11 +198,11 @@ export default function Dictionary() {
                 </button>
             )}
 
-            {/* --- 3. SONUÇ LİSTESİ --- */}
+            {/* 3. SONUÇ LİSTESİ */}
             {displayedResults.length > 0 && (
                 <>
-                    <div className="text-center text-sm font-bold text-slate-400 uppercase tracking-wider">
-                        {results.length} Sonuç Bulundu
+                    <div className="text-center text-xs font-black text-indigo-400 uppercase tracking-widest bg-indigo-50 py-1.5 px-4 rounded-full w-max mx-auto border border-indigo-100">
+                        {debouncedTerm ? "Arama Sonuçları: " : `${activeLetter} Harfi: `} {results.length} Kelime
                     </div>
                     
                     {displayedResults.map((resultWord) => (
@@ -171,20 +214,13 @@ export default function Dictionary() {
                     {visibleCount < results.length && (
                         <button 
                             onClick={handleLoadMore}
-                            className="w-full py-4 bg-indigo-50 text-indigo-600 font-bold rounded-xl flex items-center justify-center gap-2 hover:bg-indigo-100 transition-colors"
+                            className="w-full py-4 bg-indigo-50 text-indigo-600 font-bold rounded-xl flex items-center justify-center gap-2 hover:bg-indigo-100 transition-colors shadow-sm"
                         >
                             <ArrowDownCircle className="w-5 h-5"/>
                             Daha Fazla Göster ({results.length - visibleCount} kaldı)
                         </button>
                     )}
                 </>
-            )}
-
-            {!debouncedTerm && (
-              <div className="text-center text-slate-400 mt-10 opacity-50">
-                <BookOpen className="w-20 h-20 mx-auto mb-4 stroke-1" />
-                <p>Aramak istediğin kelimeyi veya anlamını yaz.</p>
-              </div>
             )}
 
         </div>
