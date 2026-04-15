@@ -11,7 +11,6 @@ import { fetchMagicWordData, translateWord } from "../services/aiService";
 import { Virtuoso } from "react-virtuoso"; 
 
 export default function AdminDashboard() {
-  // 🔥 YENİ: blacklistedWords ve removeFromBlacklist içeri aktarıldı
   const { dynamicSystemWords, handleDeleteSystemWord, handleSaveSystemWord, isAdmin, blacklistedWords, removeFromBlacklist } = useData();
   const navigate = useNavigate();
   
@@ -19,7 +18,7 @@ export default function AdminDashboard() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [editingItem, setEditingItem] = useState(null);
   const [isAddingNew, setIsAddingNew] = useState(false);
-  const [filterMode, setFilterMode] = useState('all'); // all, static, blacklisted
+  const [filterMode, setFilterMode] = useState('all'); 
 
   const [magicWord, setMagicWord] = useState("");
   const [isMagicLoading, setIsMagicLoading] = useState(false);
@@ -39,10 +38,10 @@ export default function AdminDashboard() {
       return null;
   }
 
-  // 🔥 YENİ: FİLTRELEME MANTIĞI GÜNCELLENDİ
   const filtered = dynamicSystemWords
      .filter(w => {
-         if (filterMode === 'blacklisted') return blacklistedWords.includes(w.word.toLowerCase().trim());
+         // 🔥 ID BAZLI FİLTRELEME
+         if (filterMode === 'blacklisted') return blacklistedWords.includes(String(w.id));
          if (filterMode === 'static') return w.isStatic;
          return true;
      })
@@ -87,13 +86,6 @@ export default function AdminDashboard() {
       const wordToFetch = magicWord.trim();
       if (!wordToFetch) return;
 
-      const exists = dynamicSystemWords.some(w => w.word.toLowerCase() === wordToFetch.toLowerCase());
-      if (exists) {
-          alert(`"${wordToFetch}" zaten ekli! Eğer kara listedeyse, filtrelerden bulup Geri Getir butonuna basabilirsin.`);
-          setMagicWord("");
-          return;
-      }
-
       setIsMagicLoading(true);
       setMagicStatus(null);
       const aiResult = await fetchMagicWordData(wordToFetch);
@@ -121,14 +113,14 @@ export default function AdminDashboard() {
   };
 
   const renderWordCard = (index, item) => {
-      const isBlacklisted = blacklistedWords.includes(item.word.toLowerCase().trim());
+      // 🔥 ID BAZLI KONTROL
+      const isBlacklisted = blacklistedWords.includes(String(item.id));
       const isStatic = item.isStatic;
 
-      // 🔥 KART ÇERÇEVE TASARIMLARI
       let containerClass = "bg-white rounded-2xl shadow-sm mb-4 overflow-hidden w-full transition-all ";
       if (isStatic) containerClass += "border-2 border-orange-400 ";
       else containerClass += "border border-slate-200 ";
-      if (isBlacklisted) containerClass += "opacity-80 bg-slate-50 "; // Kara listeyse hafif soluk
+      if (isBlacklisted) containerClass += "opacity-80 bg-slate-50 "; 
 
       return (
       <div className={containerClass}>
@@ -138,7 +130,6 @@ export default function AdminDashboard() {
                       {item.word}
                   </span>
                   
-                  {/* ROZETLER */}
                   {isStatic && <span className="text-[9px] font-bold bg-orange-100 text-orange-600 px-2 py-0.5 rounded border border-orange-200 uppercase tracking-widest">Kod (Oxford)</span>}
                   {isBlacklisted && <span className="text-[9px] font-bold bg-red-100 text-red-600 px-2 py-0.5 rounded border border-red-200 uppercase tracking-widest">Kara Listede</span>}
 
@@ -152,9 +143,9 @@ export default function AdminDashboard() {
                   </button>
               </div>
               <div className="flex gap-1.5 shrink-0">
-                  {/* 🔥 KARA LİSTEDEYSE GERİ GETİR BUTONU, DEĞİLSE SİL BUTONU GÖSTER */}
                   {isBlacklisted ? (
-                      <button onClick={() => removeFromBlacklist(item.word)} className="flex items-center gap-1 p-2 text-xs font-bold text-emerald-600 bg-emerald-50 hover:bg-emerald-100 rounded-xl border border-emerald-200 transition-colors shadow-sm">
+                      // 🔥 ID GÖNDERİLİYOR
+                      <button onClick={() => removeFromBlacklist(item.id)} className="flex items-center gap-1 p-2 text-xs font-bold text-emerald-600 bg-emerald-50 hover:bg-emerald-100 rounded-xl border border-emerald-200 transition-colors shadow-sm">
                           <RotateCcw className="w-3.5 h-3.5"/> Geri Getir
                       </button>
                   ) : (
@@ -304,7 +295,6 @@ export default function AdminDashboard() {
             <button onClick={() => setIsAddingNew(true)} className="text-[10px] sm:text-xs font-bold text-slate-400 hover:text-indigo-600 transition-colors uppercase tracking-widest whitespace-nowrap">MANUEL EKLE</button>
          </div>
 
-         {/* 🔥 YENİ: FİLTRE BUTONLARI */}
          <div className="flex overflow-x-auto gap-2 mb-4 pb-2 scrollbar-hide w-full">
             <button onClick={() => setFilterMode('all')} className={`shrink-0 px-4 py-2 rounded-xl text-xs font-bold transition-all ${filterMode === 'all' ? 'bg-indigo-600 text-white shadow-md' : 'bg-white text-slate-500 border border-slate-200 hover:bg-slate-50'}`}>
                 Tümü ({dynamicSystemWords.length})
