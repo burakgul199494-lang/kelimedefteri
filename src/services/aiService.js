@@ -1,4 +1,3 @@
-// src/services/aiService.js
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const apiKey = process.env.REACT_APP_GEMINI_API_KEY;
@@ -10,6 +9,7 @@ if (!apiKey) {
 const genAI = new GoogleGenerativeAI(apiKey);
 const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
+// --- 1. SİHİRLİ EKLEME FONKSİYONU ---
 export const fetchMagicWordData = async (wordToSearch) => {
     try {
         const prompt = `Sen İngilizce-Türkçe sözlük verisi üreten bir asistansın.
@@ -42,24 +42,6 @@ export const fetchMagicWordData = async (wordToSearch) => {
             ],
             "sentence": "I left my money in the bank.",
             "sentence_tr": "Paramı bankada bıraktım."
-          },
-          {
-            "word": "${wordToSearch}",
-            "phonetic": "/bæŋk/",
-            "tags": ["B2"],
-            "plural": "banks",
-            "v2": "", "v3": "", "vIng": "", "thirdPerson": "",
-            "advLy": "", "compEr": "", "superEst": "",
-            "definitions": [ 
-              { 
-                "type": "noun", 
-                "meaning": "Nehir kıyısı", 
-                "engExplanation": "The land alongside a river",
-                "trExplanation": "Bir nehrin yanındaki kara parçası"
-              } 
-            ],
-            "sentence": "We sat on the river bank.",
-            "sentence_tr": "Nehir kıyısında oturduk."
           }
         ]`;
 
@@ -67,12 +49,31 @@ export const fetchMagicWordData = async (wordToSearch) => {
         const textResponse = result.response.text();
         
         const cleanedText = textResponse.replace(/```json/g, "").replace(/```/g, "").trim();
-        
         const jsonData = JSON.parse(cleanedText);
         return { success: true, data: jsonData };
 
     } catch (error) {
         console.error("Yapay Zeka Hatası:", error);
+        return { success: false, message: error.message };
+    }
+};
+
+// --- 2. HIZLI ÇEVİRİ FONKSİYONU (YENİ) ---
+export const translateWord = async (turkishWord) => {
+    try {
+        const prompt = `Lütfen sadece "${turkishWord}" ifadesinin en yaygın ve temel İngilizce karşılığını yaz.
+        KURALLAR:
+        1. Sadece tek bir kelime veya en fazla 2-3 kelimelik kısa bir tamlama döndür.
+        2. Asla nokta, tırnak işareti veya ek açıklama kullanma.
+        3. Tamamen küçük harf kullan.
+        Örnek: kapı -> door`;
+
+        const result = await model.generateContent(prompt);
+        const textResponse = result.response.text().trim().toLowerCase().replace(/['".]/g, '');
+        
+        return { success: true, word: textResponse };
+    } catch (error) {
+        console.error("Çeviri Hatası:", error);
         return { success: false, message: error.message };
     }
 };
