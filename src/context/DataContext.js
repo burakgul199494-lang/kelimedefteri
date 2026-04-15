@@ -77,14 +77,12 @@ export const DataProvider = ({ children }) => {
     const unsub = onSnapshot(systemWordsRef, (snapshot) => {
         const sysWordsMap = new Map();
 
-        // 🔥 KODDAN GELENLERE (isStatic: true) DAMGASI VURULUYOR
         if (typeof oxford3000 !== 'undefined') {
             oxford3000.forEach(w => {
                 sysWordsMap.set(String(w.id), { ...w, source: "system", isStatic: true });
             });
         }
 
-        // FİREBASE'DEN GELENLER (Admin'in kendi ekledikleri veya güncelledikleri)
         snapshot.forEach((doc) => {
             sysWordsMap.set(String(doc.id), { ...doc.data(), id: doc.id, source: "system", isStatic: false });
         });
@@ -98,11 +96,12 @@ export const DataProvider = ({ children }) => {
   useEffect(() => {
     const blacklistRef = collection(db, "artifacts", appId, "blacklist");
     const unsub = onSnapshot(blacklistRef, (snapshot) => {
-        const banned = new Set();
+        const bannedIds = new Set();
         snapshot.forEach((doc) => {
-            if(doc.data().word) banned.add(doc.data().word.toLowerCase().trim());
+            // 🔥 ARTIK KELİME ADINA (word) DEĞİL, KİMLİĞİNE (bannedId) BAKIYORUZ
+            if(doc.data().bannedId) bannedIds.add(String(doc.data().bannedId));
         });
-        setBlacklistedWords(Array.from(banned));
+        setBlacklistedWords(Array.from(bannedIds));
     });
     return () => unsub();
   }, []);
@@ -289,7 +288,8 @@ export const DataProvider = ({ children }) => {
 
     const all = finalWordList.map(normalizeWord);
     if (blacklistedWords.length > 0) {
-        return all.filter(w => !blacklistedWords.includes(w.word.toLowerCase().trim()));
+        // 🔥 ARTIK İSME GÖRE DEĞİL, ID'YE GÖRE FİLTRELİYOR
+        return all.filter(w => !blacklistedWords.includes(String(w.id)));
     }
     return all;
   };
@@ -361,46 +361,43 @@ export const DataProvider = ({ children }) => {
         definitions: Array.isArray(wordData.definitions) ? wordData.definitions : [], tags: wordData.tags || [], source: "system", createdAt: new Date()
       };
       await addDoc(collection(db, "artifacts", appId, "system_words"), newWord);
-      
-      const normalizedInput = wordData.word.toLowerCase().trim();
-      const blacklistRef = collection(db, "artifacts", appId, "blacklist");
-      const q = query(blacklistRef, where("word", "==", normalizedInput));
-      const querySnapshot = await getDocs(q);
-      querySnapshot.forEach(async (doc) => { await deleteDoc(doc.ref); });
-
-      const conflictingCustom = customWords.find(w => w.word.toLowerCase() === normalizedInput);
-      if (conflictingCustom) {
-          const userRef = doc(db, "artifacts", appId, "users", user.uid, "vocab_game", "progress");
-          await setDoc(userRef, { deleted_ids: arrayUnion(conflictingCustom.id) }, { merge: true });
-      }
       return { success: true };
     } catch (e) { return { success: false, message: e.message }; }
   };
 
+  // 🔥 SİLME MANTIĞI TAMAMEN YENİLENDİ!
   const handleDeleteSystemWord = async (wordId) => {
-      if(!window.confirm("Bu kelime tüm kullanıcılardan silinecek (Yasaklanacak). Emin misin?")) return;
+      if(!window.confirm("Bu kelimeyi sistemden silmek istediğine emin misin?")) return;
       try { 
           const wordToDelete = dynamicSystemWords.find(w => String(w.id) === String(wordId));
           if (wordToDelete) {
-             await addDoc(collection(db, "artifacts", appId, "blacklist"), { word: wordToDelete.word.toLowerCase().trim(), bannedAt: new Date() });
+             if (wordToDelete.isStatic) {
+                 // SADECE STATİK (OXFORD) İSE KARA LİSTEYE ATARAK GİZLE
+                 await addDoc(collection(db, "artifacts", appId, "blacklist"), { 
+                     bannedId: String(wordId), 
+                     word: wordToDelete.word.toLowerCase().trim(), 
+                     bannedAt: new Date() 
+                 });
+             } else {
+                 // KULLANICI EKLEMİŞSE VERİTABANINDAN TAMAMEN YOK ET
+                 await deleteDoc(doc(db, "artifacts", appId, "system_words", String(wordId))); 
+             }
           }
-          try { await deleteDoc(doc(db, "artifacts", appId, "system_words", wordId)); } catch(err) {} 
       } catch(e) { console.error(e); }
   };
 
-  // 🔥 YENİ: KARA LİSTEDEN SİLME (GERİ GETİRME) FONKSİYONU
-  const removeFromBlacklist = async (wordText) => {
+  // 🔥 KARA LİSTEDEN ÇIKARMA (ID BAZLI)
+  const removeFromBlacklist = async (wordId) => {
       try {
-          const normalized = wordText.toLowerCase().trim();
           const blacklistRef = collection(db, "artifacts", appId, "blacklist");
-          const q = query(blacklistRef, where("word", "==", normalized));
+          const q = query(blacklistRef, where("bannedId", "==", String(wordId)));
           const querySnapshot = await getDocs(q);
           const batch = writeBatch(db);
           querySnapshot.forEach((doc) => {
               batch.delete(doc.ref);
           });
           await batch.commit();
-          alert(`"${wordText}" kara listeden çıkarıldı! Artık sözlükte görünecek.`);
+          alert(`Kelime başarıyla geri getirildi!`);
       } catch (e) {
           console.error("Kara listeden çıkarma hatası:", e);
       }
@@ -564,10 +561,7 @@ export const DataProvider = ({ children }) => {
       updateGameStats, getCurrentWeekKey, handleSmartLearn, addScore,
       questProgress, questHistory, DAILY_QUESTS_TARGETS,
       registerMistake, clearMistake,
-      
-      // 🔥 YENİ DIŞA AKTARILANLAR
-      blacklistedWords,
-      removeFromBlacklist
+      blacklistedWords, removeFromBlacklist
     }}>
       {children}
     </DataContext.Provider>
