@@ -298,7 +298,7 @@ export const oxford3000 = [
     plural: "backs", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
     definitions: [{ type: "adverb", meaning: "Geri, geriye, arka", engExplanation: "In, into, or towards a previous place or condition, or an earlier time.", trExplanation: "Önceki bir yere, duruma veya daha erken bir zamana doğru." }],
     sentence: "Please come back soon.", sentence_tr: "Lütfen yakında geri dön."
-  }
+  },
   {
     id: "ox-51", word: "bad", phonetic: "/bæd/", tags: ["A1", "Oxford 3000"],
     plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "badly", compEr: "worse", superEst: "worst",
