@@ -4,13 +4,11 @@ import { useNavigate } from "react-router-dom";
 import { 
   ArrowLeft, Shield, Search, Edit2, Trash2, 
   Volume2, Wand2, Loader2, CheckCircle2, 
-  Info, BookOpen, Quote, Tag as TagIcon, Languages, RotateCcw, Undo2, MousePointer2
+  Info, BookOpen, Quote, Tag as TagIcon, Languages, RotateCcw, Undo2
 } from "lucide-react";
 import QuickAddModal from "../components/QuickAddModal";
 import { fetchMagicWordData, translateWord } from "../services/aiService";
 import { Virtuoso } from "react-virtuoso"; 
-
-const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 
 export default function AdminDashboard() {
   const { dynamicSystemWords, handleDeleteSystemWord, handleSaveSystemWord, isAdmin, blacklistedWords, removeFromBlacklist } = useData();
@@ -20,8 +18,7 @@ export default function AdminDashboard() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [editingItem, setEditingItem] = useState(null);
   const [isAddingNew, setIsAddingNew] = useState(false);
-  const [filterMode, setFilterMode] = useState('all'); // all, static, manual, blacklisted
-  const [activeLetter, setActiveLetter] = useState("A");
+  const [filterMode, setFilterMode] = useState('all'); 
 
   const [magicWord, setMagicWord] = useState("");
   const [isMagicLoading, setIsMagicLoading] = useState(false);
@@ -41,28 +38,22 @@ export default function AdminDashboard() {
       return null;
   }
 
-  // 🔥 AKILLI FİLTRELEME VE SIRALAMA MANTIĞI
+  // 🔥 FİHRİST KALDIRILDI, AKILLI ARAMA VE FİLTRELER DURUYOR
   const filtered = dynamicSystemWords
      .filter(w => {
          const isBlacklisted = blacklistedWords.includes(String(w.id));
          const isOxford = String(w.id).startsWith("ox-");
 
          if (filterMode === 'blacklisted') return isBlacklisted;
-         if (isBlacklisted) return false; // Diğer sekmelerde kara listeyi gizle
+         if (isBlacklisted) return false; 
 
          if (filterMode === 'static') return isOxford;
          if (filterMode === 'manual') return !isOxford;
          return true;
      })
      .filter(w => {
-         // Eğer arama yapılıyorsa harf filtresini devre dışı bırak
-         if (debouncedSearch) return true;
-         return w.word.toLowerCase().startsWith(activeLetter.toLowerCase());
-     })
-     .filter(w => {
          const searchLower = debouncedSearch.toLowerCase().trim();
          if (!searchLower) return true;
-         // Kelimede veya anlamda ara
          return w.word.toLowerCase().includes(searchLower) || (w.definitions && w.definitions.some(d => d.meaning.toLowerCase().includes(searchLower)));
      })
      .sort((a, b) => {
@@ -127,7 +118,6 @@ export default function AdminDashboard() {
 
       let containerClass = "bg-white rounded-2xl shadow-sm mb-4 overflow-hidden w-full transition-all ";
       
-      // 🔥 RENK MANTIĞI: Oxford Düzenlenmiş (Yeşil), Oxford Saf (Turuncu), Manuel (Gri)
       if (isEdited) containerClass += "border-2 border-emerald-500 shadow-md shadow-emerald-50 ";
       else if (isOxford) containerClass += "border-2 border-orange-400 ";
       else containerClass += "border border-slate-200 ";
@@ -156,8 +146,6 @@ export default function AdminDashboard() {
                   ) : (
                       <>
                           <button onClick={() => setEditingItem(item)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-xl transition-colors"><Edit2 className="w-4 h-4"/></button>
-                          
-                          {/* 🔥 DÜZENLENMİŞSE "VARSAYILANA DÖN" İKONU ÇIKAR */}
                           <button onClick={() => handleDeleteSystemWord(item.id)} className={`p-2 rounded-xl transition-colors ${isEdited ? 'text-emerald-600 hover:bg-emerald-50' : 'text-red-500 hover:bg-red-50'}`}>
                               {isEdited ? <Undo2 className="w-4 h-4" /> : <Trash2 className="w-4 h-4" />}
                           </button>
@@ -213,6 +201,11 @@ export default function AdminDashboard() {
                     <input type="text" placeholder="Kelimeyi yaz ve Enter..." value={magicWord} onChange={(e) => setMagicWord(e.target.value)} disabled={isMagicLoading} className="w-full sm:flex-1 p-3 sm:p-4 bg-slate-50 border-2 border-slate-100 rounded-xl sm:rounded-2xl outline-none focus:border-indigo-500 focus:bg-white transition-all font-bold text-slate-700 placeholder:text-slate-300 text-sm sm:text-base"/>
                     <button type="submit" disabled={isMagicLoading || !magicWord.trim()} className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white p-3 sm:px-6 rounded-xl sm:rounded-2xl font-bold transition-all disabled:opacity-50 min-w-[90px] flex justify-center items-center shadow-lg shadow-indigo-100 shrink-0">{isMagicLoading ? <Loader2 className="w-5 h-5 sm:w-6 sm:h-6 animate-spin" /> : "EKLE"}</button>
                 </form>
+                {magicStatus === 'success' && (
+                    <div className="mt-3 sm:mt-4 flex items-center gap-2 text-xs font-bold text-green-600 bg-green-50 p-2 sm:p-3 rounded-xl border border-green-100 animate-in fade-in slide-in-from-top-2">
+                        <CheckCircle2 className="w-4 h-4 shrink-0" /> Kelime eklendi!
+                    </div>
+                )}
                 <div className="mt-4 pt-4 border-t border-indigo-100/30 w-full">
                     <div className="flex items-center gap-1.5 mb-3 text-[10px] sm:text-[11px] font-black text-indigo-400 uppercase tracking-widest"><Languages className="w-3 h-3 sm:w-4 sm:h-4 shrink-0" /> Türkçesini Yaz, İngilizcesini Bul</div>
                     <form onSubmit={handleTranslate} className="flex flex-col sm:flex-row gap-2 w-full">
@@ -229,21 +222,17 @@ export default function AdminDashboard() {
             </div>
          </div>
 
+         <div className="flex items-center justify-between mb-4 sm:mb-6 px-1 w-full">
+            <div className="bg-indigo-100 text-indigo-700 px-3 py-1.5 sm:px-4 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-black uppercase tracking-widest whitespace-nowrap">{dynamicSystemWords.length} KELİME MEVCUT</div>
+            <button onClick={() => setIsAddingNew(true)} className="text-[10px] sm:text-xs font-bold text-slate-400 hover:text-indigo-600 transition-colors uppercase tracking-widest whitespace-nowrap">MANUEL EKLE</button>
+         </div>
+
          <div className="flex overflow-x-auto gap-2 mb-4 pb-2 scrollbar-hide w-full">
             <button onClick={() => setFilterMode('all')} className={`shrink-0 px-4 py-2 rounded-xl text-xs font-bold transition-all ${filterMode === 'all' ? 'bg-indigo-600 text-white shadow-md' : 'bg-white text-slate-500 border border-slate-200 hover:bg-slate-50'}`}>Tümü ({dynamicSystemWords.length})</button>
             <button onClick={() => setFilterMode('static')} className={`shrink-0 px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${filterMode === 'static' ? 'bg-orange-500 text-white shadow-md' : 'bg-white text-slate-500 border border-slate-200 hover:bg-slate-50'}`}><div className={`w-2 h-2 rounded-full ${filterMode === 'static' ? 'bg-white' : 'bg-orange-400'}`}></div> Oxford</button>
             <button onClick={() => setFilterMode('manual')} className={`shrink-0 px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${filterMode === 'manual' ? 'bg-blue-600 text-white shadow-md' : 'bg-white text-slate-500 border border-slate-200 hover:bg-slate-50'}`}><div className={`w-2 h-2 rounded-full ${filterMode === 'manual' ? 'bg-white' : 'bg-blue-400'}`}></div> Manuel</button>
             <button onClick={() => setFilterMode('blacklisted')} className={`shrink-0 px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${filterMode === 'blacklisted' ? 'bg-red-500 text-white shadow-md' : 'bg-white text-slate-500 border border-slate-200 hover:bg-slate-50'}`}><div className={`w-2 h-2 rounded-full ${filterMode === 'blacklisted' ? 'bg-white' : 'bg-red-400'}`}></div> Kara Liste ({blacklistedWords.length})</button>
          </div>
-
-         {/* 🔥 ALFABETİK FİHRİST (Arama yapılmıyorken görünür) */}
-         {!debouncedSearch && filterMode !== 'blacklisted' && (
-            <div className="flex overflow-x-auto gap-2 py-2 pb-4 scrollbar-hide mb-2 border-b border-slate-200/50">
-                {alphabet.map(letter => (
-                    <button key={letter} onClick={() => { setActiveLetter(letter); }} className={`shrink-0 w-9 h-9 rounded-full font-black text-xs flex items-center justify-center transition-all duration-300 shadow-sm ${activeLetter === letter ? 'bg-indigo-600 text-white scale-110' : 'bg-white text-slate-400 border border-slate-200'}`}>{letter}</button>
-                ))}
-            </div>
-         )}
 
          <div className="relative mb-6 w-full">
              <Search className="absolute left-3 top-3.5 sm:left-4 sm:top-4 text-slate-300 w-4 h-4 sm:w-5 sm:h-5"/>
