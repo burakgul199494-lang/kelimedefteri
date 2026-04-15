@@ -21,6 +21,12 @@ export default function Game() {
   const [showMasterConfirm, setShowMasterConfirm] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
 
+  // --- PEKİŞTİRME (REINFORCEMENT) STATE'LERİ ---
+  const [reinforcementQuestions, setReinforcementQuestions] = useState([]);
+  const [reinfIndex, setReinfIndex] = useState(0);
+  const [reinfInput, setReinfInput] = useState("");
+  const [reinfFeedback, setReinfFeedback] = useState(null);
+
   const POINTS_PER_CARD = 5;
 
   const handleBlur = (e) => {
@@ -49,6 +55,36 @@ export default function Game() {
 
     return { learnPool, reviewPool, waitingPool };
   }, [getAllWords, knownWordIds, learningQueue]);
+
+  // --- PEKİŞTİRME BAŞLATMA FONKSİYONU ---
+  const startReinforcement = () => {
+    const allWords = getAllWords();
+    const testTypes = ["quiz", "reverse", "writing"]; 
+    
+    const generatedQuestions = sessionWords.map(wordObj => {
+        const randomType = testTypes[Math.floor(Math.random() * testTypes.length)];
+        
+        let options = [];
+        if (randomType === "quiz" || randomType === "reverse") {
+            const distractors = allWords
+                .filter(w => w.id !== wordObj.id && w.definitions && w.definitions.length > 0)
+                .sort(() => 0.5 - Math.random())
+                .slice(0, 3);
+            
+            options = [...distractors, wordObj].sort(() => 0.5 - Math.random());
+        }
+
+        return {
+            wordObj,
+            type: randomType,
+            options
+        };
+    });
+
+    setReinforcementQuestions(generatedQuestions);
+    setReinfIndex(0);
+    setGameStage("reinforcement"); 
+  };
 
   const startSession = (mode, e) => {
     handleBlur(e); 
@@ -96,7 +132,6 @@ export default function Game() {
     setSwipeDirection(dir);
     const currentWord = sessionWords[currentIndex];
 
-    // 🔥 BEKLEME SÜRESİ YARIYA İNDİRİLDİ (150ms)
     setTimeout(async () => {
       if (activeMode === 'review') {
           setStats((p) => ({ ...p, review: p.review + 1 }));
@@ -129,7 +164,8 @@ export default function Game() {
         setCurrentIndex((p) => p + 1);
         setSwipeDirection(null);
       } else {
-        setGameStage("summary");
+        // SUMMARY YERİNE PEKİŞTİRME AŞAMASINA GEÇ
+        startReinforcement(); 
         setSwipeDirection(null);
         if (activeMode === 'learn') {
             const totalPoints = sessionWords.length * POINTS_PER_CARD; 
@@ -154,7 +190,8 @@ export default function Game() {
               setCurrentIndex((p) => p + 1);
               setSwipeDirection(null);
           } else {
-              setGameStage("summary");
+              // SUMMARY YERİNE PEKİŞTİRME AŞAMASINA GEÇ
+              startReinforcement();
               setSwipeDirection(null);
               if (sessionWords.length * POINTS_PER_CARD > 0) addScore(sessionWords.length * POINTS_PER_CARD);
           }
@@ -165,12 +202,41 @@ export default function Game() {
   
   const handleQuitEarly = (e) => {
     handleBlur(e);
-    if(activeMode === 'learn') {
+    if(activeMode === 'learn' && gameStage === 'playing') {
         const pointsEarned = currentIndex * POINTS_PER_CARD;
         if (pointsEarned > 0) addScore(pointsEarned);
     }
     setGameStage("summary");
   };
+
+  // --- PEKİŞTİRME CEVAP İŞLEYİCİLERİ ---
+  const handleReinforcementAnswer = (isCorrect) => {
+      if (isCorrect) {
+          setReinfFeedback("correct");
+          setTimeout(() => {
+              setReinfFeedback(null);
+              setReinfInput("");
+              if (reinfIndex + 1 < reinforcementQuestions.length) {
+                  setReinfIndex(p => p + 1);
+              } else {
+                  setGameStage("summary"); 
+              }
+          }, 800);
+      } else {
+          setReinfFeedback("wrong");
+          setTimeout(() => setReinfFeedback(null), 800);
+      }
+  };
+
+  const handleReinfSubmit = (e) => {
+      e.preventDefault();
+      const currentQ = reinforcementQuestions[reinfIndex];
+      const isCorrect = reinfInput.trim().toLowerCase() === currentQ.wordObj.word.toLowerCase();
+      handleReinforcementAnswer(isCorrect);
+  };
+
+
+  // ==================== UI BÖLÜMÜ ====================
 
   if (gameStage === "selection") {
     return (
@@ -229,6 +295,98 @@ export default function Game() {
     );
   }
 
+  // ==================== PEKİŞTİRME EKRANI ====================
+  if (gameStage === "reinforcement") {
+      const currentQ = reinforcementQuestions[reinfIndex];
+      const progress = ((reinfIndex) / reinforcementQuestions.length) * 100;
+      
+      const mainMeaning = currentQ.wordObj.definitions && currentQ.wordObj.definitions[0] 
+            ? currentQ.wordObj.definitions[0].meaning : "Anlam bulunamadı";
+
+      return (
+        <div className="min-h-screen bg-slate-50 flex flex-col items-center p-6 relative">
+            <style>{`
+                @keyframes softShake {
+                    0%, 100% { transform: translateX(0); }
+                    25% { transform: translateX(-5px); }
+                    75% { transform: translateX(5px); }
+                }
+                .animate-soft-shake { animation: softShake 0.4s ease-in-out; }
+            `}</style>
+             
+             <div className="w-full max-w-md mb-6">
+                <div className="flex justify-between items-center mb-2">
+                    <button onClick={handleQuitEarly} className="p-2 text-slate-400 hover:bg-slate-200 rounded-full"><X className="w-6 h-6" /></button>
+                    <span className="text-sm font-bold text-indigo-600 bg-indigo-100 px-3 py-1 rounded-full border border-indigo-200">Pekiştirme Testi {reinfIndex + 1}/{reinforcementQuestions.length}</span>
+                </div>
+                <div className="w-full bg-slate-200 rounded-full h-2.5"><div className="bg-indigo-600 h-2.5 rounded-full transition-all duration-500" style={{ width: `${progress}%` }}></div></div>
+            </div>
+
+            <div className={`w-full max-w-md bg-white rounded-3xl shadow-xl p-8 text-center transition-all duration-300 border-2 ${reinfFeedback === 'correct' ? 'border-green-400 bg-green-50' : reinfFeedback === 'wrong' ? 'border-red-400 bg-red-50 animate-soft-shake' : 'border-slate-100'}`}>
+                
+                {/* QUİZ (İngilizce -> Türkçe) */}
+                {currentQ.type === "quiz" && (
+                    <div className="animate-in fade-in">
+                        <div className="text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider">Anlamını Seç</div>
+                        <h2 className="text-4xl font-black text-slate-800 mb-8 break-words">{currentQ.wordObj.word}</h2>
+                        <div className="grid grid-cols-1 gap-3">
+                            {currentQ.options.map((opt, i) => (
+                                <button key={i} onClick={() => handleReinforcementAnswer(opt.id === currentQ.wordObj.id)} disabled={reinfFeedback !== null} className="w-full p-4 bg-slate-50 border-2 border-slate-200 rounded-xl font-bold text-slate-700 hover:bg-indigo-50 hover:border-indigo-300 active:scale-95 transition-all outline-none focus:outline-none">
+                                    {opt.definitions && opt.definitions[0] ? opt.definitions[0].meaning : "Anlam yok"}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* REVERSE QUİZ (Türkçe -> İngilizce) */}
+                {currentQ.type === "reverse" && (
+                    <div className="animate-in fade-in">
+                        <div className="text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider">İngilizcesini Seç</div>
+                        <h2 className="text-3xl font-black text-slate-800 mb-8 break-words">{mainMeaning}</h2>
+                        <div className="grid grid-cols-1 gap-3">
+                            {currentQ.options.map((opt, i) => (
+                                <button key={i} onClick={() => handleReinforcementAnswer(opt.id === currentQ.wordObj.id)} disabled={reinfFeedback !== null} className="w-full p-4 bg-slate-50 border-2 border-slate-200 rounded-xl font-bold text-slate-700 hover:bg-indigo-50 hover:border-indigo-300 active:scale-95 transition-all outline-none focus:outline-none">
+                                    {opt.word}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* YAZMA (Türkçe verilir, İngilizce istenir) */}
+                {currentQ.type === "writing" && (
+                    <div className="animate-in fade-in">
+                        <div className="text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider">İngilizcesini Yaz</div>
+                        <h2 className="text-3xl font-black text-slate-800 mb-2 break-words">{mainMeaning}</h2>
+                        {currentQ.wordObj.sentence && <p className="text-sm text-slate-500 italic mb-8">İpucu: "{currentQ.wordObj.sentence.replace(new RegExp(currentQ.wordObj.word, 'gi'), '_____')}"</p>}
+                        
+                        <form onSubmit={handleReinfSubmit}>
+                            <input 
+                                type="text" 
+                                value={reinfInput} 
+                                onChange={(e) => setReinfInput(e.target.value)} 
+                                disabled={reinfFeedback !== null}
+                                autoFocus
+                                autoComplete="off"
+                                autoCorrect="off"
+                                spellCheck="false"
+                                placeholder="Kelimeyi buraya yaz..." 
+                                className="w-full p-4 text-center text-2xl font-bold bg-slate-50 border-b-4 border-slate-300 rounded-xl focus:border-indigo-500 outline-none mb-4 transition-colors"
+                            />
+                            <button type="submit" disabled={!reinfInput.trim() || reinfFeedback !== null} className="w-full bg-indigo-600 text-white font-bold py-4 rounded-xl disabled:opacity-50 active:scale-95 transition-all outline-none focus:outline-none">
+                                Kontrol Et
+                            </button>
+                        </form>
+                    </div>
+                )}
+
+            </div>
+        </div>
+      );
+  }
+
+  // ==================== BİTİŞ EKRANI ====================
   if (gameStage === "summary") {
     let modeTitle = "Oturum Bitti!";
     if (activeMode === "learn") modeTitle = "Çalışma Tamamlandı";
@@ -252,6 +410,7 @@ export default function Game() {
     );
   }
 
+  // ==================== FLASH KART EKRANI ====================
   const currentCard = sessionWords[currentIndex];
   const progress = sessionWords.length > 0 ? (currentIndex / sessionWords.length) * 100 : 0;
   const isLastCard = currentIndex === sessionWords.length - 1;
@@ -315,7 +474,6 @@ export default function Game() {
 
       <div className="flex-1 flex items-center justify-center p-4 relative">
         {currentCard && (
-          // 🔥 ANİMASYON SÜRESİ KISALTILDI (duration-150)
           <div className={`relative w-full max-w-sm transition-all duration-150 transform 
               ${swipeDirection === "left" ? "-translate-x-24 -rotate-6 opacity-0" : ""}
               ${swipeDirection === "right" ? "translate-x-24 rotate-6 opacity-0" : ""}
