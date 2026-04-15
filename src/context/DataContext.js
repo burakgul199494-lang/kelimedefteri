@@ -8,6 +8,9 @@ import { messaging } from "../services/firebase";
 import { getToken } from "firebase/messaging";
 import { auth, db, appId, ADMIN_EMAILS } from "../services/firebase";
 
+// 🔥 YENİ: OXFORD 3000 DOSYASINI İÇERİ AKTARIYORUZ
+import { oxford3000 } from "../data/oxford3000";
+
 const DataContext = createContext();
 
 export const useData = () => useContext(DataContext);
@@ -20,7 +23,6 @@ export const DataProvider = ({ children }) => {
   const [systemLoading, setSystemLoading] = useState(true);
   const [profileLoading, setProfileLoading] = useState(true);
 
-  // --- Veri State'leri ---
   const [knownWordIds, setKnownWordIds] = useState([]);
   const [customWords, setCustomWords] = useState([]);
   const [deletedWordIds, setDeletedWordIds] = useState([]);
@@ -30,23 +32,20 @@ export const DataProvider = ({ children }) => {
   const [learningQueue, setLearningQueue] = useState([]);
   const [leaderboardData, setLeaderboardData] = useState([]);
 
-  // --- GÜNLÜK GÖREV STATE'LERİ ---
-  // Her oyun tipi için ayrı bir sayaç başlatıyoruz
   const [questProgress, setQuestProgress] = useState({});
   const [questHistory, setQuestHistory] = useState({});
 
-  // --- GÜNLÜK GÖREV HEDEFLERİ (Senin Belirlediğin Sayılar) ---
   const DAILY_QUESTS_TARGETS = {
     flashcard: 10,
     quiz: 20,
-    quiz2: 20,        // Ters Quiz
-    exercise: 20,     // Egzersiz Modu
+    quiz2: 20,        
+    exercise: 20,     
     writing: 10,
-    writing2: 10,     // Dinle Yaz
-    gap_filling: 10,  // Boşluk Doldurma
-    sentence_builder: 10, // Cümle Kurma
-    word_match: 20,    // Eşleştirme
-    pronunciation: 5  // Telaffuz
+    writing2: 10,     
+    gap_filling: 10,  
+    sentence_builder: 10, 
+    word_match: 20,    
+    pronunciation: 5  
   };
 
   const loading = authLoading || systemLoading || (user ? profileLoading : false);
@@ -59,7 +58,6 @@ export const DataProvider = ({ children }) => {
     return monday.toISOString().slice(0, 10);
   };
 
-  // 1. OTURUM DİNLEME
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
@@ -88,21 +86,32 @@ export const DataProvider = ({ children }) => {
     return () => unsubscribe();
   }, []);
 
-  // 2. SİSTEM KELİMELERİNİ DİNLE
+  // 🔥🔥🔥 HARİKA MİMARİ BURADA ÇALIŞIYOR 🔥🔥🔥
   useEffect(() => {
     const systemWordsRef = collection(db, "artifacts", appId, "system_words");
     const unsub = onSnapshot(systemWordsRef, (snapshot) => {
-        const sysWords = [];
+        const sysWordsMap = new Map();
+
+        // 1. ÖNCE STATİK OXFORD KELİMELERİNİ SİSTEME DÖK (Alt tabaka)
+        if (typeof oxford3000 !== 'undefined') {
+            oxford3000.forEach(w => {
+                sysWordsMap.set(String(w.id), { ...w, source: "system" });
+            });
+        }
+
+        // 2. SONRA FİREBASE'DEN GELENLERİ ÜZERİNE YAZ (Üst tabaka)
+        // Eğer Admin Oxford kelimesini düzenlerse, Firebase'deki versiyon statik olanı ezip geçer!
         snapshot.forEach((doc) => {
-            sysWords.push({ ...doc.data(), id: doc.id, source: "system" });
+            sysWordsMap.set(String(doc.id), { ...doc.data(), id: doc.id, source: "system" });
         });
-        setDynamicSystemWords(sysWords);
+
+        // 3. İKİSİNİN BİRLEŞİMİNİ SİSTEME GÖNDER
+        setDynamicSystemWords(Array.from(sysWordsMap.values()));
         setSystemLoading(false);
     });
     return () => unsub();
   }, []);
 
-  // 3. KARA LİSTEYİ DİNLE
   useEffect(() => {
     const blacklistRef = collection(db, "artifacts", appId, "blacklist");
     const unsub = onSnapshot(blacklistRef, (snapshot) => {
@@ -115,7 +124,6 @@ export const DataProvider = ({ children }) => {
     return () => unsub();
   }, []);
 
-  // 4. KULLANICI VERİLERİNİ DİNLE
   useEffect(() => {
     if (!user) return;
 
@@ -159,34 +167,25 @@ export const DataProvider = ({ children }) => {
     return () => { unsubUserWords(); unsubProfile(); unsubLeaderboard(); };
   }, [user?.uid]);
 
-// 5. TOKEN TAZELEME VE CANLI TUTMA (DÜZELTİLMİŞ HALİ)
   useEffect(() => {
     const refreshToken = async () => {
       if (!user) return; 
 
       try {
-        // Tarayıcı ve Service Worker desteği kontrolü
         if ("serviceWorker" in navigator && Notification.permission === "granted") {
-          
-          // 🔥 EKLENEN KISIM: Aktif Service Worker'ı bekle
           const registration = await navigator.serviceWorker.ready;
-
-          // Token alırken bu registration'ı kullan
           const currentToken = await getToken(messaging, {
             vapidKey: "BAEv8tvoKaliQ-Dx3xxhUcPH-hDV_RylcMuPI4OtWMS3nYvHT_Gv7myuk_DsQ3kltls8moIe9WSdbLjBrE-Ui54",
-            serviceWorkerRegistration: registration // <--- İŞTE BU EKSİKTİ, ARTIK TAMAM ✅
+            serviceWorkerRegistration: registration 
           });
 
           if (currentToken) {
             const userRef = doc(db, "artifacts", appId, "users", user.uid);
-            // setDoc + merge kullanmak daha güvenlidir
             await setDoc(userRef, { 
               fcmToken: currentToken,
               lastTokenUpdate: new Date().toISOString(),
               platform: /iPhone|iPad|iPod/.test(navigator.userAgent) ? "ios_pwa" : "web"
             }, { merge: true });
-            
-            console.log("Token başarıyla tazelendi ve kaydedildi.");
           }
         }
       } catch (error) {
@@ -197,7 +196,6 @@ export const DataProvider = ({ children }) => {
     refreshToken();
   }, [user]);
 
-  // 6. GÜNLÜK GÖREVLERİ DİNLEME
   useEffect(() => {
     if (!user) return;
     
@@ -206,19 +204,16 @@ export const DataProvider = ({ children }) => {
     const localDate = new Date(now.getTime() - (offset*60*1000));
     const today = localDate.toISOString().split("T")[0];
     
-    // a. Bugünün görevlerini dinle
     const dailyRef = doc(db, "artifacts", appId, "users", user.uid, "daily_history", today);
     const unsubDaily = onSnapshot(dailyRef, (docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data();
         setQuestProgress(data.progress || {});
       } else {
-        // Bugün için kayıt yoksa sıfırla
         setQuestProgress({});
       }
     });
 
-    // b. Geçmiş takvimi dinle
     const historyCol = collection(db, "artifacts", appId, "users", user.uid, "daily_history");
     const unsubHistory = onSnapshot(historyCol, (snapshot) => {
         const historyData = {};
@@ -231,23 +226,6 @@ export const DataProvider = ({ children }) => {
     return () => { unsubDaily(); unsubHistory(); };
   }, [user]);
 
-
-  // ... helper fonksiyonlar ...
-  const extractUserStats = (wordObj) => {
-      const stats = {};
-      Object.keys(wordObj).forEach(key => {
-          if (
-              key.startsWith("last") ||   
-              key.startsWith("next") ||   
-              key === "level" ||   
-              key === "streak" ||
-              key === "createdAt"
-          ) {
-              stats[key] = wordObj[key];
-          }
-      });
-      return stats;
-  };
 
   const subscribeToLeaderboard = () => {
       const weekKey = getCurrentWeekKey(); 
@@ -273,7 +251,6 @@ export const DataProvider = ({ children }) => {
       } catch (e) { console.error("Puan hatası:", e); }
   };
 
-  // --- GÜNCELLENMİŞ FONKSİYON: İSTATİSTİK VE GÖREV SAYACI ---
   const updateGameStats = async (gameType, count = 1) => {
       if (!user) return;
       
@@ -287,7 +264,6 @@ export const DataProvider = ({ children }) => {
       try {
           const batch = writeBatch(db);
 
-          // 1. Haftalık İstatistik
           const weeklyRef = doc(db, "artifacts", appId, "weekly_stats", weekKey, "user_activities", user.uid);
           batch.set(weeklyRef, {
               [gameType]: increment(count),
@@ -295,12 +271,9 @@ export const DataProvider = ({ children }) => {
               displayName: user.displayName || user.email
           }, { merge: true });
 
-          // 2. Günlük Görev İlerlemesi
           const dailyRef = doc(db, "artifacts", appId, "users", user.uid, "daily_history", today);
           
           let questType = null;
-          // HER OYUN TÜRÜNÜ KENDİ ADIYLA KAYDET
-          // (Tireleri alt çizgiye çeviriyoruz: gap-filling -> gap_filling)
           if (gameType === "flashcard") questType = "flashcard";
           else if (gameType === "quiz") questType = "quiz";
           else if (gameType === "quiz2") questType = "quiz2";
@@ -329,7 +302,6 @@ export const DataProvider = ({ children }) => {
 
   const normalizeWord = (w) => {
     if (!w) return {};
-
     return {
         ...w,
         phonetic: w.phonetic || "",
@@ -369,9 +341,6 @@ const getAllWords = () => {
     const userMapById = {};
     const processedUserIds = new Set(); 
 
-    // 🔥 DÜZELTME 1: userMapByText (İsim haritası) tamamen kaldırıldı.
-    // Artık kelimeleri ismine göre değil, sadece ID'sine göre eşleştireceğiz.
-
     customRaw.forEach(w => {
         userMapById[w.id] = w;
     });
@@ -393,12 +362,8 @@ const getAllWords = () => {
         return { level: 0, nextReview: null, isMastered: false };
     };
 
-    // 4. Sistem Kelimelerini İşle
     systemRaw.forEach(systemWord => {
-        // 🔥 DÜZELTME 2: Sadece ID eşleşmesi aranıyor.
-        // Eskiden burada "|| userMapByText[...]" vardı, o yüzden karışıyordu.
         const userMatch = userMapById[systemWord.id]; 
-
         const stats = getWordStats(userMatch ? userMatch.id : systemWord.id);
 
         if (userMatch) {
@@ -419,7 +384,6 @@ const getAllWords = () => {
         }
     });
 
-    // 5. Kullanıcı Kelimelerini İşle
     customRaw.forEach(userWord => {
         if (!processedUserIds.has(userWord.id)) {
             const stats = getWordStats(userWord.id);
@@ -509,30 +473,25 @@ const getAllWords = () => {
     } catch (e) { console.error("Hata:", e); }
   };
 
-  // 🔥🔥🔥 DÜZELTME BURADA: Sadece ID ile eşleşme yapılıyor 🔥🔥🔥
   const handleUpdateWord = async (targetId, newData) => {
      try {
        const strId = String(targetId);
-
-       // 1. Önce Kullanıcının Kendi Kelimelerinde (customWords) bu ID var mı bak.
        const existingUserWord = customWords.find(w => String(w.id) === strId);
 
        if (existingUserWord) {
-         // Zaten kullanıcının envanterinde var, direkt güncelle.
          const wordRef = doc(db, "artifacts", appId, "users", user.uid, "words", strId);
          await updateDoc(wordRef, newData);
        } 
        else {
-         // Kullanıcıda yok, Sistemden bul.
          const systemOriginal = dynamicSystemWords.find(w => String(w.id) === strId);
 
          if (systemOriginal) {
             const wordRef = doc(db, "artifacts", appId, "users", user.uid, "words", strId);
 
             await setDoc(wordRef, {
-                ...systemOriginal, // Sistemdeki veriler
-                ...newData,        // Yeni gelen veriler (lastSeen, mistakeCount vb.)
-                id: strId,         // ID AYNI KALIR
+                ...systemOriginal, 
+                ...newData,        
+                id: strId,         
                 source: "user",    
                 createdAt: new Date()
             });
@@ -543,9 +502,6 @@ const getAllWords = () => {
 
 const handleSaveSystemWord = async (wordData) => {
     try {
-      // 🔥 GÜNCEL: Duplicate (çift kayıt) kontrolü kaldırıldı.
-      // Admin aynı kelimeyi farklı anlamlarla ekleyebilir.
-
       const newWord = {
         word: wordData.word.trim(),
         phonetic: wordData.phonetic || "",
@@ -567,16 +523,12 @@ const handleSaveSystemWord = async (wordData) => {
 
       await addDoc(collection(db, "artifacts", appId, "system_words"), newWord);
       
-      // --- Ekstra Temizlik İşlemleri (Aynen kalsın) ---
-      
-      // 1. Eğer bu kelime daha önce kara listeye alındıysa, kara listeden çıkar.
       const normalizedInput = wordData.word.toLowerCase().trim();
       const blacklistRef = collection(db, "artifacts", appId, "blacklist");
       const q = query(blacklistRef, where("word", "==", normalizedInput));
       const querySnapshot = await getDocs(q);
       querySnapshot.forEach(async (doc) => { await deleteDoc(doc.ref); });
 
-      // 2. Eğer kullanıcının kendi eklediği aynı kelime varsa, sistem kelimesi baskın gelsin diye onu "silinmiş" işaretle.
       const conflictingCustom = customWords.find(w => w.word.toLowerCase() === normalizedInput);
       if (conflictingCustom) {
           const userRef = doc(db, "artifacts", appId, "users", user.uid, "vocab_game", "progress");
@@ -587,17 +539,23 @@ const handleSaveSystemWord = async (wordData) => {
     } catch (e) { return { success: false, message: e.message }; }
   };
 
+  // 🔥 YENİ: OXFORD (Statik) kelimelerini silerken Firestore çökmesin diye Try-Catch eklendi
   const handleDeleteSystemWord = async (wordId) => {
       if(!window.confirm("Bu kelime tüm kullanıcılardan silinecek (Yasaklanacak). Emin misin?")) return;
       try { 
           const wordToDelete = dynamicSystemWords.find(w => String(w.id) === String(wordId));
           if (wordToDelete) {
+             // Kelime Oxford'dan da gelse, veritabanından da gelse kara listeye ekle (Böylece gizlenir)
              await addDoc(collection(db, "artifacts", appId, "blacklist"), {
                  word: wordToDelete.word.toLowerCase().trim(),
                  bannedAt: new Date()
              });
           }
-          await deleteDoc(doc(db, "artifacts", appId, "system_words", wordId)); 
+          // Eğer kelime Firebase'de yoksa (Statikse) alttaki kod hata verebilir, hatayı yutuyoruz.
+          try {
+              await deleteDoc(doc(db, "artifacts", appId, "system_words", wordId)); 
+          } catch(err) {} 
+
       } catch(e) { console.error(e); }
   };
 
@@ -615,7 +573,6 @@ const handleSaveSystemWord = async (wordData) => {
         const statsRef = doc(db, "artifacts", appId, "weekly_stats", weekKey, "user_activities", user.uid);
         await deleteDoc(statsRef);
 
-        // --- GÜNLÜK GÖREV GEÇMİŞİNİ SİL ---
         const historyRef = collection(db, "artifacts", appId, "users", user.uid, "daily_history");
         const historySnapshot = await getDocs(historyRef);
         const historyBatch = writeBatch(db);
@@ -690,10 +647,7 @@ const handleSaveSystemWord = async (wordData) => {
   };
 
   const handleSaveNewWord = async (wordData) => {
-    // 🔥 GÜNCELLENDİ: Aynı kelimeyi farklı anlamlarla eklemeye izin veriyoruz.
-    
     const newId = Date.now().toString();
-    
     const newWord = {
         id: newId, 
         word: wordData.word.trim(), 
@@ -766,10 +720,12 @@ const handleSaveSystemWord = async (wordData) => {
      } catch(e) { console.error(e); }
   };
 
+  // 🔥 YENİ: OXFORD KELİMELERİNİ (Statik) DÜZENLEME YETENEĞİ (setDoc ile yapıldı)
   const handleUpdateSystemWord = async (id, wordData) => {
       try {
           const docRef = doc(db, "artifacts", appId, "system_words", id);
-          await updateDoc(docRef, {
+          // updateDoc yerine setDoc(..., {merge:true}) kullanıyoruz, böylece statik kelime Firebase'de yoksa bile anında oluşturulup üzerine yazılır!
+          await setDoc(docRef, {
             word: wordData.word?.trim() || "",
             phonetic: wordData.phonetic || "",
             plural: wordData.plural || "",
@@ -785,44 +741,30 @@ const handleSaveSystemWord = async (wordData) => {
             definitions: Array.isArray(wordData.definitions) ? wordData.definitions : [],
             tags: wordData.tags || [],
             updatedAt: new Date()
-          });
+          }, { merge: true });
           return { success: true };
       } catch(e) { return { success: false, message: e.message }; }
   };
 
-  // ---------------------------------------------------------
-  // --- HATA YÖNETİMİ (MISTAKE MANAGEMENT) ---
-  // ---------------------------------------------------------
-
-  // 1. Hata Ekleme (Oyunlarda hata yapınca çağrılacak)
   const registerMistake = async (wordId, amount = 1) => {
-    // Kelimenin mevcut durumunu bulmak için listeyi çekiyoruz
     const all = getAllWords();
     const word = all.find((w) => String(w.id) === String(wordId));
 
-    // Eğer kelime bulunamazsa işlem yapma (Güvenlik)
     if (!word) return;
 
     const currentMistakes = word.mistakeCount || 0;
     const newCount = currentMistakes + amount;
 
-    // handleUpdateWord zaten veritabanı (System/User) ayrımını yapıyor
     await handleUpdateWord(wordId, {
       mistakeCount: newCount,
       lastMistakeDate: new Date().toISOString()
     });
-
-    console.log(`Hata eklendi: ${word.word} -> Toplam Hata: ${newCount}`);
   };
 
-  // 2. Hatayı Sıfırlama (Zor Kelimeler sayfasında "SİL" deyince)
   const clearMistake = async (wordId) => {
     await handleUpdateWord(wordId, {
       mistakeCount: 0,
-      // lastMistakeDate'i null yapmıyoruz ki geçmişte zorlandığını bilelim,
-      // ama istersen null yapabilirsin. Şimdilik sadece sayacı sıfırlıyoruz.
     });
-    console.log("Hata sıfırlandı.");
   };
 
   return (
@@ -835,8 +777,6 @@ const handleSaveSystemWord = async (wordData) => {
       handleSaveSystemWord, handleDeleteSystemWord, handleUpdateSystemWord, cleanUpDuplicates,
       updateGameStats, getCurrentWeekKey, handleSmartLearn, addScore,
       questProgress, questHistory, DAILY_QUESTS_TARGETS,
-
-      // 🔥 YENİ EKLENENLER BURADA:
       registerMistake,
       clearMistake
     }}>
