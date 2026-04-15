@@ -2398,5 +2398,1805 @@ export const oxford3000 = [
     plural: "helps", v2: "helped", v3: "helped", vIng: "helping", thirdPerson: "helps", advLy: "", compEr: "", superEst: "",
     definitions: [{ type: "verb", meaning: "Yardım etmek", engExplanation: "Make it easier for (someone) to do something by offering one's services or resources.", trExplanation: "Birine hizmetlerini sunarak bir şeyi yapmasını kolaylaştırmak." }],
     sentence: "Can you help me with my project?", sentence_tr: "Projeme yardım edebilir misin?"
+  },
+  {
+    id: "ox-401", word: "her", phonetic: "/hər/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "pronoun", meaning: "Onu, ona, onun (kadın)", engExplanation: "Used as the object of a verb or preposition to refer to a female person.", trExplanation: "Bir kadın kişiyi belirtmek için fiil veya edatın nesnesi olarak kullanılır." }],
+    sentence: "I saw her at the mall yesterday.", sentence_tr: "Onu dün alışveriş merkezinde gördüm."
+  },
+  {
+    id: "ox-402", word: "here", phonetic: "/hɪr/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "adverb", meaning: "Burada, buraya", engExplanation: "In, at, or to this place or position.", trExplanation: "Bu yerde, konumda veya buraya doğru." }],
+    sentence: "Please come here.", sentence_tr: "Lütfen buraya gel."
+  },
+  {
+    id: "ox-403", word: "hers", phonetic: "/hɜːrz/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "pronoun", meaning: "Onunki (kadın)", engExplanation: "Used to refer to a thing or things belonging to or associated with a female.", trExplanation: "Bir kadına ait olan veya onunla ilişkili olan bir şeyi belirtmek için kullanılır." }],
+    sentence: "That book is hers.", sentence_tr: "O kitap onunki."
+  },
+  {
+    id: "ox-404", word: "herself", phonetic: "/hərˈself/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "pronoun", meaning: "Kendisi, kendini (kadın)", engExplanation: "Used as the object of a verb or preposition to refer to a female person previously mentioned.", trExplanation: "Daha önce bahsedilen bir kadını belirtmek için kullanılır." }],
+    sentence: "She cut herself while cooking.", sentence_tr: "Yemek yaparken kendini kesti."
+  },
+  {
+    id: "ox-405", word: "hi", phonetic: "/haɪ/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "exclamation", meaning: "Merhaba, selam", engExplanation: "Used as a friendly greeting.", trExplanation: "Dostça bir selamlama olarak kullanılır." }],
+    sentence: "Hi, how are you?", sentence_tr: "Selam, nasılsın?"
+  },
+  {
+    id: "ox-406", word: "hide", phonetic: "/haɪd/", tags: ["A1", "Irregular Verb"],
+    plural: "", v2: "hid", v3: "hidden", vIng: "hiding", thirdPerson: "hides", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "verb", meaning: "Saklamak, saklanmak", engExplanation: "Put or keep out of sight.", trExplanation: "Gözden uzak tutmak veya saklamak." }],
+    sentence: "The cat likes to hide under the bed.", sentence_tr: "Kedi yatağın altına saklanmayı sever."
+  },
+  {
+    id: "ox-407", word: "high", phonetic: "/haɪ/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "highly", compEr: "higher", superEst: "highest",
+    definitions: [{ type: "adjective", meaning: "Yüksek", engExplanation: "Of great vertical extent.", trExplanation: "Büyük dikey uzunlukta." }],
+    sentence: "That mountain is very high.", sentence_tr: "O dağ çok yüksek."
+  },
+  {
+    id: "ox-408", word: "hill", phonetic: "/hɪl/", tags: ["A1"],
+    plural: "hills", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Tepe", engExplanation: "A naturally raised area of land, not as high or craggy as a mountain.", trExplanation: "Dağ kadar yüksek olmayan, doğal olarak yükselmiş arazi alanı." }],
+    sentence: "We walked up the hill to see the view.", sentence_tr: "Manzarayı görmek için tepeye yürüdük."
+  },
+  {
+    id: "ox-409", word: "him", phonetic: "/hɪm/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "pronoun", meaning: "Onu, ona (erkek)", engExplanation: "Used as the object of a verb or preposition to refer to a male person.", trExplanation: "Bir erkek kişiyi belirtmek için fiil veya edatın nesnesi olarak kullanılır." }],
+    sentence: "I told him the truth.", sentence_tr: "Ona gerçeği söyledim."
+  },
+  {
+    id: "ox-410", word: "himself", phonetic: "/hɪmˈself/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "pronoun", meaning: "Kendisi, kendini (erkek)", engExplanation: "Used as the object of a verb or preposition to refer to a male person previously mentioned.", trExplanation: "Daha önce bahsedilen bir erkeği belirtmek için kullanılır." }],
+    sentence: "He fixed the car by himself.", sentence_tr: "Arabayı kendi başına tamir etti."
+  },
+  {
+    id: "ox-411", word: "his", phonetic: "/hɪz/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "pronoun", meaning: "Onun, onunki (erkek)", engExplanation: "Belonging to or associated with a male person.", trExplanation: "Bir erkeğe ait olan veya onunla ilişkili olan." }],
+    sentence: "This is his jacket.", sentence_tr: "Bu onun ceketi."
+  },
+  {
+    id: "ox-412", word: "history", phonetic: "/ˈhɪstəri/", tags: ["A1"],
+    plural: "histories", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Tarih", engExplanation: "The study of past events.", trExplanation: "Geçmiş olayların incelenmesi." }],
+    sentence: "She loves reading about ancient history.", sentence_tr: "Antik tarih hakkında okumayı seviyor."
+  },
+  {
+    id: "ox-413", word: "hit", phonetic: "/hɪt/", tags: ["A1", "Irregular Verb"],
+    plural: "hits", v2: "hit", v3: "hit", vIng: "hitting", thirdPerson: "hits", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "verb", meaning: "Vurmak, çarpmak", engExplanation: "Bring one's hand or a tool or weapon into contact with someone or something quickly and forcefully.", trExplanation: "Birinin elini veya bir aleti birine veya bir şeye hızlı ve güçlü bir şekilde temas ettirmek." }],
+    sentence: "The ball hit the window.", sentence_tr: "Top pencereye çarptı."
+  },
+  {
+    id: "ox-414", word: "hobby", phonetic: "/ˈhɑːbi/", tags: ["A1"],
+    plural: "hobbies", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Hobi", engExplanation: "An activity done regularly in one's leisure time for pleasure.", trExplanation: "Boş zamanlarda zevk için düzenli olarak yapılan bir aktivite." }],
+    sentence: "My favorite hobby is playing the guitar.", sentence_tr: "En sevdiğim hobi gitar çalmaktır."
+  },
+  {
+    id: "ox-415", word: "hold", phonetic: "/hoʊld/", tags: ["A1", "Irregular Verb"],
+    plural: "", v2: "held", v3: "held", vIng: "holding", thirdPerson: "holds", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "verb", meaning: "Tutmak", engExplanation: "Grasp, carry, or support with one's arms or hands.", trExplanation: "Kolları veya elleriyle kavramak, taşımak veya desteklemek." }],
+    sentence: "Can you hold my bag for a minute?", sentence_tr: "Çantamı bir dakika tutabilir misin?"
+  },
+  {
+    id: "ox-416", word: "hole", phonetic: "/hoʊl/", tags: ["A1"],
+    plural: "holes", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Delik, çukur", engExplanation: "A hollow place in a solid body or surface.", trExplanation: "Katı bir cisim veya yüzeyde oyuk yer." }],
+    sentence: "There is a hole in my pocket.", sentence_tr: "Cebimde bir delik var."
+  },
+  {
+    id: "ox-417", word: "holiday", phonetic: "/ˈhɑːlədeɪ/", tags: ["A1"],
+    plural: "holidays", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Tatil, bayram", engExplanation: "An extended period of leisure and recreation.", trExplanation: "Genişletilmiş bir boş zaman ve dinlenme dönemi." }],
+    sentence: "We are going on holiday next week.", sentence_tr: "Gelecek hafta tatile çıkıyoruz."
+  },
+  {
+    id: "ox-418", word: "home", phonetic: "/hoʊm/", tags: ["A1"],
+    plural: "homes", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Ev, yuva", engExplanation: "The place where one lives permanently.", trExplanation: "Birinin kalıcı olarak yaşadığı yer." }],
+    sentence: "I want to go home now.", sentence_tr: "Şimdi eve gitmek istiyorum."
+  },
+  {
+    id: "ox-419", word: "hope", phonetic: "/hoʊp/", tags: ["A1"],
+    plural: "hopes", v2: "hoped", v3: "hoped", vIng: "hoping", thirdPerson: "hopes", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "verb", meaning: "Ummak, ümit etmek", engExplanation: "A feeling of expectation and desire for a certain thing to happen.", trExplanation: "Belirli bir şeyin olması için beklenti ve arzu hissi." }],
+    sentence: "I hope you feel better soon.", sentence_tr: "Umarım yakında daha iyi hissedersin."
+  },
+  {
+    id: "ox-420", word: "horse", phonetic: "/hɔːrs/", tags: ["A1"],
+    plural: "horses", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "At", engExplanation: "A large plant-eating domesticated mammal with solid hoofs.", trExplanation: "Katı toynakları olan, ot yiyen büyük evcilleştirilmiş memeli." }],
+    sentence: "She loves riding her horse.", sentence_tr: "O, atına binmeyi çok sever."
+  },
+  {
+    id: "ox-421", word: "hospital", phonetic: "/ˈhɑːspɪtl/", tags: ["A1"],
+    plural: "hospitals", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Hastane", engExplanation: "An institution providing medical and surgical treatment.", trExplanation: "Tıbbi ve cerrahi tedavi sağlayan kurum." }],
+    sentence: "He works as a doctor at the local hospital.", sentence_tr: "Yerel hastanede doktor olarak çalışıyor."
+  },
+  {
+    id: "ox-422", word: "hot", phonetic: "/hɑːt/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "hotter", superEst: "hottest",
+    definitions: [{ type: "adjective", meaning: "Sıcak, acı", engExplanation: "Having a high degree of heat or a high temperature.", trExplanation: "Yüksek derecede ısıya veya yüksek sıcaklığa sahip olmak." }],
+    sentence: "Be careful, the soup is very hot.", sentence_tr: "Dikkatli ol, çorba çok sıcak."
+  },
+  {
+    id: "ox-423", word: "hotel", phonetic: "/hoʊˈtel/", tags: ["A1"],
+    plural: "hotels", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Otel", engExplanation: "An establishment providing accommodations, meals, and other services.", trExplanation: "Konaklama, yemek ve diğer hizmetleri sağlayan kuruluş." }],
+    sentence: "We stayed at a five-star hotel.", sentence_tr: "Beş yıldızlı bir otelde kaldık."
+  },
+  {
+    id: "ox-424", word: "hour", phonetic: "/ˈaʊər/", tags: ["A1"],
+    plural: "hours", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Saat (süre)", engExplanation: "A period of time equal to a twenty-fourth part of a day and night.", trExplanation: "Bir günün yirmi dörtte birine eşit olan zaman dilimi." }],
+    sentence: "The exam will last for one hour.", sentence_tr: "Sınav bir saat sürecek."
+  },
+  {
+    id: "ox-425", word: "house", phonetic: "/haʊs/", tags: ["A1"],
+    plural: "houses", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Ev", engExplanation: "A building for human habitation.", trExplanation: "İnsanların yaşaması için bina." }],
+    sentence: "They bought a big house with a garden.", sentence_tr: "Bahçeli büyük bir ev satın aldılar."
+  },
+  {
+    id: "ox-426", word: "how", phonetic: "/haʊ/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "adverb", meaning: "Nasıl", engExplanation: "In what way or manner.", trExplanation: "Ne şekilde veya ne tarzda." }],
+    sentence: "How do you spell your name?", sentence_tr: "Adını nasıl hecelersin?"
+  },
+  {
+    id: "ox-427", word: "however", phonetic: "/haʊˈevər/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "adverb", meaning: "Ancak, bununla birlikte", engExplanation: "Used to introduce a statement that contrasts with something previously said.", trExplanation: "Daha önce söylenenle çelişen bir ifadeyi tanıtmak için kullanılır." }],
+    sentence: "I was tired; however, I finished the work.", sentence_tr: "Yorgundum; ancak işi bitirdim."
+  },
+  {
+    id: "ox-428", word: "huge", phonetic: "/hjuːdʒ/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "huger", superEst: "hugest",
+    definitions: [{ type: "adjective", meaning: "Kocaman, devasa", engExplanation: "Extremely large; enormous.", trExplanation: "Son derece büyük; muazzam." }],
+    sentence: "They live in a huge house.", sentence_tr: "Devasa bir evde yaşıyorlar."
+  },
+  {
+    id: "ox-429", word: "human", phonetic: "/ˈhjuːmən/", tags: ["A1"],
+    plural: "humans", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "İnsan", engExplanation: "A human being, especially a person as distinguished from an animal.", trExplanation: "Bir insan, özellikle bir hayvandan ayırt edilen kişi." }],
+    sentence: "The human body is very complex.", sentence_tr: "İnsan vücudu çok karmaşıktır."
+  },
+  {
+    id: "ox-430", word: "hundred", phonetic: "/ˈhʌndrəd/", tags: ["A1"],
+    plural: "hundreds", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Yüz (100)", engExplanation: "The number equivalent to the product of ten and ten.", trExplanation: "On ile onun çarpımına eşit sayı." }],
+    sentence: "There are a hundred centimeters in a meter.", sentence_tr: "Bir metrede yüz santimetre vardır."
+  },
+  {
+    id: "ox-431", word: "husband", phonetic: "/ˈhʌzbənd/", tags: ["A1"],
+    plural: "husbands", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Koca, eş", engExplanation: "A married man considered in relation to his spouse.", trExplanation: "Eşine göre evli bir erkek." }],
+    sentence: "Her husband is an engineer.", sentence_tr: "Kocası bir mühendis."
+  },
+  {
+    id: "ox-432", word: "I", phonetic: "/aɪ/", tags: ["A1"],
+    plural: "we", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "pronoun", meaning: "Ben", engExplanation: "Used by a speaker to refer to himself or herself.", trExplanation: "Konuşmacı tarafından kendisini belirtmek için kullanılır." }],
+    sentence: "I am a student.", sentence_tr: "Ben bir öğrenciyim."
+  },
+  {
+    id: "ox-433", word: "ice", phonetic: "/aɪs/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Buz", engExplanation: "Frozen water, a brittle, transparent crystalline solid.", trExplanation: "Donmuş su, kırılgan, şeffaf kristalli katı." }],
+    sentence: "Can I have some ice in my drink?", sentence_tr: "İçeceğime biraz buz alabilir miyim?"
+  },
+  {
+    id: "ox-434", word: "ice cream", phonetic: "/ˈaɪs kriːm/", tags: ["A1"],
+    plural: "ice creams", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Dondurma", engExplanation: "A soft, sweet frozen food made with milk and cream.", trExplanation: "Süt ve krema ile yapılan yumuşak, tatlı donmuş yiyecek." }],
+    sentence: "My favorite dessert is vanilla ice cream.", sentence_tr: "En sevdiğim tatlı vanilyalı dondurmadır."
+  },
+  {
+    id: "ox-435", word: "idea", phonetic: "/aɪˈdiːə/", tags: ["A1"],
+    plural: "ideas", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Fikir, düşünce", engExplanation: "A thought or suggestion as to a possible course of action.", trExplanation: "Olası bir eylem tarzı olarak bir düşünce veya öneri." }],
+    sentence: "That is a brilliant idea!", sentence_tr: "Bu harika bir fikir!"
+  },
+  {
+    id: "ox-436", word: "if", phonetic: "/ɪf/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "conjunction", meaning: "Eğer", engExplanation: "On the condition or supposition that; in the event that.", trExplanation: "Şu şartla veya varsayımla; olması durumunda." }],
+    sentence: "If it rains, we will stay at home.", sentence_tr: "Eğer yağmur yağarsa evde kalacağız."
+  },
+  {
+    id: "ox-437", word: "imagine", phonetic: "/ɪˈmædʒɪn/", tags: ["A1"],
+    plural: "", v2: "imagined", v3: "imagined", vIng: "imagining", thirdPerson: "imagines", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "verb", meaning: "Hayal etmek", engExplanation: "Form a mental image or concept of.", trExplanation: "Zihinsel bir imaj veya kavram oluşturmak." }],
+    sentence: "Imagine living in a world without internet.", sentence_tr: "İnternetsiz bir dünyada yaşadığını hayal et."
+  },
+  {
+    id: "ox-438", word: "important", phonetic: "/ɪmˈpɔːrtnt/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "importantly", compEr: "more important", superEst: "most important",
+    definitions: [{ type: "adjective", meaning: "Önemli", engExplanation: "Of great significance or value.", trExplanation: "Büyük önem veya değere sahip." }],
+    sentence: "It is important to eat healthy food.", sentence_tr: "Sağlıklı yiyecekler yemek önemlidir."
+  },
+  {
+    id: "ox-439", word: "improve", phonetic: "/ɪmˈpruːv/", tags: ["A1"],
+    plural: "", v2: "improved", v3: "improved", vIng: "improving", thirdPerson: "improves", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "verb", meaning: "Geliştirmek, iyileştirmek", engExplanation: "Make or become better.", trExplanation: "Daha iyi yapmak veya hale gelmek." }],
+    sentence: "I want to improve my English speaking skills.", sentence_tr: "İngilizce konuşma becerilerimi geliştirmek istiyorum."
+  },
+  {
+    id: "ox-440", word: "in", phonetic: "/ɪn/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "prep", meaning: "İçinde", engExplanation: "Expressing the situation of something that is or appears to be enclosed.", trExplanation: "İçinde bulunan veya öyle görünen bir şeyin durumunu ifade eder." }],
+    sentence: "The key is in my pocket.", sentence_tr: "Anahtar cebimin içinde."
+  },
+  {
+    id: "ox-441", word: "include", phonetic: "/ɪnˈkluːd/", tags: ["A1"],
+    plural: "", v2: "included", v3: "included", vIng: "including", thirdPerson: "includes", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "verb", meaning: "Dahil etmek, içermek", engExplanation: "Comprise or contain as part of a whole.", trExplanation: "Bir bütünün parçası olarak içermek veya kapsamak." }],
+    sentence: "The price includes breakfast.", sentence_tr: "Fiyata kahvaltı dahildir."
+  },
+  {
+    id: "ox-442", word: "information", phonetic: "/ˌɪnfərˈmeɪʃn/", tags: ["A1"],
+    plural: "information", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Bilgi", engExplanation: "Facts provided or learned about something or someone.", trExplanation: "Bir şey veya birisi hakkında sağlanan veya öğrenilen gerçekler." }],
+    sentence: "I need more information about this project.", sentence_tr: "Bu proje hakkında daha fazla bilgiye ihtiyacım var."
+  },
+  {
+    id: "ox-443", word: "interest", phonetic: "/ˈɪntrəst/", tags: ["A1"],
+    plural: "interests", v2: "interested", v3: "interested", vIng: "interesting", thirdPerson: "interests", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "İlgi, faiz", engExplanation: "The feeling of wanting to know or learn about something or someone.", trExplanation: "Bir şeyi veya birini bilme veya öğrenme isteği duygusu." }],
+    sentence: "He has a great interest in science.", sentence_tr: "Onun bilime büyük bir ilgisi var."
+  },
+  {
+    id: "ox-444", word: "interested", phonetic: "/ˈɪntrəstɪd/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "more interested", superEst: "most interested",
+    definitions: [{ type: "adjective", meaning: "İlgili, alakadar", engExplanation: "Showing curiosity or concern about something or someone.", trExplanation: "Bir şey veya birisi hakkında merak veya endişe göstermek." }],
+    sentence: "I am interested in learning new languages.", sentence_tr: "Yeni diller öğrenmekle ilgileniyorum."
+  },
+  {
+    id: "ox-445", word: "interesting", phonetic: "/ˈɪntrəstɪŋ/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "interestingly", compEr: "more interesting", superEst: "most interesting",
+    definitions: [{ type: "adjective", meaning: "İlginç", engExplanation: "Arousing curiosity or interest; holding or catching the attention.", trExplanation: "Merak veya ilgi uyandıran; dikkati çeken." }],
+    sentence: "That is a very interesting book.", sentence_tr: "O çok ilginç bir kitap."
+  },
+  {
+    id: "ox-446", word: "internet", phonetic: "/ˈɪntərnet/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "İnternet", engExplanation: "A global computer network providing a variety of information and communication facilities.", trExplanation: "Çeşitli bilgi ve iletişim olanakları sağlayan küresel bir bilgisayar ağı." }],
+    sentence: "You can find anything on the internet.", sentence_tr: "İnternette her şeyi bulabilirsin."
+  },
+  {
+    id: "ox-447", word: "interview", phonetic: "/ˈɪntərvjuː/", tags: ["A1"],
+    plural: "interviews", v2: "interviewed", v3: "interviewed", vIng: "interviewing", thirdPerson: "interviews", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Röportaj, mülakat", engExplanation: "A meeting of people face to face, especially for consultation.", trExplanation: "İnsanların yüz yüze, özellikle danışma amacıyla yaptığı toplantı." }],
+    sentence: "She has a job interview tomorrow.", sentence_tr: "Yarın bir iş görüşmesi (mülakatı) var."
+  },
+  {
+    id: "ox-448", word: "into", phonetic: "/ˈɪntu/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "prep", meaning: "İçine", engExplanation: "Expressing movement or action with the result that someone or something becomes enclosed.", trExplanation: "Birinin veya bir şeyin içine girmesiyle sonuçlanan hareket veya eylemi ifade eder." }],
+    sentence: "He put the letter into his pocket.", sentence_tr: "Mektubu cebinin içine koydu."
+  },
+  {
+    id: "ox-449", word: "introduce", phonetic: "/ˌɪntrəˈduːs/", tags: ["A1"],
+    plural: "", v2: "introduced", v3: "introduced", vIng: "introducing", thirdPerson: "introduces", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "verb", meaning: "Tanıtmak, tanıştırmak", engExplanation: "Make someone known by name to another in person.", trExplanation: "Birini başka birine şahsen ismiyle tanıtmak." }],
+    sentence: "Let me introduce myself.", sentence_tr: "İzin verin kendimi tanıtayım."
+  },
+  {
+    id: "ox-450", word: "island", phonetic: "/ˈaɪlənd/", tags: ["A1"],
+    plural: "islands", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Ada", engExplanation: "A piece of land surrounded by water.", trExplanation: "Etrafı sularla çevrili bir toprak parçası." }],
+    sentence: "They spent their holiday on a beautiful island.", sentence_tr: "Tatillerini güzel bir adada geçirdiler."
+  },
+  {
+    id: "ox-451", word: "it", phonetic: "/ɪt/", tags: ["A1"],
+    plural: "they", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "pronoun", meaning: "O (cansızlar/hayvanlar)", engExplanation: "Used to refer to a thing previously mentioned or easily identified.", trExplanation: "Daha önce bahsedilen veya kolayca tanımlanabilen bir şeyi belirtmek için kullanılır." }],
+    sentence: "I saw a cat. It was very cute.", sentence_tr: "Bir kedi gördüm. O çok sevimliydi."
+  },
+  {
+    id: "ox-452", word: "its", phonetic: "/ɪts/", tags: ["A1"],
+    plural: "their", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "det", meaning: "Onun (cansız/hayvan)", engExplanation: "Belonging to or associated with a thing previously mentioned.", trExplanation: "Daha önce bahsedilen bir şeye ait olan." }],
+    sentence: "The dog wagged its tail.", sentence_tr: "Köpek kuyruğunu (onun kuyruğunu) salladı."
+  },
+  {
+    id: "ox-453", word: "itself", phonetic: "/ɪtˈself/", tags: ["A1"],
+    plural: "themselves", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "pronoun", meaning: "Kendisi, kendini (cansız/hayvan)", engExplanation: "Used as the object of a verb to refer to a thing or animal previously mentioned.", trExplanation: "Daha önce bahsedilen bir şeyi veya hayvanı belirtmek için kullanılır." }],
+    sentence: "The cat is washing itself.", sentence_tr: "Kedi kendini temizliyor (yıkıyor)."
+  },
+  {
+    id: "ox-454", word: "jacket", phonetic: "/ˈdʒækɪt/", tags: ["A1"],
+    plural: "jackets", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Ceket", engExplanation: "An outer garment extending either to the waist or the hips.", trExplanation: "Bele veya kalçaya kadar uzanan bir dış giysi." }],
+    sentence: "Put on your jacket, it's cold outside.", sentence_tr: "Ceketini giy, dışarısı soğuk."
+  },
+  {
+    id: "ox-455", word: "January", phonetic: "/ˈdʒænjueri/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Ocak (ayı)", engExplanation: "The first month of the year.", trExplanation: "Yılın ilk ayı." }],
+    sentence: "My birthday is in January.", sentence_tr: "Doğum günüm Ocak ayında."
+  },
+  {
+    id: "ox-456", word: "job", phonetic: "/dʒɑːb/", tags: ["A1"],
+    plural: "jobs", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "İş, meslek", engExplanation: "A paid position of regular employment.", trExplanation: "Ücretli düzenli istihdam pozisyonu." }],
+    sentence: "She is looking for a new job.", sentence_tr: "Yeni bir iş arıyor."
+  },
+  {
+    id: "ox-457", word: "join", phonetic: "/dʒɔɪn/", tags: ["A1"],
+    plural: "", v2: "joined", v3: "joined", vIng: "joining", thirdPerson: "joins", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "verb", meaning: "Katılmak, birleştirmek", engExplanation: "Link; connect; become a member of.", trExplanation: "Bağlamak; üye olmak." }],
+    sentence: "Do you want to join our team?", sentence_tr: "Takımımıza katılmak ister misin?"
+  },
+  {
+    id: "ox-458", word: "journey", phonetic: "/ˈdʒɜːrni/", tags: ["A1"],
+    plural: "journeys", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Yolculuk, seyahat", engExplanation: "An act of traveling from one place to another.", trExplanation: "Bir yerden diğerine seyahat etme eylemi." }],
+    sentence: "It is a long journey by train.", sentence_tr: "Trenle uzun bir yolculuk."
+  },
+  {
+    id: "ox-459", word: "juice", phonetic: "/dʒuːs/", tags: ["A1"],
+    plural: "juices", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Meyve suyu", engExplanation: "The liquid obtained from or present in fruit or vegetables.", trExplanation: "Meyve veya sebzelerden elde edilen sıvı." }],
+    sentence: "I drink orange juice every morning.", sentence_tr: "Her sabah portakal suyu içerim."
+  },
+  {
+    id: "ox-460", word: "July", phonetic: "/dʒuˈlaɪ/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Temmuz (ayı)", engExplanation: "The seventh month of the year.", trExplanation: "Yılın yedinci ayı." }],
+    sentence: "We usually go on vacation in July.", sentence_tr: "Genellikle Temmuz ayında tatile çıkarız."
+  },
+  {
+    id: "ox-461", word: "jump", phonetic: "/dʒʌmp/", tags: ["A1"],
+    plural: "jumps", v2: "jumped", v3: "jumped", vIng: "jumping", thirdPerson: "jumps", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "verb", meaning: "Zıplamak, atlamak", engExplanation: "Push oneself off a surface and into the air by using the muscles in one's legs and feet.", trExplanation: "Bacaklardaki kasları kullanarak kendini bir yüzeyden havaya itmek." }],
+    sentence: "The cat jumped onto the table.", sentence_tr: "Kedi masanın üzerine zıpladı."
+  },
+  {
+    id: "ox-462", word: "June", phonetic: "/dʒuːn/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Haziran (ayı)", engExplanation: "The sixth month of the year.", trExplanation: "Yılın altıncı ayı." }],
+    sentence: "Summer starts in June.", sentence_tr: "Yaz Haziran'da başlar."
+  },
+  {
+    id: "ox-463", word: "just", phonetic: "/dʒʌst/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "justly", compEr: "", superEst: "",
+    definitions: [{ type: "adverb", meaning: "Sadece, az önce", engExplanation: "Exactly; very recently; simply.", trExplanation: "Kesinlikle; çok yakın zamanda; sadece." }],
+    sentence: "I just finished my homework.", sentence_tr: "Ödevimi az önce bitirdim."
+  },
+  {
+    id: "ox-464", word: "keep", phonetic: "/kiːp/", tags: ["A1", "Irregular Verb"],
+    plural: "", v2: "kept", v3: "kept", vIng: "keeping", thirdPerson: "keeps", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "verb", meaning: "Tutmak, saklamak, korumak", engExplanation: "Have or retain possession of.", trExplanation: "Sahip olmak veya elinde tutmak." }],
+    sentence: "You can keep the change.", sentence_tr: "Para üstünü (kendinde) tutabilirsin."
+  },
+  {
+    id: "ox-465", word: "key", phonetic: "/kiː/", tags: ["A1"],
+    plural: "keys", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Anahtar, kilit nokta", engExplanation: "A small piece of shaped metal used for opening a lock.", trExplanation: "Kilidi açmak için kullanılan küçük şekillendirilmiş metal parçası." }],
+    sentence: "I lost my house keys.", sentence_tr: "Ev anahtarlarımı kaybettim."
+  },
+  {
+    id: "ox-466", word: "kilometre", phonetic: "/kɪˈlɑːmɪtər/", tags: ["A1"],
+    plural: "kilometres", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Kilometre", engExplanation: "A metric unit of measurement equal to 1,000 meters.", trExplanation: "1.000 metreye eşit olan metrik ölçü birimi." }],
+    sentence: "The next town is 10 kilometres away.", sentence_tr: "Sonraki kasaba 10 kilometre uzaklıkta."
+  },
+  {
+    id: "ox-467", word: "kind", phonetic: "/kaɪnd/", tags: ["A1"],
+    plural: "kinds", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "kindly", compEr: "kinder", superEst: "kindest",
+    definitions: [{ type: "adjective", meaning: "Kibar (sıfat), Tür/Çeşit (isim)", engExplanation: "Having a friendly, generous nature (adj); A class or type (noun).", trExplanation: "Dostane bir doğaya sahip olan (sıfat); Bir sınıf veya tür (isim)." }],
+    sentence: "He is a very kind person.", sentence_tr: "O çok kibar bir insandır."
+  },
+  {
+    id: "ox-468", word: "king", phonetic: "/kɪŋ/", tags: ["A1"],
+    plural: "kings", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Kral", engExplanation: "The male ruler of an independent state.", trExplanation: "Bağımsız bir devletin erkek hükümdarı." }],
+    sentence: "The king lived in a big castle.", sentence_tr: "Kral büyük bir şatoda yaşardı."
+  },
+  {
+    id: "ox-469", word: "kitchen", phonetic: "/ˈkɪtʃɪn/", tags: ["A1"],
+    plural: "kitchens", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Mutfak", engExplanation: "A room or area where food is prepared and cooked.", trExplanation: "Yiyeceklerin hazırlandığı ve pişirildiği oda veya alan." }],
+    sentence: "My mother is cooking in the kitchen.", sentence_tr: "Annem mutfakta yemek pişiriyor."
+  },
+  {
+    id: "ox-470", word: "knee", phonetic: "/niː/", tags: ["A1"],
+    plural: "knees", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Diz", engExplanation: "The joint between the thigh and the lower leg in humans.", trExplanation: "İnsanlarda uyluk ile alt bacak arasındaki eklem." }],
+    sentence: "He fell and hurt his knee.", sentence_tr: "Düştü ve dizini incitti."
+  },
+  {
+    id: "ox-471", word: "knife", phonetic: "/naɪf/", tags: ["A1"],
+    plural: "knives", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Bıçak", engExplanation: "An instrument composed of a blade fixed into a handle, used for cutting.", trExplanation: "Kesmek için kullanılan, bir sapa sabitlenmiş bıçak." }],
+    sentence: "Be careful with that sharp knife.", sentence_tr: "Şu keskin bıçağa dikkat et."
+  },
+  {
+    id: "ox-472", word: "know", phonetic: "/noʊ/", tags: ["A1", "Irregular Verb"],
+    plural: "", v2: "knew", v3: "known", vIng: "knowing", thirdPerson: "knows", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "verb", meaning: "Bilmek, tanımak", engExplanation: "Be aware of through observation, inquiry, or information.", trExplanation: "Gözlem veya bilgi yoluyla farkında olmak." }],
+    sentence: "I don't know the answer.", sentence_tr: "Cevabı bilmiyorum."
+  },
+  {
+    id: "ox-473", word: "lake", phonetic: "/leɪk/", tags: ["A1"],
+    plural: "lakes", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Göl", engExplanation: "A large body of water surrounded by land.", trExplanation: "Karayla çevrili büyük su kütlesi." }],
+    sentence: "We went fishing in the lake.", sentence_tr: "Gölde balık tutmaya gittik."
+  },
+  {
+    id: "ox-474", word: "language", phonetic: "/ˈlæŋɡwɪdʒ/", tags: ["A1"],
+    plural: "languages", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Dil, lisan", engExplanation: "The method of human communication, either spoken or written.", trExplanation: "Konuşulan veya yazılan insan iletişim yöntemi." }],
+    sentence: "English is a global language.", sentence_tr: "İngilizce küresel bir dildir."
+  },
+  {
+    id: "ox-475", word: "large", phonetic: "/lɑːrdʒ/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "largely", compEr: "larger", superEst: "largest",
+    definitions: [{ type: "adjective", meaning: "Geniş, büyük", engExplanation: "Of considerable or relatively great size, extent, or capacity.", trExplanation: "Önemli ölçüde büyük boyutta, kapasitede." }],
+    sentence: "They live in a large house.", sentence_tr: "Geniş bir evde yaşıyorlar."
+  },
+  {
+    id: "ox-476", word: "last", phonetic: "/læst/", tags: ["A1"],
+    plural: "", v2: "lasted", v3: "lasted", vIng: "lasting", thirdPerson: "lasts", advLy: "lastly", compEr: "", superEst: "",
+    definitions: [{ type: "adjective", meaning: "Son, geçen (sıfat), Sürmek (fiil)", engExplanation: "Coming after all others; most recent.", trExplanation: "Diğerlerinden sonra gelen; en son." }],
+    sentence: "I saw him last week.", sentence_tr: "Onu geçen hafta gördüm."
+  },
+  {
+    id: "ox-477", word: "late", phonetic: "/leɪt/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "lately", compEr: "later", superEst: "latest",
+    definitions: [{ type: "adjective", meaning: "Geç, gecikmiş", engExplanation: "Doing something or taking place after the expected, proper, or usual time.", trExplanation: "Beklenen veya alışılmış zamandan sonra gerçekleşen." }],
+    sentence: "Hurry up, we are late for school.", sentence_tr: "Acele et, okula geç kaldık."
+  },
+  {
+    id: "ox-478", word: "later", phonetic: "/ˈleɪtər/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "adverb", meaning: "Daha sonra", engExplanation: "At a time in the near future; afterward.", trExplanation: "Yakın gelecekte bir zamanda; sonrasında." }],
+    sentence: "I will call you later.", sentence_tr: "Seni daha sonra arayacağım."
+  },
+  {
+    id: "ox-479", word: "laugh", phonetic: "/læf/", tags: ["A1"],
+    plural: "laughs", v2: "laughed", v3: "laughed", vIng: "laughing", thirdPerson: "laughs", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "verb", meaning: "Gülmek", engExplanation: "Make the spontaneous sounds and movements of the face and body that are expressions of lively amusement.", trExplanation: "Eğlencenin ifadesi olan sesleri ve yüz hareketlerini yapmak." }],
+    sentence: "The joke made everyone laugh.", sentence_tr: "Şaka herkesi güldürdü."
+  },
+  {
+    id: "ox-480", word: "learn", phonetic: "/lɜːrn/", tags: ["A1"],
+    plural: "", v2: "learned", v3: "learned", vIng: "learning", thirdPerson: "learns", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "verb", meaning: "Öğrenmek", engExplanation: "Acquire knowledge of or skill in something.", trExplanation: "Bir şey hakkında bilgi veya beceri edinmek." }],
+    sentence: "I want to learn how to swim.", sentence_tr: "Nasıl yüzüleceğini öğrenmek istiyorum."
+  },
+  {
+    id: "ox-481", word: "leave", phonetic: "/liːv/", tags: ["A1", "Irregular Verb"],
+    plural: "", v2: "left", v3: "left", vIng: "leaving", thirdPerson: "leaves", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "verb", meaning: "Ayrılmak, bırakmak", engExplanation: "Go away from.", trExplanation: "Bir yerden uzağa gitmek." }],
+    sentence: "The train will leave in ten minutes.", sentence_tr: "Tren on dakika içinde kalkacak (ayrılacak)."
+  },
+  {
+    id: "ox-482", word: "left", phonetic: "/left/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Sol, sol taraf", engExplanation: "On, towards, or relating to the side of a human body or of a thing that is to the west when the person or thing is facing north.", trExplanation: "Bir şeyin sol tarafı." }],
+    sentence: "Turn left at the next corner.", sentence_tr: "Bir sonraki köşeden sola dön."
+  },
+  {
+    id: "ox-483", word: "leg", phonetic: "/leɡ/", tags: ["A1"],
+    plural: "legs", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Bacak", engExplanation: "Each of the limbs on which a person or animal walks and stands.", trExplanation: "Bir kişinin veya hayvanın üzerinde yürüdüğü veya durduğu uzuvların her biri." }],
+    sentence: "He broke his leg while playing football.", sentence_tr: "Futbol oynarken bacağını kırdı."
+  },
+  {
+    id: "ox-484", word: "lesson", phonetic: "/ˈlesn/", tags: ["A1"],
+    plural: "lessons", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Ders", engExplanation: "A period of learning or teaching.", trExplanation: "Öğrenme veya öğretme dönemi." }],
+    sentence: "The English lesson starts at 9 AM.", sentence_tr: "İngilizce dersi sabah 9'da başlıyor."
+  },
+  {
+    id: "ox-485", word: "let", phonetic: "/let/", tags: ["A1", "Irregular Verb"],
+    plural: "", v2: "let", v3: "let", vIng: "letting", thirdPerson: "lets", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "verb", meaning: "İzin vermek, bırakmak", engExplanation: "Not prevent or forbid; allow.", trExplanation: "Engellememek; izin vermek." }],
+    sentence: "Please let me help you.", sentence_tr: "Lütfen sana yardım etmeme izin ver."
+  },
+  {
+    id: "ox-486", word: "letter", phonetic: "/ˈletər/", tags: ["A1"],
+    plural: "letters", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Mektup, harf", engExplanation: "A character representing one or more of the sounds used in speech; a written communication.", trExplanation: "Konuşmada kullanılan sesleri temsil eden karakter veya yazılı iletişim." }],
+    sentence: "I wrote a letter to my grandmother.", sentence_tr: "Büyükanneme bir mektup yazdım."
+  },
+  {
+    id: "ox-487", word: "level", phonetic: "/ˈlevl/", tags: ["A1"],
+    plural: "levels", v2: "leveled", v3: "leveled", vIng: "leveling", thirdPerson: "levels", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Seviye, düzey", engExplanation: "A position on a real or imaginary scale of amount, quantity, extent, or quality.", trExplanation: "Miktar, kapasite veya kalite ölçeğindeki bir konum." }],
+    sentence: "What is your level of English?", sentence_tr: "İngilizce seviyen nedir?"
+  },
+  {
+    id: "ox-488", word: "library", phonetic: "/ˈlaɪbreri/", tags: ["A1"],
+    plural: "libraries", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Kütüphane", engExplanation: "A building or room containing collections of books.", trExplanation: "Kitap koleksiyonları içeren bina veya oda." }],
+    sentence: "I am studying at the library.", sentence_tr: "Kütüphanede ders çalışıyorum."
+  },
+  {
+    id: "ox-489", word: "lie", phonetic: "/laɪ/", tags: ["A1", "Irregular Verb"],
+    plural: "lies", v2: "lay", v3: "lain", vIng: "lying", thirdPerson: "lies", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "verb", meaning: "Yatmak, uzanmak (veya Yalan söylemek)", engExplanation: "Assume a horizontal or resting position on a supporting surface.", trExplanation: "Destekleyici bir yüzeyde yatay bir konuma geçmek." }],
+    sentence: "I want to lie on the bed and rest.", sentence_tr: "Yatağa uzanıp dinlenmek istiyorum."
+  },
+  {
+    id: "ox-490", word: "life", phonetic: "/laɪf/", tags: ["A1"],
+    plural: "lives", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Hayat, yaşam", engExplanation: "The condition that distinguishes animals and plants from inorganic matter.", trExplanation: "Canlıları cansız maddelerden ayıran durum." }],
+    sentence: "Water is essential for life.", sentence_tr: "Su, yaşam için gereklidir."
+  },
+  {
+    id: "ox-491", word: "light", phonetic: "/laɪt/", tags: ["A1"],
+    plural: "lights", v2: "lit", v3: "lit", vIng: "lighting", thirdPerson: "lights", advLy: "lightly", compEr: "lighter", superEst: "lightest",
+    definitions: [{ type: "noun", meaning: "Işık, hafif (sıfat)", engExplanation: "The natural agent that stimulates sight and makes things visible.", trExplanation: "Görmeyi uyaran ve nesneleri görünür kılan doğal unsur." }],
+    sentence: "Please turn off the light.", sentence_tr: "Lütfen ışığı kapat."
+  },
+  {
+    id: "ox-492", word: "like", phonetic: "/laɪk/", tags: ["A1"],
+    plural: "", v2: "liked", v3: "liked", vIng: "liking", thirdPerson: "likes", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "verb", meaning: "Beğenmek, sevmek", engExplanation: "Find agreeable, enjoyable, or satisfactory.", trExplanation: "Hoş, zevkli veya tatmin edici bulmak." }],
+    sentence: "I like listening to music.", sentence_tr: "Müzik dinlemeyi severim."
+  },
+  {
+    id: "ox-493", word: "line", phonetic: "/laɪn/", tags: ["A1"],
+    plural: "lines", v2: "lined", v3: "lined", vIng: "lining", thirdPerson: "lines", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Çizgi, hat, sıra", engExplanation: "A long, narrow mark or band.", trExplanation: "Uzun, dar işaret veya bant." }],
+    sentence: "Please stand in a straight line.", sentence_tr: "Lütfen düz bir sırada durun."
+  },
+  {
+    id: "ox-494", word: "lion", phonetic: "/ˈlaɪən/", tags: ["A1"],
+    plural: "lions", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Aslan", engExplanation: "A large tawny-colored cat that lives in prides.", trExplanation: "Sürüler halinde yaşayan büyük kedi." }],
+    sentence: "The lion is the king of the jungle.", sentence_tr: "Aslan ormanın kralıdır."
+  },
+  {
+    id: "ox-495", word: "list", phonetic: "/lɪst/", tags: ["A1"],
+    plural: "lists", v2: "listed", v3: "listed", vIng: "listing", thirdPerson: "lists", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Liste", engExplanation: "A number of connected items or names written or printed consecutively.", trExplanation: "Art arda yazılmış veya basılmış birbiriyle bağlantılı öğeler veya isimler dizisi." }],
+    sentence: "I made a shopping list.", sentence_tr: "Bir alışveriş listesi yaptım."
+  },
+  {
+    id: "ox-496", word: "listen", phonetic: "/ˈlɪsn/", tags: ["A1"],
+    plural: "", v2: "listened", v3: "listened", vIng: "listening", thirdPerson: "listens", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "verb", meaning: "Dinlemek", engExplanation: "Give one's attention to a sound.", trExplanation: "Dikkatini bir sese vermek." }],
+    sentence: "You should listen to your teacher.", sentence_tr: "Öğretmenini dinlemelisin."
+  },
+  {
+    id: "ox-497", word: "little", phonetic: "/ˈlɪtl/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "less", superEst: "least",
+    definitions: [{ type: "adjective", meaning: "Küçük, az", engExplanation: "Small in size, amount, or degree.", trExplanation: "Boyut, miktar veya derece olarak küçük." }],
+    sentence: "I have a little sister.", sentence_tr: "Küçük bir kız kardeşim var."
+  },
+  {
+    id: "ox-498", word: "live", phonetic: "/lɪv/", tags: ["A1"],
+    plural: "", v2: "lived", v3: "lived", vIng: "living", thirdPerson: "lives", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "verb", meaning: "Yaşamak, ikamet etmek", engExplanation: "Remain alive; make one's home in a particular place.", trExplanation: "Hayatta kalmak; belirli bir yerde yaşamını sürdürmek." }],
+    sentence: "I live in Istanbul.", sentence_tr: "İstanbul'da yaşıyorum."
+  },
+  {
+    id: "ox-499", word: "local", phonetic: "/ˈloʊkl/", tags: ["A1"],
+    plural: "locals", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "locally", compEr: "", superEst: "",
+    definitions: [{ type: "adjective", meaning: "Yerel, yöresel", engExplanation: "Belonging or relating to a particular area or neighborhood.", trExplanation: "Belirli bir bölgeye veya mahalleye ait olan." }],
+    sentence: "We buy our vegetables from the local market.", sentence_tr: "Sebzelerimizi yerel pazardan alırız."
+  },
+  {
+    id: "ox-500", word: "long", phonetic: "/lɔːŋ/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "longer", superEst: "longest",
+    definitions: [{ type: "adjective", meaning: "Uzun", engExplanation: "Measuring a great distance from end to end.", trExplanation: "Bir uçtan diğerine büyük bir mesafeyi ölçen." }],
+    sentence: "She has very long hair.", sentence_tr: "Onun çok uzun saçları var."
+  },
+  {
+    id: "ox-501", word: "look", phonetic: "/lʊk/", tags: ["A1"],
+    plural: "", v2: "looked", v3: "looked", vIng: "looking", thirdPerson: "looks", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "verb", meaning: "Bakmak, görünmek", engExplanation: "Direct one's gaze toward someone or something.", trExplanation: "Bakışlarını birine veya bir şeye yöneltmek." }],
+    sentence: "Look at that beautiful bird.", sentence_tr: "Şu güzel kuşa bak."
+  },
+  {
+    id: "ox-502", word: "lose", phonetic: "/luːz/", tags: ["A1", "Irregular Verb"],
+    plural: "", v2: "lost", v3: "lost", vIng: "losing", thirdPerson: "loses", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "verb", meaning: "Kaybetmek", engExplanation: "Be deprived of or cease to have or retain.", trExplanation: "Sahip olunan bir şeyden mahrum kalmak veya yitirmek." }],
+    sentence: "Don't lose your keys again.", sentence_tr: "Anahtarlarını bir daha kaybetme."
+  },
+  {
+    id: "ox-503", word: "lot", phonetic: "/lɑːt/", tags: ["A1"],
+    plural: "lots", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "pronoun", meaning: "Çok, birçoğu", engExplanation: "A large number or amount.", trExplanation: "Büyük bir sayı veya miktar." }],
+    sentence: "I have a lot of work to do.", sentence_tr: "Yapacak çok işim var."
+  },
+  {
+    id: "ox-504", word: "loud", phonetic: "/laʊd/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "loudly", compEr: "louder", superEst: "loudest",
+    definitions: [{ type: "adjective", meaning: "Yüksek sesli", engExplanation: "Producing or capable of producing much noise.", trExplanation: "Çok fazla gürültü üreten veya üretebilen." }],
+    sentence: "The music is too loud.", sentence_tr: "Müzik çok yüksek sesli."
+  },
+  {
+    id: "ox-505", word: "love", phonetic: "/lʌv/", tags: ["A1"],
+    plural: "loves", v2: "loved", v3: "loved", vIng: "loving", thirdPerson: "loves", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "verb", meaning: "Sevmek, aşk", engExplanation: "Feel deep affection for someone or something.", trExplanation: "Birine veya bir şeye karşı derin sevgi hissetmek." }],
+    sentence: "I love reading books before bed.", sentence_tr: "Yatmadan önce kitap okumayı severim."
+  },
+  {
+    id: "ox-506", word: "low", phonetic: "/loʊ/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "lower", superEst: "lowest",
+    definitions: [{ type: "adjective", meaning: "Düşük, alçak", engExplanation: "Of less than average height from top to bottom or to the top from the ground.", trExplanation: "Yukarıdan aşağıya veya yerden yukarıya ortalamadan daha az yükseklikte." }],
+    sentence: "The temperature is very low today.", sentence_tr: "Bugün sıcaklık çok düşük."
+  },
+  {
+    id: "ox-507", word: "luck", phonetic: "/lʌk/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Şans, talih", engExplanation: "Success or failure apparently brought by chance rather than through one's own actions.", trExplanation: "Kişinin kendi eylemlerinden ziyade görünüşte şansın getirdiği başarı veya başarısızlık." }],
+    sentence: "Good luck with your exam!", sentence_tr: "Sınavında iyi şanslar!"
+  },
+  {
+    id: "ox-508", word: "lunch", phonetic: "/lʌntʃ/", tags: ["A1"],
+    plural: "lunches", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Öğle yemeği", engExplanation: "A meal eaten in the middle of the day.", trExplanation: "Günün ortasında yenen öğün." }],
+    sentence: "We usually have lunch at 12 PM.", sentence_tr: "Genellikle öğlen 12'de öğle yemeği yeriz."
+  },
+  {
+    id: "ox-509", word: "machine", phonetic: "/məˈʃiːn/", tags: ["A1"],
+    plural: "machines", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Makine", engExplanation: "An apparatus using or applying mechanical power.", trExplanation: "Mekanik güç kullanan veya uygulayan bir cihaz." }],
+    sentence: "The washing machine is broken.", sentence_tr: "Çamaşır makinesi bozuk."
+  },
+  {
+    id: "ox-510", word: "magazine", phonetic: "/ˈmæɡəziːn/", tags: ["A1"],
+    plural: "magazines", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Dergi", engExplanation: "A periodical publication containing articles and illustrations.", trExplanation: "Makaleler ve resimler içeren periyodik yayın." }],
+    sentence: "She reads a fashion magazine every week.", sentence_tr: "O her hafta bir moda dergisi okur."
+  },
+  {
+    id: "ox-511", word: "main", phonetic: "/meɪn/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "mainly", compEr: "", superEst: "",
+    definitions: [{ type: "adjective", meaning: "Ana, temel", engExplanation: "Chief in size or importance.", trExplanation: "Boyut veya önem bakımından başlıca olan." }],
+    sentence: "The main problem is a lack of time.", sentence_tr: "Ana sorun zaman eksikliğidir."
+  },
+  {
+    id: "ox-512", word: "make", phonetic: "/meɪk/", tags: ["A1", "Irregular Verb"],
+    plural: "", v2: "made", v3: "made", vIng: "making", thirdPerson: "makes", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "verb", meaning: "Yapmak, üretmek", engExplanation: "Form by putting parts together or combining substances.", trExplanation: "Parçaları bir araya getirerek veya maddeleri birleştirerek oluşturmak." }],
+    sentence: "I will make a cake for you.", sentence_tr: "Senin için bir kek yapacağım."
+  },
+  {
+    id: "ox-513", word: "man", phonetic: "/mæn/", tags: ["A1"],
+    plural: "men", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Adam, erkek", engExplanation: "An adult male human being.", trExplanation: "Yetişkin erkek insan." }],
+    sentence: "That man is my uncle.", sentence_tr: "O adam benim amcam."
+  },
+  {
+    id: "ox-514", word: "manager", phonetic: "/ˈmænɪdʒər/", tags: ["A1"],
+    plural: "managers", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Yönetici, müdür", engExplanation: "A person responsible for controlling or administering an organization or group.", trExplanation: "Bir kurumu veya grubu kontrol etmekten veya yönetmekten sorumlu kişi." }],
+    sentence: "He is the manager of this restaurant.", sentence_tr: "O, bu restoranın yöneticisidir."
+  },
+  {
+    id: "ox-515", word: "many", phonetic: "/ˈmeni/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "more", superEst: "most",
+    definitions: [{ type: "determiner", meaning: "Çok, birçok", engExplanation: "A large number of.", trExplanation: "Büyük bir sayı, fazla." }],
+    sentence: "There are many people in the park.", sentence_tr: "Parkta çok insan var."
+  },
+  {
+    id: "ox-516", word: "map", phonetic: "/mæp/", tags: ["A1"],
+    plural: "maps", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Harita", engExplanation: "A diagrammatic representation of an area of land or sea.", trExplanation: "Bir kara veya deniz alanının diyagramatik bir gösterimi." }],
+    sentence: "Can you find our city on the map?", sentence_tr: "Şehrimizi haritada bulabilir misin?"
+  },
+  {
+    id: "ox-517", word: "mark", phonetic: "/mɑːrk/", tags: ["A1"],
+    plural: "marks", v2: "marked", v3: "marked", vIng: "marking", thirdPerson: "marks", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "İşaret, not", engExplanation: "A small area on a surface having a different color from its surroundings.", trExplanation: "Çevresinden farklı renge sahip bir yüzeydeki küçük alan." }],
+    sentence: "He got a good mark in the exam.", sentence_tr: "Sınavda iyi bir not aldı."
+  },
+  {
+    id: "ox-518", word: "market", phonetic: "/ˈmɑːrkɪt/", tags: ["A1"],
+    plural: "markets", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Market, pazar", engExplanation: "A regular gathering of people for the purchase and sale of provisions.", trExplanation: "Hükümlerin alım satımı için insanların düzenli olarak toplanması." }],
+    sentence: "I buy fresh fruit from the local market.", sentence_tr: "Yerel pazardan taze meyve alırım."
+  },
+  {
+    id: "ox-519", word: "marry", phonetic: "/ˈmæri/", tags: ["A1"],
+    plural: "", v2: "married", v3: "married", vIng: "marrying", thirdPerson: "marries", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "verb", meaning: "Evlenmek", engExplanation: "Join in marriage.", trExplanation: "Evlilikte birleşmek." }],
+    sentence: "They decided to marry next year.", sentence_tr: "Gelecek yıl evlenmeye karar verdiler."
+  },
+  {
+    id: "ox-520", word: "match", phonetic: "/mætʃ/", tags: ["A1"],
+    plural: "matches", v2: "matched", v3: "matched", vIng: "matching", thirdPerson: "matches", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Maç, eşleşmek", engExplanation: "A contest in which people or teams compete against each other in a particular sport.", trExplanation: "Kişilerin veya takımların belirli bir sporda birbirleriyle yarıştığı müsabaka." }],
+    sentence: "Are you watching the football match?", sentence_tr: "Futbol maçını izliyor musun?"
+  },
+  {
+    id: "ox-521", word: "material", phonetic: "/məˈtɪriəl/", tags: ["A1"],
+    plural: "materials", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Malzeme, materyal", engExplanation: "The matter from which a thing is or can be made.", trExplanation: "Bir şeyin yapıldığı veya yapılabileceği madde." }],
+    sentence: "Wood is a natural material.", sentence_tr: "Ahşap doğal bir malzemedir."
+  },
+  {
+    id: "ox-522", word: "matter", phonetic: "/ˈmætər/", tags: ["A1"],
+    plural: "matters", v2: "mattered", v3: "mattered", vIng: "mattering", thirdPerson: "matters", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Konu, mesele, madde", engExplanation: "An affair or situation under consideration.", trExplanation: "Değerlendirilen bir durum veya mesele." }],
+    sentence: "What is the matter with you?", sentence_tr: "Senin sorunun (meselen) nedir?"
+  },
+  {
+    id: "ox-523", word: "may", phonetic: "/meɪ/", tags: ["A1"],
+    plural: "", v2: "might", v3: "", vIng: "", thirdPerson: "may", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "modal verb", meaning: "Ebilmek, mayıs (ay)", engExplanation: "Expressing possibility or permission.", trExplanation: "Olasılık veya izin ifade eder." }],
+    sentence: "May I use your phone?", sentence_tr: "Telefonunuzu kullanabilir miyim?"
+  },
+  {
+    id: "ox-524", word: "maybe", phonetic: "/ˈmeɪbi/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "adverb", meaning: "Belki", engExplanation: "Perhaps; possibly.", trExplanation: "Belki; muhtemelen." }],
+    sentence: "Maybe it will rain tomorrow.", sentence_tr: "Belki yarın yağmur yağar."
+  },
+  {
+    id: "ox-525", word: "me", phonetic: "/miː/", tags: ["A1"],
+    plural: "us", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "pronoun", meaning: "Beni, bana", engExplanation: "Used by a speaker to refer to himself or herself as the object of a verb or preposition.", trExplanation: "Konuşan kişinin, fiilin veya edatın nesnesi olarak kendisine atıfta bulunması için kullanılır." }],
+    sentence: "Can you help me?", sentence_tr: "Bana yardım edebilir misin?"
+  },
+  {
+    id: "ox-526", word: "meal", phonetic: "/miːl/", tags: ["A1"],
+    plural: "meals", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Yemek, öğün", engExplanation: "Any of the regular occasions in a day when a reasonably large amount of food is eaten.", trExplanation: "Günde oldukça büyük miktarda yiyecek yenen düzenli etkinliklerden herhangi biri." }],
+    sentence: "Breakfast is the most important meal of the day.", sentence_tr: "Kahvaltı günün en önemli öğünüdür."
+  },
+  {
+    id: "ox-527", word: "mean", phonetic: "/miːn/", tags: ["A1", "Irregular Verb"],
+    plural: "", v2: "meant", v3: "meant", vIng: "meaning", thirdPerson: "means", advLy: "", compEr: "meaner", superEst: "meanest",
+    definitions: [{ type: "verb", meaning: "Anlamına gelmek, kastetmek", engExplanation: "Intend to convey, indicate, or refer to.", trExplanation: "İletmek, belirtmek veya kastetmek niyetinde olmak." }],
+    sentence: "What does this word mean?", sentence_tr: "Bu kelime ne anlama geliyor?"
+  },
+  {
+    id: "ox-528", word: "meaning", phonetic: "/ˈmiːnɪŋ/", tags: ["A1"],
+    plural: "meanings", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Anlam", engExplanation: "What is meant by a word, text, concept, or action.", trExplanation: "Bir kelime, metin, kavram veya eylem ile kastedilen şey." }],
+    sentence: "I don't understand the meaning of this sentence.", sentence_tr: "Bu cümlenin anlamını anlamıyorum."
+  },
+  {
+    id: "ox-529", word: "meat", phonetic: "/miːt/", tags: ["A1"],
+    plural: "meats", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Et", engExplanation: "The flesh of an animal as food.", trExplanation: "Gıda olarak kullanılan hayvan eti." }],
+    sentence: "I don't eat meat, I am a vegetarian.", sentence_tr: "Ben et yemiyorum, vejetaryenim."
+  },
+  {
+    id: "ox-530", word: "meet", phonetic: "/miːt/", tags: ["A1", "Irregular Verb"],
+    plural: "", v2: "met", v3: "met", vIng: "meeting", thirdPerson: "meets", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "verb", meaning: "Buluşmak, tanışmak", engExplanation: "Come into the presence or company of someone by chance or arrangement.", trExplanation: "Biriyle şans eseri veya ayarlayarak bir araya gelmek." }],
+    sentence: "Let's meet at the cafe at 5 PM.", sentence_tr: "Saat 5'te kafede buluşalım."
+  },
+  {
+    id: "ox-531", word: "meeting", phonetic: "/ˈmiːtɪŋ/", tags: ["A1"],
+    plural: "meetings", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Toplantı", engExplanation: "An assembly of people for a particular purpose.", trExplanation: "İnsanların belirli bir amaç için bir araya gelmesi." }],
+    sentence: "I have a business meeting this afternoon.", sentence_tr: "Bu öğleden sonra bir iş toplantım var."
+  },
+  {
+    id: "ox-532", word: "member", phonetic: "/ˈmembər/", tags: ["A1"],
+    plural: "members", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Üye", engExplanation: "An individual belonging to a group or an organization.", trExplanation: "Bir gruba veya kuruluşa ait olan birey." }],
+    sentence: "She is a member of the sports club.", sentence_tr: "O, spor kulübünün bir üyesidir."
+  },
+  {
+    id: "ox-533", word: "memory", phonetic: "/ˈmeməri/", tags: ["A1"],
+    plural: "memories", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Hafıza, anı", engExplanation: "The faculty by which the mind stores and remembers information.", trExplanation: "Zihnin bilgiyi sakladığı ve hatırladığı yetenek." }],
+    sentence: "I have a very bad memory.", sentence_tr: "Benim çok kötü bir hafızam var."
+  },
+  {
+    id: "ox-534", word: "menu", phonetic: "/ˈmenjuː/", tags: ["A1"],
+    plural: "menus", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Menü", engExplanation: "A list of dishes available in a restaurant.", trExplanation: "Bir restoranda sunulan yemeklerin listesi." }],
+    sentence: "Can I see the menu, please?", sentence_tr: "Menüyü görebilir miyim, lütfen?"
+  },
+  {
+    id: "ox-535", word: "message", phonetic: "/ˈmesɪdʒ/", tags: ["A1"],
+    plural: "messages", v2: "messaged", v3: "messaged", vIng: "messaging", thirdPerson: "messages", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Mesaj", engExplanation: "A verbal, written, or recorded communication sent to or left for a recipient.", trExplanation: "Bir alıcıya gönderilen veya bırakılan sözlü, yazılı veya kaydedilmiş iletişim." }],
+    sentence: "He sent me a text message.", sentence_tr: "Bana bir kısa mesaj gönderdi."
+  },
+  {
+    id: "ox-536", word: "metal", phonetic: "/ˈmetl/", tags: ["A1"],
+    plural: "metals", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Metal", engExplanation: "A solid material that is typically hard, shiny, and features good electrical conductivity.", trExplanation: "Tipik olarak sert, parlak ve iyi elektriksel iletkenliğe sahip katı malzeme." }],
+    sentence: "This table is made of strong metal.", sentence_tr: "Bu masa güçlü bir metalden yapılmıştır."
+  },
+  {
+    id: "ox-537", word: "method", phonetic: "/ˈmeθəd/", tags: ["A1"],
+    plural: "methods", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Yöntem, metot", engExplanation: "A particular form of procedure for accomplishing or approaching something.", trExplanation: "Bir şeyi başarmak veya yaklaşmak için belirli bir prosedür formu." }],
+    sentence: "This is a new method of teaching.", sentence_tr: "Bu, yeni bir öğretim yöntemidir."
+  },
+  {
+    id: "ox-538", word: "middle", phonetic: "/ˈmɪdl/", tags: ["A1"],
+    plural: "middles", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Orta", engExplanation: "The point or position at an equal distance from the sides, edges, or ends of something.", trExplanation: "Bir şeyin kenarlarından, uçlarından veya sınırlarından eşit uzaklıktaki nokta veya konum." }],
+    sentence: "There is a table in the middle of the room.", sentence_tr: "Odanın ortasında bir masa var."
+  },
+  {
+    id: "ox-539", word: "midnight", phonetic: "/ˈmɪdnaɪt/", tags: ["A1"],
+    plural: "midnights", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Gece yarısı", engExplanation: "Twelve o'clock at night.", trExplanation: "Gece saat on iki." }],
+    sentence: "We went to bed at midnight.", sentence_tr: "Gece yarısı yattık."
+  },
+  {
+    id: "ox-540", word: "mile", phonetic: "/maɪl/", tags: ["A1"],
+    plural: "miles", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Mil (uzunluk ölçüsü)", engExplanation: "A unit of linear measure equal to 1,760 yards (approx. 1.609 kilometers).", trExplanation: "Yaklaşık 1.609 kilometreye eşit doğrusal ölçü birimi." }],
+    sentence: "The beach is only one mile away.", sentence_tr: "Plaj sadece bir mil uzaklıkta."
+  },
+  {
+    id: "ox-541", word: "milk", phonetic: "/mɪlk/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Süt", engExplanation: "An opaque white fluid rich in fat and protein.", trExplanation: "Yağ ve protein açısından zengin, opak beyaz bir sıvı." }],
+    sentence: "Do you like milk with your coffee?", sentence_tr: "Kahvenle süt sever misin?"
+  },
+  {
+    id: "ox-542", word: "million", phonetic: "/ˈmɪljən/", tags: ["A1"],
+    plural: "millions", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Milyon", engExplanation: "The number equivalent to the product of a thousand and a thousand.", trExplanation: "Bin ile binin çarpımına eşit olan sayı." }],
+    sentence: "Istanbul has over fifteen million people.", sentence_tr: "İstanbul'un on beş milyondan fazla nüfusu var."
+  },
+  {
+    id: "ox-543", word: "mind", phonetic: "/maɪnd/", tags: ["A1"],
+    plural: "minds", v2: "minded", v3: "minded", vIng: "minding", thirdPerson: "minds", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Zihin, akıl (isim), Önemsemek (fiil)", engExplanation: "The element of a person that enables them to be aware of the world and their experiences.", trExplanation: "Bir kişinin dünyanın ve deneyimlerinin farkında olmasını sağlayan unsuru." }],
+    sentence: "I cannot get this song out of my mind.", sentence_tr: "Bu şarkıyı aklımdan çıkaramıyorum."
+  },
+  {
+    id: "ox-544", word: "minute", phonetic: "/ˈmɪnɪt/", tags: ["A1"],
+    plural: "minutes", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Dakika", engExplanation: "A period of time equal to sixty seconds.", trExplanation: "Altmış saniyeye eşit zaman dilimi." }],
+    sentence: "The meeting will start in five minutes.", sentence_tr: "Toplantı beş dakika içinde başlayacak."
+  },
+  {
+    id: "ox-545", word: "miss", phonetic: "/mɪs/", tags: ["A1"],
+    plural: "", v2: "missed", v3: "missed", vIng: "missing", thirdPerson: "misses", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "verb", meaning: "Özlemek, kaçırmak", engExplanation: "Fail to hit, reach, or come into contact with; feel sorrow for the absence of.", trExplanation: "Vuramamak, ulaşamamak; yokluğundan dolayı üzüntü duymak." }],
+    sentence: "I miss my family very much.", sentence_tr: "Ailemi çok özlüyorum."
+  },
+  {
+    id: "ox-546", word: "mistake", phonetic: "/mɪˈsteɪk/", tags: ["A1"],
+    plural: "mistakes", v2: "mistook", v3: "mistaken", vIng: "mistaking", thirdPerson: "mistakes", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Hata, yanlış", engExplanation: "An action or judgment that is misguided or wrong.", trExplanation: "Yanlış yönlendirilmiş veya yanlış olan eylem veya karar." }],
+    sentence: "I made a mistake in my test.", sentence_tr: "Testimde bir hata yaptım."
+  },
+  {
+    id: "ox-547", word: "model", phonetic: "/ˈmɑːdl/", tags: ["A1"],
+    plural: "models", v2: "modeled", v3: "modeled", vIng: "modeling", thirdPerson: "models", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Model, manken", engExplanation: "A three-dimensional representation of a person or thing or of a proposed structure.", trExplanation: "Bir kişinin, şeyin veya yapının üç boyutlu bir temsili." }],
+    sentence: "He is building a model airplane.", sentence_tr: "O bir model uçak yapıyor."
+  },
+  {
+    id: "ox-548", word: "modern", phonetic: "/ˈmɑːdərn/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "modernly", compEr: "more modern", superEst: "most modern",
+    definitions: [{ type: "adjective", meaning: "Modern, çağdaş", engExplanation: "Relating to the present or recent times as opposed to the remote past.", trExplanation: "Uzak geçmişin aksine şimdiki zamanla veya yakın geçmişle ilgili." }],
+    sentence: "I like modern art very much.", sentence_tr: "Modern sanatı çok severim."
+  },
+  {
+    id: "ox-549", word: "moment", phonetic: "/ˈmoʊmənt/", tags: ["A1"],
+    plural: "moments", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "An, anlık zaman", engExplanation: "A very brief period of time.", trExplanation: "Çok kısa bir zaman dilimi." }],
+    sentence: "Please wait here for a moment.", sentence_tr: "Lütfen bir an için burada bekleyin."
+  },
+  {
+    id: "ox-550", word: "Monday", phonetic: "/ˈmʌndeɪ/", tags: ["A1"],
+    plural: "Mondays", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Pazartesi", engExplanation: "The day of the week before Tuesday and following Sunday.", trExplanation: "Pazar'dan sonraki ve Salı'dan önceki gün." }],
+    sentence: "I have a meeting on Monday.", sentence_tr: "Pazartesi günü bir toplantım var."
+  },
+  {
+    id: "ox-551", word: "money", phonetic: "/ˈmʌni/", tags: ["A1"],
+    plural: "monies", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Para", engExplanation: "Any item or verifiable record that is generally accepted as payment for goods and services.", trExplanation: "Mal ve hizmetler için ödeme olarak kabul edilen varlık." }],
+    sentence: "I don't have enough money to buy this.", sentence_tr: "Bunu almak için yeterli param yok."
+  },
+  {
+    id: "ox-552", word: "month", phonetic: "/mʌnθ/", tags: ["A1"],
+    plural: "months", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Ay (zaman)", engExplanation: "Each of the twelve named periods into which a year is divided.", trExplanation: "Bir yılın bölündüğü on iki isimlendirilmiş dönemden her biri." }],
+    sentence: "My birthday is next month.", sentence_tr: "Doğum günüm gelecek ay."
+  },
+  {
+    id: "ox-553", word: "moon", phonetic: "/muːn/", tags: ["A1"],
+    plural: "moons", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Ay (uydu)", engExplanation: "The natural satellite of the earth.", trExplanation: "Dünyanın doğal uydusu." }],
+    sentence: "The moon looks beautiful tonight.", sentence_tr: "Ay bu gece güzel görünüyor."
+  },
+  {
+    id: "ox-554", word: "more", phonetic: "/mɔːr/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "adverb", meaning: "Daha, daha fazla", engExplanation: "A greater or additional amount or degree.", trExplanation: "Daha büyük veya ek bir miktar veya derece." }],
+    sentence: "Can I have some more water, please?", sentence_tr: "Biraz daha su alabilir miyim, lütfen?"
+  },
+  {
+    id: "ox-555", word: "morning", phonetic: "/ˈmɔːrnɪŋ/", tags: ["A1"],
+    plural: "mornings", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Sabah", engExplanation: "The period of time between midnight and noon.", trExplanation: "Gece yarısı ile öğle arasındaki zaman dilimi." }],
+    sentence: "I drink coffee every morning.", sentence_tr: "Her sabah kahve içerim."
+  },
+  {
+    id: "ox-556", word: "most", phonetic: "/moʊst/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "mostly", compEr: "", superEst: "",
+    definitions: [{ type: "adverb", meaning: "En çok, çoğu", engExplanation: "Greatest in amount, quantity, or degree.", trExplanation: "Miktar, nicelik veya derece bakımından en büyük." }],
+    sentence: "Most people like eating chocolate.", sentence_tr: "Çoğu insan çikolata yemeyi sever."
+  },
+  {
+    id: "ox-557", word: "mother", phonetic: "/ˈmʌðər/", tags: ["A1"],
+    plural: "mothers", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Anne", engExplanation: "A woman in relation to her child or children.", trExplanation: "Kendi çocuğu veya çocuklarıyla ilişkili olarak bir kadın." }],
+    sentence: "My mother is a teacher.", sentence_tr: "Annem bir öğretmendir."
+  },
+  {
+    id: "ox-558", word: "mountain", phonetic: "/ˈmaʊntn/", tags: ["A1"],
+    plural: "mountains", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Dağ", engExplanation: "A large natural elevation of the earth's surface rising abruptly from the surrounding level.", trExplanation: "Yeryüzü yüzeyinin çevresine göre aniden yükselen büyük doğal yükseltisi." }],
+    sentence: "We climbed a very high mountain.", sentence_tr: "Çok yüksek bir dağa tırmandık."
+  },
+  {
+    id: "ox-559", word: "mouse", phonetic: "/maʊs/", tags: ["A1"],
+    plural: "mice", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Fare", engExplanation: "A small rodent that typically has a pointed snout.", trExplanation: "Genellikle sivri bir burnu olan küçük kemirgen." }],
+    sentence: "The cat caught a mouse.", sentence_tr: "Kedi bir fare yakaladı."
+  },
+  {
+    id: "ox-560", word: "mouth", phonetic: "/maʊθ/", tags: ["A1"],
+    plural: "mouths", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Ağız", engExplanation: "The opening in the lower part of the human face.", trExplanation: "İnsan yüzünün alt kısmındaki açıklık." }],
+    sentence: "Open your mouth and say 'ahh'.", sentence_tr: "Ağzını aç ve 'ahh' de."
+  },
+  {
+    id: "ox-561", word: "move", phonetic: "/muːv/", tags: ["A1"],
+    plural: "", v2: "moved", v3: "moved", vIng: "moving", thirdPerson: "moves", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "verb", meaning: "Hareket etmek, taşınmak", engExplanation: "Go in a specified direction or manner.", trExplanation: "Belirli bir yönde veya şekilde gitmek." }],
+    sentence: "Don't move, stay right there.", sentence_tr: "Hareket etme, tam orada kal."
+  },
+  {
+    id: "ox-562", word: "movie", phonetic: "/ˈmuːvi/", tags: ["A1"],
+    plural: "movies", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Film (Sinema)", engExplanation: "A story or event recorded by a camera and shown in a cinema.", trExplanation: "Kamera tarafından kaydedilen ve sinemada gösterilen hikaye." }],
+    sentence: "We watched a funny movie last night.", sentence_tr: "Dün gece komik bir film izledik."
+  },
+  {
+    id: "ox-563", word: "much", phonetic: "/mʌtʃ/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "more", superEst: "most",
+    definitions: [{ type: "determiner", meaning: "Çok, fazla", engExplanation: "A great amount or quantity of.", trExplanation: "Büyük bir miktar veya nicelik." }],
+    sentence: "Thank you very much.", sentence_tr: "Çok teşekkür ederim."
+  },
+  {
+    id: "ox-564", word: "music", phonetic: "/ˈmjuːzɪk/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Müzik", engExplanation: "Vocal or instrumental sounds combined in such a way as to produce beauty of form.", trExplanation: "Vokal veya enstrümantal seslerin biçim güzelliği üretecek şekilde birleştirilmesi." }],
+    sentence: "I love listening to pop music.", sentence_tr: "Pop müzik dinlemeyi severim."
+  },
+  {
+    id: "ox-565", word: "must", phonetic: "/mʌst/", tags: ["A1"],
+    plural: "", v2: "had to", v3: "", vIng: "", thirdPerson: "must", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "modal verb", meaning: "-meli, -malı, zorunda olmak", engExplanation: "Be obliged to; should.", trExplanation: "Zorunlu olmak; mecbur olmak." }],
+    sentence: "You must wear a seatbelt in the car.", sentence_tr: "Arabada emniyet kemeri takmalısın (zorundasın)."
+  },
+  {
+    id: "ox-566", word: "my", phonetic: "/maɪ/", tags: ["A1"],
+    plural: "our", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "determiner", meaning: "Benim", engExplanation: "Belonging to or associated with the speaker.", trExplanation: "Konuşmacıya ait olan veya onunla ilişkili olan." }],
+    sentence: "This is my new car.", sentence_tr: "Bu benim yeni arabam."
+  },
+  {
+    id: "ox-567", word: "name", phonetic: "/neɪm/", tags: ["A1"],
+    plural: "names", v2: "named", v3: "named", vIng: "naming", thirdPerson: "names", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "İsim, ad", engExplanation: "A word or set of words by which a person, animal, place, or thing is known.", trExplanation: "Bir kişinin, hayvanın, yerin veya şeyin bilindiği kelime veya kelimeler dizisi." }],
+    sentence: "My name is John.", sentence_tr: "Benim adım John."
+  },
+  {
+    id: "ox-568", word: "nation", phonetic: "/ˈneɪʃn/", tags: ["A1"],
+    plural: "nations", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Ulus, millet", engExplanation: "A large body of people united by common descent, history, culture, or language.", trExplanation: "Ortak soy, tarih, kültür veya dil ile birleşmiş büyük bir insan topluluğu." }],
+    sentence: "Our nation loves peace.", sentence_tr: "Ulusumuz barışı sever."
+  },
+  {
+    id: "ox-569", word: "natural", phonetic: "/ˈnætʃrəl/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "naturally", compEr: "more natural", superEst: "most natural",
+    definitions: [{ type: "adjective", meaning: "Doğal", engExplanation: "Existing in or caused by nature; not made or caused by humankind.", trExplanation: "Doğada var olan veya doğanın neden olduğu; insan yapımı olmayan." }],
+    sentence: "This juice is made of 100% natural fruits.", sentence_tr: "Bu meyve suyu %100 doğal meyvelerden yapılmıştır."
+  },
+  {
+    id: "ox-570", word: "nature", phonetic: "/ˈneɪtʃər/", tags: ["A1"],
+    plural: "natures", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Doğa, tabiat", engExplanation: "The phenomena of the physical world collectively, including plants, animals, the landscape.", trExplanation: "Bitkiler, hayvanlar ve manzara dahil olmak üzere fiziksel dünyanın fenomenlerinin tamamı." }],
+    sentence: "We went for a walk to enjoy nature.", sentence_tr: "Doğanın tadını çıkarmak için yürüyüşe çıktık."
+  },
+  {
+    id: "ox-571", word: "near", phonetic: "/nɪr/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "nearly", compEr: "nearer", superEst: "nearest",
+    definitions: [{ type: "prep", meaning: "Yakınında, yakın", engExplanation: "At or to a short distance away.", trExplanation: "Kısa bir mesafede veya oraya doğru." }],
+    sentence: "I live near the train station.", sentence_tr: "Tren istasyonunun yakınında yaşıyorum."
+  },
+  {
+    id: "ox-572", word: "nearly", phonetic: "/ˈnɪrli/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "adverb", meaning: "Neredeyse, hemen hemen", engExplanation: "Very close to; almost.", trExplanation: "Çok yakın; neredeyse." }],
+    sentence: "It is nearly midnight.", sentence_tr: "Saat neredeyse gece yarısı."
+  },
+  {
+    id: "ox-573", word: "neck", phonetic: "/nek/", tags: ["A1"],
+    plural: "necks", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Boyun", engExplanation: "The part of a person's or animal's body connecting the head to the rest of the body.", trExplanation: "Bir kişinin veya hayvanın başını vücudunun geri kalanına bağlayan kısım." }],
+    sentence: "She wore a beautiful necklace around her neck.", sentence_tr: "Boynuna güzel bir kolye taktı."
+  },
+  {
+    id: "ox-574", word: "need", phonetic: "/niːd/", tags: ["A1"],
+    plural: "needs", v2: "needed", v3: "needed", vIng: "needing", thirdPerson: "needs", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "verb", meaning: "İhtiyacı olmak, gerekmek", engExplanation: "Require (something) because it is essential or very important.", trExplanation: "Önemli veya gerekli olduğu için (bir şeye) gereksinim duymak." }],
+    sentence: "I need some help with my homework.", sentence_tr: "Ödevimle ilgili biraz yardıma ihtiyacım var."
+  },
+  {
+    id: "ox-575", word: "negative", phonetic: "/ˈneɡətɪv/", tags: ["A1"],
+    plural: "negatives", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "negatively", compEr: "", superEst: "",
+    definitions: [{ type: "adjective", meaning: "Negatif, olumsuz", engExplanation: "Consisting in or characterized by the absence rather than the presence of distinguishing features.", trExplanation: "Olumlu özelliklerin varlığından ziyade yokluğu ile karakterize edilen." }],
+    sentence: "He has a negative attitude towards the project.", sentence_tr: "Projeye karşı olumsuz bir tutumu var."
+  },
+  {
+    id: "ox-576", word: "neighbor", phonetic: "/ˈneɪbər/", tags: ["A1"],
+    plural: "neighbors", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Komşu", engExplanation: "A person living near or next door to the speaker or person referred to.", trExplanation: "Konuşmacıya veya bahsedilen kişiye yakın veya bitişik evde yaşayan kişi." }],
+    sentence: "Our new neighbor is very friendly.", sentence_tr: "Yeni komşumuz çok cana yakın."
+  },
+  {
+    id: "ox-577", word: "network", phonetic: "/ˈnetwɜːrk/", tags: ["A1"],
+    plural: "networks", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Ağ, şebeke", engExplanation: "A group or system of interconnected people or things.", trExplanation: "Birbirine bağlı kişi veya şeylerin grubu veya sistemi." }],
+    sentence: "The computer network is down today.", sentence_tr: "Bilgisayar ağı bugün çöktü."
+  },
+  {
+    id: "ox-578", word: "never", phonetic: "/ˈnevər/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "adverb", meaning: "Asla, hiçbir zaman", engExplanation: "At no time in the past or future; on no occasion.", trExplanation: "Geçmişte veya gelecekte hiçbir zaman; hiçbir durumda." }],
+    sentence: "I have never been to London.", sentence_tr: "Ben asla Londra'da bulunmadım."
+  },
+  {
+    id: "ox-579", word: "new", phonetic: "/nuː/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "newly", compEr: "newer", superEst: "newest",
+    definitions: [{ type: "adjective", meaning: "Yeni", engExplanation: "Produced, introduced, or discovered recently or now for the first time.", trExplanation: "Son zamanlarda veya şimdi ilk kez üretilen, tanıtılan veya keşfedilen." }],
+    sentence: "She bought a new dress for the party.", sentence_tr: "Parti için yeni bir elbise aldı."
+  },
+  {
+    id: "ox-580", word: "news", phonetic: "/nuːz/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Haber, haberler", engExplanation: "Newly received or noteworthy information, especially about recent or important events.", trExplanation: "Özellikle son veya önemli olaylar hakkında yeni alınan bilgi." }],
+    sentence: "I watch the news on TV every evening.", sentence_tr: "Her akşam televizyonda haberleri izlerim."
+  },
+  {
+    id: "ox-581", word: "newspaper", phonetic: "/ˈnuːzpeɪpər/", tags: ["A1"],
+    plural: "newspapers", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Gazete", engExplanation: "A printed publication consisting of folded unstapled sheets and containing news, articles.", trExplanation: "Katlanmış sayfalardan oluşan ve haberler, makaleler içeren basılı yayın." }],
+    sentence: "My father reads a newspaper every morning.", sentence_tr: "Babam her sabah bir gazete okur."
+  },
+  {
+    id: "ox-582", word: "next", phonetic: "/nekst/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "adjective", meaning: "Sonraki, bir sonraki", engExplanation: "Coming immediately after the present one in order, rank, or space.", trExplanation: "Sıra, rütbe veya alan bakımından mevcut olandan hemen sonra gelen." }],
+    sentence: "We will travel to Rome next week.", sentence_tr: "Gelecek hafta Roma'ya seyahat edeceğiz."
+  },
+  {
+    id: "ox-583", word: "nice", phonetic: "/naɪs/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "nicely", compEr: "nicer", superEst: "nicest",
+    definitions: [{ type: "adjective", meaning: "Hoş, güzel, iyi", engExplanation: "Pleasant; agreeable; satisfactory.", trExplanation: "Hoş, kabul edilebilir; tatmin edici." }],
+    sentence: "Have a nice day!", sentence_tr: "İyi (hoş) günler dilerim!"
+  },
+  {
+    id: "ox-584", word: "night", phonetic: "/naɪt/", tags: ["A1"],
+    plural: "nights", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Gece", engExplanation: "The period of darkness in each twenty-four hours.", trExplanation: "Yirmi dört saatin her birindeki karanlık dönem." }],
+    sentence: "The stars look beautiful tonight.", sentence_tr: "Yıldızlar bu gece güzel görünüyor."
+  },
+  {
+    id: "ox-585", word: "nine", phonetic: "/naɪn/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Dokuz (9)", engExplanation: "Equivalent to the product of three and three.", trExplanation: "Üç ve üçün çarpımına eşit sayı." }],
+    sentence: "I start work at nine o'clock.", sentence_tr: "İşe saat dokuzda başlarım."
+  },
+  {
+    id: "ox-586", word: "nineteen", phonetic: "/ˌnaɪnˈtiːn/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "On dokuz (19)", engExplanation: "Equivalent to the sum of ten and nine.", trExplanation: "On ve dokuzun toplamına eşit sayı." }],
+    sentence: "She is nineteen years old.", sentence_tr: "O on dokuz yaşında."
+  },
+  {
+    id: "ox-587", word: "ninety", phonetic: "/ˈnaɪnti/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Doksan (90)", engExplanation: "Equivalent to the product of nine and ten.", trExplanation: "Dokuz ve onun çarpımına eşit sayı." }],
+    sentence: "My grandfather is ninety years old.", sentence_tr: "Büyükbabam doksan yaşında."
+  },
+  {
+    id: "ox-588", word: "no", phonetic: "/noʊ/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "adverb", meaning: "Hayır, yok", engExplanation: "Used to give a negative response.", trExplanation: "Olumsuz bir yanıt vermek için kullanılır." }],
+    sentence: "No, I don't want to go out today.", sentence_tr: "Hayır, bugün dışarı çıkmak istemiyorum."
+  },
+  {
+    id: "ox-589", word: "nobody", phonetic: "/ˈnoʊbədi/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "pronoun", meaning: "Hiç kimse", engExplanation: "No person; no one.", trExplanation: "Hiç kimse." }],
+    sentence: "Nobody answered the phone.", sentence_tr: "Telefonu hiç kimse açmadı."
+  },
+  {
+    id: "ox-590", word: "noise", phonetic: "/nɔɪz/", tags: ["A1"],
+    plural: "noises", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Gürültü, ses", engExplanation: "A sound, especially one that is loud or unpleasant or that causes disturbance.", trExplanation: "Özellikle yüksek, hoş olmayan veya rahatsızlık veren ses." }],
+    sentence: "Don't make so much noise, the baby is sleeping.", sentence_tr: "Çok gürültü yapma, bebek uyuyor."
+  },
+  {
+    id: "ox-591", word: "none", phonetic: "/nʌn/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "pronoun", meaning: "Hiçbiri", engExplanation: "Not any.", trExplanation: "Hiçbiri; hiçbir şey." }],
+    sentence: "None of my friends came to the party.", sentence_tr: "Arkadaşlarımın hiçbiri partiye gelmedi."
+  },
+  {
+    id: "ox-592", word: "normal", phonetic: "/ˈnɔːrml/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "normally", compEr: "more normal", superEst: "most normal",
+    definitions: [{ type: "adjective", meaning: "Normal, olağan", engExplanation: "Conforming to a standard; usual, typical, or expected.", trExplanation: "Bir standarda uyan; olağan, tipik veya beklenen." }],
+    sentence: "It is normal to feel nervous before an exam.", sentence_tr: "Sınavdan önce gergin hissetmek normaldir."
+  },
+  {
+    id: "ox-593", word: "north", phonetic: "/nɔːrθ/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Kuzey", engExplanation: "The direction in which a compass needle normally points.", trExplanation: "Pusula iğnesinin normalde gösterdiği yön." }],
+    sentence: "They traveled to the north of the country.", sentence_tr: "Ülkenin kuzeyine seyahat ettiler."
+  },
+  {
+    id: "ox-594", word: "nose", phonetic: "/noʊz/", tags: ["A1"],
+    plural: "noses", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Burun", engExplanation: "The part projecting above the mouth on the face of a person or animal, containing the nostrils.", trExplanation: "İnsan veya hayvanın yüzünde, ağzın üzerinde çıkıntı yapan kısım." }],
+    sentence: "The dog has a cold wet nose.", sentence_tr: "Köpeğin soğuk ıslak bir burnu var."
+  },
+  {
+    id: "ox-595", word: "not", phonetic: "/nɑːt/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "adverb", meaning: "Değil (olumsuzluk eki)", engExplanation: "Used with an auxiliary verb or 'to be' to form the negative.", trExplanation: "Olumsuzluk oluşturmak için yardımcı fiil ile kullanılır." }],
+    sentence: "I am not a student.", sentence_tr: "Ben öğrenci değilim."
+  },
+  {
+    id: "ox-596", word: "note", phonetic: "/noʊt/", tags: ["A1"],
+    plural: "notes", v2: "noted", v3: "noted", vIng: "noting", thirdPerson: "notes", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Not, not almak", engExplanation: "A brief record of facts, topics, or thoughts, written down as an aid to memory.", trExplanation: "Hafızaya yardımcı olmak için yazılan gerçeklerin, konuların kısa kaydı." }],
+    sentence: "Please take a note of this address.", sentence_tr: "Lütfen bu adresi not alın."
+  },
+  {
+    id: "ox-597", word: "nothing", phonetic: "/ˈnʌθɪŋ/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "pronoun", meaning: "Hiçbir şey", engExplanation: "Not anything; no single thing.", trExplanation: "Hiçbir şey; tek bir şey bile yok." }],
+    sentence: "There is nothing in the box.", sentence_tr: "Kutuda hiçbir şey yok."
+  },
+  {
+    id: "ox-598", word: "notice", phonetic: "/ˈnoʊtɪs/", tags: ["A1"],
+    plural: "notices", v2: "noticed", v3: "noticed", vIng: "noticing", thirdPerson: "notices", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "verb", meaning: "Fark etmek, ilan", engExplanation: "Become aware of.", trExplanation: "Farkına varmak." }],
+    sentence: "I didn't notice that you were here.", sentence_tr: "Burada olduğunu fark etmedim."
+  },
+  {
+    id: "ox-599", word: "November", phonetic: "/noʊˈvembər/", tags: ["A1"],
+    plural: "Novembers", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Kasım (ayı)", engExplanation: "The eleventh month of the year.", trExplanation: "Yılın on birinci ayı." }],
+    sentence: "The weather gets cold in November.", sentence_tr: "Kasım ayında hava soğur."
+  },
+  {
+    id: "ox-600", word: "now", phonetic: "/naʊ/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "adverb", meaning: "Şimdi, şu an", engExplanation: "At the present time or moment.", trExplanation: "Şimdiki zamanda veya anda." }],
+    sentence: "We must leave right now.", sentence_tr: "Hemen şimdi çıkmalıyız."
+  },
+  {
+    id: "ox-601", word: "number", phonetic: "/ˈnʌmbər/", tags: ["A1"],
+    plural: "numbers", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Sayı, numara", engExplanation: "An arithmetical value, expressed by a word, symbol, or figure.", trExplanation: "Bir kelime, sembol veya rakamla ifade edilen aritmetik değer." }],
+    sentence: "What is your phone number?", sentence_tr: "Telefon numaran nedir?"
+  },
+  {
+    id: "ox-602", word: "nurse", phonetic: "/nɜːrs/", tags: ["A1"],
+    plural: "nurses", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Hemşire", engExplanation: "A person trained to care for the sick or infirm, especially in a hospital.", trExplanation: "Özellikle bir hastanede hasta veya sakatlara bakmak için eğitilmiş kişi." }],
+    sentence: "The nurse gave me some medicine.", sentence_tr: "Hemşire bana biraz ilaç verdi."
+  },
+  {
+    id: "ox-603", word: "object", phonetic: "/ˈɑːbdʒekt/", tags: ["A1"],
+    plural: "objects", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Nesne, eşya", engExplanation: "A material thing that can be seen and touched.", trExplanation: "Görülebilen ve dokunulabilen maddi şey." }],
+    sentence: "There is a strange object in the sky.", sentence_tr: "Gökyüzünde garip bir nesne var."
+  },
+  {
+    id: "ox-604", word: "o'clock", phonetic: "/əˈklɑːk/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "adverb", meaning: "Saat (tam saatlerde)", engExplanation: "Used to specify the hour when telling time.", trExplanation: "Zamanı söylerken tam saati belirtmek için kullanılır." }],
+    sentence: "The meeting is at three o'clock.", sentence_tr: "Toplantı saat üçte."
+  },
+  {
+    id: "ox-605", word: "of", phonetic: "/əv/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "prep", meaning: "-in, -ın (aitlik)", engExplanation: "Expressing the relationship between a part and a whole.", trExplanation: "Bir parça ile bütün arasındaki ilişkiyi veya aitliği ifade eder." }],
+    sentence: "He is a friend of mine.", sentence_tr: "O benim bir arkadaşım."
+  },
+  {
+    id: "ox-606", word: "off", phonetic: "/ɔːf/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "adverb", meaning: "Kapalı, uzak", engExplanation: "So as to be removed or separated; not operating.", trExplanation: "Çıkarılacak veya ayrılacak şekilde; çalışmıyor/kapalı." }],
+    sentence: "Please turn off the TV.", sentence_tr: "Lütfen televizyonu kapat."
+  },
+  {
+    id: "ox-607", word: "office", phonetic: "/ˈɔːfɪs/", tags: ["A1"],
+    plural: "offices", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Ofis, büro", engExplanation: "A room, set of rooms, or building used as a place for commercial, professional, or bureaucratic work.", trExplanation: "Ticari, mesleki veya bürokratik işler için kullanılan oda veya bina." }],
+    sentence: "I am working at the office today.", sentence_tr: "Bugün ofiste çalışıyorum."
+  },
+  {
+    id: "ox-608", word: "often", phonetic: "/ˈɔːfn/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "more often", superEst: "most often",
+    definitions: [{ type: "adverb", meaning: "Sık sık", engExplanation: "Frequently; many times.", trExplanation: "Sıklıkla; birçok kez." }],
+    sentence: "I often go to the gym after work.", sentence_tr: "İşten sonra sık sık spor salonuna giderim."
+  },
+  {
+    id: "ox-609", word: "oh", phonetic: "/oʊ/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "exclamation", meaning: "Ah, oh", engExplanation: "Used to express a range of emotions including surprise, anger, disappointment, or joy.", trExplanation: "Şaşkınlık, öfke, hayal kırıklığı veya sevinç gibi duyguları ifade etmek için kullanılır." }],
+    sentence: "Oh, I forgot my keys!", sentence_tr: "Ah, anahtarlarımı unuttum!"
+  },
+  {
+    id: "ox-610", word: "OK", phonetic: "/ˌoʊˈkeɪ/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "adjective", meaning: "Tamam, peki", engExplanation: "Used to express agreement or acceptance.", trExplanation: "Anlaşmayı veya kabulü ifade etmek için kullanılır." }],
+    sentence: "OK, I will do it.", sentence_tr: "Tamam, onu yapacağım."
+  },
+  {
+    id: "ox-611", word: "old", phonetic: "/oʊld/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "older", superEst: "oldest",
+    definitions: [{ type: "adjective", meaning: "Eski, yaşlı", engExplanation: "Having lived for a long time; no longer young.", trExplanation: "Uzun süre yaşamış; artık genç veya yeni olmayan." }],
+    sentence: "This building is very old.", sentence_tr: "Bu bina çok eski."
+  },
+  {
+    id: "ox-612", word: "on", phonetic: "/ɑːn/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "prep", meaning: "Üzerinde, açık", engExplanation: "Physically in contact with and supported by (a surface).", trExplanation: "Fiziksel olarak temas halinde ve (bir yüzey) tarafından desteklenen; çalışan/açık." }],
+    sentence: "The book is on the table.", sentence_tr: "Kitap masanın üzerinde."
+  },
+  {
+    id: "ox-613", word: "once", phonetic: "/wʌns/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "adverb", meaning: "Bir kez, bir zamanlar", engExplanation: "On one occasion or for one time only.", trExplanation: "Sadece tek bir sefer için veya geçmişte bir zaman." }],
+    sentence: "I visit my grandparents once a week.", sentence_tr: "Büyükanne ve büyükbabamı haftada bir kez ziyaret ederim."
+  },
+  {
+    id: "ox-614", word: "one", phonetic: "/wʌn/", tags: ["A1"],
+    plural: "ones", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Bir (1)", engExplanation: "The lowest cardinal number; half of two.", trExplanation: "En düşük sayma sayısı; ikinin yarısı." }],
+    sentence: "I have only one brother.", sentence_tr: "Sadece bir erkek kardeşim var."
+  },
+  {
+    id: "ox-615", word: "onion", phonetic: "/ˈʌnjən/", tags: ["A1"],
+    plural: "onions", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Soğan", engExplanation: "An edible bulb with a pungent taste and smell.", trExplanation: "Keskin bir tat ve kokuya sahip yenilebilir soğansı sebze." }],
+    sentence: "I need an onion for the soup.", sentence_tr: "Çorba için bir soğana ihtiyacım var."
+  },
+  {
+    id: "ox-616", word: "online", phonetic: "/ˌɔːnˈlaɪn/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "adjective", meaning: "Çevrimiçi, internette", engExplanation: "Controlled by or connected to another computer or to a network.", trExplanation: "Bir bilgisayar ağına veya internete bağlı olan." }],
+    sentence: "I prefer to buy my clothes online.", sentence_tr: "Kıyafetlerimi çevrimiçi (internetten) almayı tercih ederim."
+  },
+  {
+    id: "ox-617", word: "only", phonetic: "/ˈoʊnli/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "adverb", meaning: "Sadece, yalnızca", engExplanation: "And no one or nothing more besides; solely.", trExplanation: "Ve ondan başkası değil; yalnızca." }],
+    sentence: "I only have five dollars.", sentence_tr: "Sadece beş dolarım var."
+  },
+  {
+    id: "ox-618", word: "open", phonetic: "/ˈoʊpən/", tags: ["A1"],
+    plural: "", v2: "opened", v3: "opened", vIng: "opening", thirdPerson: "opens", advLy: "openly", compEr: "", superEst: "",
+    definitions: [{ type: "verb", meaning: "Açmak, açık", engExplanation: "Move (a door or window) so as to leave a space allowing access and view.", trExplanation: "Erişime veya görmeye izin verecek bir boşluk bırakacak şekilde (kapıyı veya pencereyi) hareket ettirmek." }],
+    sentence: "Please open the window, it's hot.", sentence_tr: "Lütfen pencereyi aç, hava sıcak."
+  },
+  {
+    id: "ox-619", word: "opinion", phonetic: "/əˈpɪnjən/", tags: ["A1"],
+    plural: "opinions", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Fikir, görüş", engExplanation: "A view or judgment formed about something, not necessarily based on fact or knowledge.", trExplanation: "Bir şey hakkında oluşturulan, gerçeğe dayanması gerekmeyen yargı veya görüş." }],
+    sentence: "What is your opinion on this matter?", sentence_tr: "Bu konudaki fikriniz nedir?"
+  },
+  {
+    id: "ox-620", word: "opposite", phonetic: "/ˈɑːpəzɪt/", tags: ["A1"],
+    plural: "opposites", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "prep", meaning: "Karşısında, zıt", engExplanation: "In a position on the other side of a specific area from; facing.", trExplanation: "Belirli bir alanın diğer tarafındaki bir konumda; karşı karşıya." }],
+    sentence: "The bank is opposite the supermarket.", sentence_tr: "Banka süpermarketin karşısında."
+  },
+  {
+    id: "ox-621", word: "or", phonetic: "/ɔːr/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "conjunction", meaning: "Veya, ya da", engExplanation: "Used to link alternatives.", trExplanation: "Alternatifleri bağlamak için kullanılır." }],
+    sentence: "Would you like tea or coffee?", sentence_tr: "Çay mı yoksa kahve mi istersiniz?"
+  },
+  {
+    id: "ox-622", word: "orange", phonetic: "/ˈɔːrɪndʒ/", tags: ["A1"],
+    plural: "oranges", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Portakal, turuncu", engExplanation: "A round juicy citrus fruit with a tough bright reddish-yellow rind.", trExplanation: "Parlak kırmızımsı-sarı kabuklu, yuvarlak, sulu narenciye meyvesi veya bu renk." }],
+    sentence: "I ate a sweet orange.", sentence_tr: "Tatlı bir portakal yedim."
+  },
+  {
+    id: "ox-623", word: "order", phonetic: "/ˈɔːrdər/", tags: ["A1"],
+    plural: "orders", v2: "ordered", v3: "ordered", vIng: "ordering", thirdPerson: "orders", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "verb", meaning: "Sipariş vermek, emretmek, sıra", engExplanation: "Request (something) to be made, supplied, or served.", trExplanation: "(Bir şeyin) yapılmasını, sağlanmasını veya servis edilmesini istemek." }],
+    sentence: "I would like to order a pizza.", sentence_tr: "Bir pizza sipariş etmek istiyorum."
+  },
+  {
+    id: "ox-624", word: "other", phonetic: "/ˈʌðər/", tags: ["A1"],
+    plural: "others", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "adjective", meaning: "Diğer, başka", engExplanation: "Used to refer to a person or thing that is different or distinct from one already mentioned.", trExplanation: "Daha önce bahsedilenden farklı veya belirgin bir kişiye veya şeye atıfta bulunmak için kullanılır." }],
+    sentence: "I have other plans for today.", sentence_tr: "Bugün için başka planlarım var."
+  },
+  {
+    id: "ox-625", word: "our", phonetic: "/ˈaʊər/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "determiner", meaning: "Bizim", engExplanation: "Belonging to or associated with the speaker and one or more other people previously mentioned.", trExplanation: "Konuşmacıya ve yanındakilere ait olan." }],
+    sentence: "This is our house.", sentence_tr: "Bu bizim evimiz."
+  },
+  {
+    id: "ox-626", word: "ours", phonetic: "/ˈaʊərz/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "pronoun", meaning: "Bizimki", engExplanation: "Used to refer to a thing or things belonging to or associated with the speaker and one or more other people.", trExplanation: "Konuşan kişilere ait olanı (bizimkini) belirtmek için kullanılır." }],
+    sentence: "Their car is old, but ours is new.", sentence_tr: "Onların arabası eski ama bizimki yeni."
+  },
+  {
+    id: "ox-627", word: "ourselves", phonetic: "/aʊərˈselvz/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "pronoun", meaning: "Kendimiz", engExplanation: "Used by a speaker to refer to himself or herself and one or more other people as the object of a verb.", trExplanation: "Eylemi yapanların yine kendileri olduğunu belirtmek için kullanılır." }],
+    sentence: "We cooked the dinner ourselves.", sentence_tr: "Akşam yemeğini kendimiz pişirdik."
+  },
+  {
+    id: "ox-628", word: "out", phonetic: "/aʊt/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "adverb", meaning: "Dışarı, dışarıda", engExplanation: "Moving or appearing to move away from a particular place, especially one that is enclosed.", trExplanation: "Özellikle kapalı olan belirli bir yerden uzaklaşmak." }],
+    sentence: "He went out to get some fresh air.", sentence_tr: "Temiz hava almak için dışarı çıktı."
+  },
+  {
+    id: "ox-629", word: "outside", phonetic: "/ˌaʊtˈsaɪd/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "prep", meaning: "Dışarısı, dışında", engExplanation: "The external side or surface of something.", trExplanation: "Bir şeyin dış tarafı veya yüzeyi." }],
+    sentence: "The children are playing outside.", sentence_tr: "Çocuklar dışarıda oynuyor."
+  },
+  {
+    id: "ox-630", word: "over", phonetic: "/ˈoʊvər/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "prep", meaning: "Üzerinde, bitmiş", engExplanation: "Extending directly upward from; finished.", trExplanation: "Doğrudan yukarı doğru uzanan; veya bitmiş, sona ermiş." }],
+    sentence: "The game is over.", sentence_tr: "Oyun bitti."
+  },
+  {
+    id: "ox-631", word: "own", phonetic: "/oʊn/", tags: ["A1"],
+    plural: "owns", v2: "owned", v3: "owned", vIng: "owning", thirdPerson: "owns", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "verb", meaning: "Sahip olmak, kendi", engExplanation: "Have (something) as one's own; possess.", trExplanation: "(Bir şeye) sahip olmak; kişinin kendisine ait olan." }],
+    sentence: "I want to start my own business.", sentence_tr: "Kendi işimi kurmak istiyorum."
+  },
+  {
+    id: "ox-632", word: "page", phonetic: "/peɪdʒ/", tags: ["A1"],
+    plural: "pages", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Sayfa", engExplanation: "One or both sides of a sheet of paper in a book, magazine, or newspaper.", trExplanation: "Bir kitap, dergi veya gazetedeki kağıt yaprağının bir veya iki yüzü." }],
+    sentence: "Please open your book to page 10.", sentence_tr: "Lütfen kitabınızın 10. sayfasını açın."
+  },
+  {
+    id: "ox-633", word: "paint", phonetic: "/peɪnt/", tags: ["A1"],
+    plural: "paints", v2: "painted", v3: "painted", vIng: "painting", thirdPerson: "paints", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "verb", meaning: "Boyamak, boya", engExplanation: "Apply paint to (a surface).", trExplanation: "(Bir yüzeye) boya sürmek." }],
+    sentence: "We need to paint the living room.", sentence_tr: "Oturma odasını boyamamız gerekiyor."
+  },
+  {
+    id: "ox-634", word: "painting", phonetic: "/ˈpeɪntɪŋ/", tags: ["A1"],
+    plural: "paintings", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Tablo, boyama", engExplanation: "A painted picture.", trExplanation: "Boya ile yapılmış resim, tablo." }],
+    sentence: "This is a very famous painting.", sentence_tr: "Bu çok ünlü bir tablodur."
+  },
+  {
+    id: "ox-635", word: "pair", phonetic: "/per/", tags: ["A1"],
+    plural: "pairs", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Çift (iki adet)", engExplanation: "A set of two things used together or regarded as a unit.", trExplanation: "Birlikte kullanılan veya birim olarak kabul edilen iki şey." }],
+    sentence: "I bought a new pair of shoes.", sentence_tr: "Yeni bir çift ayakkabı aldım."
+  },
+  {
+    id: "ox-636", word: "paper", phonetic: "/ˈpeɪpər/", tags: ["A1"],
+    plural: "papers", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Kağıt", engExplanation: "Material manufactured in thin sheets from the pulp of wood or other fibrous substances, used for writing or printing.", trExplanation: "Yazı yazmak veya basmak için kullanılan ince yaprak." }],
+    sentence: "Can you give me a piece of paper?", sentence_tr: "Bana bir parça kağıt verebilir misin?"
+  },
+  {
+    id: "ox-637", word: "paragraph", phonetic: "/ˈpærəɡræf/", tags: ["A1"],
+    plural: "paragraphs", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Paragraf", engExplanation: "A distinct section of a piece of writing, usually dealing with a single theme and indicated by a new line.", trExplanation: "Genellikle tek bir temayı ele alan ve yeni bir satırla belirtilen yazının bölümü." }],
+    sentence: "Read the first paragraph of the text.", sentence_tr: "Metnin ilk paragrafını oku."
+  },
+  {
+    id: "ox-638", word: "parent", phonetic: "/ˈperənt/", tags: ["A1"],
+    plural: "parents", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Ebeveyn (Anne/Baba)", engExplanation: "A father or mother.", trExplanation: "Bir baba veya anne." }],
+    sentence: "My parents live in a small village.", sentence_tr: "Ebeveynlerim küçük bir köyde yaşıyor."
+  },
+  {
+    id: "ox-639", word: "park", phonetic: "/pɑːrk/", tags: ["A1"],
+    plural: "parks", v2: "parked", v3: "parked", vIng: "parking", thirdPerson: "parks", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Park, park etmek", engExplanation: "A large public green area in a town; bring a vehicle to a halt and leave it temporarily.", trExplanation: "Kasabadaki büyük yeşil alan; bir aracı durdurup geçici olarak bırakmak." }],
+    sentence: "I will park the car and come.", sentence_tr: "Arabayı park edip geleceğim."
+  },
+  {
+    id: "ox-640", word: "part", phonetic: "/pɑːrt/", tags: ["A1"],
+    plural: "parts", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Bölüm, parça", engExplanation: "Some but not all of something.", trExplanation: "Bir şeyin tamamı değil, bir kısmı veya bölümü." }],
+    sentence: "This is the best part of the movie.", sentence_tr: "Bu filmin en iyi bölümü."
+  },
+  {
+    id: "ox-641", word: "partner", phonetic: "/ˈpɑːrtnər/", tags: ["A1"],
+    plural: "partners", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Partner, ortak", engExplanation: "A person who takes part in an undertaking with another or others, especially in a business or company with shared risks and profits.", trExplanation: "Başka biriyle bir işe veya faaliyete katılan kişi." }],
+    sentence: "He is my business partner.", sentence_tr: "O benim iş ortağım."
+  },
+  {
+    id: "ox-642", word: "party", phonetic: "/ˈpɑːrti/", tags: ["A1"],
+    plural: "parties", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Parti", engExplanation: "A social gathering of invited guests, typically involving eating, drinking, and entertainment.", trExplanation: "Genellikle yeme, içme ve eğlenceyi içeren misafirlerin sosyal buluşması." }],
+    sentence: "We had a big party for his birthday.", sentence_tr: "Onun doğum günü için büyük bir parti verdik."
+  },
+  {
+    id: "ox-643", word: "pass", phonetic: "/pæs/", tags: ["A1"],
+    plural: "passes", v2: "passed", v3: "passed", vIng: "passing", thirdPerson: "passes", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "verb", meaning: "Geçmek, uzatmak", engExplanation: "Move or cause to move in a specified direction; be successful in an exam.", trExplanation: "Belirli bir yönde ilerlemek veya sınavda başarılı olmak; uzatmak." }],
+    sentence: "Can you pass me the salt?", sentence_tr: "Bana tuzu uzatabilir misin?"
+  },
+  {
+    id: "ox-644", word: "passport", phonetic: "/ˈpæspɔːrt/", tags: ["A1"],
+    plural: "passports", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Pasaport", engExplanation: "An official document issued by a government, certifying the holder's identity and citizenship and entitling them to travel under its protection to and from foreign countries.", trExplanation: "Yurt dışına seyahat etmek için gerekli resmi kimlik belgesi." }],
+    sentence: "I lost my passport at the airport.", sentence_tr: "Pasaportumu havalimanında kaybettim."
+  },
+  {
+    id: "ox-645", word: "past", phonetic: "/pæst/", tags: ["A1"],
+    plural: "pasts", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Geçmiş", engExplanation: "The time or a period of time before the moment of speaking.", trExplanation: "Şu anki zamandan önceki dönem veya zaman." }],
+    sentence: "We should learn from the past.", sentence_tr: "Geçmişten ders almalıyız."
+  },
+  {
+    id: "ox-646", word: "pay", phonetic: "/peɪ/", tags: ["A1", "Irregular Verb"],
+    plural: "", v2: "paid", v3: "paid", vIng: "paying", thirdPerson: "pays", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "verb", meaning: "Ödemek", engExplanation: "Give (someone) money that is due for work done, goods received, or a debt incurred.", trExplanation: "Yapılan iş veya alınan mal karşılığında para vermek." }],
+    sentence: "I will pay for the dinner.", sentence_tr: "Akşam yemeğini ben ödeyeceğim."
+  },
+  {
+    id: "ox-647", word: "pen", phonetic: "/pen/", tags: ["A1"],
+    plural: "pens", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Tükenmez kalem", engExplanation: "An instrument for writing or drawing with ink.", trExplanation: "Mürekkeple yazmak veya çizmek için kullanılan alet." }],
+    sentence: "I need a blue pen to sign this.", sentence_tr: "Bunu imzalamak için mavi bir kaleme ihtiyacım var."
+  },
+  {
+    id: "ox-648", word: "pencil", phonetic: "/ˈpensl/", tags: ["A1"],
+    plural: "pencils", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Kurşun kalem", engExplanation: "An instrument for writing or drawing, consisting of a thin stick of graphite or a similar substance enclosed in a long thin piece of wood.", trExplanation: "Grafitten yapılmış, ucu açılabilen yazım aracı." }],
+    sentence: "Can I borrow your pencil?", sentence_tr: "Kurşun kalemini ödünç alabilir miyim?"
+  },
+  {
+    id: "ox-649", word: "people", phonetic: "/ˈpiːpl/", tags: ["A1"],
+    plural: "people", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "İnsanlar, halk", engExplanation: "Human beings in general or considered collectively.", trExplanation: "Genel olarak veya toplu olarak ele alınan insanlar." }],
+    sentence: "There were many people at the concert.", sentence_tr: "Konserde çok insan vardı."
+  },
+  {
+    id: "ox-650", word: "pepper", phonetic: "/ˈpepər/", tags: ["A1"],
+    plural: "peppers", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Biber, karabiber", engExplanation: "A pungent, hot-tasting powder prepared from dried and ground peppercorns, commonly used as a spice.", trExplanation: "Baharat olarak kullanılan acı toz." }],
+    sentence: "Add some salt and pepper to the soup.", sentence_tr: "Çorbaya biraz tuz ve karabiber ekle."
+  },
+  {
+    id: "ox-651", word: "perfect", phonetic: "/ˈpɜːrfɪkt/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "perfectly", compEr: "more perfect", superEst: "most perfect",
+    definitions: [{ type: "adjective", meaning: "Mükemmel", engExplanation: "Having all the required or desirable elements, qualities, or characteristics; as good as it is possible to be.", trExplanation: "Gerekli veya arzu edilen tüm unsurlara veya özelliklere sahip olan; olabileceği kadar iyi." }],
+    sentence: "The weather is perfect for a picnic.", sentence_tr: "Hava piknik için mükemmel."
+  },
+  {
+    id: "ox-652", word: "period", phonetic: "/ˈpɪriəd/", tags: ["A1"],
+    plural: "periods", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Dönem, periyot, nokta", engExplanation: "A length or portion of time.", trExplanation: "Zamanın bir uzunluğu veya bölümü." }],
+    sentence: "It was a difficult period in my life.", sentence_tr: "Hayatımda zor bir dönemdi."
+  },
+  {
+    id: "ox-653", word: "person", phonetic: "/ˈpɜːrsn/", tags: ["A1"],
+    plural: "people", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Kişi, şahıs", engExplanation: "A human being regarded as an individual.", trExplanation: "Birey olarak kabul edilen insan." }],
+    sentence: "He is a very kind person.", sentence_tr: "O çok kibar bir kişidir."
+  },
+  {
+    id: "ox-654", word: "personal", phonetic: "/ˈpɜːrsənl/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "personally", compEr: "", superEst: "",
+    definitions: [{ type: "adjective", meaning: "Kişisel", engExplanation: "Of, affecting, or belonging to a particular person rather than to anyone else.", trExplanation: "Başkası yerine belirli bir kişiye ait olan veya onu etkileyen." }],
+    sentence: "Please do not ask personal questions.", sentence_tr: "Lütfen kişisel sorular sorma."
+  },
+  {
+    id: "ox-655", word: "phone", phonetic: "/foʊn/", tags: ["A1"],
+    plural: "phones", v2: "phoned", v3: "phoned", vIng: "phoning", thirdPerson: "phones", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Telefon, telefon etmek", engExplanation: "A telephone.", trExplanation: "Telefon." }],
+    sentence: "I forgot my phone at home.", sentence_tr: "Telefonumu evde unuttum."
+  },
+  {
+    id: "ox-656", word: "photo", phonetic: "/ˈfoʊtoʊ/", tags: ["A1"],
+    plural: "photos", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Fotoğraf", engExplanation: "A photograph.", trExplanation: "Fotoğraf." }],
+    sentence: "Let's take a group photo.", sentence_tr: "Hadi bir grup fotoğrafı çekelim."
+  },
+  {
+    id: "ox-657", word: "photograph", phonetic: "/ˈfoʊtəɡræf/", tags: ["A1"],
+    plural: "photographs", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Fotoğraf", engExplanation: "A picture made using a camera.", trExplanation: "Kamera kullanılarak yapılmış resim." }],
+    sentence: "She showed me an old photograph of her family.", sentence_tr: "Bana ailesinin eski bir fotoğrafını gösterdi."
+  },
+  {
+    id: "ox-658", word: "phrase", phonetic: "/freɪz/", tags: ["A1"],
+    plural: "phrases", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "İfade, sözcük grubu", engExplanation: "A small group of words standing together as a conceptual unit.", trExplanation: "Kavramsal bir birim olarak bir arada duran küçük kelime grubu." }],
+    sentence: "I learned a new English phrase today.", sentence_tr: "Bugün yeni bir İngilizce ifade öğrendim."
+  },
+  {
+    id: "ox-659", word: "physical", phonetic: "/ˈfɪzɪkl/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "physically", compEr: "", superEst: "",
+    definitions: [{ type: "adjective", meaning: "Fiziksel, bedensel", engExplanation: "Relating to the body as opposed to the mind.", trExplanation: "Zihne karşıt olarak vücutla ilgili olan." }],
+    sentence: "Physical exercise is important for health.", sentence_tr: "Fiziksel egzersiz sağlık için önemlidir."
+  },
+  {
+    id: "ox-660", word: "piano", phonetic: "/piˈænoʊ/", tags: ["A1"],
+    plural: "pianos", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Piyano", engExplanation: "A large keyboard musical instrument with a wooden case enclosing a soundboard and metal strings.", trExplanation: "Klavyeli, telli büyük müzik aleti." }],
+    sentence: "My sister plays the piano very well.", sentence_tr: "Kız kardeşim çok iyi piyano çalar."
+  },
+  {
+    id: "ox-661", word: "picture", phonetic: "/ˈpɪktʃər/", tags: ["A1"],
+    plural: "pictures", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Resim, tablo", engExplanation: "A painting or drawing.", trExplanation: "Boyama veya çizim." }],
+    sentence: "He painted a beautiful picture of the sea.", sentence_tr: "Denizin güzel bir resmini yaptı."
+  },
+  {
+    id: "ox-662", word: "piece", phonetic: "/piːs/", tags: ["A1"],
+    plural: "pieces", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Parça, dilim", engExplanation: "A portion of an object or of material, produced by cutting, tearing, or breaking the whole.", trExplanation: "Keserek, yırtarak veya kırarak üretilen bir nesne veya malzeme kısmı." }],
+    sentence: "Can I have a piece of cake?", sentence_tr: "Bir dilim (parça) kek alabilir miyim?"
+  },
+  {
+    id: "ox-663", word: "pig", phonetic: "/pɪɡ/", tags: ["A1"],
+    plural: "pigs", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Domuz", engExplanation: "An omnivorous domesticated hoofed mammal with sparse bristly hair and a flat snout.", trExplanation: "Seyrek kıllı, düz burunlu, hepçil evcil memeli hayvan." }],
+    sentence: "There are many pigs on the farm.", sentence_tr: "Çiftlikte çok sayıda domuz var."
+  },
+  {
+    id: "ox-664", word: "pink", phonetic: "/pɪŋk/", tags: ["A1"],
+    plural: "pinks", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "adjective", meaning: "Pembe", engExplanation: "Of a color intermediate between red and white.", trExplanation: "Kırmızı ve beyaz arasında orta renk." }],
+    sentence: "She bought a pink dress for the party.", sentence_tr: "Parti için pembe bir elbise aldı."
+  },
+  {
+    id: "ox-665", word: "place", phonetic: "/pleɪs/", tags: ["A1"],
+    plural: "places", v2: "placed", v3: "placed", vIng: "placing", thirdPerson: "places", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Yer, mekan", engExplanation: "A particular position or point in space.", trExplanation: "Uzayda belirli bir konum veya nokta." }],
+    sentence: "This is a nice place to live.", sentence_tr: "Burası yaşamak için güzel bir yer."
+  },
+  {
+    id: "ox-666", word: "plan", phonetic: "/plæn/", tags: ["A1"],
+    plural: "plans", v2: "planned", v3: "planned", vIng: "planning", thirdPerson: "plans", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Plan, tasarı", engExplanation: "A detailed proposal for doing or achieving something.", trExplanation: "Bir şeyi yapmak veya başarmak için ayrıntılı öneri." }],
+    sentence: "We have a plan for the weekend.", sentence_tr: "Hafta sonu için bir planımız var."
+  },
+  {
+    id: "ox-667", word: "plane", phonetic: "/pleɪn/", tags: ["A1"],
+    plural: "planes", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Uçak", engExplanation: "An airplane.", trExplanation: "Uçak." }],
+    sentence: "We will travel to London by plane.", sentence_tr: "Londra'ya uçakla seyahat edeceğiz."
+  },
+  {
+    id: "ox-668", word: "plant", phonetic: "/plænt/", tags: ["A1"],
+    plural: "plants", v2: "planted", v3: "planted", vIng: "planting", thirdPerson: "plants", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Bitki, dikmek", engExplanation: "A living organism of the kind exemplified by trees, shrubs, herbs, grasses, ferns.", trExplanation: "Ağaç, çalı, ot gibi canlı organizma türü." }],
+    sentence: "I need to water the plants.", sentence_tr: "Bitkileri sulamam gerekiyor."
+  },
+  {
+    id: "ox-669", word: "plastic", phonetic: "/ˈplæstɪk/", tags: ["A1"],
+    plural: "plastics", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Plastik", engExplanation: "A synthetic material made from a wide range of organic polymers.", trExplanation: "Geniş bir organik polimer yelpazesinden yapılmış sentetik malzeme." }],
+    sentence: "Please don't throw plastic bags into the sea.", sentence_tr: "Lütfen denize plastik poşet atmayın."
+  },
+  {
+    id: "ox-670", word: "plate", phonetic: "/pleɪt/", tags: ["A1"],
+    plural: "plates", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Tabak", engExplanation: "A flat dish, typically circular and made of china, from which food is eaten or served.", trExplanation: "Yemek yenen veya servis edilen, genellikle dairesel ve porselenden yapılmış düz kap." }],
+    sentence: "Put the cake on a plate.", sentence_tr: "Pastayı bir tabağa koy."
+  },
+  {
+    id: "ox-671", word: "play", phonetic: "/pleɪ/", tags: ["A1"],
+    plural: "plays", v2: "played", v3: "played", vIng: "playing", thirdPerson: "plays", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "verb", meaning: "Oynamak, çalmak (müzik)", engExplanation: "Engage in activity for enjoyment and recreation rather than a serious or practical purpose.", trExplanation: "Ciddi veya pratik bir amaçtan ziyade keyif ve eğlence için aktiviteye katılmak." }],
+    sentence: "The children are playing in the garden.", sentence_tr: "Çocuklar bahçede oynuyor."
+  },
+  {
+    id: "ox-672", word: "player", phonetic: "/ˈpleɪər/", tags: ["A1"],
+    plural: "players", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Oyuncu", engExplanation: "A person taking part in a sport or game.", trExplanation: "Spor veya oyunda yer alan kişi." }],
+    sentence: "He is the best player in our team.", sentence_tr: "O bizim takımdaki en iyi oyuncudur."
+  },
+  {
+    id: "ox-673", word: "please", phonetic: "/pliːz/", tags: ["A1"],
+    plural: "", v2: "pleased", v3: "pleased", vIng: "pleasing", thirdPerson: "pleases", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "adverb", meaning: "Lütfen, memnun etmek", engExplanation: "Used in polite requests or questions.", trExplanation: "Kibar istek veya sorularda kullanılır." }],
+    sentence: "Can you help me, please?", sentence_tr: "Bana yardım edebilir misin, lütfen?"
+  },
+  {
+    id: "ox-674", word: "point", phonetic: "/pɔɪnt/", tags: ["A1"],
+    plural: "points", v2: "pointed", v3: "pointed", vIng: "pointing", thirdPerson: "points", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Nokta, puan, işaret etmek", engExplanation: "A dot or other punctuation mark; direct someone's attention towards something.", trExplanation: "Nokta; birinin dikkatini bir şeye yönlendirmek." }],
+    sentence: "He pointed at the mountain.", sentence_tr: "O dağa işaret etti."
+  },
+  {
+    id: "ox-675", word: "police", phonetic: "/pəˈliːs/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Polis, emniyet", engExplanation: "The civil force of a national or local government, responsible for the prevention and detection of crime.", trExplanation: "Suçun önlenmesi ve tespiti ile görevli devlet gücü." }],
+    sentence: "Call the police immediately!", sentence_tr: "Hemen polisi ara!"
+  },
+  {
+    id: "ox-676", word: "policeman", phonetic: "/pəˈliːsmən/", tags: ["A1"],
+    plural: "policemen", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Erkek polis", engExplanation: "A male member of a police force.", trExplanation: "Polis teşkilatının erkek üyesi." }],
+    sentence: "The policeman helped the lost child.", sentence_tr: "Polis (memuru) kayıp çocuğa yardım etti."
+  },
+  {
+    id: "ox-677", word: "pool", phonetic: "/puːl/", tags: ["A1"],
+    plural: "pools", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Havuz", engExplanation: "A small body of still water; a swimming pool.", trExplanation: "Durgun su birikintisi; yüzme havuzu." }],
+    sentence: "We swim in the pool every summer.", sentence_tr: "Her yaz havuzda yüzeriz."
+  },
+  {
+    id: "ox-678", word: "poor", phonetic: "/pʊr/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "poorly", compEr: "poorer", superEst: "poorest",
+    definitions: [{ type: "adjective", meaning: "Fakir, yoksul, zavallı", engExplanation: "Lacking sufficient money to live at a standard considered comfortable or normal.", trExplanation: "Rahat veya normal kabul edilen bir standartta yaşamak için yeterli paraya sahip olmamak." }],
+    sentence: "They decided to help the poor people.", sentence_tr: "Fakir insanlara yardım etmeye karar verdiler."
+  },
+  {
+    id: "ox-679", word: "popular", phonetic: "/ˈpɑːpjələr/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "popularly", compEr: "more popular", superEst: "most popular",
+    definitions: [{ type: "adjective", meaning: "Popüler, gözde", engExplanation: "Liked, admired, or enjoyed by many people or by a particular person or group.", trExplanation: "Birçok kişi tarafından beğenilen veya sevilen." }],
+    sentence: "Football is a very popular sport.", sentence_tr: "Futbol çok popüler bir spordur."
+  },
+  {
+    id: "ox-680", word: "pork", phonetic: "/pɔːrk/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Domuz eti", engExplanation: "The flesh of a pig used as food, especially when uncured.", trExplanation: "Gıda olarak kullanılan domuz eti." }],
+    sentence: "Some people do not eat pork for religious reasons.", sentence_tr: "Bazı insanlar dini nedenlerle domuz eti yemezler."
+  },
+  {
+    id: "ox-681", word: "position", phonetic: "/pəˈzɪʃn/", tags: ["A1"],
+    plural: "positions", v2: "positioned", v3: "positioned", vIng: "positioning", thirdPerson: "positions", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Pozisyon, konum", engExplanation: "A place where someone or something is located or has been put.", trExplanation: "Birinin veya bir şeyin bulunduğu veya konulduğu yer." }],
+    sentence: "He plays in a forward position.", sentence_tr: "O ileri pozisyonda (forvet) oynuyor."
+  },
+  {
+    id: "ox-682", word: "positive", phonetic: "/ˈpɑːzətɪv/", tags: ["A1"],
+    plural: "positives", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "positively", compEr: "", superEst: "",
+    definitions: [{ type: "adjective", meaning: "Pozitif, olumlu", engExplanation: "Consisting in or characterized by the presence rather than the absence of distinguishing features.", trExplanation: "Olumlu, yapıcı." }],
+    sentence: "Try to have a positive attitude.", sentence_tr: "Pozitif bir tutuma sahip olmaya çalış."
+  },
+  {
+    id: "ox-683", word: "possible", phonetic: "/ˈpɑːsəbl/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "possibly", compEr: "", superEst: "",
+    definitions: [{ type: "adjective", meaning: "Mümkün, olası", engExplanation: "Able to be done; within the power or capacity of someone or something.", trExplanation: "Yapılabilir; ihtimal dahilinde olan." }],
+    sentence: "Is it possible to finish this today?", sentence_tr: "Bunu bugün bitirmek mümkün mü?"
+  },
+  {
+    id: "ox-684", word: "post", phonetic: "/poʊst/", tags: ["A1"],
+    plural: "posts", v2: "posted", v3: "posted", vIng: "posting", thirdPerson: "posts", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Posta, göndermek, yayınlamak", engExplanation: "Letters and packages conveyed by the postal system.", trExplanation: "Posta sistemi tarafından taşınan mektuplar ve paketler." }],
+    sentence: "I sent the package by post.", sentence_tr: "Paketi postayla gönderdim."
+  },
+  {
+    id: "ox-685", word: "potato", phonetic: "/pəˈteɪtoʊ/", tags: ["A1"],
+    plural: "potatoes", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Patates", engExplanation: "A starchy plant tuber which is one of the most important food crops.", trExplanation: "Nişastalı bitki yumrusu." }],
+    sentence: "I want a baked potato with my steak.", sentence_tr: "Bifteğimin yanında fırınlanmış patates istiyorum."
+  },
+  {
+    id: "ox-686", word: "pound", phonetic: "/paʊnd/", tags: ["A1"],
+    plural: "pounds", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Pound (para birimi veya ağırlık ölçüsü)", engExplanation: "A unit of weight equal to 16 oz; the basic monetary unit of the UK.", trExplanation: "İngiliz para birimi (sterlin) veya bir ağırlık ölçüsü birimi." }],
+    sentence: "This book costs ten pounds.", sentence_tr: "Bu kitap on pound tutuyor."
+  },
+  {
+    id: "ox-687", word: "pour", phonetic: "/pɔːr/", tags: ["A1"],
+    plural: "", v2: "poured", v3: "poured", vIng: "pouring", thirdPerson: "pours", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "verb", meaning: "Dökmek, boşaltmak", engExplanation: "Flow rapidly in a steady stream.", trExplanation: "Bir sıvıyı sürekli bir akışla akıtmak." }],
+    sentence: "Can you pour me a cup of tea?", sentence_tr: "Bana bir fincan çay dökebilir misin?"
+  },
+  {
+    id: "ox-688", word: "practice", phonetic: "/ˈpræktɪs/", tags: ["A1"],
+    plural: "practices", v2: "practiced", v3: "practiced", vIng: "practicing", thirdPerson: "practices", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Pratik, uygulama, antrenman", engExplanation: "The actual application or use of an idea, belief, or method.", trExplanation: "Bir fikrin veya yöntemin fiili olarak kullanılması veya alıştırması." }],
+    sentence: "You need more practice to play the piano well.", sentence_tr: "Piyanoyu iyi çalmak için daha fazla pratiğe ihtiyacın var."
+  },
+  {
+    id: "ox-689", word: "prefer", phonetic: "/prɪˈfɜːr/", tags: ["A1"],
+    plural: "", v2: "preferred", v3: "preferred", vIng: "preferring", thirdPerson: "prefers", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "verb", meaning: "Tercih etmek", engExplanation: "Like (one thing or person) better than another or others; tend to choose.", trExplanation: "Bir şeyi diğerinden daha çok sevmek; seçmeye eğilimli olmak." }],
+    sentence: "I prefer tea to coffee.", sentence_tr: "Çayı kahveye tercih ederim."
+  },
+  {
+    id: "ox-690", word: "prepare", phonetic: "/prɪˈper/", tags: ["A1"],
+    plural: "", v2: "prepared", v3: "prepared", vIng: "preparing", thirdPerson: "prepares", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "verb", meaning: "Hazırlamak, hazırlanmak", engExplanation: "Make (something) ready for use or consideration.", trExplanation: "(Bir şeyi) kullanıma hazır hale getirmek." }],
+    sentence: "My mother will prepare the dinner.", sentence_tr: "Annem akşam yemeğini hazırlayacak."
+  },
+  {
+    id: "ox-691", word: "present", phonetic: "/ˈpreznt/", tags: ["A1"],
+    plural: "presents", v2: "presented", v3: "presented", vIng: "presenting", thirdPerson: "presents", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Hediye, mevcut, şimdiki zaman", engExplanation: "A thing given to someone as a gift; existing or occurring now.", trExplanation: "Hediye olarak verilen şey; şu anda var olan." }],
+    sentence: "He gave me a birthday present.", sentence_tr: "Bana bir doğum günü hediyesi verdi."
+  },
+  {
+    id: "ox-692", word: "president", phonetic: "/ˈprezɪdənt/", tags: ["A1"],
+    plural: "presidents", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Başkan, cumhurbaşkanı", engExplanation: "The elected head of a republican state.", trExplanation: "Bir cumhuriyetin seçilmiş başkanı." }],
+    sentence: "The president gave a speech on TV.", sentence_tr: "Başkan televizyonda bir konuşma yaptı."
+  },
+  {
+    id: "ox-693", word: "pretty", phonetic: "/ˈprɪti/", tags: ["A1"],
+    plural: "", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "prettily", compEr: "prettier", superEst: "prettiest",
+    definitions: [{ type: "adjective", meaning: "Güzel, sevimli, oldukça", engExplanation: "Attractive in a delicate way without being truly beautiful.", trExplanation: "Zarif bir şekilde çekici olan." }],
+    sentence: "She is a very pretty girl.", sentence_tr: "O çok güzel bir kız."
+  },
+  {
+    id: "ox-694", word: "price", phonetic: "/praɪs/", tags: ["A1"],
+    plural: "prices", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Fiyat, bedel", engExplanation: "The amount of money expected, required, or given in payment for something.", trExplanation: "Bir şey için beklenen veya ödenen para miktarı." }],
+    sentence: "The price of this car is too high.", sentence_tr: "Bu arabanın fiyatı çok yüksek."
+  },
+  {
+    id: "ox-695", word: "print", phonetic: "/prɪnt/", tags: ["A1"],
+    plural: "prints", v2: "printed", v3: "printed", vIng: "printing", thirdPerson: "prints", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "verb", meaning: "Yazdırmak, basmak", engExplanation: "Produce (books, newspapers, etc.), especially in large quantities, by a mechanical process involving the transfer of text or images to paper.", trExplanation: "Metin veya resimlerin kağıda aktarılmasıyla üretmek." }],
+    sentence: "I need to print this document.", sentence_tr: "Bu belgeyi yazdırmam gerekiyor."
+  },
+  {
+    id: "ox-696", word: "printer", phonetic: "/ˈprɪntər/", tags: ["A1"],
+    plural: "printers", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Yazıcı, matbaacı", engExplanation: "A machine for printing text or pictures, especially one linked to a computer.", trExplanation: "Özellikle bilgisayara bağlı olarak metin veya resim yazdırmak için makine." }],
+    sentence: "The printer is out of paper.", sentence_tr: "Yazıcının kağıdı bitti."
+  },
+  {
+    id: "ox-697", word: "problem", phonetic: "/ˈprɑːbləm/", tags: ["A1"],
+    plural: "problems", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Problem, sorun", engExplanation: "A matter or situation regarded as unwelcome or harmful and needing to be dealt with and overcome.", trExplanation: "Zararlı görülen ve çözülmesi gereken mesele veya durum." }],
+    sentence: "I have a big problem with my computer.", sentence_tr: "Bilgisayarımla ilgili büyük bir sorunum var."
+  },
+  {
+    id: "ox-698", word: "produce", phonetic: "/prəˈduːs/", tags: ["A1"],
+    plural: "", v2: "produced", v3: "produced", vIng: "producing", thirdPerson: "produces", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "verb", meaning: "Üretmek", engExplanation: "Make or manufacture from components or raw materials.", trExplanation: "Ham maddelerden veya bileşenlerden bir şey yapmak veya üretmek." }],
+    sentence: "This factory produces cars.", sentence_tr: "Bu fabrika araba üretir."
+  },
+  {
+    id: "ox-699", word: "product", phonetic: "/ˈprɑːdʌkt/", tags: ["A1"],
+    plural: "products", v2: "", v3: "", vIng: "", thirdPerson: "", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Ürün, mahsul", engExplanation: "An article or substance that is manufactured or refined for sale.", trExplanation: "Satılık olarak üretilen madde veya eşya." }],
+    sentence: "We sell a new hair product.", sentence_tr: "Yeni bir saç ürünü satıyoruz."
+  },
+  {
+    id: "ox-700", word: "program", phonetic: "/ˈproʊɡræm/", tags: ["A1"],
+    plural: "programs", v2: "programmed", v3: "programmed", vIng: "programming", thirdPerson: "programs", advLy: "", compEr: "", superEst: "",
+    definitions: [{ type: "noun", meaning: "Program", engExplanation: "A planned series of future events, items, or performances.", trExplanation: "Gelecekteki etkinliklerin, öğelerin veya performansların planlanmış serisi." }],
+    sentence: "What is your favorite TV program?", sentence_tr: "En sevdiğin televizyon programı hangisi?"
   }
 ];
