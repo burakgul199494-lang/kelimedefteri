@@ -12,19 +12,15 @@ export default function WordList() {
   const navigate = useNavigate();
   const { knownWordIds, getAllWords, removeFromKnown, addToKnown, learningQueue } = useData();
 
-  // Arama State'leri (Artık Debounce ile çalışacak)
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-
   const [tick, setTick] = useState(0);
 
-  // Debounce (Gecikmeli Arama)
   useEffect(() => {
     const handler = setTimeout(() => setDebouncedSearch(search), 300);
     return () => clearTimeout(handler);
   }, [search]);
 
-  // Saniye Sayacı
   useEffect(() => {
     const timer = setInterval(() => setTick(t => t + 1), 1000);
     return () => clearInterval(timer);
@@ -38,7 +34,6 @@ export default function WordList() {
   const all = getAllWords();
   const now = new Date();
 
-  // --- SEVİYE HESAPLAMA ---
   const wordsWithDetails = all.map(word => {
       const qItem = learningQueue ? learningQueue.find(q => String(q.wordId) === String(word.id)) : null;
       let level = 0;
@@ -49,7 +44,6 @@ export default function WordList() {
       return { ...word, queueData: qItem, level };
   });
 
-  // --- LİSTELEME MANTIĞI ---
   if (isKnown) {
     title = "Öğrendiğim Kelimeler";
     wordList = wordsWithDetails.filter(w => w.level === 6);
@@ -65,9 +59,17 @@ export default function WordList() {
     });
   }
 
-  // --- ARAMA VE SIRALAMA ---
+  // --- ARTIK TÜRKÇE VE İNGİLİZCE KARIŞIK ARAMA DESTEKLİYOR ---
   const filteredWords = wordList
-    .filter(w => w.word.toLowerCase().includes(debouncedSearch.toLowerCase()))
+    .filter(w => {
+        const searchLower = debouncedSearch.toLowerCase().trim();
+        if (!searchLower) return true;
+        // 1. İngilizce kelimede ara
+        if (w.word.toLowerCase().includes(searchLower)) return true;
+        // 2. Türkçe anlamlarda ara
+        if (w.definitions && w.definitions.some(d => d.meaning.toLowerCase().includes(searchLower))) return true;
+        return false;
+    })
     .sort((a, b) => {
         if (a.level !== b.level) return a.level - b.level;
         return a.word.localeCompare(b.word);
@@ -86,7 +88,6 @@ export default function WordList() {
     pronoun: "zamir", article: "tanımlık"
   }[t] || t);
 
-  // --- SÜRE HESAPLAMA ---
   const getTimeRemaining = (dateString) => {
       const diff = new Date(dateString) - new Date();
       if (diff <= 0) return "Şimdi!";
@@ -103,7 +104,6 @@ export default function WordList() {
       return parts.join(" ");
   };
 
-  // --- ROZETLER ---
   const getLevelBadge = (level) => {
       switch(level) {
         case 0: return <span className="bg-slate-100 text-slate-500 text-[10px] px-2 py-1 rounded-md font-bold uppercase tracking-wider">Lvl 0 (Yeni)</span>;
@@ -117,10 +117,8 @@ export default function WordList() {
       }
   };
 
-  // --- YENİ MODERN KART TASARIMI ---
   const renderWordCard = (index, item) => (
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm mb-4 mx-1 overflow-hidden">
-          {/* ÜST BİLGİ ŞERİDİ & BUTONLAR */}
           <div className="bg-slate-50 px-4 py-3 border-b border-slate-100 flex justify-between items-center">
               <div className="flex flex-wrap items-center gap-2">
                   <span className="text-xl font-black text-slate-800 tracking-tight">{item.word}</span>
@@ -134,7 +132,6 @@ export default function WordList() {
                   </button>
               </div>
 
-              {/* HIZLI AKSİYON BUTONLARI */}
               <div className="flex gap-2">
                   {item.level === 6 ? (
                       <button onClick={() => removeFromKnown(item.id)} className="flex items-center gap-1.5 p-2 px-3 text-xs font-bold text-amber-600 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-xl transition-all shadow-sm">
@@ -149,7 +146,6 @@ export default function WordList() {
           </div>
 
           <div className="p-4 space-y-4">
-              {/* ROZETLER VE SAYAÇ */}
               <div className="flex flex-wrap items-center gap-2">
                   {getLevelBadge(item.level)}
                   {item.tags && item.tags.map((tag, i) => (
@@ -164,7 +160,6 @@ export default function WordList() {
                   )}
               </div>
 
-              {/* ANLAMLAR VE AÇIKLAMALAR */}
               <div className="space-y-3">
                   <div className="flex items-center gap-2 text-slate-400 text-[10px] font-bold uppercase tracking-widest">
                       <BookOpen className="w-3 h-3"/> Anlamlar
@@ -191,7 +186,6 @@ export default function WordList() {
                   ))}
               </div>
 
-              {/* DİLBİLGİSİ ÇEKİMLERİ */}
               {(item.plural || item.v2 || item.v3 || item.vIng || item.thirdPerson || item.advLy || item.compEr || item.superEst) && (
                   <div className="space-y-2">
                       <div className="flex items-center gap-2 text-slate-400 text-[10px] font-bold uppercase tracking-widest">
@@ -207,7 +201,6 @@ export default function WordList() {
                   </div>
               )}
 
-              {/* ÖRNEK CÜMLE */}
               {item.sentence && (
                   <div className="bg-indigo-50 rounded-2xl p-4 border border-indigo-100 relative">
                       <div className="flex gap-3 items-start">
@@ -245,7 +238,7 @@ export default function WordList() {
           <Search className="absolute left-4 top-4 text-slate-300 w-5 h-5" />
           <input 
             type="text" 
-            placeholder="Kelime ara..." 
+            placeholder="Türkçe veya İngilizce ara..." 
             value={search} 
             onChange={(e) => setSearch(e.target.value)} 
             className="w-full pl-12 p-4 bg-white border-2 border-slate-100 rounded-2xl outline-none shadow-sm focus:border-indigo-200 font-medium text-slate-600 transition-all" 
