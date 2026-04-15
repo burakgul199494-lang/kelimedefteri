@@ -38,7 +38,6 @@ export default function AdminDashboard() {
       return null;
   }
 
-  // 🔥 FİHRİST KALDIRILDI, AKILLI ARAMA VE FİLTRELER DURUYOR
   const filtered = dynamicSystemWords
      .filter(w => {
          const isBlacklisted = blacklistedWords.includes(String(w.id));
@@ -62,11 +61,9 @@ export default function AdminDashboard() {
              const aWord = a.word.toLowerCase();
              const bWord = b.word.toLowerCase();
 
-             // 1. TAM EŞLEŞME (En üstte)
              if (aWord === s && bWord !== s) return -1;
              if (bWord === s && aWord !== s) return 1;
 
-             // 2. KELİME İLE BAŞLAYANLAR
              const aStarts = aWord.startsWith(s);
              const bStarts = bWord.startsWith(s);
              if (aStarts && !bStarts) return -1;
@@ -83,7 +80,7 @@ export default function AdminDashboard() {
   };
 
   const getShortType = (t) => ({
-    noun: "isim", verb: "fiil", adjective: "sıfat", adverb: "zarf", conjunction: "bağlaç", prep: "edat"
+    noun: "isim", verb: "fiil", adjective: "sıfat", adverb: "zarf", conjunction: "bağlaç", prep: "edat", pronoun: "zamir", article: "tanımlık"
   }[t] || t);
 
   const handleTranslate = async (e) => {
@@ -155,6 +152,18 @@ export default function AdminDashboard() {
           </div>
 
           <div className={`p-3 sm:p-4 space-y-4 ${isBlacklisted ? 'opacity-70 pointer-events-none' : ''}`}>
+              
+              {/* 🔥 EKSİK OLAN ETİKETLER (TAGS) EKLENDİ */}
+              {item.tags && item.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mb-2">
+                      {item.tags.map((tag, i) => (
+                          <span key={i} className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2 py-1 rounded-md border border-indigo-100">
+                              <TagIcon className="w-3 h-3"/> {tag}
+                          </span>
+                      ))}
+                  </div>
+              )}
+
               <div className="space-y-2">
                   <div className="flex items-center gap-2 text-slate-400 text-[10px] font-bold uppercase tracking-widest"><BookOpen className="w-3 h-3"/> Anlamlar & Açıklamalar</div>
                   {item.definitions?.map((def, idx) => (
@@ -163,19 +172,53 @@ export default function AdminDashboard() {
                            <span className="text-[10px] font-black text-white uppercase bg-slate-400 px-1.5 py-0.5 rounded">{getShortType(def.type)}</span>
                            <span className="font-bold text-slate-700 break-words">{def.meaning}</span>
                         </div>
-                        {def.trExplanation && <div className="text-[11px] sm:text-xs text-slate-500 pl-2 border-l-2 border-green-200 italic">{def.trExplanation}</div>}
+                        {/* 🔥 EKSİK OLAN İNGİLİZCE AÇIKLAMA EKLENDİ */}
+                        {def.engExplanation && (
+                            <div className="text-[11px] sm:text-xs text-slate-600 pl-2 border-l-2 border-indigo-200">
+                                <div className="font-semibold text-[10px] text-indigo-400 uppercase">İngilizce Tanım:</div>
+                                {def.engExplanation}
+                            </div>
+                        )}
+                        {def.trExplanation && (
+                            <div className="text-[11px] sm:text-xs text-slate-500 pl-2 border-l-2 border-green-200 italic">
+                                <div className="font-semibold text-[10px] text-green-500 uppercase">Türkçe Çeviri:</div>
+                                {def.trExplanation}
+                            </div>
+                        )}
                      </div>
                   ))}
               </div>
-              {item.sentence && (
-                  <div className="bg-indigo-600 rounded-2xl p-3 sm:p-4 text-white shadow-md shadow-indigo-100 relative">
-                      <div className="flex gap-2 sm:gap-3 items-start">
-                          <button onClick={(e)=>speak(item.sentence, e)} className="shrink-0 p-1.5 sm:p-2 bg-white/20 hover:bg-white/30 rounded-full transition-colors mt-0.5"><Volume2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white"/></button>
-                          <div className="space-y-1 min-w-0">
-                              <p className="text-xs sm:text-sm font-medium leading-relaxed italic break-words">"{item.sentence}"</p>
-                              {item.sentence_tr && <p className="text-[10px] sm:text-xs text-indigo-100 font-medium pt-1 border-t border-white/10 break-words">{item.sentence_tr}</p>}
-                          </div>
+
+              {/* 🔥 EKSİK OLAN KELİME FORMLARI (V2, V3, PLURAL VS.) EKLENDİ */}
+              {(item.plural || item.v2 || item.v3 || item.vIng || item.thirdPerson || item.advLy || item.compEr || item.superEst) && (
+                  <div className="space-y-2 pt-2">
+                      <div className="flex items-center gap-2 text-slate-400 text-[10px] font-bold uppercase tracking-widest">
+                          <Info className="w-3 h-3"/> Kelime Formları
                       </div>
+                      <div className="flex flex-wrap gap-1.5 text-[10px] sm:text-[11px]">
+                          {item.plural && <span className="bg-slate-100 text-slate-600 px-2 py-1 rounded-lg border border-slate-200"><b>Plural:</b> {item.plural}</span>}
+                          {item.v2 && <span className="bg-orange-50 text-orange-700 px-2 py-1 rounded-lg border border-orange-100"><b>V2:</b> {item.v2}</span>}
+                          {item.v3 && <span className="bg-orange-50 text-orange-700 px-2 py-1 rounded-lg border border-orange-100"><b>V3:</b> {item.v3}</span>}
+                          {item.vIng && <span className="bg-slate-100 text-slate-600 px-2 py-1 rounded-lg border border-slate-200"><b>V-ing:</b> {item.vIng}</span>}
+                          {item.advLy && <span className="bg-blue-50 text-blue-700 px-2 py-1 rounded-lg border border-blue-100"><b>Adverb:</b> {item.advLy}</span>}
+                          {item.compEr && <span className="bg-purple-50 text-purple-700 px-2 py-1 rounded-lg border border-purple-100"><b>Comp:</b> {item.compEr}</span>}
+                          {item.superEst && <span className="bg-purple-50 text-purple-700 px-2 py-1 rounded-lg border border-purple-100"><b>Super:</b> {item.superEst}</span>}
+                      </div>
+                  </div>
+              )}
+
+              {item.sentence && (
+                  <div className="pt-2">
+                    <div className="flex items-center gap-2 text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-2"><Quote className="w-3 h-3"/> Örnek Cümle</div>
+                    <div className="bg-indigo-600 rounded-2xl p-3 sm:p-4 text-white shadow-md shadow-indigo-100 relative">
+                        <div className="flex gap-2 sm:gap-3 items-start">
+                            <button onClick={(e)=>speak(item.sentence, e)} className="shrink-0 p-1.5 sm:p-2 bg-white/20 hover:bg-white/30 rounded-full transition-colors mt-0.5"><Volume2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white"/></button>
+                            <div className="space-y-1 min-w-0">
+                                <p className="text-xs sm:text-sm font-medium leading-relaxed italic break-words">"{item.sentence}"</p>
+                                {item.sentence_tr && <p className="text-[10px] sm:text-xs text-indigo-100 font-medium pt-1 border-t border-white/10 break-words">{item.sentence_tr}</p>}
+                            </div>
+                        </div>
+                    </div>
                   </div>
               )}
           </div>
