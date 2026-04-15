@@ -4,10 +4,10 @@ import { useNavigate } from "react-router-dom";
 import { 
   ArrowLeft, Shield, Search, Edit2, Trash2, 
   Volume2, Wand2, Loader2, CheckCircle2, 
-  Info, BookOpen, Quote, Tag as TagIcon 
+  Info, BookOpen, Quote, Tag as TagIcon, Languages 
 } from "lucide-react";
 import QuickAddModal from "../components/QuickAddModal";
-import { fetchMagicWordData } from "../services/aiService";
+import { fetchMagicWordData, translateWord } from "../services/aiService";
 import { Virtuoso } from "react-virtuoso"; 
 
 export default function AdminDashboard() {
@@ -23,10 +23,13 @@ export default function AdminDashboard() {
   const [isMagicLoading, setIsMagicLoading] = useState(false);
   const [magicStatus, setMagicStatus] = useState(null);
 
+  // Çeviri State'leri
+  const [trWord, setTrWord] = useState("");
+  const [translatedEnWord, setTranslatedEnWord] = useState("");
+  const [isTranslating, setIsTranslating] = useState(false);
+
   useEffect(() => {
-      const handler = setTimeout(() => {
-          setDebouncedSearch(search);
-      }, 300);
+      const handler = setTimeout(() => setDebouncedSearch(search), 300);
       return () => clearTimeout(handler);
   }, [search]);
 
@@ -35,8 +38,17 @@ export default function AdminDashboard() {
       return null;
   }
 
+  // --- TÜRKÇE VE İNGİLİZCE KARIŞIK ARAMA ---
   const filtered = dynamicSystemWords
-     .filter(w => w.word.toLowerCase().includes(debouncedSearch.toLowerCase()))
+     .filter(w => {
+         const searchLower = debouncedSearch.toLowerCase().trim();
+         if (!searchLower) return true;
+         // 1. İngilizce kelimede ara
+         if (w.word.toLowerCase().includes(searchLower)) return true;
+         // 2. Türkçe anlamlarda ara
+         if (w.definitions && w.definitions.some(d => d.meaning.toLowerCase().includes(searchLower))) return true;
+         return false;
+     })
      .sort((a,b) => a.word.localeCompare(b.word));
 
   const speak = (txt, e) => {
@@ -51,6 +63,21 @@ export default function AdminDashboard() {
     adverb: "zarf", conjunction: "bağlaç", prep: "edat",
     pronoun: "zamir", article: "tanımlık"
   }[t] || t);
+
+  // --- HIZLI ÇEVİRİ İŞLEMİ ---
+  const handleTranslate = async (e) => {
+      e.preventDefault();
+      if (!trWord.trim()) return;
+      setIsTranslating(true);
+      setTranslatedEnWord("");
+      const res = await translateWord(trWord.trim());
+      if (res.success) {
+          setTranslatedEnWord(res.word);
+      } else {
+          alert("Çeviri hatası: " + res.message);
+      }
+      setIsTranslating(false);
+  };
 
   const handleMagicAdd = async (e) => {
       e.preventDefault();
@@ -90,12 +117,10 @@ export default function AdminDashboard() {
       setIsMagicLoading(false);
   };
 
-  // --- HER ŞEYİ GÖSTEREN YENİ KELİME KARTI ---
   const renderWordCard = (index, item) => (
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm mb-4 mx-1 overflow-hidden">
-          {/* ÜST BİLGİ ŞERİDİ */}
           <div className="bg-slate-50 px-4 py-3 border-b border-slate-100 flex justify-between items-center">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 flex-wrap">
                   <span className="text-xl font-black text-slate-800 tracking-tight">{item.word}</span>
                   {item.phonetic && (
                      <span className="text-sm text-indigo-400 font-serif italic bg-indigo-50 px-2 py-0.5 rounded-lg border border-indigo-100">
@@ -113,7 +138,6 @@ export default function AdminDashboard() {
           </div>
 
           <div className="p-4 space-y-4">
-              {/* ETİKETLER */}
               {item.tags && item.tags.length > 0 && (
                   <div className="flex flex-wrap gap-2">
                       {item.tags.map((tag, i) => (
@@ -124,7 +148,6 @@ export default function AdminDashboard() {
                   </div>
               )}
 
-              {/* ANLAMLAR VE AÇIKLAMALAR */}
               <div className="space-y-3">
                   <div className="flex items-center gap-2 text-slate-400 text-[10px] font-bold uppercase tracking-widest">
                       <BookOpen className="w-3 h-3"/> Anlamlar & Açıklamalar
@@ -153,7 +176,6 @@ export default function AdminDashboard() {
                   ))}
               </div>
 
-              {/* DİLBİLGİSİ ÇEKİMLERİ (Sadece Dolu Olanlar) */}
               {(item.plural || item.v2 || item.v3 || item.vIng || item.thirdPerson || item.advLy || item.compEr || item.superEst) && (
                   <div className="space-y-2">
                       <div className="flex items-center gap-2 text-slate-400 text-[10px] font-bold uppercase tracking-widest">
@@ -169,7 +191,6 @@ export default function AdminDashboard() {
                   </div>
               )}
 
-              {/* ÖRNEK CÜMLE */}
               {item.sentence && (
                   <div className="space-y-2">
                       <div className="flex items-center gap-2 text-slate-400 text-[10px] font-bold uppercase tracking-widest">
@@ -210,6 +231,8 @@ export default function AdminDashboard() {
                 <div className="flex items-center gap-2 mb-4 font-black text-slate-700 uppercase tracking-tighter">
                     <Wand2 className="w-5 h-5 text-indigo-500 animate-pulse" /> Sihirli Ekleme (AI)
                 </div>
+                
+                {/* 1. İNGİLİZCE SİHİRLİ EKLEME */}
                 <form onSubmit={handleMagicAdd} className="flex gap-2">
                     <input type="text" placeholder="Kelimeyi yaz ve Enter..." value={magicWord} onChange={(e) => setMagicWord(e.target.value)} disabled={isMagicLoading} className="flex-1 p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none focus:border-indigo-500 focus:bg-white transition-all font-bold text-slate-700 placeholder:text-slate-300"/>
                     <button type="submit" disabled={isMagicLoading || !magicWord.trim()} className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 rounded-2xl font-bold transition-all disabled:opacity-50 min-w-[90px] flex justify-center items-center shadow-lg shadow-indigo-100">
@@ -221,6 +244,45 @@ export default function AdminDashboard() {
                         <CheckCircle2 className="w-4 h-4" /> Kelime tüm detaylarıyla eklendi!
                     </div>
                 )}
+
+                {/* 2. TÜRKÇE ÇEVİRİ BÖLÜMÜ */}
+                <div className="mt-4 pt-4 border-t border-indigo-100/30">
+                    <div className="flex items-center gap-2 mb-3 text-[11px] font-black text-indigo-400 uppercase tracking-widest">
+                        <Languages className="w-4 h-4" /> Türkçesini Yaz, İngilizcesini Bul
+                    </div>
+                    <form onSubmit={handleTranslate} className="flex gap-2">
+                        <input 
+                            type="text" 
+                            placeholder="Örn: kapı, pencere..." 
+                            value={trWord} 
+                            onChange={(e) => setTrWord(e.target.value)} 
+                            disabled={isTranslating} 
+                            className="flex-1 p-3 bg-indigo-50/50 border-2 border-indigo-50 rounded-xl outline-none focus:border-indigo-300 transition-all font-medium text-slate-600 text-sm placeholder:text-indigo-200"
+                        />
+                        <button type="submit" disabled={isTranslating || !trWord.trim()} className="bg-slate-100 hover:bg-slate-200 text-slate-600 px-5 rounded-xl font-bold transition-all disabled:opacity-50 text-sm flex items-center justify-center">
+                            {isTranslating ? <Loader2 className="w-4 h-4 animate-spin" /> : "ÇEVİR"}
+                        </button>
+                    </form>
+
+                    {translatedEnWord && (
+                        <div className="mt-3 flex items-center justify-between bg-emerald-50 p-3 rounded-xl border border-emerald-100 animate-in fade-in zoom-in-95">
+                            <div className="text-xs font-medium text-emerald-800">
+                                İngilizcesi: <span className="text-lg font-black ml-1">{translatedEnWord}</span>
+                            </div>
+                            <button 
+                                onClick={() => {
+                                    setMagicWord(translatedEnWord);
+                                    setTranslatedEnWord("");
+                                    setTrWord("");
+                                }}
+                                className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-xs font-bold transition-colors shadow-sm shadow-emerald-200"
+                            >
+                                Sihirli Ekle
+                            </button>
+                        </div>
+                    )}
+                </div>
+
             </div>
          </div>
 
@@ -231,7 +293,7 @@ export default function AdminDashboard() {
 
          <div className="relative mb-6">
              <Search className="absolute left-4 top-4 text-slate-300 w-5 h-5"/>
-             <input type="text" placeholder="Kelimelerde ara..." value={search} onChange={e=>setSearch(e.target.value)} className="w-full pl-12 p-4 bg-white border-2 border-slate-100 rounded-2xl outline-none shadow-sm focus:border-indigo-200 transition-all font-medium text-slate-600"/>
+             <input type="text" placeholder="Türkçe veya İngilizce ara..." value={search} onChange={e=>setSearch(e.target.value)} className="w-full pl-12 p-4 bg-white border-2 border-slate-100 rounded-2xl outline-none shadow-sm focus:border-indigo-200 transition-all font-medium text-slate-600"/>
          </div>
              
          <div className="min-h-[500px] pb-20">
