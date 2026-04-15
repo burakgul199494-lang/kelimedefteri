@@ -4,20 +4,22 @@ import { useNavigate } from "react-router-dom";
 import { 
   ArrowLeft, Shield, Search, Edit2, Trash2, 
   Volume2, Wand2, Loader2, CheckCircle2, 
-  Info, BookOpen, Quote, Tag as TagIcon, Languages 
+  Info, BookOpen, Quote, Tag as TagIcon, Languages, RotateCcw
 } from "lucide-react";
 import QuickAddModal from "../components/QuickAddModal";
 import { fetchMagicWordData, translateWord } from "../services/aiService";
 import { Virtuoso } from "react-virtuoso"; 
 
 export default function AdminDashboard() {
-  const { dynamicSystemWords, handleDeleteSystemWord, handleSaveSystemWord, isAdmin } = useData();
+  // 🔥 YENİ: blacklistedWords ve removeFromBlacklist içeri aktarıldı
+  const { dynamicSystemWords, handleDeleteSystemWord, handleSaveSystemWord, isAdmin, blacklistedWords, removeFromBlacklist } = useData();
   const navigate = useNavigate();
   
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [editingItem, setEditingItem] = useState(null);
   const [isAddingNew, setIsAddingNew] = useState(false);
+  const [filterMode, setFilterMode] = useState('all'); // all, static, blacklisted
 
   const [magicWord, setMagicWord] = useState("");
   const [isMagicLoading, setIsMagicLoading] = useState(false);
@@ -37,7 +39,13 @@ export default function AdminDashboard() {
       return null;
   }
 
+  // 🔥 YENİ: FİLTRELEME MANTIĞI GÜNCELLENDİ
   const filtered = dynamicSystemWords
+     .filter(w => {
+         if (filterMode === 'blacklisted') return blacklistedWords.includes(w.word.toLowerCase().trim());
+         if (filterMode === 'static') return w.isStatic;
+         return true;
+     })
      .filter(w => {
          const searchLower = debouncedSearch.toLowerCase().trim();
          if (!searchLower) return true;
@@ -81,7 +89,7 @@ export default function AdminDashboard() {
 
       const exists = dynamicSystemWords.some(w => w.word.toLowerCase() === wordToFetch.toLowerCase());
       if (exists) {
-          alert(`"${wordToFetch}" zaten ekli!`);
+          alert(`"${wordToFetch}" zaten ekli! Eğer kara listedeyse, filtrelerden bulup Geri Getir butonuna basabilirsin.`);
           setMagicWord("");
           return;
       }
@@ -112,12 +120,28 @@ export default function AdminDashboard() {
       setIsMagicLoading(false);
   };
 
-  const renderWordCard = (index, item) => (
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm mb-4 overflow-hidden w-full">
-          {/* MOBİL İÇİN DÜZENLENMİŞ ÜST BİLGİ ŞERİDİ */}
+  const renderWordCard = (index, item) => {
+      const isBlacklisted = blacklistedWords.includes(item.word.toLowerCase().trim());
+      const isStatic = item.isStatic;
+
+      // 🔥 KART ÇERÇEVE TASARIMLARI
+      let containerClass = "bg-white rounded-2xl shadow-sm mb-4 overflow-hidden w-full transition-all ";
+      if (isStatic) containerClass += "border-2 border-orange-400 ";
+      else containerClass += "border border-slate-200 ";
+      if (isBlacklisted) containerClass += "opacity-80 bg-slate-50 "; // Kara listeyse hafif soluk
+
+      return (
+      <div className={containerClass}>
           <div className="bg-slate-50 px-3 py-3 sm:px-4 border-b border-slate-100 flex justify-between items-start gap-2">
               <div className="flex flex-wrap items-center gap-2 flex-1 min-w-0">
-                  <span className="text-lg sm:text-xl font-black text-slate-800 tracking-tight break-words">{item.word}</span>
+                  <span className={`text-lg sm:text-xl font-black tracking-tight break-words ${isBlacklisted ? 'text-slate-400 line-through' : 'text-slate-800'}`}>
+                      {item.word}
+                  </span>
+                  
+                  {/* ROZETLER */}
+                  {isStatic && <span className="text-[9px] font-bold bg-orange-100 text-orange-600 px-2 py-0.5 rounded border border-orange-200 uppercase tracking-widest">Kod (Oxford)</span>}
+                  {isBlacklisted && <span className="text-[9px] font-bold bg-red-100 text-red-600 px-2 py-0.5 rounded border border-red-200 uppercase tracking-widest">Kara Listede</span>}
+
                   {item.phonetic && (
                      <span className="text-xs text-indigo-400 font-serif italic bg-indigo-50 px-2 py-0.5 rounded-lg border border-indigo-100 shrink-0">
                          /{item.phonetic.replace(/\//g, '')}/
@@ -128,12 +152,21 @@ export default function AdminDashboard() {
                   </button>
               </div>
               <div className="flex gap-1.5 shrink-0">
-                  <button onClick={() => setEditingItem(item)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-xl transition-colors"><Edit2 className="w-4 h-4"/></button>
-                  <button onClick={() => handleDeleteSystemWord(item.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-xl transition-colors"><Trash2 className="w-4 h-4"/></button>
+                  {/* 🔥 KARA LİSTEDEYSE GERİ GETİR BUTONU, DEĞİLSE SİL BUTONU GÖSTER */}
+                  {isBlacklisted ? (
+                      <button onClick={() => removeFromBlacklist(item.word)} className="flex items-center gap-1 p-2 text-xs font-bold text-emerald-600 bg-emerald-50 hover:bg-emerald-100 rounded-xl border border-emerald-200 transition-colors shadow-sm">
+                          <RotateCcw className="w-3.5 h-3.5"/> Geri Getir
+                      </button>
+                  ) : (
+                      <>
+                          <button onClick={() => setEditingItem(item)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-xl transition-colors"><Edit2 className="w-4 h-4"/></button>
+                          <button onClick={() => handleDeleteSystemWord(item.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-xl transition-colors"><Trash2 className="w-4 h-4"/></button>
+                      </>
+                  )}
               </div>
           </div>
 
-          <div className="p-3 sm:p-4 space-y-4">
+          <div className={`p-3 sm:p-4 space-y-4 ${isBlacklisted ? 'opacity-70 pointer-events-none' : ''}`}>
               {item.tags && item.tags.length > 0 && (
                   <div className="flex flex-wrap gap-1.5">
                       {item.tags.map((tag, i) => (
@@ -209,7 +242,8 @@ export default function AdminDashboard() {
               )}
           </div>
       </div>
-  );
+      );
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 p-2 sm:p-4 w-full overflow-x-hidden">
@@ -228,7 +262,6 @@ export default function AdminDashboard() {
                     <Wand2 className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-500 animate-pulse" /> Sihirli Ekleme (AI)
                 </div>
                 
-                {/* MOBİL DÜZEN: İNGİLİZCE SİHİRLİ EKLEME */}
                 <form onSubmit={handleMagicAdd} className="flex flex-col sm:flex-row gap-2 w-full">
                     <input type="text" placeholder="Kelimeyi yaz ve Enter..." value={magicWord} onChange={(e) => setMagicWord(e.target.value)} disabled={isMagicLoading} className="w-full sm:flex-1 p-3 sm:p-4 bg-slate-50 border-2 border-slate-100 rounded-xl sm:rounded-2xl outline-none focus:border-indigo-500 focus:bg-white transition-all font-bold text-slate-700 placeholder:text-slate-300 text-sm sm:text-base"/>
                     <button type="submit" disabled={isMagicLoading || !magicWord.trim()} className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white p-3 sm:px-6 rounded-xl sm:rounded-2xl font-bold transition-all disabled:opacity-50 min-w-[90px] flex justify-center items-center shadow-lg shadow-indigo-100 shrink-0">
@@ -237,24 +270,16 @@ export default function AdminDashboard() {
                 </form>
                 {magicStatus === 'success' && (
                     <div className="mt-3 sm:mt-4 flex items-center gap-2 text-xs font-bold text-green-600 bg-green-50 p-2 sm:p-3 rounded-xl border border-green-100 animate-in fade-in slide-in-from-top-2">
-                        <CheckCircle2 className="w-4 h-4 shrink-0" /> Kelime tüm detaylarıyla eklendi!
+                        <CheckCircle2 className="w-4 h-4 shrink-0" /> Kelime eklendi!
                     </div>
                 )}
 
-                {/* MOBİL DÜZEN: TÜRKÇE ÇEVİRİ BÖLÜMÜ */}
                 <div className="mt-4 pt-4 border-t border-indigo-100/30 w-full">
                     <div className="flex items-center gap-1.5 mb-3 text-[10px] sm:text-[11px] font-black text-indigo-400 uppercase tracking-widest">
                         <Languages className="w-3 h-3 sm:w-4 sm:h-4 shrink-0" /> Türkçesini Yaz, İngilizcesini Bul
                     </div>
                     <form onSubmit={handleTranslate} className="flex flex-col sm:flex-row gap-2 w-full">
-                        <input 
-                            type="text" 
-                            placeholder="Örn: kapı, pencere..." 
-                            value={trWord} 
-                            onChange={(e) => setTrWord(e.target.value)} 
-                            disabled={isTranslating} 
-                            className="w-full sm:flex-1 p-3 bg-indigo-50/50 border-2 border-indigo-50 rounded-xl outline-none focus:border-indigo-300 transition-all font-medium text-slate-600 text-sm placeholder:text-indigo-200"
-                        />
+                        <input type="text" placeholder="Örn: kapı, pencere..." value={trWord} onChange={(e) => setTrWord(e.target.value)} disabled={isTranslating} className="w-full sm:flex-1 p-3 bg-indigo-50/50 border-2 border-indigo-50 rounded-xl outline-none focus:border-indigo-300 transition-all font-medium text-slate-600 text-sm placeholder:text-indigo-200" />
                         <button type="submit" disabled={isTranslating || !trWord.trim()} className="w-full sm:w-auto bg-slate-100 hover:bg-slate-200 text-slate-600 p-3 sm:px-5 rounded-xl font-bold transition-all disabled:opacity-50 text-sm flex items-center justify-center shrink-0">
                             {isTranslating ? <Loader2 className="w-4 h-4 animate-spin" /> : "ÇEVİR"}
                         </button>
@@ -265,26 +290,31 @@ export default function AdminDashboard() {
                             <div className="text-xs font-medium text-emerald-800 text-center sm:text-left">
                                 İngilizcesi: <span className="text-base sm:text-lg font-black ml-1 break-words">{translatedEnWord}</span>
                             </div>
-                            <button 
-                                onClick={() => {
-                                    setMagicWord(translatedEnWord);
-                                    setTranslatedEnWord("");
-                                    setTrWord("");
-                                }}
-                                className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 sm:py-2 rounded-lg text-xs font-bold transition-colors shadow-sm shadow-emerald-200 shrink-0"
-                            >
+                            <button onClick={() => { setMagicWord(translatedEnWord); setTranslatedEnWord(""); setTrWord(""); }} className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 sm:py-2 rounded-lg text-xs font-bold transition-colors shadow-sm shadow-emerald-200 shrink-0">
                                 Sihirli Ekle
                             </button>
                         </div>
                     )}
                 </div>
-
             </div>
          </div>
 
          <div className="flex items-center justify-between mb-4 sm:mb-6 px-1 w-full">
             <div className="bg-indigo-100 text-indigo-700 px-3 py-1.5 sm:px-4 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-black uppercase tracking-widest whitespace-nowrap">{dynamicSystemWords.length} KELİME MEVCUT</div>
             <button onClick={() => setIsAddingNew(true)} className="text-[10px] sm:text-xs font-bold text-slate-400 hover:text-indigo-600 transition-colors uppercase tracking-widest whitespace-nowrap">MANUEL EKLE</button>
+         </div>
+
+         {/* 🔥 YENİ: FİLTRE BUTONLARI */}
+         <div className="flex overflow-x-auto gap-2 mb-4 pb-2 scrollbar-hide w-full">
+            <button onClick={() => setFilterMode('all')} className={`shrink-0 px-4 py-2 rounded-xl text-xs font-bold transition-all ${filterMode === 'all' ? 'bg-indigo-600 text-white shadow-md' : 'bg-white text-slate-500 border border-slate-200 hover:bg-slate-50'}`}>
+                Tümü ({dynamicSystemWords.length})
+            </button>
+            <button onClick={() => setFilterMode('static')} className={`shrink-0 px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${filterMode === 'static' ? 'bg-orange-500 text-white shadow-md' : 'bg-white text-slate-500 border border-slate-200 hover:bg-slate-50'}`}>
+                <div className={`w-2 h-2 rounded-full ${filterMode === 'static' ? 'bg-white' : 'bg-orange-400'}`}></div> Koddan (Oxford)
+            </button>
+            <button onClick={() => setFilterMode('blacklisted')} className={`shrink-0 px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${filterMode === 'blacklisted' ? 'bg-red-500 text-white shadow-md' : 'bg-white text-slate-500 border border-slate-200 hover:bg-slate-50'}`}>
+                <div className={`w-2 h-2 rounded-full ${filterMode === 'blacklisted' ? 'bg-white' : 'bg-red-400'}`}></div> Kara Liste ({blacklistedWords.length})
+            </button>
          </div>
 
          <div className="relative mb-6 w-full">
