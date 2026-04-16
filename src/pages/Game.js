@@ -4,7 +4,7 @@ import WordCard from "../components/WordCard";
 import { useNavigate } from "react-router-dom";
 import {
   X, Home, Target, Check, CheckCheck, Trophy, RotateCcw, 
-  Brain, Hourglass, Layers, ArrowRight, AlertTriangle, Flag, Lightbulb
+  Brain, Hourglass, Layers, ArrowRight, AlertTriangle, Flag, Lightbulb, Loader2
 } from "lucide-react";
 
 export default function Game() {
@@ -29,6 +29,8 @@ export default function Game() {
   const [reinfMistakes, setReinfMistakes] = useState(0);
   const [reinfHintCount, setReinfHintCount] = useState(0);
   const [revealedCorrectId, setRevealedCorrectId] = useState(null);
+  const [wrongOptionIds, setWrongOptionIds] = useState([]); 
+  const [isReinfTransitioning, setIsReinfTransitioning] = useState(false); // 🔥 Quiz.js'teki geçiş sistemi
 
   const POINTS_PER_CARD = 5;
 
@@ -89,6 +91,8 @@ export default function Game() {
     setReinfMistakes(0);
     setReinfHintCount(0);
     setRevealedCorrectId(null);
+    setWrongOptionIds([]);
+    setIsReinfTransitioning(false);
     setGameStage("reinforcement"); 
   };
 
@@ -139,7 +143,6 @@ export default function Game() {
     const currentWord = sessionWords[currentIndex];
 
     setTimeout(async () => {
-      // Swipe ekranı istatistikleri kaydedilir, puan verilmez.
       if (activeMode === 'review') {
           setStats((p) => ({ ...p, review: p.review + 1 }));
           updateGameStats('flashcard', 1);
@@ -171,7 +174,6 @@ export default function Game() {
         setCurrentIndex((p) => p + 1);
         setSwipeDirection(null);
       } else {
-        // Puanlamayı kaldırdık, pekiştirme testini başlatıyoruz.
         startReinforcement(); 
         setSwipeDirection(null);
       }
@@ -210,14 +212,20 @@ export default function Game() {
   // ==================== PEKİŞTİRME MANTIĞI ====================
 
   const moveToNextReinf = () => {
-      setReinfFeedback(null);
-      setReinfInput("");
-      setReinfMistakes(0);
-      setReinfHintCount(0);
-      setRevealedCorrectId(null);
-      
       if (reinfIndex + 1 < reinforcementQuestions.length) {
-          setReinfIndex(p => p + 1);
+          // 🔥 GEÇİŞ BAŞLIYOR: Yapıyı silip focus'u öldürüyoruz
+          setIsReinfTransitioning(true);
+          
+          setTimeout(() => {
+              setReinfIndex(p => p + 1);
+              setReinfFeedback(null);
+              setReinfInput("");
+              setReinfMistakes(0);
+              setReinfHintCount(0);
+              setRevealedCorrectId(null);
+              setWrongOptionIds([]); 
+              setIsReinfTransitioning(false); // 🔥 GEÇİŞ BİTTİ: Yeni yapı yüklendi
+          }, 150); // 150ms geçiş süresi
       } else {
           setGameStage("summary"); 
       }
@@ -230,7 +238,6 @@ export default function Game() {
       
       if (isCorrect) {
           setReinfFeedback("correct");
-          // Puan kazanma sadece Öğrenme Modunda
           if (activeMode === 'learn') addScore(POINTS_PER_CARD);
 
           setTimeout(() => {
@@ -239,10 +246,11 @@ export default function Game() {
       } else {
           const newMistakes = reinfMistakes + 1;
           setReinfMistakes(newMistakes);
+          setWrongOptionIds(prev => [...prev, clickedId]); 
           
-          if (newMistakes >= 2) {
+          if (newMistakes >= 3) { 
               setReinfFeedback("wrong");
-              setRevealedCorrectId(currentQ.wordObj.id); // 2. hatada doğruyu göster
+              setRevealedCorrectId(currentQ.wordObj.id); 
               setTimeout(() => moveToNextReinf(), 1500);
           } else {
               setReinfFeedback("wrong");
@@ -262,7 +270,6 @@ export default function Game() {
       if (userInput === targetWord) {
           setReinfFeedback("correct");
           if (activeMode === 'learn') {
-              // Harf veya hata kullandıysa eksik puan eklenebilir, şimdilik tam veriyoruz.
               addScore(POINTS_PER_CARD); 
           }
           setTimeout(() => moveToNextReinf(), 800);
@@ -270,9 +277,9 @@ export default function Game() {
           const newMistakes = reinfMistakes + 1;
           setReinfMistakes(newMistakes);
           
-          if (newMistakes >= 2) {
+          if (newMistakes >= 3) { 
               setReinfFeedback("wrong");
-              setReinfInput(currentQ.wordObj.word); // Doğruyu ekrana yaz
+              setReinfInput(currentQ.wordObj.word); 
               setTimeout(() => moveToNextReinf(), 1500);
           } else {
               setReinfFeedback("wrong");
@@ -392,133 +399,159 @@ export default function Game() {
                 <div className="w-full bg-slate-200 rounded-full h-2.5"><div className="bg-indigo-600 h-2.5 rounded-full transition-all duration-500" style={{ width: `${progress}%` }}></div></div>
             </div>
 
-            {/* KEY PROP BURADA: Her soruda componenti baştan render edip basılı kalma sorununu önler */}
-            <div 
-                key={`reinf-card-${reinfIndex}`} 
-                className={`w-full max-w-md bg-white rounded-3xl shadow-xl p-8 text-center transition-all duration-300 border-2 ${
-                    reinfFeedback === 'correct' ? 'border-green-400 bg-green-50' : 
-                    reinfFeedback === 'wrong' ? 'border-red-400 bg-red-50 animate-soft-shake' : 'border-slate-100'
-                }`}
-            >
-                
-                {/* QUİZ (İngilizce -> Türkçe) */}
-                {currentQ.type === "quiz" && (
-                    <div className="animate-in fade-in">
-                        <div className="flex justify-between px-1 mb-2">
-                            <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">Anlamını Seç</span>
-                            <span className="text-xs font-bold text-red-400">Kalan Hata: {2 - reinfMistakes}</span>
-                        </div>
-                        <h2 className="text-4xl font-black text-slate-800 mb-8 break-words">{currentQ.wordObj.word}</h2>
-                        <div className="grid grid-cols-1 gap-3">
-                            {currentQ.options.map((opt, i) => {
-                                const isCorrectAnswer = opt.id === currentQ.wordObj.id;
-                                const isRevealed = revealedCorrectId === opt.id;
-                                let btnClass = "w-full p-4 border-2 rounded-xl font-bold transition-all outline-none focus:outline-none ";
-                                
-                                if (isRevealed) {
-                                    btnClass += "bg-green-100 border-green-500 text-green-800 scale-105 shadow-md";
-                                } else if (reinfFeedback !== null) {
-                                    btnClass += "bg-slate-50 border-slate-200 text-slate-400 opacity-60";
-                                } else {
-                                    btnClass += "bg-slate-50 border-slate-200 text-slate-700 hover:bg-indigo-50 hover:border-indigo-300 active:scale-95";
-                                }
+            {/* 🔥 EĞER GEÇİŞ OLUYORSA LOADER GÖSTER, DEĞİLSE SORUYU GÖSTER 🔥 */}
+            {isReinfTransitioning ? (
+                <div className="h-64 flex items-center justify-center">
+                    <Loader2 className="w-10 h-10 text-indigo-600 animate-spin"/>
+                </div>
+            ) : (
+                <div 
+                    className={`w-full max-w-md bg-white rounded-3xl shadow-xl p-8 text-center transition-all duration-300 border-2 ${
+                        reinfFeedback === 'correct' ? 'border-green-400 bg-green-50' : 
+                        reinfFeedback === 'wrong' ? 'border-red-400 bg-red-50 animate-soft-shake' : 'border-slate-100'
+                    }`}
+                >
+                    
+                    {/* QUİZ (İngilizce -> Türkçe) */}
+                    {currentQ.type === "quiz" && (
+                        <div className="animate-in fade-in">
+                            <div className="flex justify-between px-1 mb-2">
+                                <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">Anlamını Seç</span>
+                                <span className="text-xs font-bold text-red-400">Kalan Hata: {2 - reinfMistakes}</span>
+                            </div>
+                            <h2 className="text-4xl font-black text-slate-800 mb-8 break-words">{currentQ.wordObj.word}</h2>
+                            <div className="grid grid-cols-1 gap-3">
+                                {currentQ.options.map((opt, i) => {
+                                    const isCorrectAnswer = opt.id === currentQ.wordObj.id;
+                                    const isRevealed = revealedCorrectId === opt.id;
+                                    const isWrong = wrongOptionIds.includes(opt.id); 
+                                    
+                                    let btnClass = "w-full p-4 border-2 rounded-xl font-bold transition-all outline-none focus:outline-none select-none touch-manipulation ";
+                                    
+                                    if (isRevealed) {
+                                        btnClass += "bg-green-100 border-green-500 text-green-800 scale-105 shadow-md";
+                                    } else if (reinfFeedback === 'correct' && isCorrectAnswer) {
+                                        btnClass += "bg-green-100 border-green-500 text-green-800 shadow-md";
+                                    } else if (isWrong) {
+                                        btnClass += "bg-red-50 border-red-200 text-red-400 opacity-50"; 
+                                    } else if (reinfFeedback !== null) {
+                                        btnClass += "bg-slate-50 border-slate-200 text-slate-400 opacity-60";
+                                    } else {
+                                        btnClass += "bg-slate-50 border-slate-200 text-slate-700 hover:bg-indigo-50 hover:border-indigo-300 active:scale-95";
+                                    }
 
-                                return (
-                                    <button key={i} onClick={(e) => handleReinforcementAnswer(isCorrectAnswer, opt.id, e)} disabled={reinfFeedback !== null} className={btnClass}>
-                                        {opt.definitions && opt.definitions[0] ? opt.definitions[0].meaning : "Anlam yok"}
-                                    </button>
-                                );
-                            })}
+                                    return (
+                                        <button 
+                                            key={i} 
+                                            onClick={(e) => handleReinforcementAnswer(isCorrectAnswer, opt.id, e)} 
+                                            disabled={reinfFeedback !== null || isWrong || isRevealed} 
+                                            className={btnClass}
+                                        >
+                                            {opt.definitions && opt.definitions[0] ? opt.definitions[0].meaning : "Anlam yok"}
+                                        </button>
+                                    );
+                                })}
+                            </div>
                         </div>
-                    </div>
-                )}
+                    )}
 
-                {/* REVERSE QUİZ (Türkçe -> İngilizce) */}
-                {currentQ.type === "reverse" && (
-                    <div className="animate-in fade-in">
-                        <div className="flex justify-between px-1 mb-2">
-                            <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">İngilizcesini Seç</span>
-                            <span className="text-xs font-bold text-red-400">Kalan Hata: {2 - reinfMistakes}</span>
-                        </div>
-                        <h2 className="text-3xl font-black text-slate-800 mb-8 break-words">{mainMeaning}</h2>
-                        <div className="grid grid-cols-1 gap-3">
-                            {currentQ.options.map((opt, i) => {
-                                const isCorrectAnswer = opt.id === currentQ.wordObj.id;
-                                const isRevealed = revealedCorrectId === opt.id;
-                                let btnClass = "w-full p-4 border-2 rounded-xl font-bold transition-all outline-none focus:outline-none ";
-                                
-                                if (isRevealed) {
-                                    btnClass += "bg-green-100 border-green-500 text-green-800 scale-105 shadow-md";
-                                } else if (reinfFeedback !== null) {
-                                    btnClass += "bg-slate-50 border-slate-200 text-slate-400 opacity-60";
-                                } else {
-                                    btnClass += "bg-slate-50 border-slate-200 text-slate-700 hover:bg-indigo-50 hover:border-indigo-300 active:scale-95";
-                                }
+                    {/* REVERSE QUİZ (Türkçe -> İngilizce) */}
+                    {currentQ.type === "reverse" && (
+                        <div className="animate-in fade-in">
+                            <div className="flex justify-between px-1 mb-2">
+                                <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">İngilizcesini Seç</span>
+                                <span className="text-xs font-bold text-red-400">Kalan Hata: {2 - reinfMistakes}</span>
+                            </div>
+                            <h2 className="text-3xl font-black text-slate-800 mb-8 break-words">{mainMeaning}</h2>
+                            <div className="grid grid-cols-1 gap-3">
+                                {currentQ.options.map((opt, i) => {
+                                    const isCorrectAnswer = opt.id === currentQ.wordObj.id;
+                                    const isRevealed = revealedCorrectId === opt.id;
+                                    const isWrong = wrongOptionIds.includes(opt.id); 
+                                    
+                                    let btnClass = "w-full p-4 border-2 rounded-xl font-bold transition-all outline-none focus:outline-none select-none touch-manipulation ";
+                                    
+                                    if (isRevealed) {
+                                        btnClass += "bg-green-100 border-green-500 text-green-800 scale-105 shadow-md";
+                                    } else if (reinfFeedback === 'correct' && isCorrectAnswer) {
+                                        btnClass += "bg-green-100 border-green-500 text-green-800 shadow-md";
+                                    } else if (isWrong) {
+                                        btnClass += "bg-red-50 border-red-200 text-red-400 opacity-50"; 
+                                    } else if (reinfFeedback !== null) {
+                                        btnClass += "bg-slate-50 border-slate-200 text-slate-400 opacity-60";
+                                    } else {
+                                        btnClass += "bg-slate-50 border-slate-200 text-slate-700 hover:bg-indigo-50 hover:border-indigo-300 active:scale-95";
+                                    }
 
-                                return (
-                                    <button key={i} onClick={(e) => handleReinforcementAnswer(isCorrectAnswer, opt.id, e)} disabled={reinfFeedback !== null} className={btnClass}>
-                                        {opt.word}
-                                    </button>
-                                );
-                            })}
+                                    return (
+                                        <button 
+                                            key={i} 
+                                            onClick={(e) => handleReinforcementAnswer(isCorrectAnswer, opt.id, e)} 
+                                            disabled={reinfFeedback !== null || isWrong || isRevealed} 
+                                            className={btnClass}
+                                        >
+                                            {opt.word}
+                                        </button>
+                                    );
+                                })}
+                            </div>
                         </div>
-                    </div>
-                )}
+                    )}
 
-                {/* YAZMA (Türkçe verilir, İngilizce istenir) */}
-                {currentQ.type === "writing" && (
-                    <div className="animate-in fade-in">
-                        <div className="flex justify-between items-center px-1 mb-2">
-                            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">İngilizcesini Yaz</span>
-                            <span className="text-xs font-bold text-red-400">Kalan Hata: {2 - reinfMistakes}</span>
-                        </div>
-                        <h2 className="text-3xl font-black text-slate-800 mb-2 break-words">{mainMeaning}</h2>
-                        {currentQ.wordObj.sentence && <p className="text-sm text-slate-500 italic mb-6">İpucu: "{currentQ.wordObj.sentence.replace(new RegExp(currentQ.wordObj.word, 'gi'), '_____')}"</p>}
-                        
-                        <div className="flex justify-end mb-2 px-1">
-                            <button type="button" onClick={handleReinfHint} disabled={reinfHintCount >= 2 || reinfFeedback !== null} className="text-xs flex items-center gap-1 bg-amber-100 text-amber-700 px-3 py-1.5 rounded-lg font-bold active:scale-95 disabled:opacity-50">
-                                <Lightbulb className="w-3 h-3"/> Harf Aç ({reinfHintCount}/2)
-                            </button>
-                        </div>
-
-                        <form onSubmit={handleReinfSubmit}>
-                            <input 
-                                type="text" 
-                                value={reinfInput} 
-                                onChange={(e) => setReinfInput(e.target.value)} 
-                                disabled={reinfFeedback !== null}
-                                autoFocus
-                                autoComplete="off"
-                                autoCorrect="off"
-                                spellCheck="false"
-                                placeholder="Kelimeyi buraya yaz..." 
-                                className={`w-full p-4 text-center text-2xl font-bold border-b-4 rounded-xl outline-none mb-4 transition-colors ${
-                                    reinfFeedback === 'wrong' ? 'bg-red-50 border-red-300 text-red-600' : 
-                                    'bg-slate-50 border-slate-300 focus:border-indigo-500 text-slate-800'
-                                }`}
-                            />
-                            <div className="flex gap-2">
-                                <button 
-                                    type="button" 
-                                    onClick={handlePassReinforcement} 
-                                    disabled={reinfFeedback !== null} 
-                                    className="w-1/3 bg-slate-200 text-slate-600 font-bold py-4 rounded-xl hover:bg-slate-300 disabled:opacity-50 active:scale-95 transition-all outline-none focus:outline-none"
-                                >
-                                    Pas
-                                </button>
-                                <button 
-                                    type="submit" 
-                                    disabled={!reinfInput.trim() || reinfFeedback !== null} 
-                                    className="w-2/3 bg-indigo-600 text-white font-bold py-4 rounded-xl hover:bg-indigo-700 disabled:opacity-50 active:scale-95 transition-all outline-none focus:outline-none"
-                                >
-                                    Kontrol Et
+                    {/* YAZMA (Türkçe verilir, İngilizce istenir) */}
+                    {currentQ.type === "writing" && (
+                        <div className="animate-in fade-in">
+                            <div className="flex justify-between items-center px-1 mb-2">
+                                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">İngilizcesini Yaz</span>
+                                <span className="text-xs font-bold text-red-400">Kalan Hata: {2 - reinfMistakes}</span>
+                            </div>
+                            <h2 className="text-3xl font-black text-slate-800 mb-2 break-words">{mainMeaning}</h2>
+                            {currentQ.wordObj.sentence && <p className="text-sm text-slate-500 italic mb-6">İpucu: "{currentQ.wordObj.sentence.replace(new RegExp(currentQ.wordObj.word, 'gi'), '_____')}"</p>}
+                            
+                            <div className="flex justify-end mb-2 px-1">
+                                <button type="button" onClick={handleReinfHint} disabled={reinfHintCount >= 2 || reinfFeedback !== null} className="text-xs flex items-center gap-1 bg-amber-100 text-amber-700 px-3 py-1.5 rounded-lg font-bold active:scale-95 disabled:opacity-50">
+                                    <Lightbulb className="w-3 h-3"/> Harf Aç ({reinfHintCount}/2)
                                 </button>
                             </div>
-                        </form>
-                    </div>
-                )}
 
-            </div>
+                            <form onSubmit={handleReinfSubmit}>
+                                <input 
+                                    type="text" 
+                                    value={reinfInput} 
+                                    onChange={(e) => setReinfInput(e.target.value)} 
+                                    disabled={reinfFeedback !== null}
+                                    autoFocus
+                                    autoComplete="off"
+                                    autoCorrect="off"
+                                    spellCheck="false"
+                                    placeholder="Kelimeyi buraya yaz..." 
+                                    className={`w-full p-4 text-center text-2xl font-bold border-b-4 rounded-xl outline-none mb-4 transition-colors ${
+                                        reinfFeedback === 'wrong' ? 'bg-red-50 border-red-300 text-red-600' : 
+                                        'bg-slate-50 border-slate-300 focus:border-indigo-500 text-slate-800'
+                                    }`}
+                                />
+                                <div className="flex gap-2">
+                                    <button 
+                                        type="button" 
+                                        onClick={handlePassReinforcement} 
+                                        disabled={reinfFeedback !== null} 
+                                        className="w-1/3 bg-slate-200 text-slate-600 font-bold py-4 rounded-xl hover:bg-slate-300 disabled:opacity-50 active:scale-95 transition-all outline-none focus:outline-none"
+                                    >
+                                        Pas
+                                    </button>
+                                    <button 
+                                        type="submit" 
+                                        disabled={!reinfInput.trim() || reinfFeedback !== null} 
+                                        className="w-2/3 bg-indigo-600 text-white font-bold py-4 rounded-xl hover:bg-indigo-700 disabled:opacity-50 active:scale-95 transition-all outline-none focus:outline-none"
+                                    >
+                                        Kontrol Et
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    )}
+                </div>
+            )}
         </div>
       );
   }
