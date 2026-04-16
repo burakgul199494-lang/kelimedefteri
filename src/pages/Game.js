@@ -30,7 +30,7 @@ export default function Game() {
   const [reinfHintCount, setReinfHintCount] = useState(0);
   const [revealedCorrectId, setRevealedCorrectId] = useState(null);
   const [wrongOptionIds, setWrongOptionIds] = useState([]); 
-  const [isReinfTransitioning, setIsReinfTransitioning] = useState(false); // 🔥 Quiz.js'teki geçiş sistemi
+  const [isReinfTransitioning, setIsReinfTransitioning] = useState(false);
 
   const POINTS_PER_CARD = 5;
 
@@ -213,9 +213,8 @@ export default function Game() {
 
   const moveToNextReinf = () => {
       if (reinfIndex + 1 < reinforcementQuestions.length) {
-          // 🔥 GEÇİŞ BAŞLIYOR: Yapıyı silip focus'u öldürüyoruz
-          setIsReinfTransitioning(true);
-          
+          setIsReinfTransitioning(true); // 🔥 Geçişi başlat (eski butonları tamamen yok et)
+
           setTimeout(() => {
               setReinfIndex(p => p + 1);
               setReinfFeedback(null);
@@ -224,8 +223,8 @@ export default function Game() {
               setReinfHintCount(0);
               setRevealedCorrectId(null);
               setWrongOptionIds([]); 
-              setIsReinfTransitioning(false); // 🔥 GEÇİŞ BİTTİ: Yeni yapı yüklendi
-          }, 150); // 150ms geçiş süresi
+              setIsReinfTransitioning(false); // 🔥 Yeni sorularla birlikte ekranı geri getir
+          }, 150);
       } else {
           setGameStage("summary"); 
       }
@@ -399,7 +398,7 @@ export default function Game() {
                 <div className="w-full bg-slate-200 rounded-full h-2.5"><div className="bg-indigo-600 h-2.5 rounded-full transition-all duration-500" style={{ width: `${progress}%` }}></div></div>
             </div>
 
-            {/* 🔥 EĞER GEÇİŞ OLUYORSA LOADER GÖSTER, DEĞİLSE SORUYU GÖSTER 🔥 */}
+            {/* 🔥 GEÇİŞ BAŞLADIYSA YAPIYI GİZLE (DOM SIFIRLANIR) 🔥 */}
             {isReinfTransitioning ? (
                 <div className="h-64 flex items-center justify-center">
                     <Loader2 className="w-10 h-10 text-indigo-600 animate-spin"/>
@@ -442,9 +441,12 @@ export default function Game() {
 
                                     return (
                                         <button 
-                                            key={i} 
+                                            // 🔥 BURASI EN KRİTİK NOKTA: reinfIndex eklenerek butonun eski buton sayılması engellendi
+                                            key={`${reinfIndex}-${i}`} 
                                             onClick={(e) => handleReinforcementAnswer(isCorrectAnswer, opt.id, e)} 
                                             disabled={reinfFeedback !== null || isWrong || isRevealed} 
+                                            // 🔥 İKİNCİ KRİTİK NOKTA: Mavi pasif tık izini silmek için eklendi
+                                            style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
                                             className={btnClass}
                                         >
                                             {opt.definitions && opt.definitions[0] ? opt.definitions[0].meaning : "Anlam yok"}
@@ -485,9 +487,12 @@ export default function Game() {
 
                                     return (
                                         <button 
-                                            key={i} 
+                                            // 🔥 BURASI EN KRİTİK NOKTA
+                                            key={`${reinfIndex}-${i}`} 
                                             onClick={(e) => handleReinforcementAnswer(isCorrectAnswer, opt.id, e)} 
                                             disabled={reinfFeedback !== null || isWrong || isRevealed} 
+                                            // 🔥 İKİNCİ KRİTİK NOKTA
+                                            style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
                                             className={btnClass}
                                         >
                                             {opt.word}
