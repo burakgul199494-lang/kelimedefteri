@@ -213,7 +213,7 @@ export default function Game() {
 
   const moveToNextReinf = () => {
       if (reinfIndex + 1 < reinforcementQuestions.length) {
-          setIsReinfTransitioning(true); // 🔥 Geçişi başlat (eski butonları tamamen yok et)
+          setIsReinfTransitioning(true); // Quiz.js'teki loader geçişi
 
           setTimeout(() => {
               setReinfIndex(p => p + 1);
@@ -223,7 +223,7 @@ export default function Game() {
               setReinfHintCount(0);
               setRevealedCorrectId(null);
               setWrongOptionIds([]); 
-              setIsReinfTransitioning(false); // 🔥 Yeni sorularla birlikte ekranı geri getir
+              setIsReinfTransitioning(false);
           }, 150);
       } else {
           setGameStage("summary"); 
@@ -233,6 +233,8 @@ export default function Game() {
   // QUIZ & REVERSE QUIZ
   const handleReinforcementAnswer = (isCorrect, clickedId, e) => {
       if (e) handleBlur(e); 
+      if (reinfFeedback !== null) return; // Çift tıklamayı önler
+
       const currentQ = reinforcementQuestions[reinfIndex];
       
       if (isCorrect) {
@@ -262,6 +264,8 @@ export default function Game() {
   const handleReinfSubmit = (e) => {
       e.preventDefault();
       if (e) handleBlur(e); 
+      if (reinfFeedback !== null) return;
+
       const currentQ = reinforcementQuestions[reinfIndex];
       const targetWord = currentQ.wordObj.word.trim().toLowerCase();
       const userInput = reinfInput.trim().toLowerCase();
@@ -381,13 +385,35 @@ export default function Game() {
 
       return (
         <div className="min-h-screen bg-slate-50 flex flex-col items-center p-6 relative">
+            
+            {/* 🔥 QUIZ.JS MANTIĞININ BİREBİR AYNISI BURADA 🔥 */}
             <style>{`
+                * { -webkit-tap-highlight-color: transparent !important; }
+                
                 @keyframes softShake {
                     0%, 100% { transform: translateX(0); }
                     25% { transform: translateX(-5px); }
                     75% { transform: translateX(5px); }
                 }
                 .animate-soft-shake { animation: softShake 0.4s ease-in-out; }
+                
+                /* Tıklanma ve Hover Efektlerini SADECE Bu Sınıflarla Veriyoruz (Tailwind Yerine) */
+                .reinf-option-btn {
+                    background-color: white; 
+                    border: 2px solid #e2e8f0; 
+                    color: #334155; 
+                    transition: all 0.2s ease;
+                }
+                .reinf-option-btn:active { 
+                    background-color: #f1f5f9; 
+                    transform: scale(0.98); 
+                }
+                @media (hover: hover) {
+                    .reinf-option-btn:hover { 
+                        border-color: #a5b4fc !important; 
+                        background-color: #eef2ff !important; 
+                    }
+                }
             `}</style>
              
              <div className="w-full max-w-md mb-6">
@@ -398,7 +424,6 @@ export default function Game() {
                 <div className="w-full bg-slate-200 rounded-full h-2.5"><div className="bg-indigo-600 h-2.5 rounded-full transition-all duration-500" style={{ width: `${progress}%` }}></div></div>
             </div>
 
-            {/* 🔥 GEÇİŞ BAŞLADIYSA YAPIYI GİZLE (DOM SIFIRLANIR) 🔥 */}
             {isReinfTransitioning ? (
                 <div className="h-64 flex items-center justify-center">
                     <Loader2 className="w-10 h-10 text-indigo-600 animate-spin"/>
@@ -425,27 +450,26 @@ export default function Game() {
                                     const isRevealed = revealedCorrectId === opt.id;
                                     const isWrong = wrongOptionIds.includes(opt.id); 
                                     
-                                    let btnClass = "w-full p-4 border-2 rounded-xl font-bold transition-all outline-none focus:outline-none select-none touch-manipulation ";
+                                    // 🔥 Tailwind hover sınıflarını tamamen kaldırdık
+                                    let btnClass = "w-full p-4 rounded-xl font-bold transition-all outline-none focus:outline-none select-none touch-manipulation text-left ";
                                     
                                     if (isRevealed) {
-                                        btnClass += "bg-green-100 border-green-500 text-green-800 scale-105 shadow-md";
+                                        btnClass += "border-2 bg-green-100 border-green-500 text-green-800 scale-105 shadow-md";
                                     } else if (reinfFeedback === 'correct' && isCorrectAnswer) {
-                                        btnClass += "bg-green-100 border-green-500 text-green-800 shadow-md";
+                                        btnClass += "border-2 bg-green-100 border-green-500 text-green-800 shadow-md";
                                     } else if (isWrong) {
-                                        btnClass += "bg-red-50 border-red-200 text-red-400 opacity-50"; 
+                                        btnClass += "border-2 bg-red-50 border-red-200 text-red-400 opacity-50"; 
                                     } else if (reinfFeedback !== null) {
-                                        btnClass += "bg-slate-50 border-slate-200 text-slate-400 opacity-60";
+                                        btnClass += "border-2 bg-slate-50 border-slate-200 text-slate-400 opacity-60";
                                     } else {
-                                        btnClass += "bg-slate-50 border-slate-200 text-slate-700 hover:bg-indigo-50 hover:border-indigo-300 active:scale-95";
+                                        btnClass += "reinf-option-btn"; // <--- CSS Dosyasındaki mantık çalışır
                                     }
 
                                     return (
                                         <button 
-                                            // 🔥 BURASI EN KRİTİK NOKTA: reinfIndex eklenerek butonun eski buton sayılması engellendi
                                             key={`${reinfIndex}-${i}`} 
                                             onClick={(e) => handleReinforcementAnswer(isCorrectAnswer, opt.id, e)} 
                                             disabled={reinfFeedback !== null || isWrong || isRevealed} 
-                                            // 🔥 İKİNCİ KRİTİK NOKTA: Mavi pasif tık izini silmek için eklendi
                                             style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
                                             className={btnClass}
                                         >
@@ -471,27 +495,26 @@ export default function Game() {
                                     const isRevealed = revealedCorrectId === opt.id;
                                     const isWrong = wrongOptionIds.includes(opt.id); 
                                     
-                                    let btnClass = "w-full p-4 border-2 rounded-xl font-bold transition-all outline-none focus:outline-none select-none touch-manipulation ";
+                                    // 🔥 Tailwind hover sınıflarını tamamen kaldırdık
+                                    let btnClass = "w-full p-4 rounded-xl font-bold transition-all outline-none focus:outline-none select-none touch-manipulation text-left ";
                                     
                                     if (isRevealed) {
-                                        btnClass += "bg-green-100 border-green-500 text-green-800 scale-105 shadow-md";
+                                        btnClass += "border-2 bg-green-100 border-green-500 text-green-800 scale-105 shadow-md";
                                     } else if (reinfFeedback === 'correct' && isCorrectAnswer) {
-                                        btnClass += "bg-green-100 border-green-500 text-green-800 shadow-md";
+                                        btnClass += "border-2 bg-green-100 border-green-500 text-green-800 shadow-md";
                                     } else if (isWrong) {
-                                        btnClass += "bg-red-50 border-red-200 text-red-400 opacity-50"; 
+                                        btnClass += "border-2 bg-red-50 border-red-200 text-red-400 opacity-50"; 
                                     } else if (reinfFeedback !== null) {
-                                        btnClass += "bg-slate-50 border-slate-200 text-slate-400 opacity-60";
+                                        btnClass += "border-2 bg-slate-50 border-slate-200 text-slate-400 opacity-60";
                                     } else {
-                                        btnClass += "bg-slate-50 border-slate-200 text-slate-700 hover:bg-indigo-50 hover:border-indigo-300 active:scale-95";
+                                        btnClass += "reinf-option-btn"; // <--- CSS Dosyasındaki mantık çalışır
                                     }
 
                                     return (
                                         <button 
-                                            // 🔥 BURASI EN KRİTİK NOKTA
                                             key={`${reinfIndex}-${i}`} 
                                             onClick={(e) => handleReinforcementAnswer(isCorrectAnswer, opt.id, e)} 
                                             disabled={reinfFeedback !== null || isWrong || isRevealed} 
-                                            // 🔥 İKİNCİ KRİTİK NOKTA
                                             style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
                                             className={btnClass}
                                         >
