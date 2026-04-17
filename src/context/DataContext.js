@@ -21,6 +21,7 @@ export const DataProvider = ({ children }) => {
   const [authLoading, setAuthLoading] = useState(true);
   const [systemLoading, setSystemLoading] = useState(true);
   const [profileLoading, setProfileLoading] = useState(true);
+  const [writtenWordIds, setWrittenWordIds] = useState([]);
 
   const [knownWordIds, setKnownWordIds] = useState([]);
   const [customWords, setCustomWords] = useState([]);
