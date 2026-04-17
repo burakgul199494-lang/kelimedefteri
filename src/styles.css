@@ -39,7 +39,6 @@ button {
   }
 }
 
-
 /* 7. Focus (Odaklanma) Çizgisi Düzeltmesi */
 /* Tıklayınca kalan siyah/mavi çerçeveyi kaldırır */
 button:focus, 
@@ -60,60 +59,67 @@ textarea:focus-visible {
   outline-offset: 2px;
 }
 
-/* Masaüstünde metin seçimi sorununu düzelt */
-@media (min-width: 769px) {
-  html, body {
-    touch-action: auto !important; /* Masaüstünde kaydırma serbest kalsın */
-  }
-  
-  /* Masaüstünde inputların seçilebilir olmasını sağla */
-  input, textarea {
-    user-select: auto !important;
-    -webkit-user-select: auto !important;
-  }
-}
-
 /* ============================================================
-   8. FINAL DÜZELTME: Hem Çizgi Yok, Hem Animasyon Var 🚀
+   8. FINAL DÜZELTME: Mobilde Koruma, PC'de Kopyalama İzni 🚀
    ============================================================ */
 
-/* 1. Tüm elementlerde seçimi ve yazı imlecini kapat (Çizgi sorununu çözer) */
+/* VARSAYILAN (MOBİL ÖNCELİKLİ): Tüm elementlerde seçimi kapat (Mobildeki çift tıklama/mavi kutu sorunlarını çözer) */
 html, body, div, span, h1, h2, h3, p, img, li, ul, ol, section, header, footer {
     -webkit-user-select: none; /* Safari/Chrome */
     user-select: none;         /* Standart */
     cursor: default;           /* Normal ok işareti */
 }
 
-/* 2. Sadece Yazı Yazılan Yerlerde İzin Ver */
+/* Sadece Yazı Yazılan Yerlerde (Input/Textarea) Daima İzin Ver */
 input, textarea {
     -webkit-user-select: text !important;
     user-select: text !important;
     cursor: text !important;
 }
 
-/* 3. Etkileşimli Öğeleri Canlandır (Animasyonları Geri Getirir) */
+/* Etkileşimli Öğeleri Canlandır (Tıklama hissini iyileştirir) */
 button, 
 a, 
 [role="button"], 
 input[type="submit"], 
 input[type="button"],
 .clickable {
-    cursor: pointer !important; /* El işareti */
-    touch-action: manipulation; /* Tıklama gecikmesini kaldırır */
-    -webkit-tap-highlight-color: transparent; /* Mobildeki gri kutuyu kaldırır */
+    cursor: pointer !important; 
+    touch-action: manipulation; 
+    -webkit-tap-highlight-color: transparent; 
 }
 
-/* 4. Butonların İçindeki Yazıların Seçilmesini Engelle ama Tıklamayı Bozma */
-button *, a * {
-    pointer-events: none; /* Tıklamayı üstteki butona iletir (Animasyon için kritik) */
+/* MOBİL İÇİN: Butonların İçindeki Yazıların Seçilmesini Engelle (Mobilde butona hızlı basmayı bozmaması için kritik) */
+@media (max-width: 768px) {
+    button *, a * {
+        pointer-events: none; 
+    }
 }
 
-/* 5. Odaklanma Çerçevesini Gizle (Estetik) */
+/* ============================================================
+   MASAÜSTÜ (PC) İÇİN ÖZEL KURALLAR (769px ve üzeri ekranlar)
+   ============================================================ */
+@media (min-width: 769px) {
+    /* PC'de her şeyi seçilebilir ve kopyalanabilir yap */
+    html, body, div, span, h1, h2, h3, p, li, ul, ol, section, header, footer {
+        -webkit-user-select: auto !important;
+        user-select: auto !important;
+        cursor: auto !important;
+        touch-action: auto !important; /* PC'de fare ile kaydırma serbest kalsın */
+    }
+    
+    /* PC'de butonların içindeki kelimeler de kopyalanabilsin */
+    button *, a * {
+        pointer-events: auto !important; 
+    }
+}
+
+/* Odaklanma Çerçevesini Gizle (Estetik) */
 button:focus, div:focus {
     outline: none !important;
 }
 
-/* 6. Tailwind Animasyonlarını Garantiye Al */
+/* Tailwind Animasyonlarını Garantiye Al */
 .transform {
-    transform: translateZ(0); /* GPU'yu tetikler */
+    transform: translateZ(0); 
 }
