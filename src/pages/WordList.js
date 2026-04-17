@@ -10,7 +10,7 @@ import { Virtuoso } from "react-virtuoso";
 export default function WordList() {
   const { type } = useParams(); 
   const navigate = useNavigate();
-  const { knownWordIds, getAllWords, removeFromKnown, addToKnown, learningQueue } = useData();
+  const { knownWordIds, writtenWordIds, toggleWrittenStatus, getAllWords, removeFromKnown, addToKnown, learningQueue } = useData(); // YENİ EKLENDİ
 
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -133,6 +133,19 @@ export default function WordList() {
               </div>
 
               <div className="flex gap-2">
+                  {/* YENİ EKLENEN: YAZDIM BUTONU */}
+                  <button 
+                      onClick={() => toggleWrittenStatus(item.id)} 
+                      className={`flex items-center gap-1.5 p-2 px-3 text-xs font-bold rounded-xl transition-all shadow-sm border ${
+                          writtenWordIds.includes(String(item.id)) 
+                          ? "text-blue-600 bg-blue-50 border-blue-200 hover:bg-blue-100" 
+                          : "text-slate-500 bg-slate-50 border-slate-200 hover:bg-slate-100"
+                      }`}
+                  >
+                      <Check className="w-4 h-4"/> 
+                      {writtenWordIds.includes(String(item.id)) ? "Yazdım" : "Yazmadım"}
+                  </button>
+
                   {item.level === 6 ? (
                       <button onClick={() => removeFromKnown(item.id)} className="flex items-center gap-1.5 p-2 px-3 text-xs font-bold text-amber-600 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-xl transition-all shadow-sm">
                           <RotateCcw className="w-4 h-4"/> Unuttum
