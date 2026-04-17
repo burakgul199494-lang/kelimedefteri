@@ -10,10 +10,12 @@ import { Virtuoso } from "react-virtuoso";
 export default function WordList() {
   const { type } = useParams(); 
   const navigate = useNavigate();
-  const { knownWordIds, writtenWordIds, toggleWrittenStatus, getAllWords, removeFromKnown, addToKnown, learningQueue } = useData(); // YENİ EKLENDİ
+  const { knownWordIds, writtenWordIds, toggleWrittenStatus, getAllWords, removeFromKnown, addToKnown, learningQueue } = useData();
 
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  // YENİ EKLENDİ: Filtreleme için state (all, written, not_written)
+  const [writtenFilter, setWrittenFilter] = useState("all");
   const [tick, setTick] = useState(0);
 
   useEffect(() => {
@@ -59,14 +61,18 @@ export default function WordList() {
     });
   }
 
-  // --- ARTIK TÜRKÇE VE İNGİLİZCE KARIŞIK ARAMA DESTEKLİYOR ---
+  // --- FİLTRELEME MANTIĞI EKLENDİ ---
   const filteredWords = wordList
     .filter(w => {
+        // 1. Yazdım/Yazmadım Filtresi
+        const isWritten = writtenWordIds.includes(String(w.id));
+        if (writtenFilter === "written" && !isWritten) return false;
+        if (writtenFilter === "not_written" && isWritten) return false;
+
+        // 2. Arama Filtresi
         const searchLower = debouncedSearch.toLowerCase().trim();
         if (!searchLower) return true;
-        // 1. İngilizce kelimede ara
         if (w.word.toLowerCase().includes(searchLower)) return true;
-        // 2. Türkçe anlamlarda ara
         if (w.definitions && w.definitions.some(d => d.meaning.toLowerCase().includes(searchLower))) return true;
         return false;
     })
@@ -133,7 +139,7 @@ export default function WordList() {
               </div>
 
               <div className="flex gap-2">
-                  {/* YENİ EKLENEN: YAZDIM BUTONU */}
+                  {/* YAZDIM BUTONU */}
                   <button 
                       onClick={() => toggleWrittenStatus(item.id)} 
                       className={`flex items-center gap-1.5 p-2 px-3 text-xs font-bold rounded-xl transition-all shadow-sm border ${
@@ -241,13 +247,13 @@ export default function WordList() {
           <button onClick={() => navigate("/")} className="p-2 bg-white rounded-full shadow-sm"><ArrowLeft className="w-5 h-5 text-slate-600" /></button>
           <div>
             <h2 className="text-xl font-bold text-slate-800">{title}</h2>
-            <p className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest bg-indigo-50 px-2 py-0.5 rounded-full mt-1 w-max">
+            <p className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest bg-indigo-50 px-2 py-0.5 rounded-full mt-1 w-max transition-all">
                 {filteredWords.length} Kelime
             </p>
           </div>
         </div>
 
-        <div className="relative mb-6">
+        <div className="relative mb-3">
           <Search className="absolute left-4 top-4 text-slate-300 w-5 h-5" />
           <input 
             type="text" 
@@ -256,6 +262,34 @@ export default function WordList() {
             onChange={(e) => setSearch(e.target.value)} 
             className="w-full pl-12 p-4 bg-white border-2 border-slate-100 rounded-2xl outline-none shadow-sm focus:border-indigo-200 font-medium text-slate-600 transition-all" 
           />
+        </div>
+
+        {/* YENİ EKLENDİ: YAZDIM / YAZMADIM FİLTRESİ */}
+        <div className="flex gap-2 mb-6 p-1 bg-slate-100 rounded-xl overflow-hidden border border-slate-200 shadow-inner">
+            <button
+                onClick={() => setWrittenFilter("all")}
+                className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all text-center ${
+                    writtenFilter === "all" ? "bg-white text-indigo-600 shadow-sm border border-slate-200" : "text-slate-500 hover:bg-slate-200/50"
+                }`}
+            >
+                Tümü
+            </button>
+            <button
+                onClick={() => setWrittenFilter("written")}
+                className={`flex-1 flex items-center justify-center gap-1 py-2 px-3 rounded-lg text-xs font-bold transition-all text-center ${
+                    writtenFilter === "written" ? "bg-white text-blue-600 shadow-sm border border-slate-200" : "text-slate-500 hover:bg-slate-200/50"
+                }`}
+            >
+                <Check className="w-3 h-3"/> Yazılanlar
+            </button>
+            <button
+                onClick={() => setWrittenFilter("not_written")}
+                className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all text-center ${
+                    writtenFilter === "not_written" ? "bg-white text-slate-800 shadow-sm border border-slate-200" : "text-slate-500 hover:bg-slate-200/50"
+                }`}
+            >
+                Yazılmayanlar
+            </button>
         </div>
 
         {filteredWords.length === 0 ? (
