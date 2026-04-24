@@ -65,32 +65,50 @@ export default function RichTextPage({ title, collectionName }) {
     }
   };
 
-  // --- PDF AKTARIM AYARLARI (TAM SENKRONİZASYON) ---
+  // 🔥 PDF 4 SAYFA SORUNUNU ÇÖZEN GİZLİ MOTOR 🔥
   const handleDownloadPDF = () => {
-    const element = document.getElementById('pdf-render-content');
+    // 1. Ekrandaki karmaşadan kurtulmak için arka planda gizli, temiz bir div yaratıyoruz.
+    const container = document.createElement('div');
+    container.style.position = 'fixed';
+    container.style.left = '-9999px'; // Ekranın dışına atıyoruz ki görünmesin
+    container.style.top = '0';
+    container.style.width = '800px'; // A4'ün tam piksel karşılığı
+    container.style.backgroundColor = 'white';
+
+    // 2. İçeriği temiz bir şekilde bu gizli dive yerleştiriyoruz.
+    container.innerHTML = `
+      <div style="font-family: sans-serif; color: #1e293b; padding: 10px;">
+         <h1 style="text-align: center; border-bottom: 2px solid #4f46e5; padding-bottom: 10px; margin-bottom: 20px; font-size: 26px; text-transform: uppercase;">
+           ${selectedItem.title}
+         </h1>
+         <div style="font-size: 16px; line-height: 1.6;">
+            ${selectedItem.content}
+         </div>
+      </div>
+    `;
+    document.body.appendChild(container);
+
+    // 3. SADECE BURADAN 15mm boşluk veriyoruz. (Çifte marjin kalktı)
     const opt = {
-      margin:       0,
+      margin:       [15, 15, 15, 15], 
       filename:     `${selectedItem.title}.pdf`,
       image:        { type: 'jpeg', quality: 1 },
-      html2canvas:  { 
-        scale: 2, 
-        useCORS: true, 
-        logging: false,
-        letterRendering: true,
-        // PDF'de sayfa arası gri çizgilerin çıkmaması için background'u beyaz yapıyoruz
-        backgroundColor: '#ffffff'
-      },
+      html2canvas:  { scale: 2, useCORS: true, letterRendering: true, scrollY: 0 },
       jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
-      pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] }
+      pagebreak:    { mode: ['css', 'legacy'], avoid: ['img', 'table', 'tr', 'h1', 'h2', 'h3'] }
     };
-    html2pdf().set(opt).from(element).save();
+
+    // 4. PDF'i oluştur ve işlem bitince gizli çöp kutusunu sil
+    html2pdf().set(opt).from(container).save().then(() => {
+       document.body.removeChild(container);
+    });
   };
 
   const config = useMemo(() => ({
     readonly: false,
     placeholder: 'Notlarınızı buraya yazın...',
     height: "auto",
-    minHeight: '297mm',
+    minHeight: 600,
     language: 'tr',
     toolbarSticky: true,
     buttons: [
@@ -104,74 +122,26 @@ export default function RichTextPage({ title, collectionName }) {
 
   if (selectedItem) {
     return (
-      <div className="min-h-screen bg-slate-300 p-4 md:p-8 flex flex-col items-center overflow-y-auto">
+      <div className="min-h-screen bg-slate-200 p-4 md:p-8 flex flex-col items-center overflow-y-auto">
         
+        {/* 🔥 TERTEMİZ DÜZ KAĞIT CSS (Boşluk/taşma sorunu yok) 🔥 */}
         <style>
           {`
-            /* Editörün çevresi ve A4 Düzeni */
             .word-style-editor .jodit-container {
               border: none !important;
-              background-color: transparent !important;
+              background-color: white !important;
             }
-
-            .word-style-editor .jodit-workplace {
-              background-color: #94a3b8 !important;
-              display: flex !important;
-              flex-direction: column !important;
-              align-items: center !important;
-              padding: 40px 0 !important;
-            }
-
-            /* Düzenleme Alanı (Yazarken Sayfa Bölümünü Görme) */
             .word-style-editor .jodit-wysiwyg {
               background-color: white !important;
-              width: 210mm !important;
-              min-height: 297mm !important;
-              padding: 20mm !important;
-              margin-bottom: 0 !important;
-              box-shadow: 0 4px 15px rgba(0,0,0,0.4) !important;
+              padding: 40px !important;
               box-sizing: border-box !important;
-              
-              /* Sayfa çizgisi hilesini daha net ve PDF'i etkilemeyecek şekilde güncelledik */
-              background-image: repeating-linear-gradient(
-                to bottom,
-                transparent 0,
-                transparent 296.8mm,
-                #e2e8f0 296.8mm,
-                #e2e8f0 297mm,
-                #64748b 297mm,
-                #64748b 307mm
-              ) !important;
-              background-attachment: local !important;
-            }
-
-            /* PDF ve Ön İzleme Konteynırı */
-            .pdf-page-view {
-              width: 210mm;
-              background: white;
-              margin: 0 auto;
-              padding: 20mm;
-              min-height: 297mm;
-              box-sizing: border-box;
-              box-shadow: 0 4px 15px rgba(0,0,0,0.4);
-            }
-
-            /* PDF'e aktarılırken boşlukların (gri çizgilerin) çıkmasını engellemek için */
-            #pdf-render-content {
-                background-color: white !important;
-            }
-
-            @media screen and (max-width: 220mm) {
-              .word-style-editor .jodit-wysiwyg, .pdf-page-view {
-                width: 95vw !important;
-                padding: 10mm !important;
-              }
+              line-height: 1.6 !important;
             }
           `}
         </style>
 
-        <div className="w-full max-w-5xl mb-6">
-          <div className="flex justify-between items-center mb-4 bg-white/95 backdrop-blur p-4 rounded-2xl shadow-xl border border-slate-200 sticky top-4 z-50">
+        <div className="w-full max-w-[800px] mb-6">
+          <div className="flex justify-between items-center mb-4 bg-white/95 backdrop-blur p-4 rounded-2xl shadow-sm border border-slate-200 sticky top-4 z-50">
             <button onClick={() => { setSelectedItem(null); setIsEditing(false); }} className="p-2 bg-slate-100 rounded-xl hover:bg-slate-200 transition-colors">
               <ArrowLeft size={20} className="text-slate-600" />
             </button>
@@ -179,48 +149,50 @@ export default function RichTextPage({ title, collectionName }) {
               {isEditing ? (
                 <>
                   <button onClick={() => setIsEditing(false)} className="p-2 bg-red-100 text-red-600 rounded-xl hover:bg-red-200 transition-colors"><X size={20}/></button>
-                  <button onClick={handleSave} className="p-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 flex items-center gap-2 font-bold px-4 transition-colors shadow-md"><Save size={20}/> Kaydet</button>
+                  <button onClick={handleSave} className="p-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 flex items-center gap-2 font-bold px-4 transition-colors shadow-sm"><Save size={20}/> Kaydet</button>
                 </>
               ) : (
                 <>
-                  <button onClick={handleDownloadPDF} className="p-2 bg-rose-600 text-white rounded-xl hover:bg-rose-700 flex items-center gap-2 font-bold px-4 transition-colors shadow-md"><Download size={20}/> PDF İndir</button>
-                  <button onClick={() => { setEditTitle(selectedItem.title); setEditContent(selectedItem.content); setIsEditing(true); }} className="p-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 flex items-center gap-2 font-bold px-4 transition-colors shadow-md"><Edit size={20}/> Düzenle</button>
+                  <button onClick={handleDownloadPDF} className="p-2 bg-rose-600 text-white rounded-xl hover:bg-rose-700 flex items-center gap-2 font-bold px-4 transition-colors shadow-sm"><Download size={20}/> PDF İndir</button>
+                  <button onClick={() => { setEditTitle(selectedItem.title); setEditContent(selectedItem.content); setIsEditing(true); }} className="p-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 flex items-center gap-2 font-bold px-4 transition-colors shadow-sm"><Edit size={20}/> Düzenle</button>
                 </>
               )}
             </div>
           </div>
 
-          {isEditing ? (
-            <div className="bg-white rounded-2xl shadow-2xl overflow-hidden border border-slate-200">
-              <input 
-                type="text" 
-                value={editTitle} 
-                onChange={(e) => setEditTitle(e.target.value)} 
-                className="w-full text-2xl font-bold p-6 border-b border-slate-200 focus:outline-none focus:bg-indigo-50 transition-all text-center"
-                placeholder="Başlık Giriniz"
-              />
-              <div className="word-style-editor w-full">
-                <JoditEditor
-                  ref={editorRef}
-                  value={editContent}
-                  config={config}
-                  onBlur={newContent => setEditContent(newContent)}
+          {/* DÜZENLEME VE OKUMA ALANI (İkisi de aynı A4 genişliğinde) */}
+          <div className="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden w-full min-h-[1000px]">
+            {isEditing ? (
+              <>
+                <input 
+                  type="text" 
+                  value={editTitle} 
+                  onChange={(e) => setEditTitle(e.target.value)} 
+                  className="w-full text-2xl font-bold p-8 border-b border-slate-100 focus:outline-none focus:bg-indigo-50 transition-all text-center"
+                  placeholder="Başlık Giriniz"
                 />
+                <div className="word-style-editor w-full">
+                  <JoditEditor
+                    ref={editorRef}
+                    value={editContent}
+                    config={config}
+                    onBlur={newContent => setEditContent(newContent)}
+                  />
+                </div>
+              </>
+            ) : (
+              <div className="p-10 md:p-16">
+                <h1 className="text-4xl font-black text-slate-900 border-b-2 border-indigo-600 pb-6 mb-10 text-center uppercase tracking-widest">{selectedItem.title}</h1>
+                <div className="prose prose-slate prose-lg max-w-none text-slate-800 leading-relaxed" dangerouslySetInnerHTML={{ __html: selectedItem.content }}></div>
               </div>
-            </div>
-          ) : (
-            <div className="flex justify-center w-full pb-10">
-              <div id="pdf-render-content" className="pdf-page-view">
-                  <h1 className="text-4xl font-black text-slate-900 border-b-4 border-indigo-600 pb-6 mb-10 text-center uppercase tracking-widest">{selectedItem.title}</h1>
-                  <div className="prose prose-slate prose-lg max-w-none text-slate-800 leading-relaxed" dangerouslySetInnerHTML={{ __html: selectedItem.content }}></div>
-              </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
     );
   }
 
+  // --- LİSTELEME EKRANI ---
   return (
     <div className="min-h-screen bg-slate-50 p-6 flex flex-col items-center">
       <div className="w-full max-w-3xl space-y-4">
