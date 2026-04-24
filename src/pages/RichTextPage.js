@@ -1,29 +1,11 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useData } from "../context/DataContext";
 import { db, appId } from "../services/firebase";
 import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, orderBy, serverTimestamp } from "firebase/firestore";
-import ReactQuill, { Quill } from "react-quill";
-import "react-quill/dist/quill.snow.css"; 
-import { ArrowLeft, Edit, Save, Plus, Trash2, X } from "lucide-react";
+import JoditEditor from "jodit-react";
+import html2pdf from "html2pdf.js";
+import { ArrowLeft, Edit, Save, Plus, Trash2, X, Download } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-
-// --- 1. ÖZEL SAYFA KESİCİ (PAGE BREAK) MODÜLÜ TANIYORUZ ---
-const BlockEmbed = Quill.import('blots/block/embed');
-class PageBreak extends BlockEmbed {
-  static create() {
-    const node = super.create();
-    node.setAttribute('class', 'page-break-line');
-    node.setAttribute('contenteditable', 'false');
-    // Düzenlerken görünecek ama PDF'de sayfa atlatacak CSS kodları:
-    node.setAttribute('style', 'page-break-after: always; border-top: 2px dashed #cbd5e1; margin: 40px 0; text-align: center; color: #94a3b8; font-size: 14px; padding-top: 8px; display: block; width: 100%; font-weight: bold;');
-    node.innerText = "✂️ --- YENİ SAYFA BAŞLANGICI --- ✂️";
-    return node;
-  }
-}
-PageBreak.blotName = 'pageBreak';
-PageBreak.tagName = 'div';
-Quill.register(PageBreak);
-// -----------------------------------------------------------
 
 export default function RichTextPage({ title, collectionName }) {
   const { user } = useData();
@@ -33,6 +15,7 @@ export default function RichTextPage({ title, collectionName }) {
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [editContent, setEditContent] = useState("");
+  const editorRef = useRef(null);
 
   const collectionRef = collection(db, "artifacts", appId, "users", user.uid, collectionName);
 
@@ -82,25 +65,44 @@ export default function RichTextPage({ title, collectionName }) {
     }
   };
 
-  // --- 2. EDİTÖR ARAÇ ÇUBUĞU (TOOLBAR) AYARLARI ---
-  const modules = useMemo(() => ({
-    toolbar: {
-      container: [
-        [{ 'header': [1, 2, 3, false] }],
-        ['bold', 'italic', 'underline', 'strike'],
-        [{ 'color': [] }, { 'background': [] }], // Renk seçeneklerini de ekledim
-        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-        ['link', 'image'],
-        ['pageBreak'], // YENİ SAYFA BÖLME BUTONUMUZ
-        ['clean']
-      ],
-      handlers: {
-        pageBreak: function() {
-          const range = this.quill.getSelection(true);
-          this.quill.insertEmbed(range.index, 'pageBreak', true, Quill.sources.USER);
-          // Alt satırdan yazmaya devam edebilmen için bir boşluk bırakır:
-          this.quill.insertText(range.index + 1, '\n', Quill.sources.USER);
-          this.quill.setSelection(range.index + 2, Quill.sources.SILENT);
+  // --- PDF İNDİRME FONKSİYONU ---
+  const handleDownloadPDF = () => {
+    const element = document.getElementById('pdf-content-area');
+    const opt = {
+      margin:       [15, 15, 15, 15], // Kenar boşlukları
+      filename:     `${selectedItem.title}.pdf`,
+      image:        { type: 'jpeg', quality: 0.98 },
+      html2canvas:  { scale: 2, useCORS: true },
+      jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+    html2pdf().set(opt).from(element).save();
+  };
+
+  // --- BİREBİR WORD (JODIT) MENÜSÜ VE SAYFA BÖLME AYARLARI ---
+  const config = useMemo(() => ({
+    readonly: false,
+    placeholder: 'Notlarınızı buraya yazın...',
+    height: 700,
+    language: 'tr',
+    toolbarSticky: false,
+    buttons: [
+      'bold', 'italic', 'underline', 'strikethrough', '|',
+      'font', 'fontsize', 'brush', 'paragraph', '|',
+      'align', 'ul', 'ol', 'outdent', 'indent', '|',
+      'table', 'image', 'link', 'hr', '|', // Tablo eklentisi burada
+      'undo', 'redo', 'fullsize', '|',
+      'pageBreak' // Özel Butonumuz
+    ],
+    controls: {
+      pageBreak: {
+        name: 'pageBreak',
+        text: '📄 Sayfa Böl',
+        tooltip: 'PDF alırken sayfayı buradan keser',
+        exec: (editor) => {
+          // ÖNEMLİ: html2pdf__page-break sınıfı, kütüphanenin burayı sayfa sonu olarak algılamasını sağlar.
+          // data-html2canvas-ignore="true" ise "Bu kesik çizgiyi PDF'e çizerken gizle" demektir.
+          const html = `<div class="html2pdf__page-break" style="page-break-after: always; border-top: 2px dashed #4f46e5; margin: 40px 0; padding-top: 10px; text-align: center; color: #4f46e5; font-weight: bold; font-family: sans-serif;" contenteditable="false" data-html2canvas-ignore="true">✂️ --- YENİ SAYFA BAŞLANGICI --- ✂️</div><p><br></p>`;
+          editor.s.insertHTML(html);
         }
       }
     }
@@ -109,53 +111,11 @@ export default function RichTextPage({ title, collectionName }) {
   // --- GÖRÜNTÜLEME VE DÜZENLEME EKRANI ---
   if (selectedItem) {
     return (
-      <div className="min-h-screen bg-slate-50 p-6 flex flex-col items-center">
-        
-        {/* YENİ BUTON VE PDF ÇIKTISI İÇİN GİZLİ CSS STİLLERİ */}
-        <style>
-          {`
-            .ql-pageBreak:after {
-              content: '📄 Sayfa Böl';
-              font-size: 13px;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              width: 90px !important;
-              color: #4f46e5;
-              font-weight: bold;
-            }
-            .ql-toolbar .ql-pageBreak {
-              width: auto !important;
-              padding: 0 5px;
-              border: 1px solid #e2e8f0;
-              border-radius: 6px;
-              margin-left: 10px;
-            }
-            .ql-toolbar .ql-pageBreak:hover {
-              background-color: #e0e7ff;
-            }
-            .quill-editor-container .ql-editor {
-              min-height: 400px;
-              font-size: 16px;
-            }
-            /* PDF ÇIKTISI VEYA YAZDIRMA ESNASINDA ÇALIŞACAK KOD */
-            @media print {
-              .page-break-line {
-                page-break-after: always !important; /* SAYFAYI BURADAN KES */
-                break-after: page !important;
-                border: none !important;
-                color: transparent !important; /* YAZIYI GİZLE */
-                margin: 0 !important;
-                padding: 0 !important;
-                height: 0 !important;
-                overflow: hidden !important;
-              }
-            }
-          `}
-        </style>
-
-        <div className="w-full max-w-3xl bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-          <div className="flex justify-between items-center mb-6">
+      <div className="min-h-screen bg-slate-100 p-6 flex flex-col items-center">
+        <div className="w-full max-w-4xl">
+          
+          {/* ÜST BAR */}
+          <div className="flex justify-between items-center mb-4 bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
             <button onClick={() => { setSelectedItem(null); setIsEditing(false); }} className="p-2 bg-slate-100 rounded-xl hover:bg-slate-200 transition-colors">
               <ArrowLeft size={20} className="text-slate-600" />
             </button>
@@ -166,33 +126,39 @@ export default function RichTextPage({ title, collectionName }) {
                   <button onClick={handleSave} className="p-2 bg-emerald-100 text-emerald-600 rounded-xl hover:bg-emerald-200 flex items-center gap-2 font-bold px-4 transition-colors"><Save size={20}/> Kaydet</button>
                 </>
               ) : (
-                <button onClick={() => { setEditTitle(selectedItem.title); setEditContent(selectedItem.content); setIsEditing(true); }} className="p-2 bg-indigo-100 text-indigo-600 rounded-xl hover:bg-indigo-200 flex items-center gap-2 font-bold px-4 transition-colors"><Edit size={20}/> Düzenle</button>
+                <>
+                  <button onClick={handleDownloadPDF} className="p-2 bg-rose-100 text-rose-600 rounded-xl hover:bg-rose-200 flex items-center gap-2 font-bold px-4 transition-colors"><Download size={20}/> PDF İndir</button>
+                  <button onClick={() => { setEditTitle(selectedItem.title); setEditContent(selectedItem.content); setIsEditing(true); }} className="p-2 bg-indigo-100 text-indigo-600 rounded-xl hover:bg-indigo-200 flex items-center gap-2 font-bold px-4 transition-colors"><Edit size={20}/> Düzenle</button>
+                </>
               )}
             </div>
           </div>
 
+          {/* İÇERİK ALANI */}
           {isEditing ? (
-            <div className="space-y-4">
+            <div className="space-y-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
               <input 
                 type="text" 
                 value={editTitle} 
                 onChange={(e) => setEditTitle(e.target.value)} 
-                className="w-full text-2xl font-bold p-3 border border-slate-200 rounded-xl focus:outline-none focus:border-indigo-500"
-                placeholder="Başlık Girin"
+                className="w-full text-2xl font-bold p-3 border-b-2 border-slate-100 focus:outline-none focus:border-indigo-500 transition-colors"
+                placeholder="Konu veya Hikaye Başlığı"
               />
-              <div className="quill-editor-container bg-white rounded-xl mb-12">
-                <ReactQuill 
-                  theme="snow" 
-                  value={editContent} 
-                  onChange={setEditContent} 
-                  modules={modules} // YENİ MENÜYÜ BAĞLADIK
+              <div className="w-full text-black">
+                <JoditEditor
+                  ref={editorRef}
+                  value={editContent}
+                  config={config}
+                  onBlur={newContent => setEditContent(newContent)} // Performans için onBlur kullanıldı
                 />
               </div>
             </div>
           ) : (
-            <div className="space-y-6">
-              <h1 className="text-3xl font-extrabold text-slate-800 border-b pb-4">{selectedItem.title}</h1>
-              <div className="prose prose-indigo max-w-none text-slate-700" dangerouslySetInnerHTML={{ __html: selectedItem.content }}></div>
+            // PDF'in okunacağı (ve indirileceği) alan
+            <div id="pdf-content-area" className="bg-white p-10 rounded-2xl shadow-sm border border-slate-200 min-h-[29.7cm]">
+              <h1 className="text-3xl font-extrabold text-slate-800 border-b-2 border-slate-100 pb-4 mb-8 text-center">{selectedItem.title}</h1>
+              {/* Jodit'ten gelen HTML içeriğini render ediyoruz */}
+              <div className="prose prose-indigo max-w-none text-slate-800" dangerouslySetInnerHTML={{ __html: selectedItem.content }}></div>
             </div>
           )}
         </div>
