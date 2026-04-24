@@ -65,52 +65,25 @@ export default function RichTextPage({ title, collectionName }) {
     }
   };
 
-  // 🔥 PDF 4 SAYFA SORUNUNU ÇÖZEN GİZLİ MOTOR 🔥
+  // --- PDF AKTARIMI (Sadece Ekranda Gördüğünü Alır) ---
   const handleDownloadPDF = () => {
-    // 1. Ekrandaki karmaşadan kurtulmak için arka planda gizli, temiz bir div yaratıyoruz.
-    const container = document.createElement('div');
-    container.style.position = 'fixed';
-    container.style.left = '-9999px'; // Ekranın dışına atıyoruz ki görünmesin
-    container.style.top = '0';
-    container.style.width = '800px'; // A4'ün tam piksel karşılığı
-    container.style.backgroundColor = 'white';
-
-    // 2. İçeriği temiz bir şekilde bu gizli dive yerleştiriyoruz.
-    container.innerHTML = `
-      <div style="font-family: sans-serif; color: #1e293b; padding: 10px;">
-         <h1 style="text-align: center; border-bottom: 2px solid #4f46e5; padding-bottom: 10px; margin-bottom: 20px; font-size: 26px; text-transform: uppercase;">
-           ${selectedItem.title}
-         </h1>
-         <div style="font-size: 16px; line-height: 1.6;">
-            ${selectedItem.content}
-         </div>
-      </div>
-    `;
-    document.body.appendChild(container);
-
-    // 3. SADECE BURADAN 15mm boşluk veriyoruz. (Çifte marjin kalktı)
+    const element = document.getElementById('pdf-render-content');
     const opt = {
       margin:       [15, 15, 15, 15], 
       filename:     `${selectedItem.title}.pdf`,
-      image:        { type: 'jpeg', quality: 1 },
-      html2canvas:  { scale: 2, useCORS: true, letterRendering: true, scrollY: 0 },
-      jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
-      pagebreak:    { mode: ['css', 'legacy'], avoid: ['img', 'table', 'tr', 'h1', 'h2', 'h3'] }
+      image:        { type: 'jpeg', quality: 0.98 },
+      html2canvas:  { scale: 2, useCORS: true },
+      jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
-
-    // 4. PDF'i oluştur ve işlem bitince gizli çöp kutusunu sil
-    html2pdf().set(opt).from(container).save().then(() => {
-       document.body.removeChild(container);
-    });
+    html2pdf().set(opt).from(element).save();
   };
 
   const config = useMemo(() => ({
     readonly: false,
     placeholder: 'Notlarınızı buraya yazın...',
-    height: "auto",
-    minHeight: 600,
+    height: 600,
     language: 'tr',
-    toolbarSticky: true,
+    toolbarSticky: false,
     buttons: [
       'bold', 'italic', 'underline', 'strikethrough', '|',
       'font', 'fontsize', 'brush', 'paragraph', '|',
@@ -122,26 +95,39 @@ export default function RichTextPage({ title, collectionName }) {
 
   if (selectedItem) {
     return (
-      <div className="min-h-screen bg-slate-200 p-4 md:p-8 flex flex-col items-center overflow-y-auto">
+      <div className="min-h-screen bg-slate-100 p-4 md:p-8 flex flex-col items-center overflow-y-auto">
         
-        {/* 🔥 TERTEMİZ DÜZ KAĞIT CSS (Boşluk/taşma sorunu yok) 🔥 */}
+        {/* 🔥 EDİTÖR VE ÖN İZLEME İÇİN %100 AYNI CSS 🔥 */}
         <style>
           {`
-            .word-style-editor .jodit-container {
-              border: none !important;
-              background-color: white !important;
+            /* İki tarafın da yazı tipi, boyutu ve satır aralığı aynı olacak */
+            .unified-content {
+              font-family: Arial, Helvetica, sans-serif !important;
+              font-size: 16px !important;
+              line-height: 1.5 !important;
+              color: #000 !important;
             }
-            .word-style-editor .jodit-wysiwyg {
-              background-color: white !important;
-              padding: 40px !important;
-              box-sizing: border-box !important;
-              line-height: 1.6 !important;
+            
+            /* Dışarıdan gelen Tailwind boşluklarını eziyoruz, sadece senin bıraktığın boşluklar kalıyor */
+            .unified-content p {
+              margin: 0 0 10px 0 !important;
+              padding: 0 !important;
+            }
+            
+            /* Jodit editörün kendi içindeki yazı alanını da aynı stile zorluyoruz */
+            .jodit-wysiwyg {
+              font-family: Arial, Helvetica, sans-serif !important;
+              font-size: 16px !important;
+              line-height: 1.5 !important;
+            }
+            .jodit-wysiwyg p {
+              margin: 0 0 10px 0 !important;
             }
           `}
         </style>
 
         <div className="w-full max-w-[800px] mb-6">
-          <div className="flex justify-between items-center mb-4 bg-white/95 backdrop-blur p-4 rounded-2xl shadow-sm border border-slate-200 sticky top-4 z-50">
+          <div className="flex justify-between items-center mb-4 bg-white p-4 rounded-xl shadow-sm border border-slate-200">
             <button onClick={() => { setSelectedItem(null); setIsEditing(false); }} className="p-2 bg-slate-100 rounded-xl hover:bg-slate-200 transition-colors">
               <ArrowLeft size={20} className="text-slate-600" />
             </button>
@@ -149,29 +135,29 @@ export default function RichTextPage({ title, collectionName }) {
               {isEditing ? (
                 <>
                   <button onClick={() => setIsEditing(false)} className="p-2 bg-red-100 text-red-600 rounded-xl hover:bg-red-200 transition-colors"><X size={20}/></button>
-                  <button onClick={handleSave} className="p-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 flex items-center gap-2 font-bold px-4 transition-colors shadow-sm"><Save size={20}/> Kaydet</button>
+                  <button onClick={handleSave} className="p-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 flex items-center gap-2 font-bold px-4 transition-colors"><Save size={20}/> Kaydet</button>
                 </>
               ) : (
                 <>
-                  <button onClick={handleDownloadPDF} className="p-2 bg-rose-600 text-white rounded-xl hover:bg-rose-700 flex items-center gap-2 font-bold px-4 transition-colors shadow-sm"><Download size={20}/> PDF İndir</button>
-                  <button onClick={() => { setEditTitle(selectedItem.title); setEditContent(selectedItem.content); setIsEditing(true); }} className="p-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 flex items-center gap-2 font-bold px-4 transition-colors shadow-sm"><Edit size={20}/> Düzenle</button>
+                  <button onClick={handleDownloadPDF} className="p-2 bg-rose-600 text-white rounded-xl hover:bg-rose-700 flex items-center gap-2 font-bold px-4 transition-colors"><Download size={20}/> PDF İndir</button>
+                  <button onClick={() => { setEditTitle(selectedItem.title); setEditContent(selectedItem.content); setIsEditing(true); }} className="p-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 flex items-center gap-2 font-bold px-4 transition-colors"><Edit size={20}/> Düzenle</button>
                 </>
               )}
             </div>
           </div>
 
-          {/* DÜZENLEME VE OKUMA ALANI (İkisi de aynı A4 genişliğinde) */}
-          <div className="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden w-full min-h-[1000px]">
+          {/* DÜZENLEME VE OKUMA ALANI */}
+          <div className="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden w-full">
             {isEditing ? (
-              <>
+              <div>
                 <input 
                   type="text" 
                   value={editTitle} 
                   onChange={(e) => setEditTitle(e.target.value)} 
-                  className="w-full text-2xl font-bold p-8 border-b border-slate-100 focus:outline-none focus:bg-indigo-50 transition-all text-center"
+                  className="w-full text-2xl font-bold p-6 border-b border-slate-200 focus:outline-none focus:bg-indigo-50 transition-colors text-center text-slate-800"
                   placeholder="Başlık Giriniz"
                 />
-                <div className="word-style-editor w-full">
+                <div className="w-full text-black">
                   <JoditEditor
                     ref={editorRef}
                     value={editContent}
@@ -179,11 +165,12 @@ export default function RichTextPage({ title, collectionName }) {
                     onBlur={newContent => setEditContent(newContent)}
                   />
                 </div>
-              </>
+              </div>
             ) : (
-              <div className="p-10 md:p-16">
-                <h1 className="text-4xl font-black text-slate-900 border-b-2 border-indigo-600 pb-6 mb-10 text-center uppercase tracking-widest">{selectedItem.title}</h1>
-                <div className="prose prose-slate prose-lg max-w-none text-slate-800 leading-relaxed" dangerouslySetInnerHTML={{ __html: selectedItem.content }}></div>
+              /* ÖN İZLEME VE PDF ALANI: 'unified-content' sınıfı ile editörle birebir aynı */
+              <div id="pdf-render-content" className="p-8 md:p-12 bg-white text-black unified-content">
+                <h1 className="text-3xl font-bold border-b border-slate-300 pb-4 mb-6 text-center">{selectedItem.title}</h1>
+                <div dangerouslySetInnerHTML={{ __html: selectedItem.content }}></div>
               </div>
             )}
           </div>
@@ -203,12 +190,12 @@ export default function RichTextPage({ title, collectionName }) {
         </div>
 
         {items.length === 0 ? (
-          <div className="text-center text-slate-500 mt-10 bg-white p-12 rounded-3xl border-2 border-slate-200 border-dashed">
+          <div className="text-center text-slate-500 mt-10 bg-white p-12 rounded-2xl border border-slate-200 border-dashed">
             Henüz içerik eklenmemiş. <strong className="text-indigo-600">+</strong> butonuna basarak yeni bir içerik oluşturabilirsiniz.
           </div>
         ) : (
           items.map((item, index) => (
-            <div key={item.id} className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex justify-between items-center group cursor-pointer hover:border-indigo-400 hover:shadow-xl transition-all duration-300">
+            <div key={item.id} className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex justify-between items-center group cursor-pointer hover:border-indigo-400 transition-all">
               <div className="flex-1" onClick={() => setSelectedItem(item)}>
                 <span className="text-indigo-600 font-bold mr-4 bg-indigo-50 px-4 py-2 rounded-xl">{index + 1}</span>
                 <span className="font-bold text-slate-800 text-lg">{item.title}</span>
