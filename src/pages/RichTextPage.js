@@ -65,17 +65,16 @@ export default function RichTextPage({ title, collectionName }) {
     }
   };
 
-  // --- PDF AKTARIMI (SAYFA BÖLÜNMELERİNİ ÖNLEYEN AYARLAR) ---
+  // --- PDF AKTARIMI (Sade ve Sorunsuz Mantık) ---
   const handleDownloadPDF = () => {
     const element = document.getElementById('pdf-render-content');
     const opt = {
-      margin:       [20, 20, 20, 20], 
+      margin:       [15, 15, 15, 15], 
       filename:     `${selectedItem.title}.pdf`,
-      image:        { type: 'jpeg', quality: 1 },
-      html2canvas:  { scale: 2, useCORS: true, logging: false },
+      image:        { type: 'jpeg', quality: 0.98 },
+      html2canvas:  { scale: 2, useCORS: true },
       jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
-      // ÖNEMLİ: avoid-all paragraf, tablo ve başlıkların tam ortadan bölünmesini engeller
-      pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] }
+      pagebreak:    { mode: ['css', 'legacy'] }
     };
     html2pdf().set(opt).from(element).save();
   };
@@ -83,10 +82,9 @@ export default function RichTextPage({ title, collectionName }) {
   const config = useMemo(() => ({
     readonly: false,
     placeholder: 'Notlarınızı buraya yazın...',
-    height: "auto",
-    minHeight: 1123, // 1 sayfa A4
+    height: 600,
     language: 'tr',
-    toolbarSticky: true,
+    toolbarSticky: false,
     buttons: [
       'bold', 'italic', 'underline', 'strikethrough', '|',
       'font', 'fontsize', 'brush', 'paragraph', '|',
@@ -98,88 +96,86 @@ export default function RichTextPage({ title, collectionName }) {
 
   if (selectedItem) {
     return (
-      <div className="min-h-screen bg-slate-300 p-4 md:p-8 flex flex-col items-center">
+      <div className="min-h-screen bg-slate-100 p-4 md:p-8 flex flex-col items-center overflow-y-auto">
         
+        {/* 🔥 TAILWIND'İN BOZDUĞU LİSTELERİ VE TABLOLARI DÜZELTEN CSS 🔥 */}
         <style>
           {`
-            /* Yazarken Sayfa Numaralarını Görme */
-            .word-style-editor .jodit-wysiwyg {
-              background-color: white !important;
-              width: 210mm !important;
-              padding: 20mm !important;
-              margin: 0 auto !important;
-              box-sizing: border-box !important;
-              position: relative;
-              
-              /* Sayfa çizgileri ve göstergeler */
-              background-image: repeating-linear-gradient(
-                to bottom,
-                white 0,
-                white 296.5mm,
-                #64748b 296.5mm,
-                #64748b 297mm,
-                #94a3b8 297mm,
-                #94a3b8 310mm
-              ) !important;
-              background-attachment: local !important;
+            .rich-text-content {
+              font-family: Arial, Helvetica, sans-serif !important;
+              font-size: 16px !important;
+              line-height: 1.6 !important;
+              color: #1e293b !important;
             }
-
-            /* PDF ve Ön İzleme İçin Yazıların Bölünmesini Engelleme */
-            .unified-content p, 
-            .unified-content h1, 
-            .unified-content h2, 
-            .unified-content li, 
-            .unified-content table, 
-            .unified-content tr {
-              break-inside: avoid-page !important;
-              page-break-inside: avoid !important;
+            
+            /* Madde İşaretlerini Geri Getiriyoruz */
+            .rich-text-content ul {
+              list-style-type: disc !important;
+              padding-left: 2rem !important;
+              margin-bottom: 1rem !important;
             }
-
-            .unified-content {
-              font-family: Arial, sans-serif;
-              line-height: 1.6;
-              font-size: 16px;
+            .rich-text-content ol {
+              list-style-type: decimal !important;
+              padding-left: 2rem !important;
+              margin-bottom: 1rem !important;
             }
-
-            #pdf-render-content {
-              width: 210mm;
-              background: white;
-              padding: 20mm;
-              box-sizing: border-box;
+            .rich-text-content li {
+              margin-bottom: 0.5rem !important;
+              display: list-item !important;
+            }
+            
+            /* Başlık ve Paragraf Boşlukları */
+            .rich-text-content p { margin-bottom: 1rem !important; }
+            .rich-text-content h1, .rich-text-content h2, .rich-text-content h3 {
+              margin-top: 1.5rem !important;
+              margin-bottom: 1rem !important;
+              font-weight: bold !important;
+            }
+            
+            /* Tablo Stilleri */
+            .rich-text-content table {
+              border-collapse: collapse !important;
+              width: 100% !important;
+              margin-bottom: 1rem !important;
+            }
+            .rich-text-content td, .rich-text-content th {
+              border: 1px solid #cbd5e1 !important;
+              padding: 8px !important;
             }
           `}
         </style>
 
-        <div className="w-full max-w-5xl mb-6">
-          <div className="flex justify-between items-center mb-4 bg-white/95 p-4 rounded-xl shadow-lg border border-slate-200 sticky top-4 z-50">
-            <button onClick={() => { setSelectedItem(null); setIsEditing(false); }} className="p-2 bg-slate-100 rounded-xl hover:bg-slate-200">
-              <ArrowLeft size={20} />
+        <div className="w-full max-w-[800px] mb-6">
+          <div className="flex justify-between items-center mb-4 bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+            <button onClick={() => { setSelectedItem(null); setIsEditing(false); }} className="p-2 bg-slate-100 rounded-xl hover:bg-slate-200 transition-colors">
+              <ArrowLeft size={20} className="text-slate-600" />
             </button>
             <div className="flex gap-2">
               {isEditing ? (
                 <>
-                  <button onClick={() => setIsEditing(false)} className="p-2 bg-red-100 text-red-600 rounded-xl"><X size={20}/></button>
-                  <button onClick={handleSave} className="p-2 bg-emerald-600 text-white rounded-xl px-4 font-bold flex items-center gap-2"><Save size={20}/> Kaydet</button>
+                  <button onClick={() => setIsEditing(false)} className="p-2 bg-red-100 text-red-600 rounded-xl hover:bg-red-200 transition-colors"><X size={20}/></button>
+                  <button onClick={handleSave} className="p-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 flex items-center gap-2 font-bold px-4 transition-colors"><Save size={20}/> Kaydet</button>
                 </>
               ) : (
                 <>
-                  <button onClick={handleDownloadPDF} className="p-2 bg-rose-600 text-white rounded-xl px-4 font-bold flex items-center gap-2 shadow-md"><Download size={20}/> PDF İndir</button>
-                  <button onClick={() => { setEditTitle(selectedItem.title); setEditContent(selectedItem.content); setIsEditing(true); }} className="p-2 bg-indigo-600 text-white rounded-xl px-4 font-bold flex items-center gap-2 shadow-md"><Edit size={20}/> Düzenle</button>
+                  <button onClick={handleDownloadPDF} className="p-2 bg-rose-600 text-white rounded-xl hover:bg-rose-700 flex items-center gap-2 font-bold px-4 transition-colors"><Download size={20}/> PDF İndir</button>
+                  <button onClick={() => { setEditTitle(selectedItem.title); setEditContent(selectedItem.content); setIsEditing(true); }} className="p-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 flex items-center gap-2 font-bold px-4 transition-colors"><Edit size={20}/> Düzenle</button>
                 </>
               )}
             </div>
           </div>
 
-          <div className="flex justify-center w-full">
+          <div className="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden w-full min-h-[800px]">
             {isEditing ? (
-              <div className="bg-white rounded-xl shadow-2xl overflow-hidden border border-slate-200 w-full">
+              <div>
                 <input 
                   type="text" 
                   value={editTitle} 
                   onChange={(e) => setEditTitle(e.target.value)} 
-                  className="w-full text-2xl font-bold p-6 border-b border-slate-200 focus:outline-none text-center"
+                  className="w-full text-2xl font-bold p-6 border-b border-slate-200 focus:outline-none focus:bg-indigo-50 transition-colors text-center text-slate-800"
+                  placeholder="Başlık Giriniz"
                 />
-                <div className="word-style-editor">
+                <div className="w-full text-black rich-text-content">
                   <JoditEditor
                     ref={editorRef}
                     value={editContent}
@@ -189,9 +185,11 @@ export default function RichTextPage({ title, collectionName }) {
                 </div>
               </div>
             ) : (
-              <div id="pdf-render-content" className="unified-content shadow-2xl">
-                <h1 className="text-3xl font-bold border-b-2 border-indigo-600 pb-4 mb-8 text-center uppercase">{selectedItem.title}</h1>
-                <div dangerouslySetInnerHTML={{ __html: setSelectedItem.content }}></div>
+              /* DÜZELTİLDİ: setSelectedItem yerine selectedItem.content yazıldı. 
+                 Ayrıca 'rich-text-content' CSS class'ı ile madde işaretleri koruma altına alındı. */
+              <div id="pdf-render-content" className="p-8 md:p-12 bg-white text-black rich-text-content">
+                <h1 className="text-3xl font-bold border-b border-slate-300 pb-4 mb-6 text-center">{selectedItem.title}</h1>
+                <div dangerouslySetInnerHTML={{ __html: selectedItem.content }}></div>
               </div>
             )}
           </div>
@@ -200,24 +198,31 @@ export default function RichTextPage({ title, collectionName }) {
     );
   }
 
+  // --- LİSTELEME EKRANI ---
   return (
     <div className="min-h-screen bg-slate-50 p-6 flex flex-col items-center">
       <div className="w-full max-w-3xl space-y-4">
         <div className="flex justify-between items-center mb-6">
-          <button onClick={() => navigate("/")} className="p-2 bg-white rounded-xl border border-slate-200 hover:text-indigo-600"><ArrowLeft size={20} /></button>
+          <button onClick={() => navigate("/")} className="p-2 bg-white rounded-xl shadow-sm border border-slate-200 hover:text-indigo-600"><ArrowLeft size={20} /></button>
           <h1 className="text-2xl font-extrabold text-slate-800">{title}</h1>
-          <button onClick={handleAddNew} className="p-2 bg-indigo-600 text-white rounded-xl"><Plus size={20} /></button>
+          <button onClick={handleAddNew} className="p-2 bg-indigo-600 text-white rounded-xl shadow-sm hover:bg-indigo-700"><Plus size={20} /></button>
         </div>
 
-        {items.map((item, index) => (
-          <div key={item.id} className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex justify-between items-center group cursor-pointer hover:border-indigo-400 transition-all">
-            <div className="flex-1" onClick={() => setSelectedItem(item)}>
-              <span className="text-indigo-600 font-bold mr-4 bg-indigo-50 px-4 py-2 rounded-xl">{index + 1}</span>
-              <span className="font-bold text-slate-800 text-lg">{item.title}</span>
-            </div>
-            <button onClick={() => handleDelete(item.id)} className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"><Trash2 size={20}/></button>
+        {items.length === 0 ? (
+          <div className="text-center text-slate-500 mt-10 bg-white p-12 rounded-2xl border border-slate-200 border-dashed">
+            Henüz içerik eklenmemiş. <strong className="text-indigo-600">+</strong> butonuna basarak yeni bir içerik oluşturabilirsiniz.
           </div>
-        ))}
+        ) : (
+          items.map((item, index) => (
+            <div key={item.id} className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex justify-between items-center group cursor-pointer hover:border-indigo-400 transition-all">
+              <div className="flex-1" onClick={() => setSelectedItem(item)}>
+                <span className="text-indigo-600 font-bold mr-4 bg-indigo-50 px-4 py-2 rounded-xl">{index + 1}</span>
+                <span className="font-bold text-slate-800 text-lg">{item.title}</span>
+              </div>
+              <button onClick={() => handleDelete(item.id)} className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"><Trash2 size={20}/></button>
+            </div>
+          ))
+        )}
       </div>
     </div>
   );
