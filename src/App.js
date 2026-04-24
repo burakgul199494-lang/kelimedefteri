@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from "react-router-dom"; 
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { DataProvider, useData } from "./context/DataContext";
 
 // SAYFALAR
@@ -46,7 +46,8 @@ export default function App() {
   
   useEffect(() => {
     const script = document.createElement("script");
-    script.src = "https://cdn.tailwindcss.com";
+    // 🔥 Typograpy Eklentisini aktif ettik ki Tablolarımız ve Notlarımız okuma modunda mükemmel görünsün
+    script.src = "https://cdn.tailwindcss.com?plugins=typography";
     document.head.appendChild(script);
   }, []);
 
@@ -54,6 +55,7 @@ export default function App() {
     <DataProvider>
       <Router>
         <AudioSilencer /> 
+        
         <Routes>
           <Route path="/login" element={<Auth />} />
 
@@ -81,7 +83,7 @@ export default function App() {
 
           <Route path="/gap-filling" element={<PrivateRoute><GapFillingGame /></PrivateRoute>} />
 
-          {/* Yeni Özellikler */}
+          {/* Yeni Eklenen Not Tutma & Hikaye Rotaları */}
           <Route path="/grammar-notes" element={<PrivateRoute><RichTextPage title="Konu Anlatımları" collectionName="grammar_notes" /></PrivateRoute>} />
           <Route path="/stories" element={<PrivateRoute><RichTextPage title="Hikayeler" collectionName="stories" /></PrivateRoute>} />
 
