@@ -3,9 +3,9 @@ import { useData } from "../context/DataContext";
 import { db, appId, ADMIN_EMAILS } from "../services/firebase";
 import { 
   collection, addDoc, getDocs, doc, deleteDoc, 
-  query, orderBy, setDoc, serverTimestamp 
+  query, orderBy, setDoc, updateDoc, serverTimestamp 
 } from "firebase/firestore";
-import { ArrowLeft, Plus, Trash2, FileText, CheckCircle, ExternalLink } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, FileText, CheckCircle, ExternalLink, Edit2, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 export default function PDFPage({ title, type }) {
@@ -15,6 +15,7 @@ export default function PDFPage({ title, type }) {
   const [userStatus, setUserStatus] = useState({});
   const [pdfTitle, setPdfTitle] = useState("");
   const [pdfUrl, setPdfUrl] = useState(""); 
+  const [editingPdf, setEditingPdf] = useState(null); // Düzenlenen dosyayı tutar
 
   const isAdmin = user && ADMIN_EMAILS.includes(user.email);
   const pdfsRef = collection(db, "artifacts", appId, "shared_pdfs");
@@ -28,7 +29,6 @@ export default function PDFPage({ title, type }) {
 
   const fetchPdfs = async () => {
     try {
-      // "asc" yaparak ilk eklediğini en üstte, sonrakileri altına dizecek şekilde güncelledik.
       const q = query(pdfsRef, orderBy("createdAt", "asc"));
       const snapshot = await getDocs(q);
       
@@ -50,7 +50,7 @@ export default function PDFPage({ title, type }) {
     setUserStatus(statusMap);
   };
 
-  const handleUpload = async (e) => {
+  const handleSave = async (e) => {
     e.preventDefault();
     if (!pdfUrl || !pdfTitle) return alert("Lütfen başlık ve Google Drive linkini girin!");
     
@@ -60,20 +60,45 @@ export default function PDFPage({ title, type }) {
     }
 
     try {
-      await addDoc(pdfsRef, {
-        title: pdfTitle,
-        url: finalUrl,
-        type: type,
-        createdAt: serverTimestamp()
-      });
+      if (editingPdf) {
+        // GÜNCELLEME MODU
+        const docRef = doc(db, "artifacts", appId, "shared_pdfs", editingPdf.id);
+        await updateDoc(docRef, {
+          title: pdfTitle,
+          url: finalUrl
+        });
+        setEditingPdf(null);
+        alert("Dosya başarıyla güncellendi! 📝");
+      } else {
+        // YENİ EKLEME MODU
+        await addDoc(pdfsRef, {
+          title: pdfTitle,
+          url: finalUrl,
+          type: type,
+          createdAt: serverTimestamp()
+        });
+        alert("PDF Linki sisteme başarıyla eklendi! 🎉");
+      }
 
       setPdfUrl("");
       setPdfTitle("");
       fetchPdfs();
-      alert("PDF Linki sisteme başarıyla eklendi! 🎉");
     } catch (err) {
       alert("Hata: " + err.message);
     }
+  };
+
+  const startEditing = (pdf) => {
+    setEditingPdf(pdf);
+    setPdfTitle(pdf.title);
+    setPdfUrl(pdf.url);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const cancelEditing = () => {
+    setEditingPdf(null);
+    setPdfTitle("");
+    setPdfUrl("");
   };
 
   const toggleReviewed = async (pdfId) => {
@@ -97,7 +122,7 @@ export default function PDFPage({ title, type }) {
     <div className="min-h-screen bg-slate-50 p-6 flex flex-col items-center">
       <div className="w-full max-w-2xl">
         <div className="flex justify-between items-center mb-8">
-          <button onClick={() => navigate("/")} className="p-2 bg-white rounded-xl shadow-sm border border-slate-200">
+          <button onClick={() => navigate("/")} className="p-2 bg-white rounded-xl shadow-sm border border-slate-200 hover:text-indigo-600 transition-colors">
             <ArrowLeft size={20} />
           </button>
           <h1 className="text-2xl font-black text-slate-800">{title}</h1>
@@ -105,24 +130,34 @@ export default function PDFPage({ title, type }) {
         </div>
 
         {isAdmin && (
-          <form onSubmit={handleUpload} className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 mb-8 space-y-4">
-            <h2 className="font-bold text-indigo-600 flex items-center gap-2 underline">PDF Ekle (Sadece Admin)</h2>
+          <form onSubmit={handleSave} className={`p-6 rounded-2xl shadow-sm border mb-8 space-y-4 transition-all ${editingPdf ? 'bg-amber-50 border-amber-200' : 'bg-white border-slate-200'}`}>
+            <div className="flex justify-between items-center">
+              <h2 className={`font-bold flex items-center gap-2 ${editingPdf ? 'text-amber-700' : 'text-indigo-600'}`}>
+                {editingPdf ? <Edit2 size={18}/> : <Plus size={18}/>}
+                {editingPdf ? 'Dosyayı Düzenle' : 'Yeni PDF Ekle'}
+              </h2>
+              {editingPdf && (
+                <button type="button" onClick={cancelEditing} className="text-amber-700 hover:bg-amber-100 p-1 rounded-lg">
+                  <X size={20}/>
+                </button>
+              )}
+            </div>
             <input 
               type="text" 
-              placeholder="Konu Başlığı (Örn: Present Continuous Tense)" 
+              placeholder="Konu Başlığı" 
               value={pdfTitle} 
               onChange={(e) => setPdfTitle(e.target.value)} 
-              className="w-full p-3 bg-slate-50 border rounded-xl focus:outline-none focus:border-indigo-500" 
+              className="w-full p-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-indigo-500" 
             />
             <input 
               type="url" 
-              placeholder="Google Drive PDF Linkini Buraya Yapıştırın" 
+              placeholder="Google Drive PDF Linki" 
               value={pdfUrl} 
               onChange={(e) => setPdfUrl(e.target.value)} 
-              className="w-full p-3 bg-slate-50 border rounded-xl focus:outline-none focus:border-indigo-500" 
+              className="w-full p-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-indigo-500" 
             />
-            <button className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl shadow-lg transition-colors">
-              Sisteme Kaydet
+            <button className={`w-full text-white font-bold py-3 rounded-xl shadow-lg transition-colors ${editingPdf ? 'bg-amber-600 hover:bg-amber-700' : 'bg-indigo-600 hover:bg-indigo-700'}`}>
+              {editingPdf ? 'Değişiklikleri Güncelle' : 'Sisteme Kaydet'}
             </button>
           </form>
         )}
@@ -148,7 +183,16 @@ export default function PDFPage({ title, type }) {
                 <button onClick={() => toggleReviewed(pdf.id)} className={`px-4 py-2 rounded-xl font-bold flex items-center gap-2 transition-all active:scale-95 ${userStatus[pdf.id] ? "bg-emerald-500 text-white shadow-md" : "bg-slate-100 text-slate-400"}`}>
                   <CheckCircle size={18}/> <span className="hidden sm:inline">{userStatus[pdf.id] ? "İnceledim" : "İncele"}</span>
                 </button>
-                {isAdmin && <button onClick={() => handleDelete(pdf)} className="p-2 text-slate-300 hover:text-red-500"><Trash2 size={20}/></button>}
+                {isAdmin && (
+                  <div className="flex items-center gap-1">
+                    <button onClick={() => startEditing(pdf)} className="p-2 text-slate-300 hover:text-indigo-500 transition-colors">
+                      <Edit2 size={20}/>
+                    </button>
+                    <button onClick={() => handleDelete(pdf)} className="p-2 text-slate-300 hover:text-red-500 transition-colors">
+                      <Trash2 size={20}/>
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           ))}
