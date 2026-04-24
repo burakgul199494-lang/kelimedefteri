@@ -3,7 +3,7 @@ import { useData } from "../context/DataContext";
 import { db, appId, ADMIN_EMAILS } from "../services/firebase";
 import { 
   collection, addDoc, getDocs, doc, deleteDoc, 
-  query, orderBy, setDoc, serverTimestamp, where 
+  query, orderBy, setDoc, serverTimestamp 
 } from "firebase/firestore";
 import { ArrowLeft, Plus, Trash2, FileText, CheckCircle, ExternalLink } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -14,7 +14,7 @@ export default function PDFPage({ title, type }) {
   const [pdfs, setPdfs] = useState([]);
   const [userStatus, setUserStatus] = useState({});
   const [pdfTitle, setPdfTitle] = useState("");
-  const [pdfUrl, setPdfUrl] = useState(""); // Artık dosya değil, link tutuyoruz
+  const [pdfUrl, setPdfUrl] = useState(""); 
 
   const isAdmin = user && ADMIN_EMAILS.includes(user.email);
   const pdfsRef = collection(db, "artifacts", appId, "shared_pdfs");
@@ -27,10 +27,21 @@ export default function PDFPage({ title, type }) {
   }, [user, type]);
 
   const fetchPdfs = async () => {
-    const q = query(pdfsRef, where("type", "==", type), orderBy("createdAt", "desc"));
-    const snapshot = await getDocs(q);
-    const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    setPdfs(list);
+    try {
+      // 🔥 Firebase Dizin (Index) Hatasını Atlayan Çözüm:
+      // Veritabanından sadece tarihe göre sıralı çekiyoruz (Böylece hata vermez)
+      const q = query(pdfsRef, orderBy("createdAt", "desc"));
+      const snapshot = await getDocs(q);
+      
+      // Gelen verileri kendi içimizde "Konular" ve "Hikayeler" olarak (type'a göre) filtreliyoruz
+      const list = snapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() }))
+        .filter(pdf => pdf.type === type);
+        
+      setPdfs(list);
+    } catch (error) {
+      console.error("Dosyalar çekilirken hata oluştu:", error);
+    }
   };
 
   const fetchUserStatus = async () => {
@@ -45,7 +56,6 @@ export default function PDFPage({ title, type }) {
     e.preventDefault();
     if (!pdfUrl || !pdfTitle) return alert("Lütfen başlık ve Google Drive linkini girin!");
     
-    // Girilen linkin başına http eklenmemişse otomatik ekle
     let finalUrl = pdfUrl;
     if (!finalUrl.startsWith('http://') && !finalUrl.startsWith('https://')) {
         finalUrl = 'https://' + finalUrl;
@@ -61,7 +71,7 @@ export default function PDFPage({ title, type }) {
 
       setPdfUrl("");
       setPdfTitle("");
-      fetchPdfs();
+      fetchPdfs(); // Ekledikten sonra listeyi yenile
       alert("PDF Linki sisteme başarıyla eklendi! 🎉");
     } catch (err) {
       alert("Hata: " + err.message);
