@@ -28,12 +28,10 @@ export default function PDFPage({ title, type }) {
 
   const fetchPdfs = async () => {
     try {
-      // 🔥 Firebase Dizin (Index) Hatasını Atlayan Çözüm:
-      // Veritabanından sadece tarihe göre sıralı çekiyoruz (Böylece hata vermez)
-      const q = query(pdfsRef, orderBy("createdAt", "desc"));
+      // "asc" yaparak ilk eklediğini en üstte, sonrakileri altına dizecek şekilde güncelledik.
+      const q = query(pdfsRef, orderBy("createdAt", "asc"));
       const snapshot = await getDocs(q);
       
-      // Gelen verileri kendi içimizde "Konular" ve "Hikayeler" olarak (type'a göre) filtreliyoruz
       const list = snapshot.docs
         .map(doc => ({ id: doc.id, ...doc.data() }))
         .filter(pdf => pdf.type === type);
@@ -71,7 +69,7 @@ export default function PDFPage({ title, type }) {
 
       setPdfUrl("");
       setPdfTitle("");
-      fetchPdfs(); // Ekledikten sonra listeyi yenile
+      fetchPdfs();
       alert("PDF Linki sisteme başarıyla eklendi! 🎉");
     } catch (err) {
       alert("Hata: " + err.message);
@@ -130,12 +128,17 @@ export default function PDFPage({ title, type }) {
         )}
 
         <div className="space-y-4">
-          {pdfs.map(pdf => (
+          {pdfs.map((pdf, index) => (
             <div key={pdf.id} className="bg-white p-4 rounded-2xl shadow-sm border flex items-center justify-between transition-all hover:border-indigo-300">
               <div className="flex items-center gap-4 flex-1">
-                <FileText className={userStatus[pdf.id] ? "text-emerald-500" : "text-slate-400"} size={24}/>
+                <div className={`p-3 rounded-xl ${userStatus[pdf.id] ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}>
+                  <FileText size={24}/>
+                </div>
                 <div>
-                  <h3 className="font-bold text-slate-800">{pdf.title}</h3>
+                  <h3 className="font-bold text-slate-800">
+                    <span className="text-indigo-600 mr-2">{index + 1}.</span>
+                    {pdf.title}
+                  </h3>
                   <a href={pdf.url} target="_blank" rel="noreferrer" className="text-indigo-600 text-sm font-semibold flex items-center gap-1 mt-1 hover:underline">
                     PDF'i Aç <ExternalLink size={14}/>
                   </a>
