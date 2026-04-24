@@ -16,7 +16,7 @@
     "react-cropper": "^2.3.3",
     "cropperjs": "^1.6.1",
     "react-virtuoso": "^4.7.0",
-    "react-quill": "^2.0.0"
+    "jodit-react": "^4.1.2"
   },
   "devDependencies": {
     "typescript": "4.9.5"
