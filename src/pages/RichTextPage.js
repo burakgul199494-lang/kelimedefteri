@@ -5,7 +5,7 @@ import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, orderBy,
 import JoditEditor from "jodit-react";
 import { ArrowLeft, Edit, Save, Plus, Trash2, X, Download } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import html2pdf from "html2pdf.js"; // 🔥 PDF Kütüphanesi Eklendi
+import html2pdf from "html2pdf.js"; 
 
 export default function RichTextPage({ title, collectionName }) {
   const { user } = useData();
@@ -65,7 +65,7 @@ export default function RichTextPage({ title, collectionName }) {
     }
   };
 
-  // 🔥 PDF İndirme Fonksiyonu
+  // PDF İndirme Fonksiyonu
   const handleDownloadPDF = () => {
     const element = document.getElementById("pdf-content");
     const opt = {
@@ -92,7 +92,6 @@ export default function RichTextPage({ title, collectionName }) {
     return (
       <div className="min-h-screen bg-slate-50 p-6 flex flex-col items-center">
         
-        {/* 🔥 Tailwind Madde İşareti (List) Bug'ını Çözen Stil */}
         <style>{`
           .jodit-wysiwyg ul { list-style-type: disc !important; margin-left: 1.5rem !important; }
           .jodit-wysiwyg ol { list-style-type: decimal !important; margin-left: 1.5rem !important; }
@@ -112,7 +111,6 @@ export default function RichTextPage({ title, collectionName }) {
                 </>
               ) : (
                 <>
-                  {/* 🔥 PDF İndir Butonu */}
                   <button onClick={handleDownloadPDF} className="p-2 bg-rose-100 text-rose-600 rounded-xl hover:bg-rose-200 flex items-center gap-2 font-bold px-4">
                     <Download size={20}/> PDF İndir
                   </button>
@@ -144,15 +142,16 @@ export default function RichTextPage({ title, collectionName }) {
               </div>
             </div>
           ) : (
-            // 🔥 PDF'e Çevrilecek Alanı ID ile Sarıyoruz
             <div id="pdf-content" className="space-y-6 bg-white p-2">
               <h1 className="text-3xl font-extrabold text-slate-800 border-b pb-4">{selectedItem.title}</h1>
+              {/* 🔥 BOŞLUK DARALTMA (MARGIN) SINIFLARI EKLENDİ (prose-p:my-1, vb.) */}
               <div 
-                className="prose prose-indigo max-w-none text-slate-700 
-                           prose-table:w-full prose-table:border-collapse 
-                           prose-td:border prose-td:border-slate-300 prose-td:p-3
-                           prose-th:border prose-th:border-slate-300 prose-th:bg-slate-100 prose-th:p-3
-                           prose-img:rounded-xl" 
+                className="prose prose-indigo max-w-none text-slate-800 leading-snug
+                           prose-p:my-1 prose-headings:my-3 prose-ul:my-1 prose-li:my-0
+                           prose-table:w-full prose-table:border-collapse prose-table:my-2
+                           prose-td:border prose-td:border-slate-300 prose-td:p-2
+                           prose-th:border prose-th:border-slate-300 prose-th:bg-slate-100 prose-th:p-2
+                           prose-img:rounded-xl prose-img:my-2" 
                 dangerouslySetInnerHTML={{ __html: selectedItem.content }}
               ></div>
             </div>
