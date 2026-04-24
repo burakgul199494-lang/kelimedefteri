@@ -65,20 +65,22 @@ export default function RichTextPage({ title, collectionName }) {
     }
   };
 
-  // --- PDF AKTARIM AYARLARI (ZOOM SORUNU ÇÖZÜMÜ) ---
+  // --- PDF AKTARIM AYARLARI (TAM SENKRONİZASYON) ---
   const handleDownloadPDF = () => {
-    const element = document.getElementById('pdf-content-area');
+    const element = document.getElementById('pdf-render-content');
     const opt = {
-      margin:       0, // Kenar boşlukları HTML içindeki padding ile yönetiliyor
+      margin:       0,
       filename:     `${selectedItem.title}.pdf`,
       image:        { type: 'jpeg', quality: 1 },
       html2canvas:  { 
         scale: 2, 
         useCORS: true, 
+        logging: false,
         letterRendering: true,
-        width: 794, // A4'ün 96 DPI'daki tam genişliği
+        // PDF'de sayfa arası gri çizgilerin çıkmaması için background'u beyaz yapıyoruz
+        backgroundColor: '#ffffff'
       },
-      jsPDF:        { unit: 'px', hotfixes: ['px_scaling'], format: [794, 1123], orientation: 'portrait' },
+      jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
       pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] }
     };
     html2pdf().set(opt).from(element).save();
@@ -88,7 +90,7 @@ export default function RichTextPage({ title, collectionName }) {
     readonly: false,
     placeholder: 'Notlarınızı buraya yazın...',
     height: "auto",
-    minHeight: 1123, // En az bir A4 sayfası boyutu
+    minHeight: '297mm',
     language: 'tr',
     toolbarSticky: true,
     buttons: [
@@ -104,10 +106,9 @@ export default function RichTextPage({ title, collectionName }) {
     return (
       <div className="min-h-screen bg-slate-300 p-4 md:p-8 flex flex-col items-center overflow-y-auto">
         
-        {/* 🔥 GERÇEKÇİ WORD GÖRÜNÜMÜ CSS 🔥 */}
         <style>
           {`
-            /* Editörün çevresi */
+            /* Editörün çevresi ve A4 Düzeni */
             .word-style-editor .jodit-container {
               border: none !important;
               background-color: transparent !important;
@@ -121,45 +122,47 @@ export default function RichTextPage({ title, collectionName }) {
               padding: 40px 0 !important;
             }
 
-            /* Beyaz Kağıt Alanı */
+            /* Düzenleme Alanı (Yazarken Sayfa Bölümünü Görme) */
             .word-style-editor .jodit-wysiwyg {
               background-color: white !important;
               width: 210mm !important;
               min-height: 297mm !important;
               padding: 20mm !important;
-              margin-bottom: 20px !important;
-              box-shadow: 0 4px 10px rgba(0,0,0,0.3) !important;
+              margin-bottom: 0 !important;
+              box-shadow: 0 4px 15px rgba(0,0,0,0.4) !important;
               box-sizing: border-box !important;
               
-              /* Otomatik Sayfa Çizgisi Hilesi */
+              /* Sayfa çizgisi hilesini daha net ve PDF'i etkilemeyecek şekilde güncelledik */
               background-image: repeating-linear-gradient(
                 to bottom,
                 transparent 0,
-                transparent 296mm,
-                #e2e8f0 296mm,
+                transparent 296.8mm,
+                #e2e8f0 296.8mm,
                 #e2e8f0 297mm,
                 #64748b 297mm,
-                #64748b 305mm
+                #64748b 307mm
               ) !important;
               background-attachment: local !important;
             }
 
-            /* PDF ve Ön İzleme Alanı Sabitleme */
-            #pdf-content-area {
+            /* PDF ve Ön İzleme Konteynırı */
+            .pdf-page-view {
               width: 210mm;
               background: white;
               margin: 0 auto;
+              padding: 20mm;
+              min-height: 297mm;
               box-sizing: border-box;
+              box-shadow: 0 4px 15px rgba(0,0,0,0.4);
             }
 
-            .page-container {
-               padding: 20mm;
-               min-height: 297mm;
-               position: relative;
+            /* PDF'e aktarılırken boşlukların (gri çizgilerin) çıkmasını engellemek için */
+            #pdf-render-content {
+                background-color: white !important;
             }
 
-            @media screen and (max-width: 210mm) {
-              .word-style-editor .jodit-wysiwyg, #pdf-content-area {
+            @media screen and (max-width: 220mm) {
+              .word-style-editor .jodit-wysiwyg, .pdf-page-view {
                 width: 95vw !important;
                 padding: 10mm !important;
               }
@@ -168,7 +171,7 @@ export default function RichTextPage({ title, collectionName }) {
         </style>
 
         <div className="w-full max-w-5xl mb-6">
-          <div className="flex justify-between items-center mb-4 bg-white/90 backdrop-blur p-4 rounded-2xl shadow-lg border border-slate-200 sticky top-4 z-50">
+          <div className="flex justify-between items-center mb-4 bg-white/95 backdrop-blur p-4 rounded-2xl shadow-xl border border-slate-200 sticky top-4 z-50">
             <button onClick={() => { setSelectedItem(null); setIsEditing(false); }} className="p-2 bg-slate-100 rounded-xl hover:bg-slate-200 transition-colors">
               <ArrowLeft size={20} className="text-slate-600" />
             </button>
@@ -188,13 +191,13 @@ export default function RichTextPage({ title, collectionName }) {
           </div>
 
           {isEditing ? (
-            <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden">
+            <div className="bg-white rounded-2xl shadow-2xl overflow-hidden border border-slate-200">
               <input 
                 type="text" 
                 value={editTitle} 
                 onChange={(e) => setEditTitle(e.target.value)} 
                 className="w-full text-2xl font-bold p-6 border-b border-slate-200 focus:outline-none focus:bg-indigo-50 transition-all text-center"
-                placeholder="Konu / Hikaye Başlığı"
+                placeholder="Başlık Giriniz"
               />
               <div className="word-style-editor w-full">
                 <JoditEditor
@@ -206,12 +209,10 @@ export default function RichTextPage({ title, collectionName }) {
               </div>
             </div>
           ) : (
-            <div className="flex justify-center w-full">
-              <div id="pdf-content-area" className="shadow-2xl">
-                <div className="page-container">
-                    <h1 className="text-4xl font-black text-slate-900 border-b-4 border-indigo-600 pb-6 mb-10 text-center uppercase tracking-widest">{selectedItem.title}</h1>
-                    <div className="prose prose-slate prose-lg max-w-none text-slate-800 leading-relaxed" dangerouslySetInnerHTML={{ __html: selectedItem.content }}></div>
-                </div>
+            <div className="flex justify-center w-full pb-10">
+              <div id="pdf-render-content" className="pdf-page-view">
+                  <h1 className="text-4xl font-black text-slate-900 border-b-4 border-indigo-600 pb-6 mb-10 text-center uppercase tracking-widest">{selectedItem.title}</h1>
+                  <div className="prose prose-slate prose-lg max-w-none text-slate-800 leading-relaxed" dangerouslySetInnerHTML={{ __html: selectedItem.content }}></div>
               </div>
             </div>
           )}
@@ -231,7 +232,7 @@ export default function RichTextPage({ title, collectionName }) {
 
         {items.length === 0 ? (
           <div className="text-center text-slate-500 mt-10 bg-white p-12 rounded-3xl border-2 border-slate-200 border-dashed">
-            Henüz içerik yok. <strong className="text-indigo-600">+</strong> butonuna basarak başla.
+            Henüz içerik eklenmemiş. <strong className="text-indigo-600">+</strong> butonuna basarak yeni bir içerik oluşturabilirsiniz.
           </div>
         ) : (
           items.map((item, index) => (
