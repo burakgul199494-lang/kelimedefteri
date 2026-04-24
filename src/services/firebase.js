@@ -2,8 +2,9 @@ import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore, doc, setDoc } from "firebase/firestore"; 
 import { getMessaging, getToken } from "firebase/messaging"; 
+import { getStorage } from "firebase/storage"; // PDF'ler için eklendi
 
-// 1. SABİTLERİ EN ÜSTE ALIYORUZ (Hız Kazandırmak İçin)
+// 1. SABİTLERİ EN ÜSTE ALIYORUZ
 export const appId = "burak-ingilizce-pro";
 export const ADMIN_EMAILS = ["burakgul1994@outlook.com.tr"];
 
@@ -19,11 +20,12 @@ const firebaseConfig = {
 // Uygulamayı başlat
 const app = initializeApp(firebaseConfig);
 
-// 2. KRİTİK SERVİSLER (Önce bunlar yüklenmeli)
+// 2. KRİTİK SERVİSLER
 export const auth = getAuth(app);
 export const db = getFirestore(app);
+export const storage = getStorage(app); // PDF yüklemeleri için aktif edildi
 
-// 3. BİLDİRİM SERVİSİ (En sona koyduk, veritabanını yavaşlatmasın)
+// 3. BİLDİRİM SERVİSİ
 export const messaging = getMessaging(app);
 
 // --- BİLDİRİM İZNİ FONKSİYONU ---
