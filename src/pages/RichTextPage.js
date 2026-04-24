@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useData } from "../context/DataContext";
 import { db, appId } from "../services/firebase";
 import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, orderBy, serverTimestamp } from "firebase/firestore";
-import ReactQuill from "react-quill";
-import "react-quill/dist/quill.snow.css"; 
+import JoditEditor from "jodit-react";
 import { ArrowLeft, Edit, Save, Plus, Trash2, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -15,6 +14,8 @@ export default function RichTextPage({ title, collectionName }) {
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [editContent, setEditContent] = useState("");
+
+  const editor = useRef(null);
 
   const collectionRef = collection(db, "artifacts", appId, "users", user.uid, collectionName);
 
@@ -64,10 +65,21 @@ export default function RichTextPage({ title, collectionName }) {
     }
   };
 
+  // Jodit Editor Ayarları
+  const config = useMemo(() => ({
+    readonly: false,
+    height: 600,
+    language: 'tr',
+    placeholder: 'İçeriği buraya yazın veya yapıştırın...',
+    uploader: {
+      insertImageAsBase64URI: true // Cihazdan eklediğin resimler veritabanına doğrudan kodlanarak kaydedilir
+    }
+  }), []);
+
   if (selectedItem) {
     return (
       <div className="min-h-screen bg-slate-50 p-6 flex flex-col items-center">
-        <div className="w-full max-w-3xl bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+        <div className="w-full max-w-4xl bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
           <div className="flex justify-between items-center mb-6">
             <button onClick={() => { setSelectedItem(null); setIsEditing(false); }} className="p-2 bg-slate-100 rounded-xl hover:bg-slate-200">
               <ArrowLeft size={20} className="text-slate-600" />
@@ -93,17 +105,28 @@ export default function RichTextPage({ title, collectionName }) {
                 className="w-full text-2xl font-bold p-3 border border-slate-200 rounded-xl focus:outline-none focus:border-indigo-500"
                 placeholder="Başlık Girin"
               />
-              <ReactQuill 
-                theme="snow" 
-                value={editContent} 
-                onChange={setEditContent} 
-                className="bg-white rounded-xl h-96 mb-12"
-              />
+              <div className="bg-white rounded-xl mb-12">
+                 <JoditEditor
+                    ref={editor}
+                    value={editContent}
+                    config={config}
+                    tabIndex={1}
+                    onBlur={newContent => setEditContent(newContent)}
+                 />
+              </div>
             </div>
           ) : (
             <div className="space-y-6">
-              <h1 className="text-3xl font-extrabold text-slate-800">{selectedItem.title}</h1>
-              <div className="prose prose-indigo max-w-none text-slate-700" dangerouslySetInnerHTML={{ __html: selectedItem.content }}></div>
+              <h1 className="text-3xl font-extrabold text-slate-800 border-b pb-4">{selectedItem.title}</h1>
+              {/* Tablolar ve listeler okuma modunda mükemmel görünsün diye özel Tailwind Sınıfları eklendi */}
+              <div 
+                className="prose prose-indigo max-w-none text-slate-700 
+                           prose-table:w-full prose-table:border-collapse 
+                           prose-td:border prose-td:border-slate-300 prose-td:p-3
+                           prose-th:border prose-th:border-slate-300 prose-th:bg-slate-100 prose-th:p-3
+                           prose-img:rounded-xl" 
+                dangerouslySetInnerHTML={{ __html: selectedItem.content }}
+              ></div>
             </div>
           )}
         </div>
