@@ -16,7 +16,8 @@
     "react-cropper": "^2.3.3",
     "cropperjs": "^1.6.1",
     "react-virtuoso": "^4.7.0",
-    "jodit-react": "^4.1.2"
+    "jodit-react": "^4.1.2",
+    "html2pdf.js": "^0.10.1"
   },
   "devDependencies": {
     "typescript": "4.9.5"
