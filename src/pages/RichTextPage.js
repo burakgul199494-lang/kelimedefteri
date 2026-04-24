@@ -1,11 +1,29 @@
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useData } from "../context/DataContext";
 import { db, appId } from "../services/firebase";
 import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, orderBy, serverTimestamp } from "firebase/firestore";
-import JoditEditor from "jodit-react";
-import { ArrowLeft, Edit, Save, Plus, Trash2, X, Download } from "lucide-react";
+import ReactQuill, { Quill } from "react-quill";
+import "react-quill/dist/quill.snow.css"; 
+import { ArrowLeft, Edit, Save, Plus, Trash2, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import html2pdf from "html2pdf.js"; 
+
+// --- 1. ÖZEL SAYFA KESİCİ (PAGE BREAK) MODÜLÜ TANIYORUZ ---
+const BlockEmbed = Quill.import('blots/block/embed');
+class PageBreak extends BlockEmbed {
+  static create() {
+    const node = super.create();
+    node.setAttribute('class', 'page-break-line');
+    node.setAttribute('contenteditable', 'false');
+    // Düzenlerken görünecek ama PDF'de sayfa atlatacak CSS kodları:
+    node.setAttribute('style', 'page-break-after: always; border-top: 2px dashed #cbd5e1; margin: 40px 0; text-align: center; color: #94a3b8; font-size: 14px; padding-top: 8px; display: block; width: 100%; font-weight: bold;');
+    node.innerText = "✂️ --- YENİ SAYFA BAŞLANGICI --- ✂️";
+    return node;
+  }
+}
+PageBreak.blotName = 'pageBreak';
+PageBreak.tagName = 'div';
+Quill.register(PageBreak);
+// -----------------------------------------------------------
 
 export default function RichTextPage({ title, collectionName }) {
   const { user } = useData();
@@ -16,7 +34,6 @@ export default function RichTextPage({ title, collectionName }) {
   const [editTitle, setEditTitle] = useState("");
   const [editContent, setEditContent] = useState("");
 
-  const editor = useRef(null);
   const collectionRef = collection(db, "artifacts", appId, "users", user.uid, collectionName);
 
   useEffect(() => {
@@ -65,59 +82,91 @@ export default function RichTextPage({ title, collectionName }) {
     }
   };
 
-  // PDF İndirme Fonksiyonu
-  const handleDownloadPDF = () => {
-    const element = document.getElementById("pdf-content");
-    const opt = {
-      margin:       15,
-      filename:     `${selectedItem.title}.pdf`,
-      image:        { type: 'jpeg', quality: 0.98 },
-      html2canvas:  { scale: 2, useCORS: true },
-      jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
-    };
-    html2pdf().set(opt).from(element).save();
-  };
-
-  const config = useMemo(() => ({
-    readonly: false,
-    height: 600,
-    language: 'tr',
-    placeholder: 'İçeriği buraya yazın veya yapıştırın...',
-    uploader: {
-      insertImageAsBase64URI: true 
+  // --- 2. EDİTÖR ARAÇ ÇUBUĞU (TOOLBAR) AYARLARI ---
+  const modules = useMemo(() => ({
+    toolbar: {
+      container: [
+        [{ 'header': [1, 2, 3, false] }],
+        ['bold', 'italic', 'underline', 'strike'],
+        [{ 'color': [] }, { 'background': [] }], // Renk seçeneklerini de ekledim
+        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+        ['link', 'image'],
+        ['pageBreak'], // YENİ SAYFA BÖLME BUTONUMUZ
+        ['clean']
+      ],
+      handlers: {
+        pageBreak: function() {
+          const range = this.quill.getSelection(true);
+          this.quill.insertEmbed(range.index, 'pageBreak', true, Quill.sources.USER);
+          // Alt satırdan yazmaya devam edebilmen için bir boşluk bırakır:
+          this.quill.insertText(range.index + 1, '\n', Quill.sources.USER);
+          this.quill.setSelection(range.index + 2, Quill.sources.SILENT);
+        }
+      }
     }
   }), []);
 
+  // --- GÖRÜNTÜLEME VE DÜZENLEME EKRANI ---
   if (selectedItem) {
     return (
       <div className="min-h-screen bg-slate-50 p-6 flex flex-col items-center">
         
-        <style>{`
-          .jodit-wysiwyg ul { list-style-type: disc !important; margin-left: 1.5rem !important; }
-          .jodit-wysiwyg ol { list-style-type: decimal !important; margin-left: 1.5rem !important; }
-        `}</style>
+        {/* YENİ BUTON VE PDF ÇIKTISI İÇİN GİZLİ CSS STİLLERİ */}
+        <style>
+          {`
+            .ql-pageBreak:after {
+              content: '📄 Sayfa Böl';
+              font-size: 13px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              width: 90px !important;
+              color: #4f46e5;
+              font-weight: bold;
+            }
+            .ql-toolbar .ql-pageBreak {
+              width: auto !important;
+              padding: 0 5px;
+              border: 1px solid #e2e8f0;
+              border-radius: 6px;
+              margin-left: 10px;
+            }
+            .ql-toolbar .ql-pageBreak:hover {
+              background-color: #e0e7ff;
+            }
+            .quill-editor-container .ql-editor {
+              min-height: 400px;
+              font-size: 16px;
+            }
+            /* PDF ÇIKTISI VEYA YAZDIRMA ESNASINDA ÇALIŞACAK KOD */
+            @media print {
+              .page-break-line {
+                page-break-after: always !important; /* SAYFAYI BURADAN KES */
+                break-after: page !important;
+                border: none !important;
+                color: transparent !important; /* YAZIYI GİZLE */
+                margin: 0 !important;
+                padding: 0 !important;
+                height: 0 !important;
+                overflow: hidden !important;
+              }
+            }
+          `}
+        </style>
 
-        <div className="w-full max-w-4xl bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-          
+        <div className="w-full max-w-3xl bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
           <div className="flex justify-between items-center mb-6">
-            <button onClick={() => { setSelectedItem(null); setIsEditing(false); }} className="p-2 bg-slate-100 rounded-xl hover:bg-slate-200">
+            <button onClick={() => { setSelectedItem(null); setIsEditing(false); }} className="p-2 bg-slate-100 rounded-xl hover:bg-slate-200 transition-colors">
               <ArrowLeft size={20} className="text-slate-600" />
             </button>
             <div className="flex gap-2">
               {isEditing ? (
                 <>
-                  <button onClick={() => setIsEditing(false)} className="p-2 bg-red-100 text-red-600 rounded-xl hover:bg-red-200"><X size={20}/></button>
-                  <button onClick={handleSave} className="p-2 bg-emerald-100 text-emerald-600 rounded-xl hover:bg-emerald-200 flex items-center gap-2 font-bold px-4"><Save size={20}/> Kaydet</button>
+                  <button onClick={() => setIsEditing(false)} className="p-2 bg-red-100 text-red-600 rounded-xl hover:bg-red-200 transition-colors"><X size={20}/></button>
+                  <button onClick={handleSave} className="p-2 bg-emerald-100 text-emerald-600 rounded-xl hover:bg-emerald-200 flex items-center gap-2 font-bold px-4 transition-colors"><Save size={20}/> Kaydet</button>
                 </>
               ) : (
-                <>
-                  <button onClick={handleDownloadPDF} className="p-2 bg-rose-100 text-rose-600 rounded-xl hover:bg-rose-200 flex items-center gap-2 font-bold px-4">
-                    <Download size={20}/> PDF İndir
-                  </button>
-                  <button onClick={() => { setEditTitle(selectedItem.title); setEditContent(selectedItem.content); setIsEditing(true); }} className="p-2 bg-indigo-100 text-indigo-600 rounded-xl hover:bg-indigo-200 flex items-center gap-2 font-bold px-4">
-                    <Edit size={20}/> Düzenle
-                  </button>
-                </>
+                <button onClick={() => { setEditTitle(selectedItem.title); setEditContent(selectedItem.content); setIsEditing(true); }} className="p-2 bg-indigo-100 text-indigo-600 rounded-xl hover:bg-indigo-200 flex items-center gap-2 font-bold px-4 transition-colors"><Edit size={20}/> Düzenle</button>
               )}
             </div>
           </div>
@@ -131,29 +180,19 @@ export default function RichTextPage({ title, collectionName }) {
                 className="w-full text-2xl font-bold p-3 border border-slate-200 rounded-xl focus:outline-none focus:border-indigo-500"
                 placeholder="Başlık Girin"
               />
-              <div className="bg-white rounded-xl mb-12">
-                 <JoditEditor
-                    ref={editor}
-                    value={editContent}
-                    config={config}
-                    tabIndex={1}
-                    onBlur={newContent => setEditContent(newContent)}
-                 />
+              <div className="quill-editor-container bg-white rounded-xl mb-12">
+                <ReactQuill 
+                  theme="snow" 
+                  value={editContent} 
+                  onChange={setEditContent} 
+                  modules={modules} // YENİ MENÜYÜ BAĞLADIK
+                />
               </div>
             </div>
           ) : (
-            <div id="pdf-content" className="space-y-6 bg-white p-2">
+            <div className="space-y-6">
               <h1 className="text-3xl font-extrabold text-slate-800 border-b pb-4">{selectedItem.title}</h1>
-              {/* 🔥 BOŞLUK DARALTMA (MARGIN) SINIFLARI EKLENDİ (prose-p:my-1, vb.) */}
-              <div 
-                className="prose prose-indigo max-w-none text-slate-800 leading-snug
-                           prose-p:my-1 prose-headings:my-3 prose-ul:my-1 prose-li:my-0
-                           prose-table:w-full prose-table:border-collapse prose-table:my-2
-                           prose-td:border prose-td:border-slate-300 prose-td:p-2
-                           prose-th:border prose-th:border-slate-300 prose-th:bg-slate-100 prose-th:p-2
-                           prose-img:rounded-xl prose-img:my-2" 
-                dangerouslySetInnerHTML={{ __html: selectedItem.content }}
-              ></div>
+              <div className="prose prose-indigo max-w-none text-slate-700" dangerouslySetInnerHTML={{ __html: selectedItem.content }}></div>
             </div>
           )}
         </div>
@@ -161,9 +200,10 @@ export default function RichTextPage({ title, collectionName }) {
     );
   }
 
+  // --- LİSTELEME EKRANI ---
   return (
     <div className="min-h-screen bg-slate-50 p-6 flex flex-col items-center">
-      <div className="w-full max-w-md space-y-4">
+      <div className="w-full max-w-3xl space-y-4">
         <div className="flex justify-between items-center mb-6">
           <button onClick={() => navigate("/")} className="p-2 bg-white rounded-xl shadow-sm border border-slate-200 hover:text-indigo-600"><ArrowLeft size={20} /></button>
           <h1 className="text-2xl font-extrabold text-slate-800">{title}</h1>
@@ -171,15 +211,17 @@ export default function RichTextPage({ title, collectionName }) {
         </div>
 
         {items.length === 0 ? (
-          <div className="text-center text-slate-500 mt-10">Henüz içerik eklenmemiş. Sağ üstten + butonuna basarak ilk içeriğini oluştur.</div>
+          <div className="text-center text-slate-500 mt-10 bg-white p-8 rounded-2xl border border-slate-200 border-dashed">
+            Henüz içerik eklenmemiş. Sağ üstten <strong className="text-indigo-600">+</strong> butonuna basarak ilk içeriğini oluştur.
+          </div>
         ) : (
           items.map((item, index) => (
-            <div key={item.id} className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex justify-between items-center group cursor-pointer hover:border-indigo-300 transition-colors">
+            <div key={item.id} className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex justify-between items-center group cursor-pointer hover:border-indigo-300 hover:shadow-md transition-all">
               <div className="flex-1" onClick={() => setSelectedItem(item)}>
-                <span className="text-indigo-600 font-bold mr-3">{index + 1}.</span>
+                <span className="text-indigo-600 font-bold mr-3 bg-indigo-50 px-3 py-1 rounded-lg">{index + 1}</span>
                 <span className="font-semibold text-slate-800 text-lg">{item.title}</span>
               </div>
-              <button onClick={() => handleDelete(item.id)} className="p-2 text-slate-300 hover:text-red-500 transition-colors"><Trash2 size={18}/></button>
+              <button onClick={() => handleDelete(item.id)} className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"><Trash2 size={18}/></button>
             </div>
           ))
         )}
