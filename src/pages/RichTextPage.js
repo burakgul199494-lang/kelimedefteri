@@ -3,8 +3,9 @@ import { useData } from "../context/DataContext";
 import { db, appId } from "../services/firebase";
 import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, orderBy, serverTimestamp } from "firebase/firestore";
 import JoditEditor from "jodit-react";
-import { ArrowLeft, Edit, Save, Plus, Trash2, X } from "lucide-react";
+import { ArrowLeft, Edit, Save, Plus, Trash2, X, Download } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import html2pdf from "html2pdf.js"; // 🔥 PDF Kütüphanesi Eklendi
 
 export default function RichTextPage({ title, collectionName }) {
   const { user } = useData();
@@ -16,7 +17,6 @@ export default function RichTextPage({ title, collectionName }) {
   const [editContent, setEditContent] = useState("");
 
   const editor = useRef(null);
-
   const collectionRef = collection(db, "artifacts", appId, "users", user.uid, collectionName);
 
   useEffect(() => {
@@ -65,21 +65,41 @@ export default function RichTextPage({ title, collectionName }) {
     }
   };
 
-  // Jodit Editor Ayarları
+  // 🔥 PDF İndirme Fonksiyonu
+  const handleDownloadPDF = () => {
+    const element = document.getElementById("pdf-content");
+    const opt = {
+      margin:       15,
+      filename:     `${selectedItem.title}.pdf`,
+      image:        { type: 'jpeg', quality: 0.98 },
+      html2canvas:  { scale: 2, useCORS: true },
+      jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+    html2pdf().set(opt).from(element).save();
+  };
+
   const config = useMemo(() => ({
     readonly: false,
     height: 600,
     language: 'tr',
     placeholder: 'İçeriği buraya yazın veya yapıştırın...',
     uploader: {
-      insertImageAsBase64URI: true // Cihazdan eklediğin resimler veritabanına doğrudan kodlanarak kaydedilir
+      insertImageAsBase64URI: true 
     }
   }), []);
 
   if (selectedItem) {
     return (
       <div className="min-h-screen bg-slate-50 p-6 flex flex-col items-center">
+        
+        {/* 🔥 Tailwind Madde İşareti (List) Bug'ını Çözen Stil */}
+        <style>{`
+          .jodit-wysiwyg ul { list-style-type: disc !important; margin-left: 1.5rem !important; }
+          .jodit-wysiwyg ol { list-style-type: decimal !important; margin-left: 1.5rem !important; }
+        `}</style>
+
         <div className="w-full max-w-4xl bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+          
           <div className="flex justify-between items-center mb-6">
             <button onClick={() => { setSelectedItem(null); setIsEditing(false); }} className="p-2 bg-slate-100 rounded-xl hover:bg-slate-200">
               <ArrowLeft size={20} className="text-slate-600" />
@@ -91,7 +111,15 @@ export default function RichTextPage({ title, collectionName }) {
                   <button onClick={handleSave} className="p-2 bg-emerald-100 text-emerald-600 rounded-xl hover:bg-emerald-200 flex items-center gap-2 font-bold px-4"><Save size={20}/> Kaydet</button>
                 </>
               ) : (
-                <button onClick={() => { setEditTitle(selectedItem.title); setEditContent(selectedItem.content); setIsEditing(true); }} className="p-2 bg-indigo-100 text-indigo-600 rounded-xl hover:bg-indigo-200 flex items-center gap-2 font-bold px-4"><Edit size={20}/> Düzenle</button>
+                <>
+                  {/* 🔥 PDF İndir Butonu */}
+                  <button onClick={handleDownloadPDF} className="p-2 bg-rose-100 text-rose-600 rounded-xl hover:bg-rose-200 flex items-center gap-2 font-bold px-4">
+                    <Download size={20}/> PDF İndir
+                  </button>
+                  <button onClick={() => { setEditTitle(selectedItem.title); setEditContent(selectedItem.content); setIsEditing(true); }} className="p-2 bg-indigo-100 text-indigo-600 rounded-xl hover:bg-indigo-200 flex items-center gap-2 font-bold px-4">
+                    <Edit size={20}/> Düzenle
+                  </button>
+                </>
               )}
             </div>
           </div>
@@ -116,9 +144,9 @@ export default function RichTextPage({ title, collectionName }) {
               </div>
             </div>
           ) : (
-            <div className="space-y-6">
+            // 🔥 PDF'e Çevrilecek Alanı ID ile Sarıyoruz
+            <div id="pdf-content" className="space-y-6 bg-white p-2">
               <h1 className="text-3xl font-extrabold text-slate-800 border-b pb-4">{selectedItem.title}</h1>
-              {/* Tablolar ve listeler okuma modunda mükemmel görünsün diye özel Tailwind Sınıfları eklendi */}
               <div 
                 className="prose prose-indigo max-w-none text-slate-700 
                            prose-table:w-full prose-table:border-collapse 
