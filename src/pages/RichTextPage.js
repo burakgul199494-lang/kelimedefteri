@@ -69,7 +69,7 @@ export default function RichTextPage({ title, collectionName }) {
   const handleDownloadPDF = () => {
     const element = document.getElementById('pdf-content-area');
     const opt = {
-      margin:       [15, 15, 15, 15], // Kenar boşlukları
+      margin:       [20, 20, 20, 20], // Görseldeki ile uyumlu kenar boşlukları
       filename:     `${selectedItem.title}.pdf`,
       image:        { type: 'jpeg', quality: 0.98 },
       html2canvas:  { scale: 2, useCORS: true },
@@ -78,41 +78,58 @@ export default function RichTextPage({ title, collectionName }) {
     html2pdf().set(opt).from(element).save();
   };
 
-  // --- BİREBİR WORD (JODIT) MENÜSÜ VE SAYFA BÖLME AYARLARI ---
+  // --- JODIT AYARLARI ---
   const config = useMemo(() => ({
     readonly: false,
     placeholder: 'Notlarınızı buraya yazın...',
-    height: 700,
+    height: "auto", // Editörün içeriğe göre sonsuz uzamasını sağlar (Kendi scrollunu iptal eder)
     language: 'tr',
-    toolbarSticky: false,
+    toolbarSticky: true,
     buttons: [
       'bold', 'italic', 'underline', 'strikethrough', '|',
       'font', 'fontsize', 'brush', 'paragraph', '|',
       'align', 'ul', 'ol', 'outdent', 'indent', '|',
-      'table', 'image', 'link', 'hr', '|', // Tablo eklentisi burada
-      'undo', 'redo', 'fullsize', '|',
-      'pageBreak' // Özel Butonumuz
+      'table', 'image', 'link', 'hr', '|',
+      'undo', 'redo', 'fullsize'
     ],
-    controls: {
-      pageBreak: {
-        name: 'pageBreak',
-        text: '📄 Sayfa Böl',
-        tooltip: 'PDF alırken sayfayı buradan keser',
-        exec: (editor) => {
-          // ÖNEMLİ: html2pdf__page-break sınıfı, kütüphanenin burayı sayfa sonu olarak algılamasını sağlar.
-          // data-html2canvas-ignore="true" ise "Bu kesik çizgiyi PDF'e çizerken gizle" demektir.
-          const html = `<div class="html2pdf__page-break" style="page-break-after: always; border-top: 2px dashed #4f46e5; margin: 40px 0; padding-top: 10px; text-align: center; color: #4f46e5; font-weight: bold; font-family: sans-serif;" contenteditable="false" data-html2canvas-ignore="true">✂️ --- YENİ SAYFA BAŞLANGICI --- ✂️</div><p><br></p>`;
-          editor.s.insertHTML(html);
-        }
-      }
-    }
   }), []);
 
   // --- GÖRÜNTÜLEME VE DÜZENLEME EKRANI ---
   if (selectedItem) {
     return (
       <div className="min-h-screen bg-slate-100 p-6 flex flex-col items-center">
-        <div className="w-full max-w-4xl">
+        
+        {/* 🔥 OTOMATİK A4 SAYFA GÖRÜNÜMÜ İÇİN CSS HİLESİ 🔥 */}
+        <style>
+          {`
+            /* Editörün dış çalışma alanını gri yap */
+            .word-style-editor .jodit-workplace {
+              background-color: #cbd5e1 !important; 
+              padding: 20px 0 !important;
+              height: auto !important;
+            }
+
+            /* Asıl yazı yazılan alanı gerçek A4 boyutlarında beyaz kağıtlara böl */
+            .word-style-editor .jodit-wysiwyg {
+              background-color: transparent !important;
+              background-image: repeating-linear-gradient(
+                to bottom,
+                white 0,
+                white 297mm,             /* A4 Yüksekliği (Tam burada 1. sayfa biter) */
+                #94a3b8 297mm,           /* Koyu gri sayfa arası boşluk başlar */
+                #94a3b8 calc(297mm + 15px) /* 15px'lik sayfa geçiş boşluğu */
+              ) !important;
+              width: 210mm !important;    /* A4 Genişliği */
+              min-height: 297mm !important;
+              margin: 0 auto !important;  /* Kağıdı ortala */
+              padding: 20mm !important;   /* Word kenar boşlukları */
+              box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2) !important;
+              box-sizing: border-box !important;
+            }
+          `}
+        </style>
+
+        <div className="w-full max-w-5xl">
           
           {/* ÜST BAR */}
           <div className="flex justify-between items-center mb-4 bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
@@ -136,29 +153,30 @@ export default function RichTextPage({ title, collectionName }) {
 
           {/* İÇERİK ALANI */}
           {isEditing ? (
-            <div className="space-y-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
               <input 
                 type="text" 
                 value={editTitle} 
                 onChange={(e) => setEditTitle(e.target.value)} 
-                className="w-full text-2xl font-bold p-3 border-b-2 border-slate-100 focus:outline-none focus:border-indigo-500 transition-colors"
+                className="w-full text-2xl font-bold p-6 border-b border-slate-200 focus:outline-none focus:bg-indigo-50 transition-colors"
                 placeholder="Konu veya Hikaye Başlığı"
               />
-              <div className="w-full text-black">
+              <div className="word-style-editor w-full text-black">
                 <JoditEditor
                   ref={editorRef}
                   value={editContent}
                   config={config}
-                  onBlur={newContent => setEditContent(newContent)} // Performans için onBlur kullanıldı
+                  onBlur={newContent => setEditContent(newContent)}
                 />
               </div>
             </div>
           ) : (
-            // PDF'in okunacağı (ve indirileceği) alan
-            <div id="pdf-content-area" className="bg-white p-10 rounded-2xl shadow-sm border border-slate-200 min-h-[29.7cm]">
-              <h1 className="text-3xl font-extrabold text-slate-800 border-b-2 border-slate-100 pb-4 mb-8 text-center">{selectedItem.title}</h1>
-              {/* Jodit'ten gelen HTML içeriğini render ediyoruz */}
-              <div className="prose prose-indigo max-w-none text-slate-800" dangerouslySetInnerHTML={{ __html: selectedItem.content }}></div>
+            // OKUMA VE PDF ÇIKTI ALANI
+            <div className="flex justify-center bg-slate-200 p-8 rounded-2xl">
+              <div id="pdf-content-area" className="bg-white p-[20mm] w-[210mm] min-h-[297mm] shadow-md box-border">
+                <h1 className="text-3xl font-extrabold text-slate-800 border-b-2 border-slate-100 pb-4 mb-8 text-center">{selectedItem.title}</h1>
+                <div className="prose prose-indigo max-w-none text-slate-800" dangerouslySetInnerHTML={{ __html: selectedItem.content }}></div>
+              </div>
             </div>
           )}
         </div>
