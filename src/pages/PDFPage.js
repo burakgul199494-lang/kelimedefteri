@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { useData } from "../context/DataContext";
-import { db, storage, appId, ADMIN_EMAILS } from "../services/firebase";
+import { db, appId, ADMIN_EMAILS } from "../services/firebase";
 import { 
   collection, addDoc, getDocs, doc, deleteDoc, 
   query, orderBy, setDoc, serverTimestamp, where 
 } from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
-import { ArrowLeft, Plus, Trash2, FileText, CheckCircle, ExternalLink, Loader2 } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, FileText, CheckCircle, ExternalLink } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 export default function PDFPage({ title, type }) {
@@ -14,9 +13,8 @@ export default function PDFPage({ title, type }) {
   const navigate = useNavigate();
   const [pdfs, setPdfs] = useState([]);
   const [userStatus, setUserStatus] = useState({});
-  const [uploading, setUploading] = useState(false);
-  const [file, setFile] = useState(null);
   const [pdfTitle, setPdfTitle] = useState("");
+  const [pdfUrl, setPdfUrl] = useState(""); // Artık dosya değil, link tutuyoruz
 
   const isAdmin = user && ADMIN_EMAILS.includes(user.email);
   const pdfsRef = collection(db, "artifacts", appId, "shared_pdfs");
@@ -45,31 +43,29 @@ export default function PDFPage({ title, type }) {
 
   const handleUpload = async (e) => {
     e.preventDefault();
-    if (!file || !pdfTitle) return alert("Başlık ve dosya seçilmedi!");
+    if (!pdfUrl || !pdfTitle) return alert("Lütfen başlık ve Google Drive linkini girin!");
     
-    setUploading(true);
-    try {
-      const storagePath = `${appId}/pdfs/${type}/${Date.now()}_${file.name}`;
-      const storageRef = ref(storage, storagePath);
-      const uploadResult = await uploadBytes(storageRef, file);
-      const url = await getDownloadURL(uploadResult.ref);
+    // Girilen linkin başına http eklenmemişse otomatik ekle
+    let finalUrl = pdfUrl;
+    if (!finalUrl.startsWith('http://') && !finalUrl.startsWith('https://')) {
+        finalUrl = 'https://' + finalUrl;
+    }
 
+    try {
       await addDoc(pdfsRef, {
         title: pdfTitle,
-        url: url,
-        storagePath: storagePath,
+        url: finalUrl,
         type: type,
         createdAt: serverTimestamp()
       });
 
-      setFile(null);
+      setPdfUrl("");
       setPdfTitle("");
       fetchPdfs();
-      alert("PDF yüklendi! 🎉");
+      alert("PDF Linki sisteme başarıyla eklendi! 🎉");
     } catch (err) {
       alert("Hata: " + err.message);
     }
-    setUploading(false);
   };
 
   const toggleReviewed = async (pdfId) => {
@@ -80,10 +76,9 @@ export default function PDFPage({ title, type }) {
   };
 
   const handleDelete = async (pdf) => {
-    if (!window.confirm("Bu PDF silinsin mi?")) return;
+    if (!window.confirm("Bu içeriği silmek istiyor musunuz?")) return;
     try {
       await deleteDoc(doc(db, "artifacts", appId, "shared_pdfs", pdf.id));
-      await deleteObject(ref(storage, pdf.storagePath));
       fetchPdfs();
     } catch (err) {
       alert("Silme hatası!");
@@ -103,33 +98,50 @@ export default function PDFPage({ title, type }) {
 
         {isAdmin && (
           <form onSubmit={handleUpload} className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 mb-8 space-y-4">
-            <h2 className="font-bold text-indigo-600 flex items-center gap-2 underline">PDF Yükle (Sadece Admin)</h2>
-            <input type="text" placeholder="Konu Başlığı" value={pdfTitle} onChange={(e) => setPdfTitle(e.target.value)} className="w-full p-3 bg-slate-50 border rounded-xl" />
-            <input type="file" accept=".pdf" onChange={(e) => setFile(e.target.files[0])} className="w-full text-sm" />
-            <button disabled={uploading} className="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl shadow-lg">
-              {uploading ? <Loader2 className="animate-spin inline mr-2"/> : "PDF Yükle"}
+            <h2 className="font-bold text-indigo-600 flex items-center gap-2 underline">PDF Ekle (Sadece Admin)</h2>
+            <input 
+              type="text" 
+              placeholder="Konu Başlığı (Örn: Present Continuous Tense)" 
+              value={pdfTitle} 
+              onChange={(e) => setPdfTitle(e.target.value)} 
+              className="w-full p-3 bg-slate-50 border rounded-xl focus:outline-none focus:border-indigo-500" 
+            />
+            <input 
+              type="url" 
+              placeholder="Google Drive PDF Linkini Buraya Yapıştırın" 
+              value={pdfUrl} 
+              onChange={(e) => setPdfUrl(e.target.value)} 
+              className="w-full p-3 bg-slate-50 border rounded-xl focus:outline-none focus:border-indigo-500" 
+            />
+            <button className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl shadow-lg transition-colors">
+              Sisteme Kaydet
             </button>
           </form>
         )}
 
         <div className="space-y-4">
           {pdfs.map(pdf => (
-            <div key={pdf.id} className="bg-white p-4 rounded-2xl shadow-sm border flex items-center justify-between">
-              <div className="flex items-center gap-4">
+            <div key={pdf.id} className="bg-white p-4 rounded-2xl shadow-sm border flex items-center justify-between transition-all hover:border-indigo-300">
+              <div className="flex items-center gap-4 flex-1">
                 <FileText className={userStatus[pdf.id] ? "text-emerald-500" : "text-slate-400"} size={24}/>
                 <div>
                   <h3 className="font-bold text-slate-800">{pdf.title}</h3>
-                  <a href={pdf.url} target="_blank" rel="noreferrer" className="text-indigo-600 text-sm flex items-center gap-1">Aç <ExternalLink size={14}/></a>
+                  <a href={pdf.url} target="_blank" rel="noreferrer" className="text-indigo-600 text-sm font-semibold flex items-center gap-1 mt-1 hover:underline">
+                    PDF'i Aç <ExternalLink size={14}/>
+                  </a>
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <button onClick={() => toggleReviewed(pdf.id)} className={`px-4 py-2 rounded-xl font-bold flex items-center gap-2 ${userStatus[pdf.id] ? "bg-emerald-500 text-white" : "bg-slate-100 text-slate-400"}`}>
-                  <CheckCircle size={18}/> {userStatus[pdf.id] ? "İnceledim" : "İncele"}
+                <button onClick={() => toggleReviewed(pdf.id)} className={`px-4 py-2 rounded-xl font-bold flex items-center gap-2 transition-all active:scale-95 ${userStatus[pdf.id] ? "bg-emerald-500 text-white shadow-md" : "bg-slate-100 text-slate-400"}`}>
+                  <CheckCircle size={18}/> <span className="hidden sm:inline">{userStatus[pdf.id] ? "İnceledim" : "İncele"}</span>
                 </button>
-                {isAdmin && <button onClick={() => handleDelete(pdf)} className="text-slate-300 hover:text-red-500"><Trash2 size={20}/></button>}
+                {isAdmin && <button onClick={() => handleDelete(pdf)} className="p-2 text-slate-300 hover:text-red-500"><Trash2 size={20}/></button>}
               </div>
             </div>
           ))}
+          {pdfs.length === 0 && (
+            <div className="text-center py-12 text-slate-400 font-medium">Henüz bir içerik eklenmemiş.</div>
+          )}
         </div>
       </div>
     </div>
