@@ -39,14 +39,13 @@ export default function Notebook() {
   const [zoomFactor, setZoomFactor] = useState(1); 
   
   const contentRef = useRef("");
-  const titleRef = useRef useRef("");
+  const titleRef = useRef(""); // HATA BURADAYDI, DÜZELTİLDİ
   const activeNoteRef = useRef(null);
   const saveTimeoutRef = useRef(null);
 
   const globalNotesRef = collection(db, "artifacts", appId, "global_grammar_notes");
   const trackingRef = collection(db, "artifacts", appId, "users", user?.uid || "default", "grammar_tracking");
 
-  // YENİ: Önizleme modunda mı gösterilecek? (Mobildeysen VEYA Admin değilsen editör yerine PDF görünümü açılır)
   const showPreviewMode = !isAdmin || isMobile;
 
   useEffect(() => {
@@ -54,7 +53,6 @@ export default function Notebook() {
       const mobile = window.innerWidth < 768;
       setIsMobile(mobile);
       
-      // Ekran genişliği A4'ten küçükse otomatik küçültme (Zoom Out) hesaplar
       if (window.innerWidth < 850) {
         setZoomFactor((window.innerWidth - 32) / 794);
       } else {
@@ -121,7 +119,6 @@ export default function Notebook() {
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
   };
 
-  // --- 20 SANİYE EMNİYET KİLİDİ VE KİŞİSEL TEKRAR SAYACI ---
   useEffect(() => {
     let timer;
     if (activeNote && activeNote.isCompleted) {
@@ -196,7 +193,6 @@ export default function Notebook() {
   };
 
   const handleEditorChange = useRef((newContent) => {
-    // Mobilde veya Öğrenci ise kaydetme işlemi tamamen devre dışı kalır
     if (!activeNoteRef.current || showPreviewMode) return; 
     
     contentRef.current = newContent;
@@ -277,8 +273,6 @@ export default function Notebook() {
   };
 
   const MemoizedQuill = useMemo(() => {
-    // SADECE Admin ve Masaüstü ekranında isek Quill Editörü yüklenir. 
-    // Diğer tüm durumlarda hafif ve hızlı PDF Önizleme ekranı gösterilecektir.
     if (!activeNote || showPreviewMode) return null;
     
     return (
@@ -406,7 +400,6 @@ export default function Notebook() {
                       {activeNote.title || "İsimsiz Sayfa"}
                     </h1>
                     
-                    {/* ql-editor sınıfı, React Quill'in liste ve boşluk CSS kurallarını buraya da uygulamasını sağlar */}
                     <div 
                       className="ql-editor" 
                       style={{ padding: 0, overflowY: 'visible', height: 'auto', fontSize: '18px', lineHeight: '1.7' }}
@@ -543,25 +536,6 @@ export default function Notebook() {
           border-top-right-radius: 1rem;
           border-bottom: 1px solid #e2e8f0;
           box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-        }
-
-        /* Taşkınlık Engelleme */
-        .ql-editor {
-          word-wrap: break-word !important;
-          overflow-wrap: break-word !important;
-          word-break: break-word !important; 
-        }
-        
-        .ql-editor img {
-          max-width: 100% !important;
-          height: auto !important;
-        }
-
-        .ql-editor pre {
-          white-space: pre-wrap !important;
-          word-wrap: break-word !important;
-          overflow-x: auto !important;
-          max-width: 100% !important;
         }
       `}</style>
     </div>
