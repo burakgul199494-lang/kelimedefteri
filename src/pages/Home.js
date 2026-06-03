@@ -18,9 +18,9 @@ import {
   Calendar,
   Target,
   AlertTriangle,
-  BookOpen,
-  Library
+  BookOpen
 } from "lucide-react"; 
+
 import ProfileModal from "../components/ProfileModal"; 
 import LeaderboardModal from "../components/LeaderboardModal";
 import StatisticsModal from "../components/StatisticsModal";
@@ -157,19 +157,19 @@ export default function Home() {
            </div>
         </div>
 
-        // Home.js içindeki grid yapısını şu şekilde değiştirin:
-<div className="grid grid-cols-1 gap-3">
-    <button
-       onClick={() => navigate("/grammar-notes")}
-       className="bg-indigo-50 border border-indigo-100 p-4 rounded-2xl shadow-sm flex flex-col items-center gap-2 active:scale-95 transition-transform"
-    >
-        <div className="bg-indigo-100 p-3 rounded-full text-indigo-600"><BookOpen className="w-6 h-6"/></div>
-        <span className="font-bold text-slate-700 text-sm">Grammer Defterim</span>
-    </button>
-</div>
+        {/* --- DEFTER BÖLÜMÜ --- */}
+        <div className="grid grid-cols-1 gap-3">
+            <button
+               onClick={() => navigate("/grammar-notes")}
+               className="bg-indigo-50 border border-indigo-100 p-4 rounded-2xl shadow-sm flex flex-col items-center gap-2 active:scale-95 transition-transform"
+            >
+                <div className="bg-indigo-100 p-3 rounded-full text-indigo-600"><BookOpen className="w-6 h-6"/></div>
+                <span className="font-bold text-slate-700 text-sm">Grammer Defterim</span>
+            </button>
+        </div>
 
         {/* --- OYUN VE DİĞER BUTONLAR --- */}
-        <div className="space-y-3 pb-8">
+        <div className="space-y-3 pb-8 mt-3">
           {isAdmin && (
             <button onClick={() => navigate("/admin")} className="w-full bg-slate-800 text-white font-bold py-3 px-6 rounded-xl shadow-md flex items-center justify-center gap-3">
                 <Shield className="w-5 h-5 text-yellow-400"/> Admin Paneli
