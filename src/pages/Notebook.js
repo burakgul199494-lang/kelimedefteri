@@ -2,10 +2,11 @@ import React, { useState, useEffect } from "react";
 import { useData } from "../context/DataContext";
 import { db, appId } from "../services/firebase";
 import { collection, addDoc, getDocs, doc, deleteDoc, updateDoc, serverTimestamp, query, orderBy } from "firebase/firestore";
-import { ArrowLeft, Plus, Trash2, Save, Book, FileText } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Save, Book, FileText, Download } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import ReactQuill from "react-quill";
-import "react-quill/dist/quill.snow.css"; // Editörün stilleri
+import html2pdf from "html2pdf.js";
+import "react-quill/dist/quill.snow.css"; 
 
 export default function Notebook() {
   const { user } = useData();
@@ -18,7 +19,6 @@ export default function Notebook() {
 
   const notesRef = collection(db, "artifacts", appId, "users", user?.uid || "default", "grammar_notes");
 
-  // React Quill için Word benzeri ayarlar (Tablo, Madde İşaretleri, Renkler vb.)
   const modules = {
     toolbar: [
       [{ header: [1, 2, 3, false] }],
@@ -71,7 +71,6 @@ export default function Notebook() {
       updatedAt: serverTimestamp()
     });
     
-    // Sol menüdeki listeyi güncelle
     setNotes(notes.map(n => n.id === activeNote.id ? { ...n, title, content } : n));
     setIsSaving(false);
   };
@@ -88,6 +87,34 @@ export default function Notebook() {
     }
   };
 
+  // --- PDF İNDİRME FONKSİYONU ---
+  const handleDownloadPDF = () => {
+    if (!content) return;
+    
+    // Editör araç çubuklarını PDF'e basmamak için geçici bir HTML alanı oluşturuyoruz
+    const printContent = document.createElement("div");
+    printContent.innerHTML = `
+      <div style="font-family: Arial, sans-serif; padding: 20px; color: #1e293b;">
+        <h1 style="border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 20px;">
+          ${title || "İsimsiz Sayfa"}
+        </h1>
+        <div style="line-height: 1.6; font-size: 16px;">
+          ${content}
+        </div>
+      </div>
+    `;
+
+    const opt = {
+      margin:       [15, 15, 15, 15], // Sayfa kenar boşlukları (mm)
+      filename:     `${title ? title.replace(/\s+/g, '_') : 'Defter_Notu'}.pdf`,
+      image:        { type: 'jpeg', quality: 0.98 },
+      html2canvas:  { scale: 2, useCORS: true },
+      jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+
+    html2pdf().set(opt).from(printContent).save();
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
       {/* Üst Bar */}
@@ -98,10 +125,24 @@ export default function Notebook() {
           </button>
           <h1 className="text-xl font-black text-slate-800 flex items-center gap-2"><Book className="w-5 h-5 text-indigo-600"/> Gramer Defterim</h1>
         </div>
+        
+        {/* Buton Grubu */}
         {activeNote && (
-          <button onClick={handleSave} disabled={isSaving} className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded-xl flex items-center gap-2 shadow-md">
-            {isSaving ? "Kaydediliyor..." : <><Save size={18}/> Kaydet</>}
-          </button>
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={handleDownloadPDF} 
+              className="bg-emerald-50 hover:bg-emerald-100 text-emerald-600 border border-emerald-200 font-bold py-2 px-4 rounded-xl flex items-center gap-2 shadow-sm transition-colors"
+            >
+              <Download size={18}/> PDF İndir
+            </button>
+            <button 
+              onClick={handleSave} 
+              disabled={isSaving} 
+              className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded-xl flex items-center gap-2 shadow-md transition-colors"
+            >
+              {isSaving ? "Kaydediliyor..." : <><Save size={18}/> Kaydet</>}
+            </button>
+          </div>
         )}
       </div>
 
