@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useData } from "../context/DataContext";
 import { db, appId } from "../services/firebase";
 import { collection, addDoc, getDocs, doc, deleteDoc, updateDoc, serverTimestamp, query, orderBy } from "firebase/firestore";
-import { ArrowLeft, Plus, Trash2, Book, FileText, Download, CheckCircle2, Loader2, Cloud, Clock } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Book, FileText, Download, CheckCircle2, Loader2, Cloud, Clock, Home } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import ReactQuill from "react-quill";
 import html2pdf from "html2pdf.js";
@@ -35,8 +35,8 @@ export default function Notebook() {
   const [title, setTitle] = useState("");
   const [saveStatus, setSaveStatus] = useState("saved");
   
-  // Mobil Cihaz Tespiti
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [zoomFactor, setZoomFactor] = useState(1); // Mobil A4 görünümü için ölçekleyici
   
   const contentRef = useRef("");
   const titleRef = useRef("");
@@ -45,9 +45,19 @@ export default function Notebook() {
 
   const notesRef = collection(db, "artifacts", appId, "users", user?.uid || "default", "grammar_notes");
 
-  // Ekran boyutu değiştiğinde isMobile durumunu günceller
+  // Ekran boyutu değiştiğinde isMobile ve A4 küçültme oranını günceller
   useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    const handleResize = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      if (mobile) {
+        // Ekran genişliğinden sağ-sol boşlukları (32px) çıkarıp A4 genişliğine (794px) bölüyoruz.
+        setZoomFactor((window.innerWidth - 32) / 794);
+      } else {
+        setZoomFactor(1);
+      }
+    };
+    handleResize();
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
@@ -96,7 +106,7 @@ export default function Notebook() {
   };
 
   const handleEditorChange = useRef((newContent) => {
-    if (!activeNoteRef.current || isMobile) return; // Mobildeyse kaydetme döngüsünü tamamen iptal eder
+    if (!activeNoteRef.current || window.innerWidth < 768) return; 
     
     contentRef.current = newContent;
     setSaveStatus("waiting");
@@ -129,7 +139,7 @@ export default function Notebook() {
   }).current;
 
   const handleTitleChange = (e) => {
-    if (isMobile) return; // Mobilde başlık düzenlemeyi engeller
+    if (isMobile) return; 
     setTitle(e.target.value);
     handleEditorChange(contentRef.current); 
   };
@@ -178,29 +188,38 @@ export default function Notebook() {
     return (
       <div className={`bg-white quill-wrapper relative ${isMobile ? 'border-none' : 'rounded-2xl shadow-sm border border-slate-200'}`}>
         <ReactQuill 
-          key={`${activeNote.id}-${isMobile}`} // Cihaz modu değiştiğinde arayüzü yeniler
+          key={`${activeNote.id}-${isMobile}`} 
           theme="snow" 
           defaultValue={activeNote.content || ""} 
           onChange={handleEditorChange} 
-          modules={isMobile ? { toolbar: false } : modules} // Mobilde araç çubuğunu gizler
-          readOnly={isMobile} // Mobilde klavyenin açılmasını ve düzenlemeyi tamamen engeller
+          modules={isMobile ? { toolbar: false } : modules} 
+          readOnly={isMobile} 
           scrollingContainer="#editor-scroller" 
           className={isMobile ? "mobile-view-editor" : "min-h-[500px]"}
         />
       </div>
     );
-  }, [activeNote?.id, isMobile]); // isMobile state'ine duyarlı hale getirildi
+  }, [activeNote?.id, isMobile]); 
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col w-full overflow-x-hidden">
       {/* Üst Bar */}
       <div className="bg-white border-b border-slate-200 p-4 flex items-center justify-between z-10 relative shadow-sm">
-        <div className="flex items-center gap-4">
-          <button onClick={() => activeNote ? setActiveNote(null) : navigate("/")} className="p-2 bg-slate-100 rounded-full hover:bg-slate-200 transition-colors shrink-0">
-            <ArrowLeft size={20} className="text-slate-600" />
+        <div className="flex items-center gap-2 md:gap-4">
+          
+          {/* Sadece bir konu açıkken Geri Oku görünür */}
+          {activeNote && (
+            <button onClick={() => setActiveNote(null)} className="p-2 bg-slate-100 rounded-full hover:bg-slate-200 transition-colors shrink-0">
+              <ArrowLeft size={20} className="text-slate-600" />
+            </button>
+          )}
+
+          {/* Uygulamaya Kesin Dönüş (Home) Butonu */}
+          <button onClick={() => navigate("/")} className="p-2 bg-indigo-50 rounded-full hover:bg-indigo-100 transition-colors shrink-0" title="Ana Ekrana Dön">
+            <Home size={20} className="text-indigo-600" />
           </button>
           
-          <h1 onClick={() => setActiveNote(null)} className="text-xl font-black text-slate-800 flex items-center gap-2 cursor-pointer hover:text-indigo-600 transition-colors truncate">
+          <h1 onClick={() => setActiveNote(null)} className="text-xl font-black text-slate-800 flex items-center gap-2 cursor-pointer hover:text-indigo-600 transition-colors truncate ml-1 md:ml-2">
             <Book className="w-5 h-5 text-indigo-600 shrink-0"/> <span className="truncate">Gramer Defterim</span>
           </h1>
         </div>
@@ -225,7 +244,7 @@ export default function Notebook() {
 
       <div className="flex flex-1 overflow-hidden">
         
-        {/* Sol Menü */}
+        {/* Sol Menü (Web'de Konu İçi) */}
         {activeNote && !isMobile && (
           <div className="hidden lg:flex w-72 bg-white border-r border-slate-200 flex-col h-[calc(100vh-73px)] shrink-0">
             <div className="p-4 border-b border-slate-100">
@@ -264,27 +283,46 @@ export default function Notebook() {
         <div id="editor-scroller" className="flex-1 bg-slate-50 h-[calc(100vh-73px)] overflow-y-auto relative w-full max-w-full">
           
           {activeNote ? (
-            <div className={`max-w-4xl mx-auto p-4 md:p-6 pb-20 ${isMobile ? 'space-y-2' : 'space-y-4'}`}>
+            <div className="w-full flex justify-center p-4">
               
-              {/* Başlık Alanı: Mobilde düz metin olarak görünür, bilgisayarda düzenlenebilir input'tur */}
-              {isMobile ? (
-                <h1 className="w-full text-2xl font-black text-slate-800 px-2 pb-3 mb-2 border-b border-slate-200 break-words">
-                  {title || "İsimsiz Sayfa"}
-                </h1>
-              ) : (
-                <input 
-                  type="text" 
-                  value={title} 
-                  onChange={handleTitleChange} 
-                  placeholder="01. To Be"
-                  className="w-full text-2xl md:text-3xl font-black bg-transparent border-none outline-none text-slate-800 placeholder:text-slate-300 px-2"
-                />
-              )}
-              
-              {MemoizedQuill}
+              {/* Dinamik A4 Ölçekleyici Wrapper (Mobilde A4 gibi davranır, Web'de normal) */}
+              <div 
+                style={isMobile ? { 
+                  zoom: zoomFactor, 
+                  width: '794px', 
+                  backgroundColor: 'white', 
+                  minHeight: '1123px', 
+                  padding: '40px', 
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.1)', 
+                  borderRadius: '8px' 
+                } : { 
+                  width: '100%', 
+                  maxWidth: '56rem' 
+                }}
+                className={isMobile ? "" : "pb-20 space-y-4"}
+              >
+                
+                {isMobile ? (
+                  <h1 className="w-full text-4xl font-black text-slate-800 pb-4 mb-4 border-b-2 border-slate-200 break-words">
+                    {title || "İsimsiz Sayfa"}
+                  </h1>
+                ) : (
+                  <input 
+                    type="text" 
+                    value={title} 
+                    onChange={handleTitleChange} 
+                    placeholder="01. To Be"
+                    className="w-full text-3xl font-black bg-transparent border-none outline-none text-slate-800 placeholder:text-slate-300 px-2"
+                  />
+                )}
+                
+                {MemoizedQuill}
+              </div>
+
             </div>
           ) : (
-            <div className="max-w-7xl mx-auto p-4 md:p-10 pb-20">
+            /* --- WEB/MOBİL LİSTE PANELİ (ALT ALTA MANTIK) --- */
+            <div className="max-w-4xl mx-auto p-4 md:p-10 pb-20">
               
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 md:mb-8">
                 <div>
@@ -296,39 +334,38 @@ export default function Notebook() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
-                
-                <button onClick={createNewNote} className="group flex flex-col items-center justify-center p-6 border-2 border-dashed border-indigo-300 rounded-3xl bg-indigo-50/50 hover:bg-indigo-50 transition-all min-h-[140px] md:min-h-[160px] hover:shadow-md hover:-translate-y-1 w-full">
-                  <div className="bg-white p-3 rounded-full shadow-sm text-indigo-500 group-hover:scale-110 transition-transform mb-3">
-                    <Plus size={24} />
-                  </div>
-                  <span className="font-bold text-indigo-600">Yeni Konu Ekle</span>
+              {/* SADECE WEB'DE GÖRÜNEN YENİ KONU EKLE BUTONU */}
+              {!isMobile && (
+                <button onClick={createNewNote} className="w-full bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-700 font-bold py-4 rounded-2xl flex items-center justify-center gap-2 transition-all mb-6 shadow-sm active:scale-[0.99]">
+                  <Plus size={20} /> Yeni Konu Ekle
                 </button>
+              )}
 
+              {/* ALT ALTA LİSTE GÖRÜNÜMÜ */}
+              <div className="flex flex-col gap-3">
                 {notes.map(note => (
                   <div 
                     key={note.id} 
                     onClick={() => selectNote(note)} 
-                    className="bg-white p-5 md:p-6 rounded-3xl shadow-sm border border-slate-200 hover:shadow-lg hover:border-indigo-300 hover:ring-2 ring-indigo-50 cursor-pointer transition-all flex flex-col justify-between min-h-[140px] md:min-h-[160px] hover:-translate-y-1 relative group w-full"
+                    className="bg-white p-4 md:p-5 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md hover:border-indigo-300 cursor-pointer transition-all flex items-center justify-between group active:scale-[0.99]"
                   >
-                    <div>
-                      <div className="flex items-start justify-between gap-2">
-                        <h3 className="font-bold text-slate-800 text-base md:text-lg leading-tight line-clamp-3 break-words w-full pr-6">{note.title || "İsimsiz Sayfa"}</h3>
-                        
-                        {/* Çöp kutusunun mobilde görünmesi için absolute positioning kullanıldı */}
-                        <button onClick={(e) => handleDelete(e, note.id)} className="text-slate-200 hover:text-red-500 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity bg-white p-1 rounded-full absolute top-4 md:top-5 right-4 md:right-5">
-                          <Trash2 size={16}/>
-                        </button>
+                    <div className="flex items-center gap-4 truncate">
+                      <div className="hidden sm:flex bg-indigo-50 p-3 rounded-xl text-indigo-500 shrink-0 group-hover:scale-110 transition-transform">
+                        <FileText size={22}/>
+                      </div>
+                      <div className="flex flex-col truncate">
+                        <h3 className="font-bold text-slate-800 text-base md:text-lg truncate">{note.title || "İsimsiz Sayfa"}</h3>
+                        <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500 mt-1">
+                          <Clock size={14} className={note.lastViewedAt ? "text-indigo-400" : "text-slate-400"}/>
+                          <span className={note.lastViewedAt ? "text-indigo-600/80" : ""}>Son tekrar: {formatTime(note.lastViewedAt)}</span>
+                        </div>
                       </div>
                     </div>
                     
-                    <div className="mt-4 pt-3 md:pt-4 border-t border-slate-100 flex items-center justify-between text-xs font-medium text-slate-500 w-full">
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <Clock size={14} className={note.lastViewedAt ? "text-indigo-400" : "text-slate-400"}/>
-                        <span className={note.lastViewedAt ? "text-indigo-600/80 hidden sm:inline" : "hidden sm:inline"}>Son tekrar:</span>
-                      </div>
-                      <span className="text-slate-600 shrink-0">{formatTime(note.lastViewedAt)}</span>
-                    </div>
+                    {/* Silme Butonu - Mobilde Daima Görünür, Web'de Hover Olunca Görünür */}
+                    <button onClick={(e) => handleDelete(e, note.id)} className="text-slate-300 hover:text-red-500 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity p-2 shrink-0">
+                      <Trash2 size={20}/>
+                    </button>
                   </div>
                 ))}
               </div>
@@ -351,20 +388,18 @@ export default function Notebook() {
           box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
         }
 
-        /* Taşkınlık Engelleme (Overflow Fix) ve Kelime Kırma */
+        /* Taşkınlık Engelleme */
         .ql-editor {
           word-wrap: break-word !important;
           overflow-wrap: break-word !important;
           word-break: break-word !important; 
         }
         
-        /* Büyük resimlerin ekrandan taşmasını engeller */
         .ql-editor img {
           max-width: 100% !important;
           height: auto !important;
         }
 
-        /* Kod bloklarının ekrandan taşmasını engeller */
         .ql-editor pre {
           white-space: pre-wrap !important;
           word-wrap: break-word !important;
@@ -372,13 +407,13 @@ export default function Notebook() {
           max-width: 100% !important;
         }
 
-        /* Mobilde temiz okuma ekranı için çerçeveleri ve gereksiz boşlukları siler */
+        /* Mobilde saf A4 okuma deneyimi için çerçeve temizliği */
         .mobile-view-editor .ql-container.ql-snow {
           border: none !important;
           font-size: 16px !important; 
         }
         .mobile-view-editor .ql-editor {
-          padding: 10px 5px !important;
+          padding: 10px 0px !important;
         }
       `}</style>
     </div>
