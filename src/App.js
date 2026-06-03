@@ -1,5 +1,6 @@
 import React, { useEffect } from "react";
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from "react-router-dom"; 
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from "react-router-dom";
+
 import { DataProvider, useData } from "./context/DataContext";
 
 // SAYFALAR
@@ -10,17 +11,17 @@ import Game from "./pages/Game";
 import ExerciseGame from "./pages/ExerciseGame";
 import SentenceBuilderGame from "./pages/SentenceBuilderGame";
 import Quiz from "./pages/Quiz";
-import Quiz2 from "./pages/Quiz2"; 
+import Quiz2 from "./pages/Quiz2";
 import WritingGame2 from "./pages/WritingGame2";
 import WordMatchGame from "./pages/WordMatchGame";
 import WordList from "./pages/WordList";
-import AddWord from "./pages/AddWord";
 import HardWordsGame from "./pages/HardWordsGame";
-import AdminDashboard from "./pages/AdminDashboard";
-import WritingGame from "./pages/WritingGame"; 
-import Pronunciation from "./pages/Pronunciation"; 
-import GapFillingGame from "./pages/GapFillingGame"; 
-import PDFPage from "./pages/PDFPage"; // YENİ EKLENDİ
+import WritingGame from "./pages/WritingGame";
+import Pronunciation from "./pages/Pronunciation";
+import GapFillingGame from "./pages/GapFillingGame";
+
+// YENİ EKLENEN DEFTER SAYFASI
+import Notebook from "./pages/Notebook";
 
 const AudioSilencer = () => {
   const location = useLocation();
@@ -40,7 +41,7 @@ export default function App() {
   return (
     <DataProvider>
       <Router>
-        <AudioSilencer /> 
+        <AudioSilencer />
         <Routes>
           <Route path="/login" element={<Auth />} />
           <Route path="/" element={<PrivateRoute><Home /></PrivateRoute>} />
@@ -57,11 +58,11 @@ export default function App() {
           <Route path="/hard-words" element={<HardWordsGame />} />
           <Route path="/exercise" element={<PrivateRoute><ExerciseGame /></PrivateRoute>} />
           <Route path="/gap-filling" element={<PrivateRoute><GapFillingGame /></PrivateRoute>} />
-
-          {/* YENİ PDF SİSTEMİ ROTALARI */}
-          <Route path="/grammar-notes" element={<PrivateRoute><PDFPage title="Konu Anlatımları" type="grammar" /></PrivateRoute>} />
-         
-
+          
+          {/* YENİ DEFTER SİSTEMİ ROTALARI */}
+          <Route path="/grammar-notes" element={<PrivateRoute><Notebook /></PrivateRoute>} />
+          
+          {/* Tanımsız Rotaları Anasayfaya Yönlendir */}
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </Router>
