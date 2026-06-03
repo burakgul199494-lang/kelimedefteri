@@ -151,7 +151,6 @@ export default function Notebook() {
   const MemoizedQuill = useMemo(() => {
     if (!activeNote) return null;
     return (
-      // ÇÖZÜM: overflow-hidden kaldırıldı ve quill-wrapper sınıfı eklendi
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 quill-wrapper relative">
         <ReactQuill 
           key={activeNote.id} 
@@ -159,6 +158,7 @@ export default function Notebook() {
           defaultValue={activeNote.content || ""} 
           onChange={handleEditorChange} 
           modules={modules}
+          scrollingContainer="#editor-scroller" /* KESİN ÇÖZÜM: Quill artık nerenin kaydırıldığını biliyor */
           className="min-h-[500px]"
         />
       </div>
@@ -221,8 +221,8 @@ export default function Notebook() {
           </div>
         </div>
 
-        {/* Sağ Taraf (Editör) */}
-        <div className="flex-1 bg-slate-50 h-[calc(100vh-73px)] overflow-y-auto relative">
+        {/* Sağ Taraf (Editör) - KESİN ÇÖZÜM: Buraya id="editor-scroller" eklendi */}
+        <div id="editor-scroller" className="flex-1 bg-slate-50 h-[calc(100vh-73px)] overflow-y-auto relative">
           {activeNote ? (
             <div className="max-w-4xl mx-auto p-6 space-y-4 pb-20">
               <input 
@@ -245,7 +245,6 @@ export default function Notebook() {
         </div>
       </div>
 
-      {/* ÇÖZÜM: Araç Çubuğunu (Toolbar) Yapışkan Yapan CSS */}
       <style>{`
         .quill-wrapper .ql-toolbar.ql-snow {
           position: sticky;
