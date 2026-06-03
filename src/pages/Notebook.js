@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import { useData } from "../context/DataContext";
 import { db, appId } from "../services/firebase";
 import { collection, addDoc, getDocs, doc, deleteDoc, updateDoc, serverTimestamp, query, orderBy } from "firebase/firestore";
@@ -7,6 +7,20 @@ import { useNavigate } from "react-router-dom";
 import ReactQuill from "react-quill";
 import html2pdf from "html2pdf.js";
 import "react-quill/dist/quill.snow.css"; 
+
+// KESİN ÇÖZÜM: Araç çubuğu ayarlarını Notebook fonksiyonunun tamamen dışına çıkarttık.
+// Bu sayede React render döngüleri editörü sıfırlayamaz ve yapıştırma anında başa zıplama yaşanmaz.
+const modules = {
+  toolbar: [
+    [{ header: [1, 2, 3, false] }],
+    ["bold", "italic", "underline", "strike"],
+    [{ color: [] }, { background: [] }],
+    [{ list: "ordered" }, { list: "bullet" }],
+    [{ script: "sub" }, { script: "super" }],
+    ["blockquote", "code-block"],
+    ["clean"],
+  ],
+};
 
 export default function Notebook() {
   const { user } = useData();
@@ -18,19 +32,6 @@ export default function Notebook() {
   const [isSaving, setIsSaving] = useState(false);
 
   const notesRef = collection(db, "artifacts", appId, "users", user?.uid || "default", "grammar_notes");
-
-  // ÇÖZÜM BURADA: useMemo ile ayarları sabitledik, artık imleç başa zıplamayacak.
-  const modules = useMemo(() => ({
-    toolbar: [
-      [{ header: [1, 2, 3, false] }],
-      ["bold", "italic", "underline", "strike"],
-      [{ color: [] }, { background: [] }],
-      [{ list: "ordered" }, { list: "bullet" }],
-      [{ script: "sub" }, { script: "super" }],
-      ["blockquote", "code-block"],
-      ["clean"],
-    ],
-  }), []);
 
   useEffect(() => {
     if (user) fetchNotes();
@@ -59,7 +60,7 @@ export default function Notebook() {
   const selectNote = (note) => {
     setActiveNote(note);
     setTitle(note.title);
-    setContent(note.content);
+    setContent(note.content || "");
   };
 
   const handleSave = async () => {
@@ -92,7 +93,6 @@ export default function Notebook() {
   const handleDownloadPDF = () => {
     if (!content) return;
     
-    // Editör araç çubuklarını PDF'e basmamak için geçici bir HTML alanı oluşturuyoruz
     const printContent = document.createElement("div");
     printContent.innerHTML = `
       <div style="font-family: Arial, sans-serif; padding: 20px; color: #1e293b;">
@@ -106,7 +106,7 @@ export default function Notebook() {
     `;
 
     const opt = {
-      margin:       [15, 15, 15, 15], // Sayfa kenar boşlukları (mm)
+      margin:       [15, 15, 15, 15],
       filename:     `${title ? title.replace(/\s+/g, '_') : 'Defter_Notu'}.pdf`,
       image:        { type: 'jpeg', quality: 0.98 },
       html2canvas:  { scale: 2, useCORS: true },
@@ -127,7 +127,6 @@ export default function Notebook() {
           <h1 className="text-xl font-black text-slate-800 flex items-center gap-2"><Book className="w-5 h-5 text-indigo-600"/> Gramer Defterim</h1>
         </div>
         
-        {/* Buton Grubu */}
         {activeNote && (
           <div className="flex items-center gap-2">
             <button 
@@ -188,7 +187,7 @@ export default function Notebook() {
               <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                 <ReactQuill 
                   theme="snow" 
-                  value={content} 
+                  value={content || ""} 
                   onChange={setContent} 
                   modules={modules}
                   className="min-h-[500px]"
