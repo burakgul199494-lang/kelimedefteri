@@ -29,7 +29,6 @@ export default function Notebook() {
   const [title, setTitle] = useState("");
   const [saveStatus, setSaveStatus] = useState("saved");
   
-  // React'in editörü sıfırlamasını engellemek için state yerine Ref kullanıyoruz
   const contentRef = useRef("");
   const titleRef = useRef("");
   const activeNoteRef = useRef(null);
@@ -37,7 +36,6 @@ export default function Notebook() {
 
   const notesRef = collection(db, "artifacts", appId, "users", user?.uid || "default", "grammar_notes");
 
-  // Ref'leri güncel tutuyoruz
   useEffect(() => { titleRef.current = title; }, [title]);
   useEffect(() => { activeNoteRef.current = activeNote; }, [activeNote]);
 
@@ -73,8 +71,6 @@ export default function Notebook() {
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
   };
 
-  // --- KARANTİNAYA ALINMIŞ KAYIT SİSTEMİ ---
-  // Bu fonksiyon React render döngüsünden tamamen bağımsız çalışır
   const handleEditorChange = useRef((newContent) => {
     if (!activeNoteRef.current) return;
     
@@ -95,7 +91,6 @@ export default function Notebook() {
           updatedAt: serverTimestamp()
         });
         
-        // Sol menüyü sessizce günceller
         setNotes(prev => prev.map(n => 
           n.id === currentNoteId 
             ? { ...n, title: titleRef.current, content: contentRef.current } 
@@ -109,10 +104,9 @@ export default function Notebook() {
     }, 1500);
   }).current;
 
-  // Title değiştiğinde de otomatik kaydı tetiklemek için
   const handleTitleChange = (e) => {
     setTitle(e.target.value);
-    handleEditorChange(contentRef.current); // Mevcut içerikle kaydı tetikler
+    handleEditorChange(contentRef.current); 
   };
 
   const handleDelete = async (e, id) => {
@@ -154,11 +148,11 @@ export default function Notebook() {
     html2pdf().set(opt).from(printContent).save();
   };
 
-  // KESİN ÇÖZÜM: Editörü React'ten izole ettik. Sadece seçili not değiştiğinde yeniden yüklenir.
   const MemoizedQuill = useMemo(() => {
     if (!activeNote) return null;
     return (
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+      // ÇÖZÜM: overflow-hidden kaldırıldı ve quill-wrapper sınıfı eklendi
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 quill-wrapper relative">
         <ReactQuill 
           key={activeNote.id} 
           theme="snow" 
@@ -169,12 +163,12 @@ export default function Notebook() {
         />
       </div>
     );
-  }, [activeNote?.id]); // Sadece ID değiştiğinde render edilir, yazarken/yapıştırırken ASLA render edilmez.
+  }, [activeNote?.id]); 
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
       {/* Üst Bar */}
-      <div className="bg-white border-b border-slate-200 p-4 flex items-center justify-between z-10">
+      <div className="bg-white border-b border-slate-200 p-4 flex items-center justify-between z-10 relative">
         <div className="flex items-center gap-4">
           <button onClick={() => navigate("/")} className="p-2 bg-slate-100 rounded-full hover:bg-slate-200 transition-colors">
             <ArrowLeft size={20} className="text-slate-600" />
@@ -228,7 +222,7 @@ export default function Notebook() {
         </div>
 
         {/* Sağ Taraf (Editör) */}
-        <div className="flex-1 bg-slate-50 h-[calc(100vh-73px)] overflow-y-auto">
+        <div className="flex-1 bg-slate-50 h-[calc(100vh-73px)] overflow-y-auto relative">
           {activeNote ? (
             <div className="max-w-4xl mx-auto p-6 space-y-4 pb-20">
               <input 
@@ -239,7 +233,6 @@ export default function Notebook() {
                 className="w-full text-3xl font-black bg-transparent border-none outline-none text-slate-800 placeholder:text-slate-300"
               />
               
-              {/* Karantinaya alınmış Editör Render Ediliyor */}
               {MemoizedQuill}
 
             </div>
@@ -251,6 +244,20 @@ export default function Notebook() {
           )}
         </div>
       </div>
+
+      {/* ÇÖZÜM: Araç Çubuğunu (Toolbar) Yapışkan Yapan CSS */}
+      <style>{`
+        .quill-wrapper .ql-toolbar.ql-snow {
+          position: sticky;
+          top: 0;
+          z-index: 50;
+          background-color: #ffffff;
+          border-top-left-radius: 1rem;
+          border-top-right-radius: 1rem;
+          border-bottom: 1px solid #e2e8f0;
+          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        }
+      `}</style>
     </div>
   );
 }
