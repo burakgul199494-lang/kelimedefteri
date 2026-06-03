@@ -60,7 +60,7 @@ export default function App() {
 
           {/* YENİ PDF SİSTEMİ ROTALARI */}
           <Route path="/grammar-notes" element={<PrivateRoute><PDFPage title="Konu Anlatımları" type="grammar" /></PrivateRoute>} />
-          <Route path="/stories" element={<PrivateRoute><PDFPage title="Hikayeler" type="story" /></PrivateRoute>} />
+         
 
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
