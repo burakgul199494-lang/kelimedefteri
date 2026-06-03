@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useData } from "../context/DataContext";
 import { db, appId } from "../services/firebase";
 import { collection, addDoc, getDocs, doc, deleteDoc, updateDoc, serverTimestamp, query, orderBy } from "firebase/firestore";
@@ -19,7 +19,8 @@ export default function Notebook() {
 
   const notesRef = collection(db, "artifacts", appId, "users", user?.uid || "default", "grammar_notes");
 
-  const modules = {
+  // ÇÖZÜM BURADA: useMemo ile ayarları sabitledik, artık imleç başa zıplamayacak.
+  const modules = useMemo(() => ({
     toolbar: [
       [{ header: [1, 2, 3, false] }],
       ["bold", "italic", "underline", "strike"],
@@ -29,7 +30,7 @@ export default function Notebook() {
       ["blockquote", "code-block"],
       ["clean"],
     ],
-  };
+  }), []);
 
   useEffect(() => {
     if (user) fetchNotes();
@@ -130,7 +131,7 @@ export default function Notebook() {
         {activeNote && (
           <div className="flex items-center gap-2">
             <button 
-              onClick={handleDownloadPDF} 
+              onClick={handleDownloadPDF}
               className="bg-emerald-50 hover:bg-emerald-100 text-emerald-600 border border-emerald-200 font-bold py-2 px-4 rounded-xl flex items-center gap-2 shadow-sm transition-colors"
             >
               <Download size={18}/> PDF İndir
@@ -205,4 +206,3 @@ export default function Notebook() {
     </div>
   );
 }
-
