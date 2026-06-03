@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useData } from "../context/DataContext";
 import { db, appId } from "../services/firebase";
 import { collection, addDoc, getDocs, doc, deleteDoc, updateDoc, serverTimestamp, query, orderBy } from "firebase/firestore";
-import { ArrowLeft, Plus, Trash2, Book, FileText, Download, CheckCircle2, Loader2, Cloud, Clock, Home } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Book, FileText, Download, CheckCircle2, Loader2, Cloud, Clock, Home, RotateCcw } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import ReactQuill from "react-quill";
 import html2pdf from "html2pdf.js";
@@ -21,7 +21,7 @@ const modules = {
 };
 
 const formatTime = (timestamp) => {
-  if (!timestamp) return "Henüz çalışılmadı";
+  if (!timestamp) return "Henüz tekrar edilmedi";
   const date = timestamp?.toDate ? timestamp.toDate() : new Date(timestamp);
   return date.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' }) + " " + date.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
 };
@@ -36,7 +36,7 @@ export default function Notebook() {
   const [saveStatus, setSaveStatus] = useState("saved");
   
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
-  const [zoomFactor, setZoomFactor] = useState(1); // Mobil A4 görünümü için ölçekleyici
+  const [zoomFactor, setZoomFactor] = useState(1); 
   
   const contentRef = useRef("");
   const titleRef = useRef("");
@@ -45,13 +45,11 @@ export default function Notebook() {
 
   const notesRef = collection(db, "artifacts", appId, "users", user?.uid || "default", "grammar_notes");
 
-  // Ekran boyutu değiştiğinde isMobile ve A4 küçültme oranını günceller
   useEffect(() => {
     const handleResize = () => {
       const mobile = window.innerWidth < 768;
       setIsMobile(mobile);
       if (mobile) {
-        // Ekran genişliğinden sağ-sol boşlukları (32px) çıkarıp A4 genişliğine (794px) bölüyoruz.
         setZoomFactor((window.innerWidth - 32) / 794);
       } else {
         setZoomFactor(1);
@@ -80,8 +78,9 @@ export default function Notebook() {
     const newNote = {
       title: "Yeni Sayfa",
       content: "",
+      isCompleted: false, // YENİ: Başlangıçta "Yazım Aşamasında" olarak başlar
+      reviewCount: 0,     // YENİ: Tekrar sayacı
       createdAt: serverTimestamp(),
-      lastViewedAt: serverTimestamp(), 
     };
     const docRef = await addDoc(notesRef, newNote);
     const createdNote = { id: docRef.id, ...newNote };
@@ -95,13 +94,59 @@ export default function Notebook() {
     contentRef.current = note.content || "";
     setSaveStatus("saved");
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    // YENİ: Anında lastViewedAt güncellemeyi kaldırdık. Artık sadece 20 saniye kalırsa güncellenecek.
+  };
 
+  // --- YENİ: 20 SANİYE EMNİYET KİLİDİ VE TEKRAR SAYACI ---
+  useEffect(() => {
+    let timer;
+    // Eğer bir konu açıksa VE o konu "Tekrar Moduna" alınmışsa (isCompleted === true)
+    if (activeNote && activeNote.isCompleted) {
+      
+      // 20 Saniye (20000 ms) bekler
+      timer = setTimeout(async () => {
+        try {
+          const currentNote = notes.find(n => n.id === activeNote.id);
+          const newCount = (currentNote?.reviewCount || 0) + 1;
+          
+          const docRef = doc(db, "artifacts", appId, "users", user.uid, "grammar_notes", activeNote.id);
+          await updateDoc(docRef, { 
+            lastViewedAt: serverTimestamp(),
+            reviewCount: newCount
+          });
+          
+          // Listeyi sessizce günceller ki kullanıcı anasayfaya döndüğünde yeni sayacı görsün
+          setNotes(prev => prev.map(n => 
+            n.id === activeNote.id 
+              ? { ...n, lastViewedAt: new Date(), reviewCount: newCount } 
+              : n
+          ));
+        } catch (error) {
+          console.error("Tekrar sayacı güncellenemedi:", error);
+        }
+      }, 20000); 
+    }
+
+    // Kullanıcı 20 saniye dolmadan konudan çıkarsa veya başka konuya geçerse sayaç iptal olur
+    return () => clearTimeout(timer);
+  }, [activeNote?.id, activeNote?.isCompleted]); 
+
+  // --- YENİ: TEKRAR MODU AÇ/KAPAT FONKSİYONU ---
+  const toggleCompletion = async (e, note) => {
+    e.stopPropagation(); // Kartın içine girilmesini (tıklanmasını) engeller
+    const newStatus = !note.isCompleted;
+    
     try {
       const docRef = doc(db, "artifacts", appId, "users", user.uid, "grammar_notes", note.id);
-      await updateDoc(docRef, { lastViewedAt: serverTimestamp() });
-      setNotes(prev => prev.map(n => n.id === note.id ? { ...n, lastViewedAt: new Date() } : n));
+      await updateDoc(docRef, { isCompleted: newStatus });
+      
+      setNotes(prev => prev.map(n => n.id === note.id ? { ...n, isCompleted: newStatus } : n));
+      
+      if (activeNote?.id === note.id) {
+        setActiveNote(prev => ({ ...prev, isCompleted: newStatus }));
+      }
     } catch (error) {
-      console.error("Son görülme tarihi güncellenemedi:", error);
+      console.error("Durum güncellenemedi:", error);
     }
   };
 
@@ -207,14 +252,12 @@ export default function Notebook() {
       <div className="bg-white border-b border-slate-200 p-4 flex items-center justify-between z-10 relative shadow-sm">
         <div className="flex items-center gap-2 md:gap-4">
           
-          {/* Sadece bir konu açıkken Geri Oku görünür */}
           {activeNote && (
             <button onClick={() => setActiveNote(null)} className="p-2 bg-slate-100 rounded-full hover:bg-slate-200 transition-colors shrink-0">
               <ArrowLeft size={20} className="text-slate-600" />
             </button>
           )}
 
-          {/* Uygulamaya Kesin Dönüş (Home) Butonu */}
           <button onClick={() => navigate("/")} className="p-2 bg-indigo-50 rounded-full hover:bg-indigo-100 transition-colors shrink-0" title="Ana Ekrana Dön">
             <Home size={20} className="text-indigo-600" />
           </button>
@@ -244,7 +287,7 @@ export default function Notebook() {
 
       <div className="flex flex-1 overflow-hidden">
         
-        {/* Sol Menü (Web'de Konu İçi) */}
+        {/* Sol Menü */}
         {activeNote && !isMobile && (
           <div className="hidden lg:flex w-72 bg-white border-r border-slate-200 flex-col h-[calc(100vh-73px)] shrink-0">
             <div className="p-4 border-b border-slate-100">
@@ -285,7 +328,6 @@ export default function Notebook() {
           {activeNote ? (
             <div className="w-full flex justify-center p-4">
               
-              {/* Dinamik A4 Ölçekleyici Wrapper (Mobilde A4 gibi davranır, Web'de normal) */}
               <div 
                 style={isMobile ? { 
                   zoom: zoomFactor, 
@@ -321,51 +363,78 @@ export default function Notebook() {
 
             </div>
           ) : (
-            /* --- WEB/MOBİL LİSTE PANELİ (ALT ALTA MANTIK) --- */
+            /* --- DASHBOARD LİSTE PANELİ --- */
             <div className="max-w-4xl mx-auto p-4 md:p-10 pb-20">
               
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 md:mb-8">
                 <div>
                   <h2 className="text-2xl md:text-3xl font-extrabold text-slate-800">Çalışma Notlarım</h2>
-                  <p className="text-slate-500 mt-1 text-sm md:text-base">Gramer defterine eklediğin tüm konular ve son tekrar tarihleri.</p>
+                  <p className="text-slate-500 mt-1 text-sm md:text-base">Eklediğin tüm konular, tekrar sayıları ve son çalışma tarihleri.</p>
                 </div>
                 <div className="bg-indigo-100 text-indigo-700 font-bold px-4 py-2 rounded-xl self-start sm:self-auto shrink-0">
                   {notes.length} Konu
                 </div>
               </div>
 
-              {/* SADECE WEB'DE GÖRÜNEN YENİ KONU EKLE BUTONU */}
               {!isMobile && (
                 <button onClick={createNewNote} className="w-full bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-700 font-bold py-4 rounded-2xl flex items-center justify-center gap-2 transition-all mb-6 shadow-sm active:scale-[0.99]">
                   <Plus size={20} /> Yeni Konu Ekle
                 </button>
               )}
 
-              {/* ALT ALTA LİSTE GÖRÜNÜMÜ */}
               <div className="flex flex-col gap-3">
                 {notes.map(note => (
                   <div 
                     key={note.id} 
                     onClick={() => selectNote(note)} 
-                    className="bg-white p-4 md:p-5 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md hover:border-indigo-300 cursor-pointer transition-all flex items-center justify-between group active:scale-[0.99]"
+                    className="bg-white p-4 md:p-5 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md hover:border-indigo-300 cursor-pointer transition-all flex flex-col md:flex-row md:items-center justify-between group active:scale-[0.99] gap-4"
                   >
-                    <div className="flex items-center gap-4 truncate">
+                    <div className="flex items-start md:items-center gap-4 truncate w-full">
                       <div className="hidden sm:flex bg-indigo-50 p-3 rounded-xl text-indigo-500 shrink-0 group-hover:scale-110 transition-transform">
                         <FileText size={22}/>
                       </div>
-                      <div className="flex flex-col truncate">
-                        <h3 className="font-bold text-slate-800 text-base md:text-lg truncate">{note.title || "İsimsiz Sayfa"}</h3>
-                        <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500 mt-1">
-                          <Clock size={14} className={note.lastViewedAt ? "text-indigo-400" : "text-slate-400"}/>
-                          <span className={note.lastViewedAt ? "text-indigo-600/80" : ""}>Son tekrar: {formatTime(note.lastViewedAt)}</span>
+                      <div className="flex flex-col truncate w-full">
+                        <h3 className="font-bold text-slate-800 text-base md:text-lg truncate mb-1">{note.title || "İsimsiz Sayfa"}</h3>
+                        
+                        <div className="flex flex-wrap items-center gap-3 text-xs font-medium text-slate-500">
+                          
+                          {/* TEKRAR SAYACI GÖSTERGESİ */}
+                          <div className="flex items-center gap-1.5 bg-slate-50 px-2 py-1 rounded-md border border-slate-100">
+                            <RotateCcw size={14} className="text-indigo-400" />
+                            <span className="text-slate-600">{note.reviewCount || 0} Tekrar</span>
+                          </div>
+
+                          {/* SON TEKRAR TARİHİ GÖSTERGESİ */}
+                          <div className="flex items-center gap-1.5 bg-slate-50 px-2 py-1 rounded-md border border-slate-100">
+                            <Clock size={14} className={note.lastViewedAt ? "text-amber-500" : "text-slate-400"}/>
+                            <span className={note.lastViewedAt ? "text-amber-700/80" : ""}>{formatTime(note.lastViewedAt)}</span>
+                          </div>
+
                         </div>
                       </div>
                     </div>
                     
-                    {/* Silme Butonu - Mobilde Daima Görünür, Web'de Hover Olunca Görünür */}
-                    <button onClick={(e) => handleDelete(e, note.id)} className="text-slate-300 hover:text-red-500 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity p-2 shrink-0">
-                      <Trash2 size={20}/>
-                    </button>
+                    <div className="flex items-center justify-between md:justify-end gap-3 w-full md:w-auto shrink-0 border-t md:border-t-0 border-slate-100 pt-3 md:pt-0">
+                      
+                      {/* TEKRAR MODU AÇ/KAPAT BUTONU */}
+                      <button 
+                        onClick={(e) => toggleCompletion(e, note)}
+                        className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all shadow-sm border ${
+                          note.isCompleted 
+                            ? "bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100" 
+                            : "bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100"
+                        }`}
+                      >
+                        <CheckCircle2 size={16} className={note.isCompleted ? "text-emerald-500" : "text-slate-400"} />
+                        {note.isCompleted ? "Tekrar Modu Aktif" : "Yazım Aşamasında"}
+                      </button>
+
+                      {/* Silme Butonu */}
+                      <button onClick={(e) => handleDelete(e, note.id)} className="text-slate-300 hover:text-red-500 md:opacity-0 group-hover:opacity-100 transition-opacity p-2 bg-slate-50 md:bg-transparent rounded-xl md:rounded-none">
+                        <Trash2 size={18}/>
+                      </button>
+
+                    </div>
                   </div>
                 ))}
               </div>
@@ -376,7 +445,6 @@ export default function Notebook() {
       </div>
 
       <style>{`
-        /* Araç çubuğu sabitleyici */
         .quill-wrapper .ql-toolbar.ql-snow {
           position: sticky;
           top: 0;
@@ -388,7 +456,6 @@ export default function Notebook() {
           box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
         }
 
-        /* Taşkınlık Engelleme */
         .ql-editor {
           word-wrap: break-word !important;
           overflow-wrap: break-word !important;
@@ -407,7 +474,6 @@ export default function Notebook() {
           max-width: 100% !important;
         }
 
-        /* Mobilde saf A4 okuma deneyimi için çerçeve temizliği */
         .mobile-view-editor .ql-container.ql-snow {
           border: none !important;
           font-size: 16px !important; 
