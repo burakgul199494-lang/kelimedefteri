@@ -4,7 +4,6 @@
   "private": true,
   "dependencies": {
     "react": "^18.2.0",
-    "html2pdf.js": "^0.10.1",
     "react-dom": "^18.2.0",
     "react-scripts": "5.0.1",
     "react-image-crop": "^10.1.0",
@@ -18,8 +17,7 @@
     "cropperjs": "^1.6.1",
     "react-virtuoso": "^4.7.0",
     "jodit-react": "^4.1.2",
-    "html2pdf.js": "^0.10.1",
-    "react-quill": "^2.0.0"
+    "html2pdf.js": "^0.10.1"
   },
   "devDependencies": {
     "typescript": "4.9.5"
