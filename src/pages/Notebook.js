@@ -39,20 +39,23 @@ export default function Notebook() {
   const [zoomFactor, setZoomFactor] = useState(1); 
   
   const contentRef = useRef("");
-  const titleRef = useRef("");
+  const titleRef = useRef useRef("");
   const activeNoteRef = useRef(null);
   const saveTimeoutRef = useRef(null);
 
   const globalNotesRef = collection(db, "artifacts", appId, "global_grammar_notes");
   const trackingRef = collection(db, "artifacts", appId, "users", user?.uid || "default", "grammar_tracking");
 
-  const isReadOnly = !isAdmin || isMobile;
+  // YENİ: Önizleme modunda mı gösterilecek? (Mobildeysen VEYA Admin değilsen editör yerine PDF görünümü açılır)
+  const showPreviewMode = !isAdmin || isMobile;
 
   useEffect(() => {
     const handleResize = () => {
       const mobile = window.innerWidth < 768;
       setIsMobile(mobile);
-      if (mobile) {
+      
+      // Ekran genişliği A4'ten küçükse otomatik küçültme (Zoom Out) hesaplar
+      if (window.innerWidth < 850) {
         setZoomFactor((window.innerWidth - 32) / 794);
       } else {
         setZoomFactor(1);
@@ -149,21 +152,17 @@ export default function Notebook() {
     return () => clearTimeout(timer);
   }, [activeNote?.id, activeNote?.isCompleted]); 
 
-  // --- YENİ: ÇİFT ONAYLI SAYAÇ SIFIRLAMA FONKSİYONU ---
   const handleResetCounter = async (e, id) => {
-    e.stopPropagation(); // Kartın içine girilmesini engeller
+    e.stopPropagation(); 
     
-    // 1. Onay
     const firstConfirm = window.confirm("Bu konunun tekrar sayacını sıfırlamak istediğinize emin misiniz?");
     if (!firstConfirm) return;
     
-    // 2. Onay (Çift Güvenlik Kilidi)
     const secondConfirm = window.confirm("KESİN KARAR MI? Sayacınız tamamen 0'lanacak ve bu işlem geri alınamaz.");
     if (!secondConfirm) return;
 
     try {
       const docRef = doc(db, "artifacts", appId, "users", user.uid, "grammar_tracking", id);
-      // Sayacı 0 yapar, son görülmeyi sıfırlar
       await setDoc(docRef, { 
         reviewCount: 0,
         lastViewedAt: null
@@ -176,7 +175,6 @@ export default function Notebook() {
     }
   };
 
-  // --- TEKRAR MODU AÇ/KAPAT (SADECE ADMİN) ---
   const toggleCompletion = async (e, note) => {
     e.stopPropagation(); 
     if (!isAdmin) return;
@@ -197,9 +195,9 @@ export default function Notebook() {
     }
   };
 
-  // --- OTOMATİK KAYIT (SADECE ADMİN) ---
   const handleEditorChange = useRef((newContent) => {
-    if (!activeNoteRef.current || isReadOnly) return; 
+    // Mobilde veya Öğrenci ise kaydetme işlemi tamamen devre dışı kalır
+    if (!activeNoteRef.current || showPreviewMode) return; 
     
     contentRef.current = newContent;
     setSaveStatus("waiting");
@@ -232,7 +230,7 @@ export default function Notebook() {
   }).current;
 
   const handleTitleChange = (e) => {
-    if (isReadOnly) return; 
+    if (showPreviewMode) return; 
     setTitle(e.target.value);
     handleEditorChange(contentRef.current); 
   };
@@ -252,7 +250,7 @@ export default function Notebook() {
   };
 
   const handleDownloadPDF = () => {
-    const currentContent = contentRef.current;
+    const currentContent = contentRef.current || activeNote?.content;
     if (!currentContent) return;
     
     const printContent = document.createElement("div");
@@ -279,22 +277,24 @@ export default function Notebook() {
   };
 
   const MemoizedQuill = useMemo(() => {
-    if (!activeNote) return null;
+    // SADECE Admin ve Masaüstü ekranında isek Quill Editörü yüklenir. 
+    // Diğer tüm durumlarda hafif ve hızlı PDF Önizleme ekranı gösterilecektir.
+    if (!activeNote || showPreviewMode) return null;
+    
     return (
-      <div className={`bg-white quill-wrapper relative ${isReadOnly ? 'border-none' : 'rounded-2xl shadow-sm border border-slate-200'}`}>
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 quill-wrapper relative">
         <ReactQuill 
-          key={`${activeNote.id}-${isReadOnly}`} 
+          key={activeNote.id} 
           theme="snow" 
           defaultValue={activeNote.content || ""} 
           onChange={handleEditorChange} 
-          modules={isReadOnly ? { toolbar: false } : modules} 
-          readOnly={isReadOnly} 
+          modules={modules} 
           scrollingContainer="#editor-scroller" 
-          className={isReadOnly ? "mobile-view-editor" : "min-h-[500px]"}
+          className="min-h-[500px]"
         />
       </div>
     );
-  }, [activeNote?.id, isReadOnly]); 
+  }, [activeNote?.id, showPreviewMode]); 
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col w-full overflow-x-hidden">
@@ -319,7 +319,7 @@ export default function Notebook() {
         
         {activeNote && (
           <div className="flex items-center gap-4 shrink-0">
-            {isAdmin && (
+            {isAdmin && !isMobile && (
               <div className="hidden md:flex items-center gap-2 text-sm font-medium">
                 {saveStatus === "saved" && <><CheckCircle2 className="w-5 h-5 text-emerald-500" /> <span className="text-slate-500">Buluta Kaydedildi</span></>}
                 {saveStatus === "waiting" && <><Cloud className="w-5 h-5 text-slate-400" /> <span className="text-slate-400">Değişiklikler bekleniyor...</span></>}
@@ -331,7 +331,7 @@ export default function Notebook() {
               onClick={handleDownloadPDF}
               className="bg-emerald-50 hover:bg-emerald-100 text-emerald-600 border border-emerald-200 font-bold py-2 px-3 md:px-4 rounded-xl flex items-center gap-2 shadow-sm transition-colors md:ml-4"
             >
-              <Download size={18}/> <span className="hidden md:inline">PDF</span>
+              <Download size={18}/> <span className="hidden md:inline">PDF İndir</span>
             </button>
           </div>
         )}
@@ -387,27 +387,36 @@ export default function Notebook() {
           {activeNote ? (
             <div className="w-full flex justify-center p-4">
               
-              <div 
-                style={isMobile ? { 
-                  zoom: zoomFactor, 
-                  width: '794px', 
-                  backgroundColor: 'white', 
-                  minHeight: '1123px', 
-                  padding: '40px', 
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.1)', 
-                  borderRadius: '8px' 
-                } : { 
-                  width: '100%', 
-                  maxWidth: '56rem' 
-                }}
-                className={isMobile ? "" : "pb-20 space-y-4"}
-              >
-                
-                {isReadOnly ? (
-                  <h1 className="w-full text-4xl font-black text-slate-800 pb-4 mb-4 border-b-2 border-slate-200 break-words">
-                    {title || "İsimsiz Sayfa"}
-                  </h1>
-                ) : (
+              {showPreviewMode ? (
+                /* --- A4 PDF ÖNİZLEME MODU (Mobilde ve Öğrencilerde Görünür) --- */
+                <div 
+                  className="pdf-preview-container"
+                  style={{ 
+                    zoom: zoomFactor, 
+                    width: '794px', 
+                    minHeight: '1123px', 
+                    backgroundColor: 'white', 
+                    padding: '40px 50px', 
+                    boxShadow: '0 8px 24px rgba(0,0,0,0.15)', 
+                    borderRadius: '8px' 
+                  }}
+                >
+                  <div style={{ fontFamily: "Arial, sans-serif", color: "#1e293b" }}>
+                    <h1 style={{ borderBottom: "2px solid #e2e8f0", paddingBottom: "10px", marginBottom: "20px", fontSize: "2.5rem", fontWeight: "900" }}>
+                      {activeNote.title || "İsimsiz Sayfa"}
+                    </h1>
+                    
+                    {/* ql-editor sınıfı, React Quill'in liste ve boşluk CSS kurallarını buraya da uygulamasını sağlar */}
+                    <div 
+                      className="ql-editor" 
+                      style={{ padding: 0, overflowY: 'visible', height: 'auto', fontSize: '18px', lineHeight: '1.7' }}
+                      dangerouslySetInnerHTML={{ __html: activeNote.content || "" }}
+                    />
+                  </div>
+                </div>
+              ) : (
+                /* --- DÜZENLEME MODU (Sadece Admin Masaüstünde Görünür) --- */
+                <div className="w-full max-w-4xl pb-20 space-y-4">
                   <input 
                     type="text" 
                     value={title} 
@@ -415,10 +424,9 @@ export default function Notebook() {
                     placeholder="01. To Be"
                     className="w-full text-3xl font-black bg-transparent border-none outline-none text-slate-800 placeholder:text-slate-300 px-2"
                   />
-                )}
-                
-                {MemoizedQuill}
-              </div>
+                  {MemoizedQuill}
+                </div>
+              )}
 
             </div>
           ) : (
@@ -537,6 +545,7 @@ export default function Notebook() {
           box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
         }
 
+        /* Taşkınlık Engelleme */
         .ql-editor {
           word-wrap: break-word !important;
           overflow-wrap: break-word !important;
@@ -554,16 +563,7 @@ export default function Notebook() {
           overflow-x: auto !important;
           max-width: 100% !important;
         }
-
-        .mobile-view-editor .ql-container.ql-snow {
-          border: none !important;
-          font-size: 16px !important; 
-        }
-        .mobile-view-editor .ql-editor {
-          padding: 10px 0px !important;
-        }
       `}</style>
     </div>
   );
 }
-
