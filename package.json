@@ -4,6 +4,7 @@
   "private": true,
   "dependencies": {
     "react": "^18.2.0",
+    "html2pdf.js": "^0.10.1",
     "react-dom": "^18.2.0",
     "react-scripts": "5.0.1",
     "react-image-crop": "^10.1.0",
