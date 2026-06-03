@@ -1,15 +1,14 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useData } from "../context/DataContext";
 import { db, appId } from "../services/firebase";
 import { collection, addDoc, getDocs, doc, deleteDoc, updateDoc, serverTimestamp, query, orderBy } from "firebase/firestore";
-import { ArrowLeft, Plus, Trash2, Save, Book, FileText, Download } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Book, FileText, Download, CheckCircle2, Loader2, Cloud } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import ReactQuill from "react-quill";
 import html2pdf from "html2pdf.js";
 import "react-quill/dist/quill.snow.css"; 
 
-// KESİN ÇÖZÜM: Araç çubuğu ayarlarını Notebook fonksiyonunun tamamen dışına çıkarttık.
-// Bu sayede React render döngüleri editörü sıfırlayamaz ve yapıştırma anında başa zıplama yaşanmaz.
+// Araç çubukları tamamen dışarıda
 const modules = {
   toolbar: [
     [{ header: [1, 2, 3, false] }],
@@ -22,6 +21,13 @@ const modules = {
   ],
 };
 
+// React Quill'in yapıştırma anında kafasının karışmasını (zıplamasını) önleyen açık format listesi
+const formats = [
+  "header", "bold", "italic", "underline", "strike",
+  "color", "background", "list", "bullet", "script",
+  "blockquote", "code-block"
+];
+
 export default function Notebook() {
   const { user } = useData();
   const navigate = useNavigate();
@@ -29,7 +35,10 @@ export default function Notebook() {
   const [activeNote, setActiveNote] = useState(null);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
-  const [isSaving, setIsSaving] = useState(false);
+  
+  // Otomatik Kayıt Durumu: "saved", "waiting", "saving"
+  const [saveStatus, setSaveStatus] = useState("saved");
+  const isFirstLoad = useRef(true); // Sayfa ilk açıldığında boş yere kaydetmemesi için
 
   const notesRef = collection(db, "artifacts", appId, "users", user?.uid || "default", "grammar_notes");
 
@@ -58,24 +67,46 @@ export default function Notebook() {
   };
 
   const selectNote = (note) => {
+    isFirstLoad.current = true; // Farklı bir nota geçildiğinde otomatik kaydı duraklatır
     setActiveNote(note);
-    setTitle(note.title);
+    setTitle(note.title || "");
     setContent(note.content || "");
+    setSaveStatus("saved");
   };
 
-  const handleSave = async () => {
+  // --- DİNAMİK OTOMATİK KAYIT (AUTO-SAVE) ---
+  useEffect(() => {
     if (!activeNote) return;
-    setIsSaving(true);
-    const docRef = doc(db, "artifacts", appId, "users", user.uid, "grammar_notes", activeNote.id);
-    await updateDoc(docRef, {
-      title: title,
-      content: content,
-      updatedAt: serverTimestamp()
-    });
-    
-    setNotes(notes.map(n => n.id === activeNote.id ? { ...n, title, content } : n));
-    setIsSaving(false);
-  };
+
+    // Sayfa ilk yüklendiğinde (veya nota tıklandığında) tetiklenmeyi engeller
+    if (isFirstLoad.current) {
+      isFirstLoad.current = false;
+      return;
+    }
+
+    setSaveStatus("waiting"); // Klavye ile yazarken "bekleniyor" durumuna geçer
+
+    // Yazmayı bitirdikten 1.5 saniye sonra Firebase'e yazar
+    const timer = setTimeout(async () => {
+      setSaveStatus("saving");
+      try {
+        const docRef = doc(db, "artifacts", appId, "users", user.uid, "grammar_notes", activeNote.id);
+        await updateDoc(docRef, {
+          title: title,
+          content: content,
+          updatedAt: serverTimestamp()
+        });
+        
+        // Sol menüdeki listeyi sessizce günceller
+        setNotes(prev => prev.map(n => n.id === activeNote.id ? { ...n, title, content } : n));
+        setSaveStatus("saved");
+      } catch (error) {
+        console.error("Kaydetme hatası:", error);
+      }
+    }, 1500);
+
+    return () => clearTimeout(timer); // Eğer 1.5 saniye dolmadan yeni harfe basarsan süreyi sıfırlar
+  }, [title, content]); 
 
   const handleDelete = async (e, id) => {
     e.stopPropagation();
@@ -128,19 +159,20 @@ export default function Notebook() {
         </div>
         
         {activeNote && (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-4">
+            
+            {/* DİNAMİK KAYIT GÖSTERGESİ */}
+            <div className="flex items-center gap-2 text-sm font-medium">
+              {saveStatus === "saved" && <><CheckCircle2 className="w-5 h-5 text-emerald-500" /> <span className="text-slate-500">Buluta Kaydedildi</span></>}
+              {saveStatus === "waiting" && <><Cloud className="w-5 h-5 text-slate-400" /> <span className="text-slate-400">Değişiklikler bekleniyor...</span></>}
+              {saveStatus === "saving" && <><Loader2 className="w-5 h-5 text-indigo-500 animate-spin" /> <span className="text-indigo-600 font-bold">Kaydediliyor...</span></>}
+            </div>
+
             <button 
               onClick={handleDownloadPDF}
-              className="bg-emerald-50 hover:bg-emerald-100 text-emerald-600 border border-emerald-200 font-bold py-2 px-4 rounded-xl flex items-center gap-2 shadow-sm transition-colors"
+              className="bg-emerald-50 hover:bg-emerald-100 text-emerald-600 border border-emerald-200 font-bold py-2 px-4 rounded-xl flex items-center gap-2 shadow-sm transition-colors ml-4"
             >
               <Download size={18}/> PDF İndir
-            </button>
-            <button 
-              onClick={handleSave} 
-              disabled={isSaving} 
-              className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded-xl flex items-center gap-2 shadow-md transition-colors"
-            >
-              {isSaving ? "Kaydediliyor..." : <><Save size={18}/> Kaydet</>}
             </button>
           </div>
         )}
@@ -186,10 +218,12 @@ export default function Notebook() {
               />
               <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                 <ReactQuill 
+                  key={activeNote.id} // KESİN ÇÖZÜM: Farklı bir not seçildiğinde editörü tamamen sıfırlar ve temiz bir başlangıç yapar.
                   theme="snow" 
-                  value={content || ""} 
+                  value={content} 
                   onChange={setContent} 
                   modules={modules}
+                  formats={formats} // KESİN ÇÖZÜM: Yabancı bir metin yapıştırıldığında desteklenmeyen formatları ayıklayıp zıplamayı önler.
                   className="min-h-[500px]"
                 />
               </div>
