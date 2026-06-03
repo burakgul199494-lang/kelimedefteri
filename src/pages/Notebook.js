@@ -8,7 +8,6 @@ import ReactQuill from "react-quill";
 import html2pdf from "html2pdf.js";
 import "react-quill/dist/quill.snow.css"; 
 
-// Araç çubukları tamamen dışarıda
 const modules = {
   toolbar: [
     [{ header: [1, 2, 3, false] }],
@@ -21,13 +20,6 @@ const modules = {
   ],
 };
 
-// React Quill'in yapıştırma anında kafasının karışmasını (zıplamasını) önleyen açık format listesi
-const formats = [
-  "header", "bold", "italic", "underline", "strike",
-  "color", "background", "list", "bullet", "script",
-  "blockquote", "code-block"
-];
-
 export default function Notebook() {
   const { user } = useData();
   const navigate = useNavigate();
@@ -36,9 +28,8 @@ export default function Notebook() {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   
-  // Otomatik Kayıt Durumu: "saved", "waiting", "saving"
   const [saveStatus, setSaveStatus] = useState("saved");
-  const isFirstLoad = useRef(true); // Sayfa ilk açıldığında boş yere kaydetmemesi için
+  const isFirstLoad = useRef(true);
 
   const notesRef = collection(db, "artifacts", appId, "users", user?.uid || "default", "grammar_notes");
 
@@ -67,26 +58,24 @@ export default function Notebook() {
   };
 
   const selectNote = (note) => {
-    isFirstLoad.current = true; // Farklı bir nota geçildiğinde otomatik kaydı duraklatır
+    isFirstLoad.current = true; 
     setActiveNote(note);
     setTitle(note.title || "");
     setContent(note.content || "");
     setSaveStatus("saved");
   };
 
-  // --- DİNAMİK OTOMATİK KAYIT (AUTO-SAVE) ---
+  // --- DİNAMİK OTOMATİK KAYIT ---
   useEffect(() => {
     if (!activeNote) return;
 
-    // Sayfa ilk yüklendiğinde (veya nota tıklandığında) tetiklenmeyi engeller
     if (isFirstLoad.current) {
       isFirstLoad.current = false;
       return;
     }
 
-    setSaveStatus("waiting"); // Klavye ile yazarken "bekleniyor" durumuna geçer
+    setSaveStatus("waiting"); 
 
-    // Yazmayı bitirdikten 1.5 saniye sonra Firebase'e yazar
     const timer = setTimeout(async () => {
       setSaveStatus("saving");
       try {
@@ -97,7 +86,6 @@ export default function Notebook() {
           updatedAt: serverTimestamp()
         });
         
-        // Sol menüdeki listeyi sessizce günceller
         setNotes(prev => prev.map(n => n.id === activeNote.id ? { ...n, title, content } : n));
         setSaveStatus("saved");
       } catch (error) {
@@ -105,7 +93,7 @@ export default function Notebook() {
       }
     }, 1500);
 
-    return () => clearTimeout(timer); // Eğer 1.5 saniye dolmadan yeni harfe basarsan süreyi sıfırlar
+    return () => clearTimeout(timer); 
   }, [title, content]); 
 
   const handleDelete = async (e, id) => {
@@ -120,7 +108,6 @@ export default function Notebook() {
     }
   };
 
-  // --- PDF İNDİRME FONKSİYONU ---
   const handleDownloadPDF = () => {
     if (!content) return;
     
@@ -161,7 +148,6 @@ export default function Notebook() {
         {activeNote && (
           <div className="flex items-center gap-4">
             
-            {/* DİNAMİK KAYIT GÖSTERGESİ */}
             <div className="flex items-center gap-2 text-sm font-medium">
               {saveStatus === "saved" && <><CheckCircle2 className="w-5 h-5 text-emerald-500" /> <span className="text-slate-500">Buluta Kaydedildi</span></>}
               {saveStatus === "waiting" && <><Cloud className="w-5 h-5 text-slate-400" /> <span className="text-slate-400">Değişiklikler bekleniyor...</span></>}
@@ -218,12 +204,15 @@ export default function Notebook() {
               />
               <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                 <ReactQuill 
-                  key={activeNote.id} // KESİN ÇÖZÜM: Farklı bir not seçildiğinde editörü tamamen sıfırlar ve temiz bir başlangıç yapar.
+                  key={activeNote.id} 
                   theme="snow" 
-                  value={content} 
+                  /* KALICI ÇÖZÜM BURASI:
+                    value={content} sildik. Sadece defaultValue verdik. 
+                    React artık editörün içine karışmıyor, yapıştırılan metinlerde kaydırma ve imleç hatası oluşmuyor.
+                  */
+                  defaultValue={activeNote.content || ""} 
                   onChange={setContent} 
                   modules={modules}
-                  formats={formats} // KESİN ÇÖZÜM: Yabancı bir metin yapıştırıldığında desteklenmeyen formatları ayıklayıp zıplamayı önler.
                   className="min-h-[500px]"
                 />
               </div>
