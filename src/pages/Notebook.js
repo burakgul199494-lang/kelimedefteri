@@ -1,16 +1,17 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useData } from "../context/DataContext";
 import { db, appId } from "../services/firebase";
 import { collection, addDoc, getDocs, doc, deleteDoc, updateDoc, serverTimestamp, query, orderBy } from "firebase/firestore";
 import { ArrowLeft, Plus, Trash2, Save, Book, FileText, Download } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import ReactQuill from "react-quill";
+import JoditEditor from "jodit-react";
 import html2pdf from "html2pdf.js";
-import "react-quill/dist/quill.snow.css"; 
 
 export default function Notebook() {
   const { user } = useData();
   const navigate = useNavigate();
+  const editorRef = useRef(null);
+  
   const [notes, setNotes] = useState([]);
   const [activeNote, setActiveNote] = useState(null);
   const [title, setTitle] = useState("");
@@ -19,17 +20,26 @@ export default function Notebook() {
 
   const notesRef = collection(db, "artifacts", appId, "users", user?.uid || "default", "grammar_notes");
 
-  const modules = {
-    toolbar: [
-      [{ header: [1, 2, 3, false] }],
-      ["bold", "italic", "underline", "strike"],
-      [{ color: [] }, { background: [] }],
-      [{ list: "ordered" }, { list: "bullet" }],
-      [{ script: "sub" }, { script: "super" }],
-      ["blockquote", "code-block"],
-      ["clean"],
-    ],
-  };
+  // Jodit Editör Ayarları (Word benzeri, bol özellikli)
+  const editorConfig = useMemo(() => ({
+    readonly: false,
+    placeholder: 'Notlarınızı buraya yazmaya başlayın...',
+    language: 'tr',
+    height: 'auto',
+    minHeight: 600,
+    width: '100%',
+    toolbarSticky: true,
+    showCharsCounter: false,
+    showWordsCounter: false,
+    showXPathInStatusbar: false,
+    buttons: [
+      'bold', 'italic', 'underline', 'strikethrough', '|',
+      'ul', 'ol', '|',
+      'font', 'fontsize', 'brush', 'paragraph', '|',
+      'table', 'link', 'image', '|',
+      'align', 'undo', 'redo', 'hr', 'eraser', 'fullsize'
+    ]
+  }), []);
 
   useEffect(() => {
     if (user) fetchNotes();
@@ -87,31 +97,18 @@ export default function Notebook() {
     }
   };
 
-  // --- SAYFA KESİCİ EKLEME FONKSİYONU ---
-  const insertPageBreak = () => {
-    // Editördeki mevcut metnin sonuna ayırıcıyı ekler
-    const breakMarker = '<p><br></p><p><strong style="color: rgb(239, 68, 68);">✂️ --- YENİ SAYFA --- ✂️</strong></p><p><br></p>';
-    setContent((prev) => prev + breakMarker);
-  };
-
-  // --- PDF İNDİRME FONKSİYONU ---
+  // --- OTOMATİK SAYFA BÖLEN PDF İNDİRME ---
   const handleDownloadPDF = () => {
     if (!content) return;
     
-    // Editördeki kırmızı "YENİ SAYFA" damgalarını, html2pdf'in anladığı gerçek sayfa kırıcı koda dönüştürüyoruz
-    const pdfReadyContent = content.replace(
-      /<p><strong style="color: rgb\(239, 68, 68\);">✂️ --- YENİ SAYFA --- ✂️<\/strong><\/p>/g, 
-      '<div class="html2pdf__page-break"></div>'
-    );
-
     const printContent = document.createElement("div");
     printContent.innerHTML = `
-      <div style="font-family: Arial, sans-serif; padding: 20px; color: #1e293b;">
+      <div style="font-family: Arial, sans-serif; padding: 10px; color: #1e293b;">
         <h1 style="border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 20px;">
           ${title || "İsimsiz Sayfa"}
         </h1>
         <div style="line-height: 1.6; font-size: 16px;">
-          ${pdfReadyContent}
+          ${content}
         </div>
       </div>
     `;
@@ -122,16 +119,17 @@ export default function Notebook() {
       image:        { type: 'jpeg', quality: 0.98 },
       html2canvas:  { scale: 2, useCORS: true },
       jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
-      pagebreak:    { mode: 'legacy' } // Sayfa kırma özelliğini aktifleştirir
+      // mode: 'css' özelliği uzun yazıları ve tabloları otomatik olarak diğer sayfaya taşır
+      pagebreak:    { mode: ['css', 'legacy'] } 
     };
 
     html2pdf().set(opt).from(printContent).save();
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
+    <div className="min-h-screen bg-slate-100 flex flex-col">
       {/* Üst Bar */}
-      <div className="bg-white border-b border-slate-200 p-4 flex items-center justify-between z-10">
+      <div className="bg-white border-b border-slate-200 p-4 flex items-center justify-between z-20 shadow-sm">
         <div className="flex items-center gap-4">
           <button onClick={() => navigate("/")} className="p-2 bg-slate-100 rounded-full hover:bg-slate-200 transition-colors">
             <ArrowLeft size={20} className="text-slate-600" />
@@ -139,7 +137,6 @@ export default function Notebook() {
           <h1 className="text-xl font-black text-slate-800 flex items-center gap-2"><Book className="w-5 h-5 text-indigo-600"/> Gramer Defterim</h1>
         </div>
         
-        {/* Buton Grubu */}
         {activeNote && (
           <div className="flex items-center gap-2">
             <button 
@@ -160,8 +157,8 @@ export default function Notebook() {
       </div>
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Sol Menü (Sayfalar) */}
-        <div className="w-64 bg-white border-r border-slate-200 flex flex-col h-[calc(100vh-73px)]">
+        {/* Sol Menü */}
+        <div className="w-64 bg-white border-r border-slate-200 flex flex-col h-[calc(100vh-73px)] z-10 shadow-[4px_0_24px_rgba(0,0,0,0.02)]">
           <div className="p-4 border-b border-slate-100">
             <button onClick={createNewNote} className="w-full bg-slate-100 hover:bg-indigo-50 text-indigo-600 font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors border border-dashed border-indigo-200">
               <Plus size={18} /> Yeni Sayfa Ekle
@@ -186,36 +183,24 @@ export default function Notebook() {
           </div>
         </div>
 
-        {/* Sağ Taraf (Editör) */}
-        <div className="flex-1 bg-slate-50 h-[calc(100vh-73px)] overflow-y-auto">
+        {/* Sağ Taraf - Gerçekçi A4 Kağıdı Görünümü */}
+        <div className="flex-1 bg-slate-200 h-[calc(100vh-73px)] overflow-y-auto p-4 md:p-8">
           {activeNote ? (
-            <div className="max-w-4xl mx-auto p-6 space-y-4 pb-20">
+            <div className="max-w-[21cm] min-h-[29.7cm] mx-auto bg-white p-8 md:p-12 shadow-2xl rounded-sm ring-1 ring-slate-300 mb-12">
+              <input 
+                type="text" 
+                value={title} 
+                onChange={(e) => setTitle(e.target.value)} 
+                placeholder="01. To Be"
+                className="w-full text-3xl font-black bg-transparent border-none outline-none text-slate-800 placeholder:text-slate-300 mb-6 pb-4 border-b-2 border-slate-100"
+              />
               
-              <div className="flex justify-between items-center w-full">
-                <input 
-                  type="text" 
-                  value={title} 
-                  onChange={(e) => setTitle(e.target.value)} 
-                  placeholder="01. To Be"
-                  className="flex-1 text-3xl font-black bg-transparent border-none outline-none text-slate-800 placeholder:text-slate-300"
-                />
-                
-                {/* SAYFA BÖLME BUTONU */}
-                <button 
-                  onClick={insertPageBreak}
-                  className="bg-red-50 text-red-500 border border-red-200 font-bold py-1.5 px-4 rounded-lg flex items-center gap-2 hover:bg-red-100 transition-colors text-sm shadow-sm whitespace-nowrap"
-                >
-                  ✂️ Yeni Sayfa Başlat
-                </button>
-              </div>
-
-              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                <ReactQuill 
-                  theme="snow" 
-                  value={content} 
-                  onChange={setContent} 
-                  modules={modules}
-                  className="min-h-[500px]"
+              <div className="jodit-container-override">
+                <JoditEditor
+                  ref={editorRef}
+                  value={content}
+                  config={editorConfig}
+                  onBlur={newContent => setContent(newContent)} // Yazarken donmaları ve atlamaları engeller
                 />
               </div>
             </div>
@@ -227,6 +212,17 @@ export default function Notebook() {
           )}
         </div>
       </div>
+
+      {/* Jodit'in sınırlarını gizleyip A4 kağıdına yedirmek için minik bir CSS müdahalesi */}
+      <style>{`
+        .jodit-container-override .jodit-container {
+          border: none !important;
+        }
+        .jodit-container-override .jodit-workplace {
+          background: transparent !important;
+          border: none !important;
+        }
+      `}</style>
     </div>
   );
 }
