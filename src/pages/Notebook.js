@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useData } from "../context/DataContext";
 import { db, appId } from "../services/firebase";
 import { collection, addDoc, getDocs, doc, deleteDoc, updateDoc, serverTimestamp, query, orderBy } from "firebase/firestore";
@@ -23,15 +23,23 @@ const modules = {
 export default function Notebook() {
   const { user } = useData();
   const navigate = useNavigate();
+  
   const [notes, setNotes] = useState([]);
   const [activeNote, setActiveNote] = useState(null);
   const [title, setTitle] = useState("");
-  const [content, setContent] = useState("");
-  
   const [saveStatus, setSaveStatus] = useState("saved");
-  const isFirstLoad = useRef(true);
+  
+  // React'in editörü sıfırlamasını engellemek için state yerine Ref kullanıyoruz
+  const contentRef = useRef("");
+  const titleRef = useRef("");
+  const activeNoteRef = useRef(null);
+  const saveTimeoutRef = useRef(null);
 
   const notesRef = collection(db, "artifacts", appId, "users", user?.uid || "default", "grammar_notes");
+
+  // Ref'leri güncel tutuyoruz
+  useEffect(() => { titleRef.current = title; }, [title]);
+  useEffect(() => { activeNoteRef.current = activeNote; }, [activeNote]);
 
   useEffect(() => {
     if (user) fetchNotes();
@@ -58,43 +66,54 @@ export default function Notebook() {
   };
 
   const selectNote = (note) => {
-    isFirstLoad.current = true; 
     setActiveNote(note);
     setTitle(note.title || "");
-    setContent(note.content || "");
+    contentRef.current = note.content || "";
     setSaveStatus("saved");
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
   };
 
-  // --- DİNAMİK OTOMATİK KAYIT ---
-  useEffect(() => {
-    if (!activeNote) return;
-
-    if (isFirstLoad.current) {
-      isFirstLoad.current = false;
-      return;
-    }
-
-    setSaveStatus("waiting"); 
-
-    const timer = setTimeout(async () => {
+  // --- KARANTİNAYA ALINMIŞ KAYIT SİSTEMİ ---
+  // Bu fonksiyon React render döngüsünden tamamen bağımsız çalışır
+  const handleEditorChange = useRef((newContent) => {
+    if (!activeNoteRef.current) return;
+    
+    contentRef.current = newContent;
+    setSaveStatus("waiting");
+    
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    
+    saveTimeoutRef.current = setTimeout(async () => {
       setSaveStatus("saving");
       try {
-        const docRef = doc(db, "artifacts", appId, "users", user.uid, "grammar_notes", activeNote.id);
+        const currentNoteId = activeNoteRef.current.id;
+        const docRef = doc(db, "artifacts", appId, "users", user.uid, "grammar_notes", currentNoteId);
+        
         await updateDoc(docRef, {
-          title: title,
-          content: content,
+          title: titleRef.current,
+          content: contentRef.current,
           updatedAt: serverTimestamp()
         });
         
-        setNotes(prev => prev.map(n => n.id === activeNote.id ? { ...n, title, content } : n));
+        // Sol menüyü sessizce günceller
+        setNotes(prev => prev.map(n => 
+          n.id === currentNoteId 
+            ? { ...n, title: titleRef.current, content: contentRef.current } 
+            : n
+        ));
+        
         setSaveStatus("saved");
       } catch (error) {
         console.error("Kaydetme hatası:", error);
       }
     }, 1500);
+  }).current;
 
-    return () => clearTimeout(timer); 
-  }, [title, content]); 
+  // Title değiştiğinde de otomatik kaydı tetiklemek için
+  const handleTitleChange = (e) => {
+    setTitle(e.target.value);
+    handleEditorChange(contentRef.current); // Mevcut içerikle kaydı tetikler
+  };
 
   const handleDelete = async (e, id) => {
     e.stopPropagation();
@@ -104,12 +123,13 @@ export default function Notebook() {
     if (activeNote?.id === id) {
       setActiveNote(null);
       setTitle("");
-      setContent("");
+      contentRef.current = "";
     }
   };
 
   const handleDownloadPDF = () => {
-    if (!content) return;
+    const currentContent = contentRef.current;
+    if (!currentContent) return;
     
     const printContent = document.createElement("div");
     printContent.innerHTML = `
@@ -118,7 +138,7 @@ export default function Notebook() {
           ${title || "İsimsiz Sayfa"}
         </h1>
         <div style="line-height: 1.6; font-size: 16px;">
-          ${content}
+          ${currentContent}
         </div>
       </div>
     `;
@@ -134,6 +154,23 @@ export default function Notebook() {
     html2pdf().set(opt).from(printContent).save();
   };
 
+  // KESİN ÇÖZÜM: Editörü React'ten izole ettik. Sadece seçili not değiştiğinde yeniden yüklenir.
+  const MemoizedQuill = useMemo(() => {
+    if (!activeNote) return null;
+    return (
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <ReactQuill 
+          key={activeNote.id} 
+          theme="snow" 
+          defaultValue={activeNote.content || ""} 
+          onChange={handleEditorChange} 
+          modules={modules}
+          className="min-h-[500px]"
+        />
+      </div>
+    );
+  }, [activeNote?.id]); // Sadece ID değiştiğinde render edilir, yazarken/yapıştırırken ASLA render edilmez.
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
       {/* Üst Bar */}
@@ -147,7 +184,6 @@ export default function Notebook() {
         
         {activeNote && (
           <div className="flex items-center gap-4">
-            
             <div className="flex items-center gap-2 text-sm font-medium">
               {saveStatus === "saved" && <><CheckCircle2 className="w-5 h-5 text-emerald-500" /> <span className="text-slate-500">Buluta Kaydedildi</span></>}
               {saveStatus === "waiting" && <><Cloud className="w-5 h-5 text-slate-400" /> <span className="text-slate-400">Değişiklikler bekleniyor...</span></>}
@@ -165,7 +201,7 @@ export default function Notebook() {
       </div>
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Sol Menü (Sayfalar) */}
+        {/* Sol Menü */}
         <div className="w-64 bg-white border-r border-slate-200 flex flex-col h-[calc(100vh-73px)]">
           <div className="p-4 border-b border-slate-100">
             <button onClick={createNewNote} className="w-full bg-slate-100 hover:bg-indigo-50 text-indigo-600 font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors border border-dashed border-indigo-200">
@@ -198,24 +234,14 @@ export default function Notebook() {
               <input 
                 type="text" 
                 value={title} 
-                onChange={(e) => setTitle(e.target.value)} 
+                onChange={handleTitleChange} 
                 placeholder="01. To Be"
                 className="w-full text-3xl font-black bg-transparent border-none outline-none text-slate-800 placeholder:text-slate-300"
               />
-              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                <ReactQuill 
-                  key={activeNote.id} 
-                  theme="snow" 
-                  /* KALICI ÇÖZÜM BURASI:
-                    value={content} sildik. Sadece defaultValue verdik. 
-                    React artık editörün içine karışmıyor, yapıştırılan metinlerde kaydırma ve imleç hatası oluşmuyor.
-                  */
-                  defaultValue={activeNote.content || ""} 
-                  onChange={setContent} 
-                  modules={modules}
-                  className="min-h-[500px]"
-                />
-              </div>
+              
+              {/* Karantinaya alınmış Editör Render Ediliyor */}
+              {MemoizedQuill}
+
             </div>
           ) : (
             <div className="h-full flex flex-col items-center justify-center text-slate-400 space-y-4">
