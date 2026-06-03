@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useData } from "../context/DataContext";
 import { db, appId } from "../services/firebase";
-import { collection, addDoc, getDocs, doc, deleteDoc, updateDoc, serverTimestamp, query, orderBy } from "firebase/firestore";
+import { collection, addDoc, getDocs, doc, deleteDoc, updateDoc, setDoc, serverTimestamp, query, orderBy } from "firebase/firestore";
 import { ArrowLeft, Plus, Trash2, Book, FileText, Download, CheckCircle2, Loader2, Cloud, Clock, Home, RotateCcw } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import ReactQuill from "react-quill";
@@ -27,7 +27,7 @@ const formatTime = (timestamp) => {
 };
 
 export default function Notebook() {
-  const { user } = useData();
+  const { user, isAdmin } = useData(); 
   const navigate = useNavigate();
   
   const [notes, setNotes] = useState([]);
@@ -43,7 +43,10 @@ export default function Notebook() {
   const activeNoteRef = useRef(null);
   const saveTimeoutRef = useRef(null);
 
-  const notesRef = collection(db, "artifacts", appId, "users", user?.uid || "default", "grammar_notes");
+  const globalNotesRef = collection(db, "artifacts", appId, "global_grammar_notes");
+  const trackingRef = collection(db, "artifacts", appId, "users", user?.uid || "default", "grammar_tracking");
+
+  const isReadOnly = !isAdmin || isMobile;
 
   useEffect(() => {
     const handleResize = () => {
@@ -68,22 +71,41 @@ export default function Notebook() {
   }, [user]);
 
   const fetchNotes = async () => {
-    const q = query(notesRef, orderBy("createdAt", "asc"));
+    const q = query(globalNotesRef, orderBy("createdAt", "asc"));
     const snapshot = await getDocs(q);
-    const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    setNotes(list);
+    let list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+    if (!isAdmin) {
+      list = list.filter(n => n.isCompleted === true);
+    }
+
+    const trackingSnap = await getDocs(trackingRef);
+    const trackingData = {};
+    trackingSnap.forEach(doc => {
+      trackingData[doc.id] = doc.data();
+    });
+
+    const mergedList = list.map(n => ({
+      ...n,
+      lastViewedAt: trackingData[n.id]?.lastViewedAt || null,
+      reviewCount: trackingData[n.id]?.reviewCount || 0
+    }));
+
+    setNotes(mergedList);
   };
 
   const createNewNote = async () => {
+    if (!isAdmin) return; 
+    
     const newNote = {
       title: "Yeni Sayfa",
       content: "",
-      isCompleted: false, // YENİ: Başlangıçta "Yazım Aşamasında" olarak başlar
-      reviewCount: 0,     // YENİ: Tekrar sayacı
+      isCompleted: false, 
       createdAt: serverTimestamp(),
     };
-    const docRef = await addDoc(notesRef, newNote);
-    const createdNote = { id: docRef.id, ...newNote };
+    
+    const docRef = await addDoc(globalNotesRef, newNote);
+    const createdNote = { id: docRef.id, ...newNote, reviewCount: 0, lastViewedAt: null };
     setNotes([...notes, createdNote]);
     selectNote(createdNote);
   };
@@ -94,28 +116,25 @@ export default function Notebook() {
     contentRef.current = note.content || "";
     setSaveStatus("saved");
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-    // YENİ: Anında lastViewedAt güncellemeyi kaldırdık. Artık sadece 20 saniye kalırsa güncellenecek.
   };
 
-  // --- YENİ: 20 SANİYE EMNİYET KİLİDİ VE TEKRAR SAYACI ---
+  // --- 20 SANİYE EMNİYET KİLİDİ VE KİŞİSEL TEKRAR SAYACI ---
   useEffect(() => {
     let timer;
-    // Eğer bir konu açıksa VE o konu "Tekrar Moduna" alınmışsa (isCompleted === true)
     if (activeNote && activeNote.isCompleted) {
       
-      // 20 Saniye (20000 ms) bekler
       timer = setTimeout(async () => {
         try {
           const currentNote = notes.find(n => n.id === activeNote.id);
           const newCount = (currentNote?.reviewCount || 0) + 1;
           
-          const docRef = doc(db, "artifacts", appId, "users", user.uid, "grammar_notes", activeNote.id);
-          await updateDoc(docRef, { 
+          const docRef = doc(db, "artifacts", appId, "users", user.uid, "grammar_tracking", activeNote.id);
+          
+          await setDoc(docRef, { 
             lastViewedAt: serverTimestamp(),
             reviewCount: newCount
-          });
+          }, { merge: true });
           
-          // Listeyi sessizce günceller ki kullanıcı anasayfaya döndüğünde yeni sayacı görsün
           setNotes(prev => prev.map(n => 
             n.id === activeNote.id 
               ? { ...n, lastViewedAt: new Date(), reviewCount: newCount } 
@@ -127,17 +146,45 @@ export default function Notebook() {
       }, 20000); 
     }
 
-    // Kullanıcı 20 saniye dolmadan konudan çıkarsa veya başka konuya geçerse sayaç iptal olur
     return () => clearTimeout(timer);
   }, [activeNote?.id, activeNote?.isCompleted]); 
 
-  // --- YENİ: TEKRAR MODU AÇ/KAPAT FONKSİYONU ---
+  // --- YENİ: ÇİFT ONAYLI SAYAÇ SIFIRLAMA FONKSİYONU ---
+  const handleResetCounter = async (e, id) => {
+    e.stopPropagation(); // Kartın içine girilmesini engeller
+    
+    // 1. Onay
+    const firstConfirm = window.confirm("Bu konunun tekrar sayacını sıfırlamak istediğinize emin misiniz?");
+    if (!firstConfirm) return;
+    
+    // 2. Onay (Çift Güvenlik Kilidi)
+    const secondConfirm = window.confirm("KESİN KARAR MI? Sayacınız tamamen 0'lanacak ve bu işlem geri alınamaz.");
+    if (!secondConfirm) return;
+
+    try {
+      const docRef = doc(db, "artifacts", appId, "users", user.uid, "grammar_tracking", id);
+      // Sayacı 0 yapar, son görülmeyi sıfırlar
+      await setDoc(docRef, { 
+        reviewCount: 0,
+        lastViewedAt: null
+      }, { merge: true });
+      
+      setNotes(notes.map(n => n.id === id ? { ...n, reviewCount: 0, lastViewedAt: null } : n));
+    } catch (error) {
+      console.error("Sıfırlama hatası:", error);
+      alert("Sayaç sıfırlanırken bir hata oluştu.");
+    }
+  };
+
+  // --- TEKRAR MODU AÇ/KAPAT (SADECE ADMİN) ---
   const toggleCompletion = async (e, note) => {
-    e.stopPropagation(); // Kartın içine girilmesini (tıklanmasını) engeller
+    e.stopPropagation(); 
+    if (!isAdmin) return;
+
     const newStatus = !note.isCompleted;
     
     try {
-      const docRef = doc(db, "artifacts", appId, "users", user.uid, "grammar_notes", note.id);
+      const docRef = doc(db, "artifacts", appId, "global_grammar_notes", note.id);
       await updateDoc(docRef, { isCompleted: newStatus });
       
       setNotes(prev => prev.map(n => n.id === note.id ? { ...n, isCompleted: newStatus } : n));
@@ -150,8 +197,9 @@ export default function Notebook() {
     }
   };
 
+  // --- OTOMATİK KAYIT (SADECE ADMİN) ---
   const handleEditorChange = useRef((newContent) => {
-    if (!activeNoteRef.current || window.innerWidth < 768) return; 
+    if (!activeNoteRef.current || isReadOnly) return; 
     
     contentRef.current = newContent;
     setSaveStatus("waiting");
@@ -162,7 +210,7 @@ export default function Notebook() {
       setSaveStatus("saving");
       try {
         const currentNoteId = activeNoteRef.current.id;
-        const docRef = doc(db, "artifacts", appId, "users", user.uid, "grammar_notes", currentNoteId);
+        const docRef = doc(db, "artifacts", appId, "global_grammar_notes", currentNoteId);
         
         await updateDoc(docRef, {
           title: titleRef.current,
@@ -184,15 +232,17 @@ export default function Notebook() {
   }).current;
 
   const handleTitleChange = (e) => {
-    if (isMobile) return; 
+    if (isReadOnly) return; 
     setTitle(e.target.value);
     handleEditorChange(contentRef.current); 
   };
 
   const handleDelete = async (e, id) => {
     e.stopPropagation();
-    if (!window.confirm("Bu sayfayı silmek istediğine emin misin?")) return;
-    await deleteDoc(doc(db, "artifacts", appId, "users", user.uid, "grammar_notes", id));
+    if (!isAdmin) return;
+    if (!window.confirm("Bu sayfayı tamamen silmek istediğinize emin misiniz? Diğer tüm kullanıcılardan da silinecektir.")) return;
+    
+    await deleteDoc(doc(db, "artifacts", appId, "global_grammar_notes", id));
     setNotes(notes.filter(n => n.id !== id));
     if (activeNote?.id === id) {
       setActiveNote(null);
@@ -231,20 +281,20 @@ export default function Notebook() {
   const MemoizedQuill = useMemo(() => {
     if (!activeNote) return null;
     return (
-      <div className={`bg-white quill-wrapper relative ${isMobile ? 'border-none' : 'rounded-2xl shadow-sm border border-slate-200'}`}>
+      <div className={`bg-white quill-wrapper relative ${isReadOnly ? 'border-none' : 'rounded-2xl shadow-sm border border-slate-200'}`}>
         <ReactQuill 
-          key={`${activeNote.id}-${isMobile}`} 
+          key={`${activeNote.id}-${isReadOnly}`} 
           theme="snow" 
           defaultValue={activeNote.content || ""} 
           onChange={handleEditorChange} 
-          modules={isMobile ? { toolbar: false } : modules} 
-          readOnly={isMobile} 
+          modules={isReadOnly ? { toolbar: false } : modules} 
+          readOnly={isReadOnly} 
           scrollingContainer="#editor-scroller" 
-          className={isMobile ? "mobile-view-editor" : "min-h-[500px]"}
+          className={isReadOnly ? "mobile-view-editor" : "min-h-[500px]"}
         />
       </div>
     );
-  }, [activeNote?.id, isMobile]); 
+  }, [activeNote?.id, isReadOnly]); 
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col w-full overflow-x-hidden">
@@ -269,11 +319,13 @@ export default function Notebook() {
         
         {activeNote && (
           <div className="flex items-center gap-4 shrink-0">
-            <div className="hidden md:flex items-center gap-2 text-sm font-medium">
-              {saveStatus === "saved" && <><CheckCircle2 className="w-5 h-5 text-emerald-500" /> <span className="text-slate-500">Buluta Kaydedildi</span></>}
-              {saveStatus === "waiting" && <><Cloud className="w-5 h-5 text-slate-400" /> <span className="text-slate-400">Değişiklikler bekleniyor...</span></>}
-              {saveStatus === "saving" && <><Loader2 className="w-5 h-5 text-indigo-500 animate-spin" /> <span className="text-indigo-600 font-bold">Kaydediliyor...</span></>}
-            </div>
+            {isAdmin && (
+              <div className="hidden md:flex items-center gap-2 text-sm font-medium">
+                {saveStatus === "saved" && <><CheckCircle2 className="w-5 h-5 text-emerald-500" /> <span className="text-slate-500">Buluta Kaydedildi</span></>}
+                {saveStatus === "waiting" && <><Cloud className="w-5 h-5 text-slate-400" /> <span className="text-slate-400">Değişiklikler bekleniyor...</span></>}
+                {saveStatus === "saving" && <><Loader2 className="w-5 h-5 text-indigo-500 animate-spin" /> <span className="text-indigo-600 font-bold">Kaydediliyor...</span></>}
+              </div>
+            )}
 
             <button 
               onClick={handleDownloadPDF}
@@ -287,14 +339,18 @@ export default function Notebook() {
 
       <div className="flex flex-1 overflow-hidden">
         
-        {/* Sol Menü */}
+        {/* Sol Menü (Web'de Konu İçi) */}
         {activeNote && !isMobile && (
           <div className="hidden lg:flex w-72 bg-white border-r border-slate-200 flex-col h-[calc(100vh-73px)] shrink-0">
-            <div className="p-4 border-b border-slate-100">
-              <button onClick={createNewNote} className="w-full bg-slate-100 hover:bg-indigo-50 text-indigo-600 font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors border border-dashed border-indigo-200">
-                <Plus size={18} /> Yeni Sayfa
-              </button>
-            </div>
+            
+            {isAdmin && (
+              <div className="p-4 border-b border-slate-100">
+                <button onClick={createNewNote} className="w-full bg-slate-100 hover:bg-indigo-50 text-indigo-600 font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors border border-dashed border-indigo-200">
+                  <Plus size={18} /> Yeni Sayfa
+                </button>
+              </div>
+            )}
+
             <div className="overflow-y-auto flex-1 p-2 space-y-1">
               {notes.map(note => (
                 <div 
@@ -313,9 +369,12 @@ export default function Notebook() {
                        Son: {formatTime(note.lastViewedAt)}
                     </div>
                   </div>
-                  <button onClick={(e) => handleDelete(e, note.id)} className="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                    <Trash2 size={16}/>
-                  </button>
+                  
+                  {isAdmin && (
+                    <button onClick={(e) => handleDelete(e, note.id)} className="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                      <Trash2 size={16}/>
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
@@ -344,7 +403,7 @@ export default function Notebook() {
                 className={isMobile ? "" : "pb-20 space-y-4"}
               >
                 
-                {isMobile ? (
+                {isReadOnly ? (
                   <h1 className="w-full text-4xl font-black text-slate-800 pb-4 mb-4 border-b-2 border-slate-200 break-words">
                     {title || "İsimsiz Sayfa"}
                   </h1>
@@ -368,17 +427,21 @@ export default function Notebook() {
               
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 md:mb-8">
                 <div>
-                  <h2 className="text-2xl md:text-3xl font-extrabold text-slate-800">Çalışma Notlarım</h2>
-                  <p className="text-slate-500 mt-1 text-sm md:text-base">Eklediğin tüm konular, tekrar sayıları ve son çalışma tarihleri.</p>
+                  <h2 className="text-2xl md:text-3xl font-extrabold text-slate-800">
+                    {isAdmin ? "Yönetim Paneli" : "Konu Anlatımları"}
+                  </h2>
+                  <p className="text-slate-500 mt-1 text-sm md:text-base">
+                    {isAdmin ? "Tüm kullanıcıların gördüğü konuları yönet." : "Eklenen tüm konular ve kendi çalışma verilerin."}
+                  </p>
                 </div>
                 <div className="bg-indigo-100 text-indigo-700 font-bold px-4 py-2 rounded-xl self-start sm:self-auto shrink-0">
                   {notes.length} Konu
                 </div>
               </div>
 
-              {!isMobile && (
+              {isAdmin && !isMobile && (
                 <button onClick={createNewNote} className="w-full bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-700 font-bold py-4 rounded-2xl flex items-center justify-center gap-2 transition-all mb-6 shadow-sm active:scale-[0.99]">
-                  <Plus size={20} /> Yeni Konu Ekle
+                  <Plus size={20} /> Yeni Konu Ekle (Tüm Kullanıcılar İçin)
                 </button>
               )}
 
@@ -387,24 +450,22 @@ export default function Notebook() {
                   <div 
                     key={note.id} 
                     onClick={() => selectNote(note)} 
-                    className="bg-white p-4 md:p-5 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md hover:border-indigo-300 cursor-pointer transition-all flex flex-col md:flex-row md:items-center justify-between group active:scale-[0.99] gap-4"
+                    className="bg-white p-4 md:p-5 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md hover:border-indigo-300 cursor-pointer transition-all flex items-center justify-between group active:scale-[0.99]"
                   >
-                    <div className="flex items-start md:items-center gap-4 truncate w-full">
+                    <div className="flex items-center gap-4 truncate w-full">
                       <div className="hidden sm:flex bg-indigo-50 p-3 rounded-xl text-indigo-500 shrink-0 group-hover:scale-110 transition-transform">
                         <FileText size={22}/>
                       </div>
                       <div className="flex flex-col truncate w-full">
-                        <h3 className="font-bold text-slate-800 text-base md:text-lg truncate mb-1">{note.title || "İsimsiz Sayfa"}</h3>
+                        <h3 className="font-bold text-slate-800 text-base md:text-lg truncate">{note.title || "İsimsiz Sayfa"}</h3>
                         
-                        <div className="flex flex-wrap items-center gap-3 text-xs font-medium text-slate-500">
+                        <div className="flex flex-wrap items-center gap-3 text-xs font-medium text-slate-500 mt-1">
                           
-                          {/* TEKRAR SAYACI GÖSTERGESİ */}
                           <div className="flex items-center gap-1.5 bg-slate-50 px-2 py-1 rounded-md border border-slate-100">
                             <RotateCcw size={14} className="text-indigo-400" />
                             <span className="text-slate-600">{note.reviewCount || 0} Tekrar</span>
                           </div>
 
-                          {/* SON TEKRAR TARİHİ GÖSTERGESİ */}
                           <div className="flex items-center gap-1.5 bg-slate-50 px-2 py-1 rounded-md border border-slate-100">
                             <Clock size={14} className={note.lastViewedAt ? "text-amber-500" : "text-slate-400"}/>
                             <span className={note.lastViewedAt ? "text-amber-700/80" : ""}>{formatTime(note.lastViewedAt)}</span>
@@ -414,29 +475,49 @@ export default function Notebook() {
                       </div>
                     </div>
                     
-                    <div className="flex items-center justify-between md:justify-end gap-3 w-full md:w-auto shrink-0 border-t md:border-t-0 border-slate-100 pt-3 md:pt-0">
+                    <div className="flex items-center gap-2 shrink-0 ml-2">
                       
-                      {/* TEKRAR MODU AÇ/KAPAT BUTONU */}
+                      {/* HERKESİN GÖREBİLECEĞİ SAYACI SIFIRLAMA BUTONU */}
                       <button 
-                        onClick={(e) => toggleCompletion(e, note)}
-                        className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all shadow-sm border ${
-                          note.isCompleted 
-                            ? "bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100" 
-                            : "bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100"
-                        }`}
+                        onClick={(e) => handleResetCounter(e, note.id)}
+                        className="text-slate-400 hover:text-amber-500 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity p-2 bg-slate-50 md:bg-transparent rounded-xl md:rounded-none"
+                        title="Tekrar Sayacını Sıfırla"
                       >
-                        <CheckCircle2 size={16} className={note.isCompleted ? "text-emerald-500" : "text-slate-400"} />
-                        {note.isCompleted ? "Tekrar Modu Aktif" : "Yazım Aşamasında"}
+                        <RotateCcw size={18}/>
                       </button>
 
-                      {/* Silme Butonu */}
-                      <button onClick={(e) => handleDelete(e, note.id)} className="text-slate-300 hover:text-red-500 md:opacity-0 group-hover:opacity-100 transition-opacity p-2 bg-slate-50 md:bg-transparent rounded-xl md:rounded-none">
-                        <Trash2 size={18}/>
-                      </button>
+                      {/* SADECE ADMİN DURUMU KONTROL EDEBİLİR */}
+                      {isAdmin && (
+                        <button 
+                          onClick={(e) => toggleCompletion(e, note)}
+                          className={`hidden md:flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all shadow-sm border ${
+                            note.isCompleted 
+                              ? "bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100" 
+                              : "bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100"
+                          }`}
+                        >
+                          <CheckCircle2 size={16} className={note.isCompleted ? "text-emerald-500" : "text-slate-400"} />
+                          {note.isCompleted ? "Tekrar Modu Aktif" : "Yazım Aşamasında"}
+                        </button>
+                      )}
+
+                      {/* Silme Butonu Sadece Admin Görebilir */}
+                      {isAdmin && (
+                        <button onClick={(e) => handleDelete(e, note.id)} className="text-slate-300 hover:text-red-500 md:opacity-0 group-hover:opacity-100 transition-opacity p-2 shrink-0">
+                          <Trash2 size={20}/>
+                        </button>
+                      )}
 
                     </div>
                   </div>
                 ))}
+
+                {notes.length === 0 && !isAdmin && (
+                  <div className="text-center py-16 text-slate-400">
+                    <Book className="w-16 h-16 mx-auto mb-4 opacity-20"/>
+                    <p>Henüz çalışmaya hazır bir konu bulunamadı.</p>
+                  </div>
+                )}
               </div>
 
             </div>
