@@ -157,24 +157,16 @@ export default function Home() {
            </div>
         </div>
 
-        {/* --- YENİ ÖZELLİK BUTONLARI --- */}
-        <div className="grid grid-cols-2 gap-3">
-            <button 
-              onClick={() => navigate("/grammar-notes")} 
-              className="bg-indigo-50 border border-indigo-100 p-4 rounded-2xl shadow-sm flex flex-col items-center gap-2 active:scale-95 transition-transform"
-            >
-                <div className="bg-indigo-100 p-3 rounded-full text-indigo-600"><BookOpen className="w-6 h-6"/></div>
-                <span className="font-bold text-slate-700 text-sm">Konu Anlatımı</span>
-            </button>
-
-            <button 
-              onClick={() => navigate("/stories")} 
-              className="bg-emerald-50 border border-emerald-100 p-4 rounded-2xl shadow-sm flex flex-col items-center gap-2 active:scale-95 transition-transform"
-            >
-                <div className="bg-emerald-100 p-3 rounded-full text-emerald-600"><Library className="w-6 h-6"/></div>
-                <span className="font-bold text-slate-700 text-sm">Hikayeler</span>
-            </button>
-        </div>
+        // Home.js içindeki grid yapısını şu şekilde değiştirin:
+<div className="grid grid-cols-1 gap-3">
+    <button
+       onClick={() => navigate("/grammar-notes")}
+       className="bg-indigo-50 border border-indigo-100 p-4 rounded-2xl shadow-sm flex flex-col items-center gap-2 active:scale-95 transition-transform"
+    >
+        <div className="bg-indigo-100 p-3 rounded-full text-indigo-600"><BookOpen className="w-6 h-6"/></div>
+        <span className="font-bold text-slate-700 text-sm">Grammer Defterim</span>
+    </button>
+</div>
 
         {/* --- OYUN VE DİĞER BUTONLAR --- */}
         <div className="space-y-3 pb-8">
