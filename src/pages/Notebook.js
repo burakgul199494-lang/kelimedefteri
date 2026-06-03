@@ -87,11 +87,23 @@ export default function Notebook() {
     }
   };
 
+  // --- SAYFA KESİCİ EKLEME FONKSİYONU ---
+  const insertPageBreak = () => {
+    // Editördeki mevcut metnin sonuna ayırıcıyı ekler
+    const breakMarker = '<p><br></p><p><strong style="color: rgb(239, 68, 68);">✂️ --- YENİ SAYFA --- ✂️</strong></p><p><br></p>';
+    setContent((prev) => prev + breakMarker);
+  };
+
   // --- PDF İNDİRME FONKSİYONU ---
   const handleDownloadPDF = () => {
     if (!content) return;
     
-    // Editör araç çubuklarını PDF'e basmamak için geçici bir HTML alanı oluşturuyoruz
+    // Editördeki kırmızı "YENİ SAYFA" damgalarını, html2pdf'in anladığı gerçek sayfa kırıcı koda dönüştürüyoruz
+    const pdfReadyContent = content.replace(
+      /<p><strong style="color: rgb\(239, 68, 68\);">✂️ --- YENİ SAYFA --- ✂️<\/strong><\/p>/g, 
+      '<div class="html2pdf__page-break"></div>'
+    );
+
     const printContent = document.createElement("div");
     printContent.innerHTML = `
       <div style="font-family: Arial, sans-serif; padding: 20px; color: #1e293b;">
@@ -99,17 +111,18 @@ export default function Notebook() {
           ${title || "İsimsiz Sayfa"}
         </h1>
         <div style="line-height: 1.6; font-size: 16px;">
-          ${content}
+          ${pdfReadyContent}
         </div>
       </div>
     `;
 
     const opt = {
-      margin:       [15, 15, 15, 15], // Sayfa kenar boşlukları (mm)
+      margin:       [15, 15, 15, 15],
       filename:     `${title ? title.replace(/\s+/g, '_') : 'Defter_Notu'}.pdf`,
       image:        { type: 'jpeg', quality: 0.98 },
       html2canvas:  { scale: 2, useCORS: true },
-      jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      pagebreak:    { mode: 'legacy' } // Sayfa kırma özelliğini aktifleştirir
     };
 
     html2pdf().set(opt).from(printContent).save();
@@ -177,13 +190,25 @@ export default function Notebook() {
         <div className="flex-1 bg-slate-50 h-[calc(100vh-73px)] overflow-y-auto">
           {activeNote ? (
             <div className="max-w-4xl mx-auto p-6 space-y-4 pb-20">
-              <input 
-                type="text" 
-                value={title} 
-                onChange={(e) => setTitle(e.target.value)} 
-                placeholder="01. To Be"
-                className="w-full text-3xl font-black bg-transparent border-none outline-none text-slate-800 placeholder:text-slate-300"
-              />
+              
+              <div className="flex justify-between items-center w-full">
+                <input 
+                  type="text" 
+                  value={title} 
+                  onChange={(e) => setTitle(e.target.value)} 
+                  placeholder="01. To Be"
+                  className="flex-1 text-3xl font-black bg-transparent border-none outline-none text-slate-800 placeholder:text-slate-300"
+                />
+                
+                {/* SAYFA BÖLME BUTONU */}
+                <button 
+                  onClick={insertPageBreak}
+                  className="bg-red-50 text-red-500 border border-red-200 font-bold py-1.5 px-4 rounded-lg flex items-center gap-2 hover:bg-red-100 transition-colors text-sm shadow-sm whitespace-nowrap"
+                >
+                  ✂️ Yeni Sayfa Başlat
+                </button>
+              </div>
+
               <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                 <ReactQuill 
                   theme="snow" 
