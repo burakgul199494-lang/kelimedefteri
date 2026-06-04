@@ -26,7 +26,12 @@ const formatTime = (timestamp) => {
   return date.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' }) + " " + date.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
 };
 
-export default function Notebook() {
+// YENİ: Dışarıdan dinamik özellikler (props) alıyoruz. Varsayılan olarak Gramer ayarlarına sahip.
+export default function Notebook({ 
+  pageTitle = "Gramer Defterim", 
+  dbCollection = "global_grammar_notes", 
+  trackingCollection = "grammar_tracking" 
+}) {
   const { user, isAdmin } = useData(); 
   const navigate = useNavigate();
   
@@ -38,7 +43,6 @@ export default function Notebook() {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [zoomFactor, setZoomFactor] = useState(1); 
   
-  // YENİ: Sıralama durumu (Reorder Mode) ve sürüklenen öğenin indeksi
   const [isReordering, setIsReordering] = useState(false);
   const [draggedIndex, setDraggedIndex] = useState(null);
   
@@ -47,8 +51,9 @@ export default function Notebook() {
   const activeNoteRef = useRef(null);
   const saveTimeoutRef = useRef(null);
 
-  const globalNotesRef = collection(db, "artifacts", appId, "global_grammar_notes");
-  const trackingRef = collection(db, "artifacts", appId, "users", user?.uid || "default", "grammar_tracking");
+  // YENİ: Veritabanı yolları artık sabit değil, dışarıdan gelen isimlere göre şekilleniyor
+  const globalNotesRef = collection(db, "artifacts", appId, dbCollection);
+  const trackingRef = collection(db, "artifacts", appId, "users", user?.uid || "default", trackingCollection);
 
   const showPreviewMode = !isAdmin || isMobile;
 
@@ -72,10 +77,9 @@ export default function Notebook() {
 
   useEffect(() => {
     if (user) fetchNotes();
-  }, [user]);
+  }, [user, dbCollection]); // Koleksiyon değişirse notları baştan çeker
 
   const fetchNotes = async () => {
-    // YENİ: Artık orderBy("createdAt") ile çekmiyoruz, böylece eski kayıtlarda index hatası almayız.
     const snapshot = await getDocs(globalNotesRef);
     let list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
@@ -83,7 +87,6 @@ export default function Notebook() {
       list = list.filter(n => n.isCompleted === true);
     }
 
-    // YENİ: Javascript tarafında Akıllı Sıralama (Önce order alanına göre, yoksa eklenme tarihine göre)
     list.sort((a, b) => {
       const orderA = a.order !== undefined ? a.order : Infinity;
       const orderB = b.order !== undefined ? b.order : Infinity;
@@ -117,7 +120,7 @@ export default function Notebook() {
       title: "Yeni Sayfa",
       content: "",
       isCompleted: false, 
-      order: notes.length, // YENİ: Eklenen not otomatik olarak en sona (uzunluk kadar) indekslenir
+      order: notes.length, 
       createdAt: serverTimestamp(),
     };
     
@@ -142,7 +145,7 @@ export default function Notebook() {
         try {
           const currentNote = notes.find(n => n.id === activeNote.id);
           const newCount = (currentNote?.reviewCount || 0) + 1;
-          const docRef = doc(db, "artifacts", appId, "users", user.uid, "grammar_tracking", activeNote.id);
+          const docRef = doc(db, "artifacts", appId, "users", user.uid, trackingCollection, activeNote.id);
           await setDoc(docRef, { 
             lastViewedAt: serverTimestamp(),
             reviewCount: newCount
@@ -170,7 +173,7 @@ export default function Notebook() {
     if (!secondConfirm) return;
 
     try {
-      const docRef = doc(db, "artifacts", appId, "users", user.uid, "grammar_tracking", id);
+      const docRef = doc(db, "artifacts", appId, "users", user.uid, trackingCollection, id);
       await setDoc(docRef, { reviewCount: 0, lastViewedAt: null }, { merge: true });
       setNotes(notes.map(n => n.id === id ? { ...n, reviewCount: 0, lastViewedAt: null } : n));
     } catch (error) {
@@ -184,7 +187,7 @@ export default function Notebook() {
 
     const newStatus = !note.isCompleted;
     try {
-      const docRef = doc(db, "artifacts", appId, "global_grammar_notes", note.id);
+      const docRef = doc(db, "artifacts", appId, dbCollection, note.id);
       await updateDoc(docRef, { isCompleted: newStatus });
       
       setNotes(prev => prev.map(n => n.id === note.id ? { ...n, isCompleted: newStatus } : n));
@@ -201,7 +204,7 @@ export default function Notebook() {
     if (!isAdmin || isReordering) return;
     if (!window.confirm("Bu sayfayı tamamen silmek istediğinize emin misiniz?")) return;
     
-    await deleteDoc(doc(db, "artifacts", appId, "global_grammar_notes", id));
+    await deleteDoc(doc(db, "artifacts", appId, dbCollection, id));
     setNotes(notes.filter(n => n.id !== id));
     if (activeNote?.id === id) {
       setActiveNote(null);
@@ -220,7 +223,7 @@ export default function Notebook() {
       setSaveStatus("saving");
       try {
         const currentNoteId = activeNoteRef.current.id;
-        const docRef = doc(db, "artifacts", appId, "global_grammar_notes", currentNoteId);
+        const docRef = doc(db, "artifacts", appId, dbCollection, currentNoteId);
         await updateDoc(docRef, { title: titleRef.current, content: contentRef.current, updatedAt: serverTimestamp() });
         setNotes(prev => prev.map(n => n.id === currentNoteId ? { ...n, title: titleRef.current, content: contentRef.current } : n));
         setSaveStatus("saved");
@@ -262,7 +265,6 @@ export default function Notebook() {
     html2pdf().set(opt).from(printContent).save();
   };
 
-  // --- YENİ: SIRALAMA DEĞİŞTİRME VE KAYDETME FONKSİYONLARI ---
   const moveNote = (index, direction) => {
     const newNotes = [...notes];
     if (direction === "up" && index > 0) {
@@ -289,9 +291,8 @@ export default function Notebook() {
       setSaveStatus("saving");
       const batch = writeBatch(db);
       
-      // Tüm listeyi dönüp yeni sıraya göre order değerini atıyoruz
       notes.forEach((note, index) => {
-        const docRef = doc(db, "artifacts", appId, "global_grammar_notes", note.id);
+        const docRef = doc(db, "artifacts", appId, dbCollection, note.id);
         batch.update(docRef, { order: index });
       });
       
@@ -336,7 +337,7 @@ export default function Notebook() {
             <Home size={20} className="text-indigo-600" />
           </button>
           <h1 onClick={() => setActiveNote(null)} className="text-xl font-black text-slate-800 flex items-center gap-2 cursor-pointer hover:text-indigo-600 transition-colors truncate ml-1 md:ml-2">
-            <Book className="w-5 h-5 text-indigo-600 shrink-0"/> <span className="truncate">Gramer Defterim</span>
+            <Book className="w-5 h-5 text-indigo-600 shrink-0"/> <span className="truncate">{pageTitle}</span>
           </h1>
         </div>
         
@@ -364,7 +365,7 @@ export default function Notebook() {
             {isAdmin && (
               <div className="p-4 border-b border-slate-100">
                 <button onClick={createNewNote} className="w-full bg-slate-100 hover:bg-indigo-50 text-indigo-600 font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors border border-dashed border-indigo-200">
-                  <Plus size={18} /> Yeni Sayfa
+                  <Plus size={18} /> Yeni Ekle
                 </button>
               </div>
             )}
@@ -416,25 +417,19 @@ export default function Notebook() {
               
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 md:mb-8">
                 <div>
-                  <h2 className="text-2xl md:text-3xl font-extrabold text-slate-800">
-                    {isAdmin ? "Yönetim Paneli" : "Konu Anlatımları"}
-                  </h2>
-                  <p className="text-slate-500 mt-1 text-sm md:text-base">
-                    {isAdmin ? "Tüm kullanıcıların gördüğü konuları yönet." : "Eklenen tüm konular ve kendi çalışma verilerin."}
-                  </p>
+                  <h2 className="text-2xl md:text-3xl font-extrabold text-slate-800">{isAdmin ? "Yönetim Paneli" : "İçerikler"}</h2>
+                  <p className="text-slate-500 mt-1 text-sm md:text-base">{isAdmin ? "Tüm kullanıcıların gördüğü içerikleri yönet." : "Eklenen tüm içerikler ve kendi çalışma verilerin."}</p>
                 </div>
-                <div className="bg-indigo-100 text-indigo-700 font-bold px-4 py-2 rounded-xl self-start sm:self-auto shrink-0">
-                  {notes.length} Konu
-                </div>
+                <div className="bg-indigo-100 text-indigo-700 font-bold px-4 py-2 rounded-xl self-start sm:self-auto shrink-0">{notes.length} İçerik</div>
               </div>
 
-              {/* YENİ: ADMİN BUTONLARI (Ekleme ve Sıralama Modu) */}
+              {/* YENİ: ADMİN BUTONLARI */}
               {isAdmin && !isMobile && (
                 <>
                   {!isReordering ? (
                     <div className="flex flex-col sm:flex-row gap-3 mb-6">
                       <button onClick={createNewNote} className="flex-1 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-700 font-bold py-4 rounded-2xl flex items-center justify-center gap-2 transition-all shadow-sm active:scale-[0.99]">
-                        <Plus size={20} /> Yeni Konu Ekle
+                        <Plus size={20} /> Yeni Ekle
                       </button>
                       <button onClick={() => setIsReordering(true)} className="flex-1 bg-slate-800 hover:bg-slate-900 border border-slate-700 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 transition-all shadow-sm active:scale-[0.99]">
                         <ListOrdered size={20} /> Sıralamayı Düzenle
@@ -446,7 +441,7 @@ export default function Notebook() {
                         <div className="bg-indigo-200 p-2 rounded-full"><ListOrdered size={24}/></div>
                         <div>
                           <div>Sıralama Modu Aktif</div>
-                          <div className="text-xs text-indigo-500 font-normal mt-0.5">Konuları sürükleyip bırakarak veya okları kullanarak sırayı belirleyin.</div>
+                          <div className="text-xs text-indigo-500 font-normal mt-0.5">İçerikleri sürükleyip bırakarak veya okları kullanarak sırayı belirleyin.</div>
                         </div>
                       </div>
                       <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
@@ -467,13 +462,10 @@ export default function Notebook() {
                   <div 
                     key={note.id} 
                     onClick={() => { if (!isReordering) selectNote(note); }} 
-                    
-                    /* YENİ: Sürükle Bırak İşlemleri */
                     draggable={isReordering}
                     onDragStart={(e) => { e.dataTransfer.effectAllowed = "move"; setDraggedIndex(index); }}
                     onDragOver={(e) => e.preventDefault()}
                     onDrop={(e) => handleDrop(e, index)}
-                    
                     className={`bg-white p-4 md:p-5 rounded-2xl shadow-sm transition-all flex items-center justify-between group 
                       ${isReordering ? "cursor-move border-2 border-dashed border-slate-300 hover:border-indigo-400 hover:bg-indigo-50/30" : "border border-slate-200 hover:shadow-md hover:border-indigo-300 cursor-pointer active:scale-[0.99]"}
                       ${draggedIndex === index ? "opacity-40" : "opacity-100"}
@@ -506,16 +498,10 @@ export default function Notebook() {
                     </div>
                     
                     <div className="flex items-center gap-2 shrink-0 ml-2">
-                      
-                      {/* YENİ: Sadece Sıralama Modunda Görünür Oklar */}
                       {isReordering ? (
                         <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
-                          <button onClick={(e) => { e.stopPropagation(); moveNote(index, "up"); }} disabled={index === 0} className="p-2 bg-white hover:bg-indigo-50 hover:text-indigo-600 rounded-lg shadow-sm disabled:opacity-30 disabled:hover:bg-white disabled:hover:text-slate-400 transition-colors">
-                            <ArrowUp size={18}/>
-                          </button>
-                          <button onClick={(e) => { e.stopPropagation(); moveNote(index, "down"); }} disabled={index === notes.length - 1} className="p-2 bg-white hover:bg-indigo-50 hover:text-indigo-600 rounded-lg shadow-sm disabled:opacity-30 disabled:hover:bg-white disabled:hover:text-slate-400 transition-colors">
-                            <ArrowDown size={18}/>
-                          </button>
+                          <button onClick={(e) => { e.stopPropagation(); moveNote(index, "up"); }} disabled={index === 0} className="p-2 bg-white hover:bg-indigo-50 hover:text-indigo-600 rounded-lg shadow-sm disabled:opacity-30 disabled:hover:bg-white disabled:hover:text-slate-400 transition-colors"><ArrowUp size={18}/></button>
+                          <button onClick={(e) => { e.stopPropagation(); moveNote(index, "down"); }} disabled={index === notes.length - 1} className="p-2 bg-white hover:bg-indigo-50 hover:text-indigo-600 rounded-lg shadow-sm disabled:opacity-30 disabled:hover:bg-white disabled:hover:text-slate-400 transition-colors"><ArrowDown size={18}/></button>
                         </div>
                       ) : (
                         <>
@@ -524,7 +510,6 @@ export default function Notebook() {
                           {isAdmin && <button onClick={(e) => handleDelete(e, note.id)} className="text-slate-300 hover:text-red-500 md:opacity-0 group-hover:opacity-100 transition-opacity p-2 shrink-0"><Trash2 size={20}/></button>}
                         </>
                       )}
-
                     </div>
                   </div>
                 ))}
@@ -532,7 +517,7 @@ export default function Notebook() {
                 {notes.length === 0 && !isAdmin && (
                   <div className="text-center py-16 text-slate-400">
                     <Book className="w-16 h-16 mx-auto mb-4 opacity-20"/>
-                    <p>Henüz çalışmaya hazır bir konu bulunamadı.</p>
+                    <p>Henüz çalışmaya hazır bir içerik bulunamadı.</p>
                   </div>
                 )}
               </div>
