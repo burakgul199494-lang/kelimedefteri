@@ -18,7 +18,8 @@ import {
   Calendar,
   Target,
   AlertTriangle,
-  BookOpen
+  BookOpen,
+  BookText // Yeni ikon eklendi
 } from "lucide-react"; 
 
 import ProfileModal from "../components/ProfileModal"; 
@@ -158,13 +159,21 @@ export default function Home() {
         </div>
 
         {/* --- DEFTER BÖLÜMÜ --- */}
-        <div className="grid grid-cols-1 gap-3">
+        <div className="grid grid-cols-2 gap-3 mt-4">
             <button
                onClick={() => navigate("/grammar-notes")}
-               className="bg-indigo-50 border border-indigo-100 p-4 rounded-2xl shadow-sm flex flex-col items-center gap-2 active:scale-95 transition-transform"
+               className="bg-indigo-50 border border-indigo-100 p-4 rounded-2xl shadow-sm flex flex-col items-center justify-center gap-2 active:scale-95 transition-transform"
             >
                 <div className="bg-indigo-100 p-3 rounded-full text-indigo-600"><BookOpen className="w-6 h-6"/></div>
-                <span className="font-bold text-slate-700 text-sm">Grammer Defterim</span>
+                <span className="font-bold text-slate-700 text-sm text-center">Gramer Defterim</span>
+            </button>
+            
+            <button
+               onClick={() => navigate("/stories")}
+               className="bg-emerald-50 border border-emerald-100 p-4 rounded-2xl shadow-sm flex flex-col items-center justify-center gap-2 active:scale-95 transition-transform"
+            >
+                <div className="bg-emerald-100 p-3 rounded-full text-emerald-600"><BookText className="w-6 h-6"/></div>
+                <span className="font-bold text-slate-700 text-sm text-center">Hikayeler</span>
             </button>
         </div>
 
