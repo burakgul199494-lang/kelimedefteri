@@ -20,7 +20,7 @@ import WritingGame from "./pages/WritingGame";
 import Pronunciation from "./pages/Pronunciation";
 import GapFillingGame from "./pages/GapFillingGame";
 
-// YENİ EKLENEN DEFTER SAYFASI
+// YENİ EKLENEN DEFTER SAYFASI (Dinamik Yapı)
 import Notebook from "./pages/Notebook";
 
 const AudioSilencer = () => {
@@ -59,9 +59,29 @@ export default function App() {
           <Route path="/exercise" element={<PrivateRoute><ExerciseGame /></PrivateRoute>} />
           <Route path="/gap-filling" element={<PrivateRoute><GapFillingGame /></PrivateRoute>} />
           
-          {/* YENİ DEFTER SİSTEMİ ROTALARI */}
-          <Route path="/grammar-notes" element={<PrivateRoute><Notebook /></PrivateRoute>} />
-          
+          {/* YENİ DEFTER SİSTEMİ ROTALARI (İki farklı amaç, tek bir dosya!) */}
+          <Route path="/grammar-notes" element={
+            <PrivateRoute>
+              <Notebook 
+                key="grammar" 
+                pageTitle="Gramer Defterim" 
+                dbCollection="global_grammar_notes" 
+                trackingCollection="grammar_tracking" 
+              />
+            </PrivateRoute>
+          } />
+
+          <Route path="/stories" element={
+            <PrivateRoute>
+              <Notebook 
+                key="stories" 
+                pageTitle="Hikayeler Defteri" 
+                dbCollection="global_story_notes" 
+                trackingCollection="story_tracking" 
+              />
+            </PrivateRoute>
+          } />
+
           {/* Tanımsız Rotaları Anasayfaya Yönlendir */}
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
